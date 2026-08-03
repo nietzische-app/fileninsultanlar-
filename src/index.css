@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-retro-bg text-white font-pixel antialiased;
+    /* Piksel oyun hissi: metin seçimi ve taşma kapalı */
+    -webkit-font-smoothing: none;
+    overflow-x: hidden;
+  }
+}
+
+@layer components {
+  /* Canvas'ın piksel keskinliğini koruması için (blur yerine nearest-neighbor) */
+  .pixelated {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  .retro-panel {
+    @apply bg-retro-panel border-4 border-white/90 shadow-[8px_8px_0_0_rgba(0,0,0,0.6)];
+  }
+
+  .retro-button {
+    @apply bg-turkiye-red border-4 border-white px-4 py-3 text-[10px] uppercase tracking-wider
+           shadow-[4px_4px_0_0_rgba(0,0,0,0.6)] transition-transform
+           hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none active:scale-95;
+  }
+}
