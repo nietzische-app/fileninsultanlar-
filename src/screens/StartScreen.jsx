@@ -5,7 +5,7 @@ import { ROSTER, SHOWCASE_IDS } from '../game/players.js';
 import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
 
-/** Gurur Tablosu — dönüşümlü onur mesajları. */
+/** Gurur Tablosu — dönüşümlü onur mesajları (henüz maç yokken). */
 const PRIDE_MESSAGES = [
   'BİR MİLLETİN GURURU, BİR FİLENİN SULTANLARI',
   'SAHADA YÜREK, FİLEDE ZAFER',
@@ -13,8 +13,9 @@ const PRIDE_MESSAGES = [
   'HER SMAÇTA BİR MİLLETİN ALKIŞI',
 ];
 
-export default function StartScreen({ onStart, muted, onToggleMute }) {
+export default function StartScreen({ onStart, onTutorial, muted, onToggleMute, records }) {
   const [messageIndex, setMessageIndex] = useState(0);
+  const hasRecords = (records?.matchesPlayed ?? 0) > 0;
 
   // Öne çıkan üç sultan — giriş ekranı vitrini
   const showcase = useMemo(
@@ -23,11 +24,12 @@ export default function StartScreen({ onStart, muted, onToggleMute }) {
   );
 
   useEffect(() => {
+    if (hasRecords) return undefined;
     const timer = setInterval(() => {
       setMessageIndex((i) => (i + 1) % PRIDE_MESSAGES.length);
     }, 3800);
     return () => clearInterval(timer);
-  }, []);
+  }, [hasRecords]);
 
   const handleStart = () => {
     // Tarayıcı ses politikası: AudioContext ilk kullanıcı hareketinde açılır
@@ -53,15 +55,24 @@ export default function StartScreen({ onStart, muted, onToggleMute }) {
         <div className="mx-auto mt-5 h-1 w-40 bg-white/80" />
       </div>
 
-      {/* Gurur Tablosu */}
+      {/* Gurur Tablosu — yerel rekorlar veya onur mesajı */}
       <div className="retro-panel w-full max-w-xl px-5 py-4 text-center">
-        <p className="mb-2 text-[8px] tracking-widest text-retro-accent">★ GURUR TABLOSU ★</p>
-        <p
-          key={messageIndex}
-          className="text-[9px] leading-relaxed text-white/85 sm:text-[11px]"
-        >
-          {PRIDE_MESSAGES[messageIndex]}
-        </p>
+        <p className="mb-3 text-[8px] tracking-widest text-retro-accent">★ GURUR TABLOSU ★</p>
+        {hasRecords ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <RecordStat label="GALİBİYET" value={records.wins} />
+            <RecordStat label="SERİ" value={records.winStreak} />
+            <RecordStat label="EN İYİ SERİ" value={records.bestWinStreak} />
+            <RecordStat label="EN UZUN RALLİ" value={records.longestRally} />
+          </div>
+        ) : (
+          <p
+            key={messageIndex}
+            className="text-[9px] leading-relaxed text-white/85 sm:text-[11px]"
+          >
+            {PRIDE_MESSAGES[messageIndex]}
+          </p>
+        )}
       </div>
 
       {/* Vitrin */}
@@ -86,6 +97,13 @@ export default function StartScreen({ onStart, muted, onToggleMute }) {
         <button type="button" className="retro-button px-10 py-4 text-sm" onClick={handleStart}>
           BAŞLA
         </button>
+        <button
+          type="button"
+          className="retro-button-ghost px-5 py-2 text-[8px]"
+          onClick={onTutorial}
+        >
+          NASIL OYNANIR
+        </button>
         <p className="animate-blink text-[8px] text-white/50">DEVAM ETMEK İÇİN BAŞLA&apos;YA BAS</p>
       </div>
 
@@ -105,6 +123,15 @@ export default function StartScreen({ onStart, muted, onToggleMute }) {
         Türkiye Kadın Millî Voleybol Takımı&apos;na saygıyla yapılmış, ticari olmayan
         bir hayran projesidir.
       </footer>
+    </div>
+  );
+}
+
+function RecordStat({ label, value }) {
+  return (
+    <div>
+      <p className="text-lg text-retro-accent text-shadow-pixel">{value}</p>
+      <p className="mt-1 text-[6px] text-white/45">{label}</p>
     </div>
   );
 }

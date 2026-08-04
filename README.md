@@ -64,6 +64,15 @@ yapay zekâsının tepkisi yavaşlar. Ebrar Karakurt'un barı %30 daha hızlı d
 15 sayılık setler (2 fark, 21 tavan), 3 sette 2 kazanan maçı alır.
 Bir maç ortalama 4–9 dakika sürer.
 
+### Yerel rekorlar ve rehber
+
+Maç sonuçları tarayıcıda saklanır (galibiyet, seri, en uzun ralli, smaç/blok/
+kurtarış zirveleri). Ana menüdeki **Gurur Tablosu** bu rekorları gösterir;
+maç sonunda kırılan rekorlar yıldızla işaretlenir.
+
+İlk açılışta (veya menüden **NASIL OYNANIR**) 4 adımlık Sultan Rehberi çıkar:
+manşet→pas→smaç, dalış, Sultan Gücü, kontroller.
+
 ## Kadro
 
 15 aktif sultan + 2 bonus oyuncu; her birinin kendi statları ve oyunu
@@ -143,10 +152,11 @@ src/
 ├── App.jsx                   Ekran akışı: start → select → match → result
 ├── index.css                 Tailwind katmanları, retro bileşenler, animasyonlar
 ├── screens/
-│   ├── StartScreen.jsx       Giriş, Gurur Tablosu, kontroller
+│   ├── StartScreen.jsx       Giriş, Gurur Tablosu (rekorlar), kontroller
+│   ├── TutorialScreen.jsx    Nasıl oynanır rehberi
 │   ├── CharacterSelect.jsx   Mod, zorluk ve kadro seçimi
 │   ├── MatchScreen.jsx       Canvas + skor tablosu + Sultan barı + dokunmatik
-│   └── ResultScreen.jsx      Kupa, konfeti, istatistikler, teşekkür mesajı
+│   └── ResultScreen.jsx      Kupa, konfeti, istatistikler, yeni rekorlar
 ├── components/
 │   ├── PixelAvatar.jsx       Sahadakiyle aynı sprite'ı çizen avatar
 │   ├── Scoreboard.jsx        Türkiye vs Rakip, set takibi
@@ -164,7 +174,7 @@ src/
 │   └── audio.js              8-bit ses motoru
 └── utils/
     ├── text.js               Türkçe büyük harf yardımcısı
-    └── storage.js            Mute / son seçim localStorage
+    └── storage.js            Mute / seçim / rekorlar / tutorial localStorage
 ```
 
 ## Karakter Özelleştirme

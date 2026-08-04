@@ -11,13 +11,32 @@ const CONFETTI_COLORS = ['#E30A17', '#FFFFFF', '#FFD24A', '#FF7A18', '#9BE7FF'];
  * Maç sonu ekranı — kupa, konfeti ve Filenin Sultanları'na
  * onurlandırma mesajı.
  */
-export default function ResultScreen({ result, onRematch, onHome, muted, onToggleMute }) {
+export default function ResultScreen({
+  result,
+  brokenRecords,
+  onRematch,
+  onHome,
+  muted,
+  onToggleMute,
+}) {
   const won = result.winner === 'home';
 
   const squad = useMemo(
     () => result.homeIds.map((id) => getPlayerById(id)).filter(Boolean),
     [result.homeIds]
   );
+
+  const newRecords = useMemo(() => {
+    if (!brokenRecords) return [];
+    const labels = [];
+    if (brokenRecords.firstWin) labels.push('İLK GALİBİYET');
+    if (brokenRecords.bestWinStreak) labels.push('YENİ GALİBİYET SERİSİ');
+    if (brokenRecords.longestRally) labels.push('EN UZUN RALLİ');
+    if (brokenRecords.mostSpikes) labels.push('EN ÇOK SMAÇ');
+    if (brokenRecords.mostBlocks) labels.push('EN ÇOK BLOK');
+    if (brokenRecords.mostSaves) labels.push('EN ÇOK KURTARIŞ');
+    return labels;
+  }, [brokenRecords]);
 
   // Konfeti parçaları — yalnızca zaferde
   const confetti = useMemo(() => {
@@ -109,12 +128,33 @@ export default function ResultScreen({ result, onRematch, onHome, muted, onToggl
 
           {/* Maç istatistikleri */}
           <div className="mt-5 grid grid-cols-2 gap-3 border-t-2 border-white/15 pt-4 text-center sm:grid-cols-4">
-            <Stat label="SMAÇ" value={result.stats.spikes} />
-            <Stat label="BLOK" value={result.stats.blocks} />
-            <Stat label="KURTARIŞ" value={result.stats.saves} />
-            <Stat label="EN UZUN RALLİ" value={result.stats.longestRally} />
+            <Stat label="SMAÇ" value={result.stats.spikes} highlight={brokenRecords?.mostSpikes} />
+            <Stat label="BLOK" value={result.stats.blocks} highlight={brokenRecords?.mostBlocks} />
+            <Stat label="KURTARIŞ" value={result.stats.saves} highlight={brokenRecords?.mostSaves} />
+            <Stat
+              label="EN UZUN RALLİ"
+              value={result.stats.longestRally}
+              highlight={brokenRecords?.longestRally}
+            />
           </div>
         </div>
+
+        {/* Yeni rekorlar */}
+        {newRecords.length > 0 && (
+          <div className="w-full border-2 border-retro-accent/80 bg-retro-accent/10 px-4 py-3 text-center">
+            <p className="text-[8px] tracking-widest text-retro-accent">★ YENİ REKOR ★</p>
+            <div className="mt-2 flex flex-wrap justify-center gap-2">
+              {newRecords.map((label) => (
+                <span
+                  key={label}
+                  className="border border-retro-accent/50 px-2 py-1 text-[7px] text-retro-accent"
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Sahaya çıkan kadro */}
         <div className="flex items-end justify-center gap-6">
@@ -135,7 +175,7 @@ export default function ResultScreen({ result, onRematch, onHome, muted, onToggl
         {/* Onurlandırma mesajı */}
         <div className="retro-panel w-full px-5 py-5 text-center">
           <p className="mb-3 text-[8px] tracking-widest text-retro-accent">
-            ★ FİLENİN SULTANLARI'NA ★
+            ★ FİLENİN SULTANLARI&apos;NA ★
           </p>
           <p className="text-[8px] leading-relaxed text-white/75 sm:text-[9px]">
             Bir topun peşinde koşarken bir milletin umudunu taşıdınız.
@@ -160,11 +200,16 @@ export default function ResultScreen({ result, onRematch, onHome, muted, onToggl
   );
 }
 
-function Stat({ label, value }) {
+function Stat({ label, value, highlight = false }) {
   return (
     <div>
-      <p className="text-lg text-retro-accent">{value}</p>
-      <p className="mt-1 text-[7px] text-white/45">{label}</p>
+      <p className="text-lg text-retro-accent">
+        {value}
+        {highlight && <span className="ml-1 text-[7px] text-turkiye-red">★</span>}
+      </p>
+      <p className={`mt-1 text-[7px] ${highlight ? 'text-retro-accent/80' : 'text-white/45'}`}>
+        {label}
+      </p>
     </div>
   );
 }
