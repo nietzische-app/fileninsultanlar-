@@ -20,13 +20,23 @@ const STEPS = [
     accent: '#FFD24A',
   },
   {
+    title: 'SERVİS GÜCÜ',
+    body: 'Sayı sonrası servisçi arka çizgide topu tutar. Vuruş tuşuna iki kez bas: 1) güç barını kilitle, 2) nişanı seç. Servis atılmadan ralli başlamaz.',
+    accent: '#FFD24A',
+  },
+  {
     title: 'KOMBO ZİNCİRİ',
     body: 'Smaç, blok ve kurtarış peş peşe gelirse kombo artar. x2’den itibaren ekranda görünür; bar daha hızlı dolar. Sayı alırsan kombo kutlanır, sayı kaybedersen zincir kırılır.',
     accent: '#FF7A18',
   },
   {
+    title: 'YEREL 2 OYUNCU',
+    body: 'CO-OP: iki sultan aynı takımda AI’ya karşı. VS: P1 sol, P2 sağ. P1 = WASD+SPACE, P2 = Oklar+ENTER. Solo’da her iki şema da P1’e yazar.',
+    accent: '#9BB0FF',
+  },
+  {
     title: 'KONTROLLER',
-    body: '← → / A D hareket · ↑ / W zıpla · ↓ / S dalış · Boşluk / Z vur · X Sultan Gücü · ESC / P duraklat. Mobilde altta dokunmatik butonlar çıkar.',
+    body: 'P1: WASD hareket · SPACE vur · S dalış · X Sultan. P2: Oklar · ENTER/Num0 vur · ↓ dalış. ESC / P duraklat. Mobilde dokunmatik P1.',
     accent: '#FFFFFF',
   },
 ];

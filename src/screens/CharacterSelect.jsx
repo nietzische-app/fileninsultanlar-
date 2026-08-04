@@ -114,6 +114,7 @@ export default function CharacterSelect({
     if (!canStart) return;
     Sfx.confirm();
     onStart({
+      playMode: 'solo',
       mode,
       difficulty,
       format,
@@ -169,11 +170,15 @@ export default function CharacterSelect({
                 Sfx.select();
                 setDifficulty(key);
               }}
+              title={value.blurb}
             >
               {value.label}
             </Chip>
           ))}
         </ChipRow>
+        <p className="text-[7px] text-white/40 sm:pl-[3.75rem]">
+          {DIFFICULTY[difficulty]?.blurb}
+        </p>
 
         <ChipRow label="FORMAT">
           {Object.values(FORMATS).map((item) => (

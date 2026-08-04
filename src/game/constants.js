@@ -223,10 +223,69 @@ export const DIFFICULTY = {
   // placement: vuruşu rakibin boş bıraktığı alana yerleştirme becerisi
   //            (0 = tamamen rastgele, 1 = her zaman en uzak boşluğa)
   // diveSkill: yetişemeyeceği topa dalma olasılığı
-  kolay: { label: 'KOLAY', speed: 0.68, reaction: 0.4, error: 130, power: 0.85, placement: 0.12, diveSkill: 0.12 },
-  normal: { label: 'NORMAL', speed: 0.82, reaction: 0.29, error: 98, power: 0.97, placement: 0.4, diveSkill: 0.48 },
-  zor: { label: 'ZOR', speed: 0.94, reaction: 0.2, error: 82, power: 1.06, placement: 0.62, diveSkill: 0.6 },
+  // serveSkill: servis gücü / nişan tutarlılığı
+  kolay: {
+    id: 'kolay',
+    label: 'KOLAY',
+    shortLabel: 'EASY',
+    blurb: 'Yavaş tepki, düşük smaç isabeti.',
+    speed: 0.68,
+    reaction: 0.42,
+    error: 130,
+    power: 0.85,
+    placement: 0.12,
+    diveSkill: 0.12,
+    serveSkill: 0.25,
+  },
+  normal: {
+    id: 'normal',
+    label: 'ORTA',
+    shortLabel: 'MEDIUM',
+    blurb: 'Dengeli pozisyon ve vuruşlar.',
+    speed: 0.82,
+    reaction: 0.29,
+    error: 98,
+    power: 0.97,
+    placement: 0.4,
+    diveSkill: 0.48,
+    serveSkill: 0.55,
+  },
+  zor: {
+    id: 'zor',
+    label: 'ZOR',
+    shortLabel: 'SULTAN',
+    blurb: 'Hızlı blok, agresif smaç ve servis.',
+    speed: 0.96,
+    reaction: 0.16,
+    error: 70,
+    power: 1.1,
+    placement: 0.72,
+    diveSkill: 0.7,
+    serveSkill: 0.88,
+  },
 };
+
+/** Yerel oyun tarzı — solo / co-op / vs. */
+export const PLAY_MODES = {
+  solo: {
+    id: 'solo',
+    label: 'SOLO',
+    description: 'Tek sultan — yapay zekâya karşı.',
+  },
+  coop: {
+    id: 'coop',
+    label: 'CO-OP',
+    description: 'İki oyuncu aynı takımda, AI\'ya karşı.',
+  },
+  vs: {
+    id: 'vs',
+    label: 'VS',
+    description: 'Yerel karşılıklı — P1 sol, P2 sağ.',
+  },
+};
+
+/** Servis aşaması — ayrıntılar serve.js. */
+export { SERVE } from './serve.js';
 
 /**
  * Hücum vuruşlarının hedefleyebileceği aralık.
@@ -254,6 +313,7 @@ export function xToSpread(x, toOpponent) {
 /** Oyun akış aşamaları. */
 export const PHASE = {
   READY: 'ready', // set başı geri sayım
+  SERVE: 'serve', // servis gücü / nişan
   RALLY: 'rally', // top oyunda
   POINT: 'point', // sayı oldu, kısa donma
   SET_END: 'setEnd',

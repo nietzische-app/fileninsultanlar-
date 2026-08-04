@@ -3,7 +3,11 @@
  * Forma renkleri ve hafif çarpanlarla çeşitlilik sağlar.
  */
 
-import { OPPONENT_TEMPLATE } from './players.js';
+import {
+  DEFAULT_PLAYER_ID,
+  getPlayerById,
+  OPPONENT_TEMPLATE,
+} from './players.js';
 
 /**
  * @typedef {Object} OpponentTeam
@@ -130,4 +134,22 @@ export function buildAwayPlayers(team, count) {
       kneePads: '#1B1B2E',
     },
   }));
+}
+
+/**
+ * VS modu — seçilen sultanları away tarafına yerleştirir.
+ * @param {string[]} ids
+ * @param {number} count
+ */
+export function buildAwayFromRoster(ids, count) {
+  const list = (Array.isArray(ids) ? ids : []).slice(0, count);
+  while (list.length < count) list.push(DEFAULT_PLAYER_ID);
+
+  return list.map((id, i) => {
+    const data = getPlayerById(id) ?? getPlayerById(DEFAULT_PLAYER_ID);
+    return {
+      ...data,
+      id: `vs-${data.id}-${i}`,
+    };
+  });
 }

@@ -6,7 +6,7 @@
 const PREFS_KEY = 'filenin-sultanlari-prefs';
 const RECORDS_KEY = 'filenin-sultanlari-records';
 
-/** @typedef {{ muted: boolean, mode: string, difficulty: string, format: string, opponentId: string, homeIds: string[], tutorialSeen: boolean }} Prefs */
+/** @typedef {{ muted: boolean, mode: string, playMode: string, difficulty: string, format: string, opponentId: string, homeIds: string[], awayIds: string[], tutorialSeen: boolean }} Prefs */
 
 /**
  * @typedef {{
@@ -27,10 +27,12 @@ const RECORDS_KEY = 'filenin-sultanlari-records';
 export const DEFAULT_PREFS = {
   muted: false,
   mode: '1v1',
+  playMode: 'solo',
   difficulty: 'normal',
   format: 'classic',
   opponentId: 'random',
   homeIds: ['gizem-orge'],
+  awayIds: ['melissa-vargas'],
   tutorialSeen: false,
 };
 
@@ -54,16 +56,28 @@ export const DEFAULT_RECORDS = {
 export function loadPrefs() {
   try {
     const raw = localStorage.getItem(PREFS_KEY);
-    if (!raw) return { ...DEFAULT_PREFS, homeIds: [...DEFAULT_PREFS.homeIds] };
+    if (!raw) {
+      return {
+        ...DEFAULT_PREFS,
+        homeIds: [...DEFAULT_PREFS.homeIds],
+        awayIds: [...DEFAULT_PREFS.awayIds],
+      };
+    }
 
     const parsed = JSON.parse(raw);
     const homeIds = Array.isArray(parsed.homeIds) && parsed.homeIds.length > 0
       ? parsed.homeIds.filter((id) => typeof id === 'string')
       : [...DEFAULT_PREFS.homeIds];
+    const awayIds = Array.isArray(parsed.awayIds) && parsed.awayIds.length > 0
+      ? parsed.awayIds.filter((id) => typeof id === 'string')
+      : [...DEFAULT_PREFS.awayIds];
 
     return {
       muted: Boolean(parsed.muted),
       mode: parsed.mode === '2v2' ? '2v2' : '1v1',
+      playMode: ['solo', 'coop', 'vs'].includes(parsed.playMode)
+        ? parsed.playMode
+        : DEFAULT_PREFS.playMode,
       difficulty: ['kolay', 'normal', 'zor', 'easy', 'hard'].includes(parsed.difficulty)
         ? ({ easy: 'kolay', hard: 'zor' }[parsed.difficulty] ?? parsed.difficulty)
         : DEFAULT_PREFS.difficulty,
@@ -72,10 +86,15 @@ export function loadPrefs() {
         : DEFAULT_PREFS.format,
       opponentId: typeof parsed.opponentId === 'string' ? parsed.opponentId : DEFAULT_PREFS.opponentId,
       homeIds,
+      awayIds,
       tutorialSeen: Boolean(parsed.tutorialSeen),
     };
   } catch {
-    return { ...DEFAULT_PREFS, homeIds: [...DEFAULT_PREFS.homeIds] };
+    return {
+      ...DEFAULT_PREFS,
+      homeIds: [...DEFAULT_PREFS.homeIds],
+      awayIds: [...DEFAULT_PREFS.awayIds],
+    };
   }
 }
 

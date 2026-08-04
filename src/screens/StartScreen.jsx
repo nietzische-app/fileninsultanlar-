@@ -31,11 +31,10 @@ export default function StartScreen({ onStart, onTutorial, muted, onToggleMute, 
     return () => clearInterval(timer);
   }, [hasRecords]);
 
-  const handleStart = () => {
-    // Tarayıcı ses politikası: AudioContext ilk kullanıcı hareketinde açılır
+  const launch = (playMode) => {
     Sfx.unlock();
     Sfx.confirm();
-    onStart();
+    onStart(playMode);
   };
 
   return (
@@ -95,11 +94,33 @@ export default function StartScreen({ onStart, onTutorial, muted, onToggleMute, 
         ))}
       </div>
 
-      {/* Başla */}
-      <div className="flex flex-col items-center gap-4">
-        <button type="button" className="retro-button px-10 py-4 text-sm" onClick={handleStart}>
-          BAŞLA
+      {/* Mod seçimi */}
+      <div className="flex w-full max-w-lg flex-col items-center gap-3">
+        <button
+          type="button"
+          className="retro-button w-full max-w-md px-8 py-4 text-sm"
+          onClick={() => launch('solo')}
+        >
+          SOLO
         </button>
+        <div className="grid w-full max-w-md grid-cols-2 gap-3">
+          <button
+            type="button"
+            className="retro-button-ghost px-4 py-3 text-[9px]"
+            onClick={() => launch('coop')}
+          >
+            CO-OP
+            <span className="mt-1 block text-[6px] text-white/45">TAKIM · 2P</span>
+          </button>
+          <button
+            type="button"
+            className="retro-button-ghost px-4 py-3 text-[9px]"
+            onClick={() => launch('vs')}
+          >
+            VS
+            <span className="mt-1 block text-[6px] text-white/45">KARŞILIKLI · 2P</span>
+          </button>
+        </div>
         <button
           type="button"
           className="retro-button-ghost px-5 py-2 text-[8px]"
@@ -107,18 +128,16 @@ export default function StartScreen({ onStart, onTutorial, muted, onToggleMute, 
         >
           NASIL OYNANIR
         </button>
-        <p className="animate-blink text-[8px] text-white/50">DEVAM ETMEK İÇİN BAŞLA&apos;YA BAS</p>
       </div>
 
       {/* Kontroller özeti */}
       <div className="retro-panel px-4 py-3">
         <p className="mb-2 text-center text-[8px] text-white/50">KONTROLLER</p>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-[7px] text-white/70 sm:grid-cols-3">
-          <span>← → / A D · HAREKET</span>
-          <span>↑ / W · ZIPLA</span>
-          <span>BOŞLUK / Z · VUR</span>
-          <span className="text-[#9BE7FF]">↓ / S · DALIŞ</span>
-          <span className="text-retro-accent">X · SULTAN GÜCÜ</span>
+        <div className="grid grid-cols-1 gap-y-2 text-[7px] text-white/70 sm:grid-cols-2">
+          <span className="text-turkiye-red">P1 · WASD + SPACE (+ S DAL)</span>
+          <span className="text-[#9BB0FF]">P2 · OKLAR + ENTER (+ ↓ DAL)</span>
+          <span>X / CTRL · SULTAN GÜCÜ</span>
+          <span>ESC / P · DURAKLAT</span>
         </div>
       </div>
 

@@ -25,8 +25,12 @@ const INITIAL_HUD = {
   bestCombo: 0,
   pointsPerSet: 15,
   formatId: 'classic',
+  playMode: 'solo',
+  difficultyId: 'normal',
+  difficultyLabel: 'ORTA',
   opponentName: 'RAKİP',
   opponentAccent: '#9BB0FF',
+  serve: null,
 };
 
 /**
@@ -51,7 +55,9 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
 
     const game = new Game(canvas, {
       mode: config.mode,
+      playMode: config.playMode ?? 'solo',
       homeIds: config.homeIds,
+      awayIds: config.awayIds,
       difficulty: config.difficulty,
       format: config.format,
       opponentId: config.opponentId,
@@ -309,9 +315,13 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
       {/* Alt bilgi — masaüstünde tam, mobilde hızlı aksiyonlar */}
       <div className="flex w-full max-w-[900px] shrink-0 flex-wrap items-center justify-between gap-2 max-md:pb-[env(safe-area-inset-bottom)]">
         <div className="hidden items-center gap-3 text-[7px] text-white/45 sm:flex">
+          <span>{upper(config.playMode ?? 'solo')}</span>
+          <span className="text-white/20">|</span>
           <span>{upper(config.mode)}</span>
           <span className="text-white/20">|</span>
           <span>{upper(config.format ?? 'classic')}</span>
+          <span className="text-white/20">|</span>
+          <span className="text-retro-accent">{hud.difficultyLabel ?? upper(config.difficulty)}</span>
           <span className="text-white/20">|</span>
           <span>{squad.map((p) => upper(p.name)).join(' + ')}</span>
           {hud.opponentName && (
@@ -341,8 +351,16 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
         </div>
       </div>
 
+      {hud.phase === PHASE.SERVE && hud.serve && (
+        <p className="text-center text-[7px] text-retro-accent max-md:order-first">
+          SERVİS · {hud.serve.stage === 'power' ? '1. BASIŞ: GÜÇ' : '2. BASIŞ: NİŞAN'}
+        </p>
+      )}
+
       <p className="hidden text-center text-[7px] leading-relaxed text-white/35 md:block">
-        ← → HAREKET · ↑ ZIPLA · ↓ DALIŞ · BOŞLUK VUR · X SULTAN GÜCÜ · ESC DURAKLAT
+        {(config.playMode === 'coop' || config.playMode === 'vs')
+          ? 'P1 WASD+SPACE · P2 OKLAR+ENTER · SERVİS: İKİ BASIŞ (GÜÇ→NİŞAN) · ESC DURAKLAT'
+          : 'WASD / OKLAR · SPACE VUR · SERVİS: İKİ BASIŞ · X SULTAN · ESC DURAKLAT'}
       </p>
     </div>
   );

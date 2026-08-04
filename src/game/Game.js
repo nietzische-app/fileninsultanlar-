@@ -23,6 +23,7 @@ import {
   PHYSICS,
   PLAYER,
   RULES,
+  SERVE,
   SULTAN,
   WALL_PAD,
 } from './constants.js';
@@ -32,6 +33,7 @@ import {
   getPlayerById,
 } from './players.js';
 import {
+  buildAwayFromRoster,
   buildAwayPlayers,
   getOpponentTeam,
   pickRandomOpponent,
@@ -65,6 +67,14 @@ import {
   COMBO,
 } from './combo.js';
 import {
+  advanceServeMeter,
+  aiServeChoice,
+  aiServeDelay,
+  computeServeVelocity,
+  meterToAim,
+  meterToPower,
+} from './serve.js';
+import {
   drawBallTrail as fxDrawBallTrail,
   drawParticles as fxDrawParticles,
   drawRings as fxDrawRings,
@@ -77,20 +87,28 @@ import {
   updateRings as fxUpdateRings,
 } from './effects.js';
 import Sfx from './audio.js';
-import { upper } from '../utils/text.js';
 
-/** Klavye tuşu → mantıksal girdi eşlemesi. */
-const KEY_MAP = {
-  ArrowLeft: 'left',
+/** Boş girdi şablonu. */
+function createInputState() {
+  return {
+    left: false,
+    right: false,
+    up: false,
+    down: false,
+    action: false,
+    dive: false,
+    sultan: false,
+  };
+}
+
+/** P1 — WASD + Space/Z + X */
+const P1_KEYS = {
   a: 'left',
   A: 'left',
-  ArrowRight: 'right',
   d: 'right',
   D: 'right',
-  ArrowUp: 'up',
   w: 'up',
   W: 'up',
-  ArrowDown: 'dive',
   s: 'dive',
   S: 'dive',
   ' ': 'action',
@@ -100,12 +118,27 @@ const KEY_MAP = {
   X: 'sultan',
 };
 
+/** P2 — Oklar + Enter/Num0 (+ Ctrl sultan) */
+const P2_KEYS = {
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
+  ArrowUp: 'up',
+  ArrowDown: 'dive',
+  Enter: 'action',
+  NumpadEnter: 'action',
+  Numpad0: 'action',
+  Control: 'sultan',
+  Numpad1: 'sultan',
+};
+
 export default class Game {
   /**
    * @param {HTMLCanvasElement} canvas
    * @param {object} options
    * @param {'1v1'|'2v2'} options.mode
+   * @param {'solo'|'coop'|'vs'} [options.playMode]
    * @param {string[]} options.homeIds Seçilen sultanların id'leri
+   * @param {string[]} [options.awayIds] VS modunda P2 kadrosu
    * @param {'kolay'|'normal'|'zor'} [options.difficulty]
    * @param {'classic'|'single'|'practice'} [options.format]
    * @param {string} [options.opponentId] Rakip takım id — yoksa rastgele
@@ -116,8 +149,22 @@ export default class Game {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
 
-    this.mode = options.mode === '2v2' ? '2v2' : '1v1';
-    this.perSide = this.mode === '2v2' ? 2 : 1;
+    this.playMode = ['solo', 'coop', 'vs'].includes(options.playMode)
+      ? options.playMode
+      : 'solo';
+
+    // Co-op her zaman 2v2 sahası; VS her zaman 1v1 düellosu
+    if (this.playMode === 'coop') {
+      this.mode = '2v2';
+      this.perSide = 2;
+    } else if (this.playMode === 'vs') {
+      this.mode = '1v1';
+      this.perSide = 1;
+    } else {
+      this.mode = options.mode === '2v2' ? '2v2' : '1v1';
+      this.perSide = this.mode === '2v2' ? 2 : 1;
+    }
+
     this.difficulty = DIFFICULTY[options.difficulty] ?? DIFFICULTY.normal;
     this.format = FORMATS[options.format] ?? FORMATS.classic;
     this.rules = { ...RULES, ...this.format.rules };
@@ -131,22 +178,23 @@ export default class Game {
       this.homeIds.push(DEFAULT_PLAYER_ID);
     }
 
+    this.awayIds = Array.isArray(options.awayIds)
+      ? options.awayIds.filter((id) => typeof id === 'string').slice(0, this.perSide)
+      : [];
+
     this.running = false;
     this.rafId = null;
     this.lastTime = 0;
     this.time = 0;
 
-    /** İnsan oyuncunun girdileri (klavye + dokunmatik ortak). */
-    this.input = {
-      left: false,
-      right: false,
-      up: false,
-      down: false,
-      action: false,
-      dive: false,
-      sultan: false,
+    /** Çift oyuncu girdileri — solo'da oklar da p1'e yazılır. */
+    this.inputs = {
+      p1: createInputState(),
+      p2: createInputState(),
     };
-    this.sultanKeyLatch = false;
+    /** Geriye uyumluluk: dokunmatik / eski kod this.input kullanır → p1 */
+    this.input = this.inputs.p1;
+    this.sultanKeyLatch = { p1: false, p2: false };
 
     // Maç durumu
     this.score = { home: 0, away: 0 };
@@ -159,7 +207,7 @@ export default class Game {
     /** Üç temas kuralı takibi — hangi taraf kaç kez dokundu. */
     this.touch = { side: null, count: 0 };
 
-    // Sultan Gücü
+    // Sultan Gücü (ev sahibi / P1 odaklı)
     this.sultanCharge = 0;
     this.sultanArmed = false;
     this.sultanWasReady = false;
@@ -167,6 +215,9 @@ export default class Game {
     this.phase = PHASE.READY;
     this.phaseTimer = this.rules.readyPause;
     this.message = null;
+
+    /** @type {null | { stage: 'power'|'aim', meter: number, dir: 1|-1, power: number, aim: number, serverId: string, aiTimer: number, actionLatch: boolean }} */
+    this.serve = null;
 
     this.particles = [];
     /** Vuruş anında genişleyen darbe halkaları. */
@@ -263,23 +314,43 @@ export default class Game {
 
     this.homeIds.forEach((id, index) => {
       const data = getPlayerById(id) ?? getPlayerById(DEFAULT_PLAYER_ID);
-      players.push(this.makePlayer(`home-${index}`, data, 'home', index === 0));
+      let controlSlot = null;
+      if (this.playMode === 'coop') {
+        controlSlot = index === 0 ? 'p1' : 'p2';
+      } else if (this.playMode === 'vs') {
+        controlSlot = index === 0 ? 'p1' : null;
+      } else {
+        controlSlot = index === 0 ? 'p1' : null;
+      }
+      players.push(
+        this.makePlayer(`home-${index}`, data, 'home', Boolean(controlSlot), controlSlot)
+      );
     });
 
-    const awayRoster = buildAwayPlayers(this.opponent, this.perSide);
+    let awayRoster;
+    if (this.playMode === 'vs' && this.awayIds.length > 0) {
+      awayRoster = buildAwayFromRoster(this.awayIds, this.perSide);
+    } else {
+      awayRoster = buildAwayPlayers(this.opponent, this.perSide);
+    }
+
     awayRoster.forEach((data, i) => {
-      players.push(this.makePlayer(`away-${i}`, data, 'away', false));
+      const controlSlot = this.playMode === 'vs' && i === 0 ? 'p2' : null;
+      players.push(
+        this.makePlayer(`away-${i}`, data, 'away', Boolean(controlSlot), controlSlot)
+      );
     });
 
     return players;
   }
 
-  makePlayer(id, data, side, controlled) {
+  makePlayer(id, data, side, controlled, controlSlot = null) {
     return {
       id,
       data,
       side,
       controlled,
+      controlSlot,
       x: 0,
       y: GROUND_Y,
       vx: 0,
@@ -304,20 +375,6 @@ export default class Game {
       aiSpeedScale: 1,
       aimSpread: 0.5,
       squash: 0,
-    };
-  }
-
-  createBall(side) {
-    return {
-      x: side === 'home' ? GAME_WIDTH * 0.25 : GAME_WIDTH * 0.75,
-      y: 130,
-      vx: 0,
-      vy: 0,
-      radius: PHYSICS.ballRadius,
-      rotation: 0,
-      flaming: 0,
-      lastHitBy: null,
-      lastHitSide: null,
     };
   }
 
@@ -352,56 +409,121 @@ export default class Game {
     });
   }
 
-  /** Yeni ralli — top servis atan tarafın üstünde belirir. */
+  /** Yeni ralli — servis aşamasına hazırlık. */
   resetRally(servingSide) {
     this.resetPositions();
-    this.ball = this.createBall(servingSide);
+    this.placeServer(servingSide);
+    this.ball = this.createHeldBall(servingSide);
     this.ballTrail.length = 0;
     this.touch = { side: null, count: 0 };
     this.stats.rallyTouches = 0;
   }
 
-  /** İnsan oyuncunun kontrol ettiği sultan. */
+  /** Servis atacak oyuncuyu arka çizgiye çeker. */
+  placeServer(servingSide) {
+    const servers = this.players.filter((p) => p.side === servingSide);
+    const server = servers[0];
+    if (!server) return;
+    const ratio = servingSide === 'home' ? SERVE.backLineHome : SERVE.backLineAway;
+    server.x = GAME_WIDTH * ratio;
+    server.y = GROUND_Y;
+    server.vx = 0;
+    server.vy = 0;
+    server.onGround = true;
+    server.facing = servingSide === 'home' ? 1 : -1;
+    server.pose = 'idle';
+  }
+
+  createHeldBall(side) {
+    const server = this.players.find((p) => p.side === side) ?? null;
+    const x = server?.x ?? (side === 'home' ? GAME_WIDTH * SERVE.backLineHome : GAME_WIDTH * SERVE.backLineAway);
+    return {
+      x,
+      y: GROUND_Y - SERVE.holdHeight,
+      vx: 0,
+      vy: 0,
+      radius: PHYSICS.ballRadius,
+      rotation: 0,
+      flaming: 0,
+      lastHitBy: null,
+      lastHitSide: null,
+      held: true,
+    };
+  }
+
+  createBall(side) {
+    return {
+      x: side === 'home' ? GAME_WIDTH * 0.25 : GAME_WIDTH * 0.75,
+      y: 130,
+      vx: 0,
+      vy: 0,
+      radius: PHYSICS.ballRadius,
+      rotation: 0,
+      flaming: 0,
+      lastHitBy: null,
+      lastHitSide: null,
+      held: false,
+    };
+  }
+
+  /** İnsan oyuncunun kontrol ettiği ilk sultan (Sultan Gücü / FX). */
   getControlledPlayer() {
-    return this.players.find((p) => p.controlled);
+    return this.players.find((p) => p.controlled && p.controlSlot === 'p1')
+      ?? this.players.find((p) => p.controlled);
+  }
+
+  getServer() {
+    return this.players.find((p) => p.side === this.servingSide);
   }
 
   // ===================================================================
   // Girdi
   // ===================================================================
 
+  resolveKeyBinding(key) {
+    if (this.playMode === 'solo') {
+      if (key in P1_KEYS) return { slot: 'p1', action: P1_KEYS[key] };
+      if (key in P2_KEYS) return { slot: 'p1', action: P2_KEYS[key] };
+      return null;
+    }
+    if (key in P1_KEYS) return { slot: 'p1', action: P1_KEYS[key] };
+    if (key in P2_KEYS) return { slot: 'p2', action: P2_KEYS[key] };
+    return null;
+  }
+
   handleKeyDown(event) {
-    const action = KEY_MAP[event.key];
-    if (!action) return;
+    const binding = this.resolveKeyBinding(event.key);
+    if (!binding) return;
     event.preventDefault();
 
+    const { slot, action } = binding;
     if (action === 'sultan') {
-      // Tek basışta bir kez tetiklensin (tuş basılı tutulunca tekrarlamasın)
-      if (!this.sultanKeyLatch) {
-        this.sultanKeyLatch = true;
-        this.activateSultan();
+      if (!this.sultanKeyLatch[slot]) {
+        this.sultanKeyLatch[slot] = true;
+        if (slot === 'p1') this.activateSultan();
       }
       return;
     }
 
-    this.input[action] = true;
+    this.inputs[slot][action] = true;
   }
 
   handleKeyUp(event) {
-    const action = KEY_MAP[event.key];
-    if (!action) return;
+    const binding = this.resolveKeyBinding(event.key);
+    if (!binding) return;
     event.preventDefault();
 
+    const { slot, action } = binding;
     if (action === 'sultan') {
-      this.sultanKeyLatch = false;
+      this.sultanKeyLatch[slot] = false;
       return;
     }
 
-    this.input[action] = false;
+    this.inputs[slot][action] = false;
   }
 
   /**
-   * Dokunmatik butonlar için dışarıdan girdi ayarlar.
+   * Dokunmatik butonlar — her zaman P1.
    * @param {'left'|'right'|'up'|'action'|'dive'|'sultan'} name
    * @param {boolean} pressed
    */
@@ -410,24 +532,26 @@ export default class Game {
       if (pressed) this.activateSultan();
       return;
     }
-    if (name in this.input) {
-      this.input[name] = pressed;
+    if (name in this.inputs.p1) {
+      this.inputs.p1[name] = pressed;
     }
   }
 
   /**
    * Tüm insan girdilerini sıfırlar.
-   * Duraklatma / sekme değişimi / pencere blur sonrası yapışmayı önler.
    */
   clearInput() {
-    this.input.left = false;
-    this.input.right = false;
-    this.input.up = false;
-    this.input.down = false;
-    this.input.action = false;
-    this.input.dive = false;
-    this.input.sultan = false;
-    this.sultanKeyLatch = false;
+    ['p1', 'p2'].forEach((slot) => {
+      const input = this.inputs[slot];
+      input.left = false;
+      input.right = false;
+      input.up = false;
+      input.down = false;
+      input.action = false;
+      input.dive = false;
+      input.sultan = false;
+      this.sultanKeyLatch[slot] = false;
+    });
 
     this.players?.forEach((player) => {
       if (!player.controlled) return;
@@ -505,10 +629,12 @@ export default class Game {
         this.updatePlayers(dt, false);
         this.phaseTimer -= dt;
         if (this.phaseTimer <= 0) {
-          this.phase = PHASE.RALLY;
-          this.message = null;
-          Sfx.whistle();
+          this.beginServe();
         }
+        break;
+
+      case PHASE.SERVE:
+        this.updateServe(dt);
         break;
 
       case PHASE.RALLY:
@@ -546,24 +672,27 @@ export default class Game {
 
     // 2v2'de her takımda topu kovalayacak oyuncuyu seç
     const homeAI = this.players.filter((p) => p.side === 'home' && !p.controlled);
-    const awayAI = this.players.filter((p) => p.side === 'away');
+    const awayAI = this.players.filter((p) => p.side === 'away' && !p.controlled);
+    const homeHumans = this.players.filter((p) => p.side === 'home' && p.controlled);
 
-    const homeChaser = active ? pickChaser([...homeAI, this.getControlledPlayer()].filter(Boolean), ball) : null;
+    const homeChaser = active
+      ? pickChaser([...homeAI, ...homeHumans].filter(Boolean), ball)
+      : null;
     const awayChaser = active ? pickChaser(awayAI, ball) : null;
 
     // Alevli top rakibin tepkisini yavaşlatır
     const slow = ball.flaming > 0 ? SULTAN.aiPenalty : 1;
 
     this.players.forEach((player) => {
-      if (player.controlled) {
-        // İnsan girdisi doğrudan aktarılır
-        player.input.left = active && this.input.left;
-        player.input.right = active && this.input.right;
-        player.input.up = active && this.input.up;
-        player.input.action = active && this.input.action;
-        player.input.dive = active && this.input.dive;
+      if (player.controlled && player.controlSlot) {
+        const pad = this.inputs[player.controlSlot] ?? this.inputs.p1;
+        player.input.left = active && pad.left;
+        player.input.right = active && pad.right;
+        player.input.up = active && pad.up;
+        player.input.action = active && pad.action;
+        player.input.dive = active && pad.dive;
         player.aiSpeedScale = 1;
-      } else if (active) {
+      } else if (active && !player.controlled) {
         const isAway = player.side === 'away';
         updateAI(
           player,
@@ -720,6 +849,7 @@ export default class Game {
 
   updateBall(dt, frozen = false) {
     const ball = this.ball;
+    if (ball.held) return;
 
     ball.flaming = Math.max(0, ball.flaming - dt);
 
@@ -1179,7 +1309,7 @@ export default class Game {
     this.emitState(true);
   }
 
-  /** Sayı donması bitti — set bitti mi diye bak. */
+  /** Sayı donması bitti — set bitti mi diye bak, yoksa servise geç. */
   afterPoint() {
     const { home, away } = this.score;
 
@@ -1205,9 +1335,154 @@ export default class Game {
       return;
     }
 
-    this.phase = PHASE.RALLY;
     this.message = null;
     this.resetRally(this.servingSide);
+    this.beginServe();
+  }
+
+  // ===================================================================
+  // Servis
+  // ===================================================================
+
+  beginServe() {
+    this.phase = PHASE.SERVE;
+    this.message = {
+      text: 'SERVİS',
+      timer: 1.2,
+      color: PALETTE.gold,
+    };
+    this.placeServer(this.servingSide);
+    this.ball = this.createHeldBall(this.servingSide);
+    this.ballTrail.length = 0;
+
+    const server = this.getServer();
+    const human = Boolean(server?.controlled);
+    this.serve = {
+      stage: 'power',
+      meter: 0.15,
+      dir: 1,
+      power: 0,
+      aim: 0,
+      serverId: server?.id ?? '',
+      aiTimer: human ? 0 : aiServeDelay(this.difficulty.serveSkill ?? 0.5),
+      actionLatch: false,
+    };
+
+    Sfx.whistle();
+    this.emitState(true);
+  }
+
+  updateServe(dt) {
+    const serve = this.serve;
+    if (!serve) {
+      this.phase = PHASE.RALLY;
+      return;
+    }
+
+    this.updatePlayers(dt, false);
+
+    const server = this.players.find((p) => p.id === serve.serverId) ?? this.getServer();
+    if (server) {
+      const ratio = this.servingSide === 'home' ? SERVE.backLineHome : SERVE.backLineAway;
+      server.x = GAME_WIDTH * ratio;
+      server.y = GROUND_Y;
+      server.vx = 0;
+      server.vy = 0;
+      server.onGround = true;
+      server.pose = 'idle';
+    }
+
+    if (server && this.ball) {
+      this.ball.x = server.x + server.facing * 10;
+      this.ball.y = GROUND_Y - SERVE.holdHeight;
+      this.ball.vx = 0;
+      this.ball.vy = 0;
+      this.ball.held = true;
+    }
+
+    const speed = serve.stage === 'power' ? SERVE.meterSpeed : SERVE.aimMeterSpeed;
+    const next = advanceServeMeter(serve.meter, serve.dir, speed, dt);
+    serve.meter = next.meter;
+    serve.dir = next.dir;
+
+    if (server?.controlled) {
+      const pad = this.inputs[server.controlSlot] ?? this.inputs.p1;
+      const pressed = pad.action;
+      if (pressed && !serve.actionLatch) {
+        serve.actionLatch = true;
+        this.handleServePress();
+      } else if (!pressed) {
+        serve.actionLatch = false;
+      }
+    } else {
+      serve.aiTimer -= dt;
+      if (serve.aiTimer <= 0) {
+        const choice = aiServeChoice(this.difficulty.serveSkill ?? 0.5);
+        serve.power = choice.power;
+        serve.aim = choice.aim;
+        this.launchServe();
+      }
+    }
+
+    this.emitState();
+  }
+
+  handleServePress() {
+    const serve = this.serve;
+    if (!serve) return;
+
+    if (serve.stage === 'power') {
+      serve.power = meterToPower(serve.meter);
+      serve.stage = 'aim';
+      serve.meter = 0.5;
+      serve.dir = 1;
+      Sfx.select();
+      this.message = {
+        text: 'NİŞAN',
+        timer: 0.8,
+        color: '#9BE7FF',
+      };
+      this.emitState(true);
+      return;
+    }
+
+    serve.aim = meterToAim(serve.meter);
+    this.launchServe();
+  }
+
+  launchServe() {
+    const serve = this.serve;
+    const server = this.players.find((p) => p.id === serve?.serverId) ?? this.getServer();
+    if (!serve || !server) {
+      this.phase = PHASE.RALLY;
+      this.serve = null;
+      return;
+    }
+
+    const toOpponent = this.servingSide === 'home' ? 1 : -1;
+    const shot = computeServeVelocity({
+      power: serve.power || meterToPower(0.7),
+      aim: serve.aim || 0,
+      toOpponent,
+      serveStat: server.data?.stats?.serve ?? 70,
+    });
+
+    this.ball.held = false;
+    this.ball.vx = shot.vx;
+    this.ball.vy = shot.vy;
+    this.ball.lastHitBy = server.id;
+    this.ball.lastHitSide = server.side;
+    this.touch = { side: server.side, count: 1 };
+    this.stats.rallyTouches = 1;
+
+    this.spawnDust(server.x, GROUND_Y, 8);
+    this.spawnRing(this.ball.x, this.ball.y, PALETTE.gold, 36);
+    Sfx.hit();
+
+    this.serve = null;
+    this.phase = PHASE.RALLY;
+    this.message = null;
+    this.emitState(true);
   }
 
   /** Set bitti — maç bitti mi, yoksa yeni set mi? */
@@ -1228,13 +1503,21 @@ export default class Game {
         setHistory: [...this.setHistory],
         stats: { ...this.stats },
         mode: this.mode,
+        playMode: this.playMode,
         format: this.format.id,
         homeIds: [...this.homeIds],
+        awayIds: [...this.awayIds],
         difficulty: this.difficulty.label,
         opponent: {
           id: this.opponent.id,
-          name: this.opponent.name,
-          shortName: this.opponent.shortName,
+          name:
+            this.playMode === 'vs'
+              ? (this.players.find((p) => p.side === 'away')?.data?.name ?? this.opponent.name)
+              : this.opponent.name,
+          shortName:
+            this.playMode === 'vs'
+              ? (this.players.find((p) => p.side === 'away')?.data?.name ?? this.opponent.shortName)
+              : this.opponent.shortName,
         },
       });
       return;
@@ -1316,6 +1599,7 @@ export default class Game {
   updateAtmosphere() {
     let level = this.hype * 0.55;
     if (this.phase === PHASE.RALLY) level = Math.max(level, 0.22 + this.hype * 0.45);
+    else if (this.phase === PHASE.SERVE) level = Math.max(level, 0.18);
     else if (this.phase === PHASE.POINT) level = Math.max(level, 0.35);
     else if (this.phase === PHASE.READY) level = Math.max(level, 0.12);
     else if (this.phase === PHASE.MATCH_END) level = this.hype * 0.4;
@@ -1334,6 +1618,7 @@ export default class Game {
    */
   emitState(force = false) {
     const chargeBucket = Math.round(this.sultanCharge / 4);
+    const serveMeter = this.serve ? Math.round(this.serve.meter * 20) : -1;
     const signature = [
       this.score.home,
       this.score.away,
@@ -1345,10 +1630,22 @@ export default class Game {
       this.sultanArmed ? 1 : 0,
       this.running ? 1 : 0,
       this.combo,
+      serveMeter,
+      this.serve?.stage ?? '',
     ].join('|');
 
     if (!force && signature === this.lastSignature) return;
     this.lastSignature = signature;
+
+    const awayHuman = this.players.find((p) => p.side === 'away' && p.controlled);
+    const opponentName =
+      this.playMode === 'vs' && awayHuman
+        ? awayHuman.data.name
+        : this.opponent.shortName;
+    const opponentAccent =
+      this.playMode === 'vs' && awayHuman
+        ? awayHuman.data.colors?.accent ?? this.opponent.colors.accent
+        : this.opponent.colors.accent;
 
     this.onState({
       score: { ...this.score },
@@ -1365,8 +1662,19 @@ export default class Game {
       bestCombo: this.bestCombo,
       pointsPerSet: this.rules.pointsPerSet,
       formatId: this.format.id,
-      opponentName: this.opponent.shortName,
-      opponentAccent: this.opponent.colors.accent,
+      playMode: this.playMode,
+      difficultyId: this.difficulty.id ?? 'normal',
+      difficultyLabel: this.difficulty.label,
+      opponentName,
+      opponentAccent,
+      serve: this.serve
+        ? {
+            stage: this.serve.stage,
+            meter: this.serve.meter,
+            power: this.serve.power,
+            locked: this.serve.stage === 'aim',
+          }
+        : null,
     });
   }
 
@@ -1417,6 +1725,7 @@ export default class Game {
 
     this.drawMessages();
     this.drawCallout();
+    this.drawServeMeter();
   }
 
   ballShadowScale() {
@@ -1480,8 +1789,10 @@ export default class Game {
     if (player.controlled) {
       const top = player.y - 22 * PLAYER.spriteScale;
       const bounce = Math.sin(this.time * 6) * 3;
+      const tag = player.controlSlot === 'p2' ? 'P2' : 'P1';
+      const color = player.controlSlot === 'p2' ? '#9BB0FF' : PALETTE.turkishRed;
 
-      ctx.fillStyle = PALETTE.gold;
+      ctx.fillStyle = color;
       ctx.beginPath();
       ctx.moveTo(player.x, top - 12 + bounce);
       ctx.lineTo(player.x - 7, top - 24 + bounce);
@@ -1489,16 +1800,52 @@ export default class Game {
       ctx.closePath();
       ctx.fill();
 
-      ctx.fillStyle = '#FFFFFF';
+      ctx.fillStyle = color;
       ctx.font = '7px "Press Start 2P", monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(upper(player.data.name), player.x, top - 34 + bounce);
+      ctx.fillText(tag, player.x, top - 34 + bounce);
     }
   }
 
   drawParticles() {
     fxDrawParticles(this.ctx, this.particles);
+  }
+
+  /** Servis güç / nişan barı. */
+  drawServeMeter() {
+    if (this.phase !== PHASE.SERVE || !this.serve) return;
+    const { ctx } = this;
+    const serve = this.serve;
+    const server = this.players.find((p) => p.id === serve.serverId) ?? this.getServer();
+    if (!server) return;
+
+    const barW = 14;
+    const barH = 70;
+    const x = server.x + (server.side === 'home' ? 28 : -28 - barW);
+    const y = server.y - 110;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(x - 2, y - 2, barW + 4, barH + 4);
+    ctx.strokeStyle = serve.stage === 'aim' ? '#9BE7FF' : PALETTE.gold;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x - 2, y - 2, barW + 4, barH + 4);
+
+    const fillH = Math.max(2, serve.meter * barH);
+    ctx.fillStyle = serve.stage === 'aim' ? '#9BE7FF' : PALETTE.turkishRed;
+    ctx.fillRect(x, y + barH - fillH, barW, fillH);
+
+    // Sweet spot işareti (güç aşaması)
+    if (serve.stage === 'power') {
+      const sweetY = y + barH - 0.78 * barH;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(x - 3, sweetY - 1, barW + 6, 2);
+    }
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '7px "Press Start 2P", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(serve.stage === 'power' ? 'GÜÇ' : 'NİŞAN', server.x, y - 10);
   }
 
   /** Aşama mesajları ve geri sayım. */
