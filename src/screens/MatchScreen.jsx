@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Game from '../game/Game.js';
-import { GAME_HEIGHT, GAME_WIDTH, PHASE } from '../game/constants.js';
+import { FORMATS, GAME_HEIGHT, GAME_WIDTH, PHASE } from '../game/constants.js';
 import { getPlayerById } from '../game/players.js';
 import Scoreboard from '../components/Scoreboard.jsx';
 import SultanBar from '../components/SultanBar.jsx';
@@ -304,7 +304,9 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
         <div className="hidden items-center gap-3 text-[7px] text-white/45 sm:flex">
           <span>{upper(config.mode)}</span>
           <span className="text-white/20">|</span>
-          <span>{upper(config.format ?? 'classic')}</span>
+          {/* Ham id değil etiket: upper('classic') Türkçe eşlemede
+              "CLASSİC" veriyordu */}
+          <span>{FORMATS[config.format]?.label ?? FORMATS.classic.label}</span>
           <span className="text-white/20">|</span>
           <span>{squad.map((p) => upper(p.name)).join(' + ')}</span>
           {hud.opponentName && (

@@ -37,12 +37,19 @@ function installIcons() {
     const icon192 = createAppIconDataUrl(192);
     const icon512 = createAppIconDataUrl(512);
     if (icon192 && icon512) {
+      // start_url ve scope MUTLAK olmalı: manifest blob: URL'den
+      // servis edildiği için göreli '/' değerleri blob adresine göre
+      // çözülüyor ve geçersiz sayılıyordu. Chrome bunları yok sayınca
+      // uygulama kurulabilir olmaktan çıkıyor ("ana ekrana ekle"
+      // düzgün çalışmıyor).
+      const origin = window.location.origin;
+
       const manifest = {
         name: 'Filenin Sultanları',
         short_name: 'Sultanlar',
         description: "Filenin Sultanları'na adanmış retro piksel voleybol oyunu.",
-        start_url: '/',
-        scope: '/',
+        start_url: `${origin}/`,
+        scope: `${origin}/`,
         display: 'standalone',
         background_color: '#0b0b12',
         theme_color: '#E30A17',

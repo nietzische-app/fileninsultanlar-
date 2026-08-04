@@ -99,7 +99,11 @@ export default function ResultScreen({
           <p className="mt-2 text-[7px] tracking-widest text-white/35">
             {formatLabel}
             {result.opponent?.shortName ? ` · vs ${result.opponent.shortName}` : ''}
-            {practice ? ' · REKORLARA YAZILMAZ' : ''}
+            {/* Antrenman galibiyet/seri sayacına işlemez ama stat
+                rekorları (en uzun ralli, en çok smaç...) geçerlidir —
+                "REKORLARA YAZILMAZ" demek yanlıştı, aynı ekranda
+                "YENİ REKOR" rozetleri çıkıyordu. */}
+            {practice ? ' · GALİBİYETE SAYILMAZ' : ''}
           </p>
         </div>
 
