@@ -4,6 +4,8 @@ import MuteButton from '../components/MuteButton.jsx';
 import { drawTrophy } from '../game/sprites.js';
 import { getPlayerById } from '../game/players.js';
 import { FORMATS } from '../game/constants.js';
+import { survivalRank } from '../game/survival.js';
+import { TOURNAMENT_ROUNDS, tournamentSummary } from '../game/tournament.js';
 import { upper } from '../utils/text.js';
 
 const CONFETTI_COLORS = ['#E30A17', '#FFFFFF', '#FFD24A', '#FF7A18', '#9BE7FF'];
@@ -19,8 +21,17 @@ export default function ResultScreen({
   onHome,
   muted,
   onToggleMute,
+  /** Turnuva kapanışında bracket durumu — kupa/elenme özeti için. */
+  tournamentState = null,
 }) {
-  const won = result.winner === 'home';
+  const survival = result.campaign === 'survival' ? result.survival : null;
+  const tournament = useMemo(
+    () => (tournamentState ? tournamentSummary(tournamentState) : null),
+    [tournamentState]
+  );
+
+  // Hayatta kalmada "kazanma" yok; turnuvada asıl zafer kupadır.
+  const won = tournament ? tournament.champion : result.winner === 'home';
   const formatLabel = FORMATS[result.format]?.label ?? result.format ?? 'KLASİK';
   const practice = result.format === 'practice';
 
@@ -38,6 +49,10 @@ export default function ResultScreen({
     if (brokenRecords.mostSpikes) labels.push('EN ÇOK SMAÇ');
     if (brokenRecords.mostBlocks) labels.push('EN ÇOK BLOK');
     if (brokenRecords.mostSaves) labels.push('EN ÇOK KURTARIŞ');
+    if (brokenRecords.bestSurvivalPoints) labels.push('EN YÜKSEK PUAN');
+    if (brokenRecords.bestSurvivalWave) labels.push('EN İLERİ DALGA');
+    if (brokenRecords.tournamentWon) labels.push('KUPA');
+    if (brokenRecords.bestTournamentRound) labels.push('EN İLERİ TUR');
     return labels;
   }, [brokenRecords]);
 
@@ -89,21 +104,33 @@ export default function ResultScreen({
               won ? 'text-retro-accent text-outline-red' : 'text-white/80'
             }`}
           >
-            {won ? 'ŞAMPİYON!' : 'MAÇ BİTTİ'}
+            {survival ? 'KOŞU BİTTİ' : tournament ? (won ? 'KUPA BİZİM!' : 'ELENDİK') : won ? 'ŞAMPİYON!' : 'MAÇ BİTTİ'}
           </h2>
           <p className="mt-3 text-[9px] text-white/55">
-            {won
-              ? 'FİLENİN SULTANLARI KAZANDI'
-              : `${result.opponent?.name ?? 'RAKİP'} BU MAÇI ALDI`}
+            {survival
+              ? `${survivalRank(survival.points)} · ${survival.points} PUAN`
+              : tournament
+                ? won
+                  ? 'FİLENİN SULTANLARI KUPAYI KALDIRDI'
+                  : `${tournament.lastRoundLabel} TURUNDA VEDA`
+                : won
+                  ? 'FİLENİN SULTANLARI KAZANDI'
+                  : `${result.opponent?.name ?? 'RAKİP'} BU MAÇI ALDI`}
           </p>
           <p className="mt-2 text-[7px] tracking-widest text-white/35">
-            {formatLabel}
-            {result.opponent?.shortName ? ` · vs ${result.opponent.shortName}` : ''}
+            {survival
+              ? `HAYATTA KALMA · ${survival.wave}. DALGA`
+              : tournament
+                ? `TURNUVA · ${tournament.wins}/${tournament.total} TUR`
+                : formatLabel}
+            {!survival && !tournament && result.opponent?.shortName
+              ? ` · vs ${result.opponent.shortName}`
+              : ''}
             {/* Antrenman galibiyet/seri sayacına işlemez ama stat
                 rekorları (en uzun ralli, en çok smaç...) geçerlidir —
                 "REKORLARA YAZILMAZ" demek yanlıştı, aynı ekranda
                 "YENİ REKOR" rozetleri çıkıyordu. */}
-            {practice ? ' · GALİBİYETE SAYILMAZ' : ''}
+            {practice && !survival && !tournament ? ' · GALİBİYETE SAYILMAZ' : ''}
           </p>
         </div>
 
@@ -112,35 +139,56 @@ export default function ResultScreen({
 
         {/* Skor özeti */}
         <div className="retro-panel w-full px-5 py-5">
-          <div className="flex items-center justify-center gap-6">
-            <div className="text-center">
-              <p className="text-[9px] text-turkiye-red">TÜRKİYE</p>
-              <p className="mt-2 text-3xl text-shadow-pixel">{result.sets.home}</p>
+          {survival ? (
+            <div className="flex items-center justify-center gap-8">
+              <div className="text-center">
+                <p className="text-[9px] text-turkiye-red">PUAN</p>
+                <p className="mt-2 text-3xl text-shadow-pixel">{survival.points}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[9px] text-retro-accent">DALGA</p>
+                <p className="mt-2 text-3xl text-shadow-pixel">{survival.wave}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[9px] text-[#9BB0FF]">RÜTBE</p>
+                <p className="mt-3 text-[9px] text-white/80">
+                  {survivalRank(survival.points)}
+                </p>
+              </div>
             </div>
-            <span className="text-lg text-white/30">—</span>
-            <div className="text-center">
-              <p className="text-[9px] text-[#9BB0FF]">
-                {result.opponent?.shortName ?? 'RAKİP'}
-              </p>
-              <p className="mt-2 text-3xl text-shadow-pixel">{result.sets.away}</p>
+          ) : (
+            <div className="flex items-center justify-center gap-6">
+              <div className="text-center">
+                <p className="text-[9px] text-turkiye-red">TÜRKİYE</p>
+                <p className="mt-2 text-3xl text-shadow-pixel">{result.sets.home}</p>
+              </div>
+              <span className="text-lg text-white/30">—</span>
+              <div className="text-center">
+                <p className="text-[9px] text-[#9BB0FF]">
+                  {result.opponent?.shortName ?? 'RAKİP'}
+                </p>
+                <p className="mt-2 text-3xl text-shadow-pixel">{result.sets.away}</p>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Set skorları */}
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-2 border-t-2 border-white/15 pt-4">
-            {result.setHistory.map((set, i) => (
-              <span
-                key={i}
-                className={`border-2 px-3 py-1 text-[7px] ${
-                  set.winner === 'home'
-                    ? 'border-turkiye-red text-turkiye-red'
-                    : 'border-[#9BB0FF]/60 text-[#9BB0FF]'
-                }`}
-              >
-                {i + 1}. SET {set.home}-{set.away}
-              </span>
-            ))}
-          </div>
+          {/* Set skorları — hayatta kalmada set yok */}
+          {!survival && (
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-2 border-t-2 border-white/15 pt-4">
+              {result.setHistory.map((set, i) => (
+                <span
+                  key={i}
+                  className={`border-2 px-3 py-1 text-[7px] ${
+                    set.winner === 'home'
+                      ? 'border-turkiye-red text-turkiye-red'
+                      : 'border-[#9BB0FF]/60 text-[#9BB0FF]'
+                  }`}
+                >
+                  {i + 1}. SET {set.home}-{set.away}
+                </span>
+              ))}
+            </div>
+          )}
 
           {/* Maç istatistikleri */}
           <div className="mt-5 grid grid-cols-2 gap-3 border-t-2 border-white/15 pt-4 text-center sm:grid-cols-4">
@@ -154,6 +202,35 @@ export default function ResultScreen({
             />
           </div>
         </div>
+
+        {/* Turnuva yolu özeti */}
+        {tournamentState && (
+          <div className="retro-panel w-full px-4 py-4">
+            <p className="mb-3 text-[7px] tracking-widest text-retro-accent">
+              KUPA YOLU
+            </p>
+            <div className="flex flex-col gap-1.5">
+              {tournamentState.results.map((entry, i) => (
+                <div
+                  key={entry.roundId}
+                  className={`flex items-center gap-3 border-2 px-3 py-1.5 text-[7px] ${
+                    entry.won
+                      ? 'border-retro-accent/70 text-retro-accent'
+                      : 'border-white/20 text-white/50'
+                  }`}
+                >
+                  <span className="w-3">{entry.won ? '✓' : '✗'}</span>
+                  <span className="flex-1 truncate">
+                    {TOURNAMENT_ROUNDS[i]?.label ?? `${i + 1}. TUR`}
+                  </span>
+                  <span>
+                    {entry.sets.home}-{entry.sets.away}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Yeni rekorlar */}
         {newRecords.length > 0 && (
@@ -205,7 +282,7 @@ export default function ResultScreen({
         {/* Butonlar */}
         <div className="flex flex-wrap justify-center gap-4 pb-6">
           <button type="button" className="retro-button px-8 py-4" onClick={onRematch}>
-            TEKRAR OYNA
+            {survival ? 'YENİDEN DENE' : tournament ? 'YENİ TURNUVA' : 'TEKRAR OYNA'}
           </button>
           <button type="button" className="retro-button-ghost px-8 py-4" onClick={onHome}>
             ANA MENÜ

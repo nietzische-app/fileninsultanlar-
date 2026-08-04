@@ -22,6 +22,9 @@ const INITIAL_HUD = {
   streak: { side: null, count: 0 },
   pointsPerSet: 15,
   formatId: 'classic',
+  campaign: 'match',
+  roundLabel: null,
+  survival: null,
   opponentName: 'RAKİP',
   opponentAccent: '#9BB0FF',
 };
@@ -52,6 +55,13 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
       difficulty: config.difficulty,
       format: config.format,
       opponentId: config.opponentId,
+      // Kampanya alanları — hızlı maçta undefined kalır
+      campaign: config.campaign,
+      rules: config.rules,
+      difficultyRamp: config.difficultyRamp,
+      roundLabel: config.roundLabel,
+      roundNumber: config.roundNumber,
+      roundCount: config.roundCount,
       onState: setHud,
       onFinish: (result) => onFinishRef.current(result),
     });
@@ -203,6 +213,8 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
           awayName={hud.opponentName}
           awayAccent={hud.opponentAccent}
           pointsPerSet={hud.pointsPerSet}
+          survival={hud.survival}
+          roundLabel={hud.roundLabel}
           compact
         />
       </div>
@@ -251,7 +263,11 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
               MAÇTAN ÇIKILSIN MI?
             </p>
             <p className="max-w-xs text-center text-[7px] leading-relaxed text-white/55 sm:text-[8px]">
-              Skor kaydedilmez. Kadro seçimine dönersin.
+              {config.campaign === 'tournament'
+                ? 'Turnuvadan çekilmiş sayılırsın, kupa yolu kapanır.'
+                : config.campaign === 'survival'
+                  ? 'Koşu burada biter, puanın kaydedilmez.'
+                  : 'Skor kaydedilmez. Kadro seçimine dönersin.'}
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               <button
@@ -306,7 +322,13 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
           <span className="text-white/20">|</span>
           {/* Ham id değil etiket: upper('classic') Türkçe eşlemede
               "CLASSİC" veriyordu */}
-          <span>{FORMATS[config.format]?.label ?? FORMATS.classic.label}</span>
+          <span>
+            {config.campaign === 'survival'
+              ? 'HAYATTA KALMA'
+              : config.roundLabel
+                ? `TURNUVA · ${config.roundLabel}`
+                : (FORMATS[config.format]?.label ?? FORMATS.classic.label)}
+          </span>
           <span className="text-white/20">|</span>
           <span>{squad.map((p) => upper(p.name)).join(' + ')}</span>
           {hud.opponentName && (

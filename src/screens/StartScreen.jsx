@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import PixelAvatar from '../components/PixelAvatar.jsx';
 import MuteButton from '../components/MuteButton.jsx';
 import { ROSTER, SHOWCASE_IDS } from '../game/players.js';
+import { GAME_MODES } from '../game/modes.js';
 import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
 
@@ -13,9 +14,18 @@ const PRIDE_MESSAGES = [
   'HER SMAÇTA BİR MİLLETİN ALKIŞI',
 ];
 
-export default function StartScreen({ onStart, onTutorial, muted, onToggleMute, records }) {
+export default function StartScreen({
+  onStart,
+  onTutorial,
+  muted,
+  onToggleMute,
+  records,
+  resumeTournament = null,
+  onResumeTournament,
+}) {
   const [messageIndex, setMessageIndex] = useState(0);
   const hasRecords = (records?.matchesPlayed ?? 0) > 0;
+  const hasSurvivalRecord = (records?.bestSurvivalPoints ?? 0) > 0;
 
   // Öne çıkan üç sultan — giriş ekranı vitrini
   const showcase = useMemo(
@@ -31,11 +41,11 @@ export default function StartScreen({ onStart, onTutorial, muted, onToggleMute, 
     return () => clearInterval(timer);
   }, [hasRecords]);
 
-  const handleStart = () => {
+  const handleStart = (modeId) => {
     // Tarayıcı ses politikası: AudioContext ilk kullanıcı hareketinde açılır
     Sfx.unlock();
     Sfx.confirm();
-    onStart();
+    onStart(modeId);
   };
 
   return (
@@ -60,12 +70,15 @@ export default function StartScreen({ onStart, onTutorial, muted, onToggleMute, 
       {/* Gurur Tablosu — yerel rekorlar veya onur mesajı */}
       <div className="retro-panel w-full max-w-xl px-5 py-4 text-center">
         <p className="mb-3 text-[8px] tracking-widest text-retro-accent">★ GURUR TABLOSU ★</p>
-        {hasRecords ? (
+        {hasRecords || hasSurvivalRecord ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <RecordStat label="GALİBİYET" value={records.wins} />
-            <RecordStat label="SERİ" value={records.winStreak} />
             <RecordStat label="EN İYİ SERİ" value={records.bestWinStreak} />
-            <RecordStat label="EN UZUN RALLİ" value={records.longestRally} />
+            <RecordStat label="KUPA" value={records.tournamentsWon ?? 0} />
+            <RecordStat
+              label="HAYATTA KALMA"
+              value={records.bestSurvivalPoints ?? 0}
+            />
           </div>
         ) : (
           <p
@@ -94,11 +107,48 @@ export default function StartScreen({ onStart, onTutorial, muted, onToggleMute, 
         ))}
       </div>
 
-      {/* Başla */}
-      <div className="flex flex-col items-center gap-4">
-        <button type="button" className="retro-button px-10 py-4 text-sm" onClick={handleStart}>
-          BAŞLA
+      {/* Yarım kalan turnuva — varsa her şeyin üstünde */}
+      {resumeTournament && (
+        <button
+          type="button"
+          className="retro-button w-full max-w-xl px-6 py-3 text-[9px]"
+          onClick={() => {
+            Sfx.unlock();
+            Sfx.confirm();
+            onResumeTournament?.();
+          }}
+        >
+          ★ TURNUVAYA DEVAM ET · {resumeTournament.roundIndex + 1}. TUR ★
         </button>
+      )}
+
+      {/* Mod seçimi */}
+      <div className="flex w-full max-w-xl flex-col gap-3">
+        {GAME_MODES.map((mode, i) => (
+          <button
+            key={mode.id}
+            type="button"
+            onClick={() => handleStart(mode.id)}
+            className={`group flex w-full items-center gap-3 border-4 px-4 py-3 text-left transition ${
+              i === 0
+                ? 'border-turkiye-red bg-turkiye-red/20 hover:bg-turkiye-red/30'
+                : 'border-white/20 bg-retro-panel/60 hover:border-white/55'
+            }`}
+          >
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] text-white sm:text-xs">{mode.label}</p>
+              <p className="mt-1.5 text-[7px] leading-relaxed text-white/55">
+                {mode.description}
+              </p>
+            </div>
+            <span className="shrink-0 border-2 border-white/25 px-2 py-1 text-[6px] text-retro-accent">
+              {mode.tagline}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <div className="flex flex-col items-center gap-3">
         <button
           type="button"
           className="retro-button-ghost px-5 py-2 text-[8px]"
@@ -106,7 +156,7 @@ export default function StartScreen({ onStart, onTutorial, muted, onToggleMute, 
         >
           NASIL OYNANIR
         </button>
-        <p className="animate-blink text-[8px] text-white/50">DEVAM ETMEK İÇİN BAŞLA&apos;YA BAS</p>
+        <p className="animate-blink text-[8px] text-white/50">BİR MOD SEÇ</p>
       </div>
 
       {/* Kontroller özeti */}

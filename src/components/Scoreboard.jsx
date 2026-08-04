@@ -12,6 +12,10 @@ export default function Scoreboard({
   awayAccent = 'text-[#9BB0FF]',
   pointsPerSet = RULES.pointsPerSet,
   compact = false,
+  /** Hayatta kalma: { points, lives, maxLives, wave } — verilirse set yerine can/dalga gösterilir. */
+  survival = null,
+  /** Turnuva turu adı — set numarasının üstünde küçük etiket. */
+  roundLabel = null,
 }) {
   const accentClass = awayAccent.startsWith('text-') || awayAccent.startsWith('#')
     ? awayAccent.startsWith('#')
@@ -30,25 +34,39 @@ export default function Scoreboard({
         <TeamBlock
           name="TÜRKİYE"
           flag
-          points={score.home}
+          points={survival ? survival.points : score.home}
           sets={sets.home}
+          subLabel={survival ? 'PUAN' : undefined}
           accent="text-turkiye-red"
           align="left"
           compact={compact}
         />
 
-        <div className="flex shrink-0 flex-col items-center gap-1">
-          <span className="text-[8px] text-white/50">SET {setNumber}</span>
-          <span className="text-[9px] text-retro-accent sm:text-[11px]">
-            {sets.home} — {sets.away}
-          </span>
-          <span className="text-[7px] text-white/35">{pointsPerSet} SAYI</span>
-        </div>
+        {survival ? (
+          <div className="flex shrink-0 flex-col items-center gap-1">
+            <span className="text-[8px] text-white/50">
+              {survival.wave}. DALGA
+            </span>
+            <Hearts lives={survival.lives} maxLives={survival.maxLives} />
+            <span className="text-[7px] text-white/35">CAN</span>
+          </div>
+        ) : (
+          <div className="flex shrink-0 flex-col items-center gap-1">
+            <span className="text-[8px] text-white/50">
+              {roundLabel ?? `SET ${setNumber}`}
+            </span>
+            <span className="text-[9px] text-retro-accent sm:text-[11px]">
+              {sets.home} — {sets.away}
+            </span>
+            <span className="text-[7px] text-white/35">{pointsPerSet} SAYI</span>
+          </div>
+        )}
 
         <TeamBlock
           name={awayName}
           points={score.away}
           sets={sets.away}
+          subLabel={survival ? 'KAYIP' : undefined}
           accent={accentClass ?? 'text-[#9BB0FF]'}
           accentStyle={accentStyle}
           align="right"
@@ -87,7 +105,35 @@ export default function Scoreboard({
   );
 }
 
-function TeamBlock({ name, points, sets, accent, accentStyle, align, flag = false, compact = false }) {
+/** Kalan can — dolu/boş piksel kare. */
+function Hearts({ lives = 0, maxLives = 3 }) {
+  return (
+    <span className="flex items-center gap-1" aria-label={`${lives} can kaldı`}>
+      {Array.from({ length: Math.max(maxLives, lives) }, (_, i) => (
+        <span
+          key={i}
+          className={`inline-block h-2.5 w-2.5 border-2 sm:h-3 sm:w-3 ${
+            i < lives
+              ? 'border-turkiye-red bg-turkiye-red'
+              : 'border-white/25 bg-transparent'
+          }`}
+        />
+      ))}
+    </span>
+  );
+}
+
+function TeamBlock({
+  name,
+  points,
+  sets,
+  accent,
+  accentStyle,
+  align,
+  flag = false,
+  compact = false,
+  subLabel,
+}) {
   const isLeft = align === 'left';
 
   return (
@@ -109,7 +155,9 @@ function TeamBlock({ name, points, sets, accent, accentStyle, align, flag = fals
         >
           {name}
         </span>
-        <span className="text-[7px] text-white/40 sm:text-[8px]">{sets} SET</span>
+        <span className="text-[7px] text-white/40 sm:text-[8px]">
+          {subLabel ?? `${sets} SET`}
+        </span>
       </div>
       <span
         className={`ml-auto text-shadow-pixel text-white ${

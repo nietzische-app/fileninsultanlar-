@@ -24,8 +24,16 @@ import {
   PLAYER,
   RULES,
   SULTAN,
+  SURVIVAL,
   WALL_PAD,
+  scaleDifficulty,
 } from './constants.js';
+import {
+  survivalDifficulty,
+  waveForPoints,
+  waveLabel,
+  waveOpponent,
+} from './survival.js';
 import {
   DEFAULT_PLAYER_ID,
   getModifier,
@@ -108,11 +116,35 @@ export default class Game {
 
     this.mode = options.mode === '2v2' ? '2v2' : '1v1';
     this.perSide = this.mode === '2v2' ? 2 : 1;
+    /** 'match' | 'tournament' | 'survival' */
+    this.campaign = options.campaign ?? 'match';
+    this.survivalMode = this.campaign === 'survival';
+
+    /**
+     * İki ayrı zorluk: `difficulty` 2v2'deki AI takım arkadaşını,
+     * `opponentDifficulty` karşı takımı sürer. Turnuva/hayatta kalma
+     * rampası yalnızca rakibi sertleştirmeli — tek alan kullanılsaydı
+     * dalga yükseldikçe kendi takım arkadaşın da güçlenirdi.
+     */
     this.difficulty = DIFFICULTY[options.difficulty] ?? DIFFICULTY.normal;
+    this.difficultyRamp = options.difficultyRamp ?? 0;
+    this.opponentDifficulty = this.survivalMode
+      ? survivalDifficulty(this.difficulty, 1)
+      : scaleDifficulty(this.difficulty, this.difficultyRamp);
+
     this.format = FORMATS[options.format] ?? FORMATS.classic;
-    this.rules = { ...RULES, ...this.format.rules };
-    this.opponent =
-      getOpponentTeam(options.opponentId) ?? pickRandomOpponent();
+    // Turnuva turları kendi set/sayı ayarını taşır (options.rules)
+    this.rules = { ...RULES, ...this.format.rules, ...(options.rules ?? {}) };
+
+    this.opponent = this.survivalMode
+      ? waveOpponent(1)
+      : getOpponentTeam(options.opponentId) ?? pickRandomOpponent();
+
+    /** Turnuva turu bilgisi — HUD ve sonuç ekranı için taşınır. */
+    this.roundLabel = options.roundLabel ?? null;
+    this.roundNumber = options.roundNumber ?? null;
+    this.roundCount = options.roundCount ?? null;
+
     this.onState = options.onState ?? (() => {});
     this.onFinish = options.onFinish ?? (() => {});
 
@@ -154,6 +186,10 @@ export default class Game {
     this.sultanArmed = false;
     this.sultanWasReady = false;
 
+    // Hayatta kalma durumu — diğer modlarda kullanılmaz
+    this.lives = SURVIVAL.lives;
+    this.wave = 1;
+
     this.phase = PHASE.READY;
     this.phaseTimer = this.rules.readyPause;
     this.message = null;
@@ -169,6 +205,8 @@ export default class Game {
     this.finished = false;
 
     this.stats = { spikes: 0, blocks: 0, saves: 0, longestRally: 0, rallyTouches: 0 };
+    /** Hayatta kalmada bir koşuda ulaşılan en yüksek dalga. */
+    this.stats.bestWave = 1;
 
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleKeyUp = this.handleKeyUp.bind(this);
@@ -529,7 +567,7 @@ export default class Game {
           player,
           ball,
           {
-            difficulty: this.difficulty,
+            difficulty: isAway ? this.opponentDifficulty : this.difficulty,
             chasing: player.id === (isAway ? awayChaser : homeChaser),
             homeX: player.homeX,
             slowFactor: isAway ? slow : 1,
@@ -882,7 +920,7 @@ export default class Game {
 
     // AI zorluk gücü
     if (!player.controlled && player.side === 'away') {
-      power *= this.difficulty.power;
+      power *= this.opponentDifficulty.power;
     }
 
     let vx;
@@ -1078,6 +1116,17 @@ export default class Game {
       };
       if (this.streak.count >= 3) Sfx.streak(this.streak.count);
       else Sfx.point();
+    } else if (this.survivalMode) {
+      // Kaybedilen sayı bir can demek. Can burada düşülüyor ki HUD ve
+      // ekrandaki mesaj aynı anı göstersin — sayı donmasının sonunda
+      // düşülseydi tabelada hâlâ eski can sayısı duruyor olurdu.
+      this.lives = Math.max(0, this.lives - 1);
+      this.message = {
+        text: this.lives > 0 ? `CAN GİTTİ · ${this.lives} KALDI` : 'SON CAN',
+        timer: this.rules.servePause,
+        color: this.opponent.colors.accent,
+      };
+      Sfx.pointLost();
     } else {
       this.message = {
         text: reason ?? `${this.opponent.shortName} SAYI`,
@@ -1095,6 +1144,11 @@ export default class Game {
   /** Sayı donması bitti — set bitti mi diye bak. */
   afterPoint() {
     const { home, away } = this.score;
+
+    if (this.survivalMode) {
+      this.afterSurvivalPoint();
+      return;
+    }
 
     if (isSetOver(home, away, this.rules)) {
       const winner = setWinner(home, away);
@@ -1134,21 +1188,7 @@ export default class Game {
       else Sfx.defeat();
 
       this.emitState(true);
-      this.onFinish({
-        winner,
-        sets: { ...this.sets },
-        setHistory: [...this.setHistory],
-        stats: { ...this.stats },
-        mode: this.mode,
-        format: this.format.id,
-        homeIds: [...this.homeIds],
-        difficulty: this.difficulty.label,
-        opponent: {
-          id: this.opponent.id,
-          name: this.opponent.name,
-          shortName: this.opponent.shortName,
-        },
-      });
+      this.emitFinish(winner);
       return;
     }
 
@@ -1166,6 +1206,131 @@ export default class Game {
       color: '#FFFFFF',
     };
     this.emitState(true);
+  }
+
+  /**
+   * Sonuç nesnesini dışarı verir. Üç mod da aynı gövdeyi paylaşır;
+   * moda özgü alanlar `extra` ile eklenir.
+   * @param {'home'|'away'|null} winner
+   * @param {object} [extra]
+   */
+  emitFinish(winner, extra = {}) {
+    this.onFinish({
+      winner,
+      campaign: this.campaign,
+      sets: { ...this.sets },
+      setHistory: [...this.setHistory],
+      stats: { ...this.stats },
+      mode: this.mode,
+      format: this.format.id,
+      homeIds: [...this.homeIds],
+      difficulty: this.difficulty.label,
+      roundLabel: this.roundLabel,
+      roundNumber: this.roundNumber,
+      roundCount: this.roundCount,
+      opponent: {
+        id: this.opponent.id,
+        name: this.opponent.name,
+        shortName: this.opponent.shortName,
+      },
+      ...extra,
+    });
+  }
+
+  // ===================================================================
+  // Hayatta kalma
+  // ===================================================================
+
+  /**
+   * Hayatta kalmada sayı donması bitti.
+   *
+   * Set/maç yok: canlar bittiyse koşu biter, bitmediyse yeni ralli.
+   * Kazanılan puan sayısı dalga eşiğini geçtiyse rakip değişir.
+   */
+  afterSurvivalPoint() {
+    if (this.lives <= 0) {
+      this.finishSurvival();
+      return;
+    }
+
+    const nextWave = waveForPoints(this.score.home);
+    if (nextWave !== this.wave) {
+      this.startWave(nextWave);
+      return;
+    }
+
+    this.phase = PHASE.RALLY;
+    this.message = null;
+    this.resetRally(this.servingSide);
+  }
+
+  /**
+   * Yeni dalga: rakip takım değişir, zorluk bir tık artar.
+   * @param {number} wave
+   */
+  startWave(wave) {
+    this.wave = wave;
+    this.stats.bestWave = Math.max(this.stats.bestWave, wave);
+    this.opponentDifficulty = survivalDifficulty(this.difficulty, wave);
+    this.setOpponentTeam(waveOpponent(wave));
+
+    // Dalga başında servis oyuncuda: yeni rakibi görmeden sayı yemesin
+    this.servingSide = 'home';
+    this.streak = { side: null, count: 0 };
+    this.resetRally('home');
+
+    this.phase = PHASE.READY;
+    this.phaseTimer = SURVIVAL.waveAnnounce;
+    this.message = {
+      text: `${waveLabel(wave)} · ${upper(this.opponent.shortName)}`,
+      timer: SURVIVAL.waveAnnounce,
+      color: PALETTE.gold,
+    };
+    Sfx.setWon();
+    this.emitState(true);
+  }
+
+  /**
+   * Karşı takımı maç ortasında değiştirir.
+   *
+   * Oyuncu nesneleri yeniden yaratılmaz — yalnızca `data` alanı ve
+   * ondan türeyen erişim yarıçapı tazelenir. Yeniden yaratmak konum,
+   * dalış ve cooldown durumlarını sıfırlar; dalga geçişinde bunu
+   * `resetRally` zaten yapıyor, iki kez yapmaya gerek yok.
+   * @param {object} team
+   */
+  setOpponentTeam(team) {
+    if (!team) return;
+    this.opponent = team;
+
+    const roster = buildAwayPlayers(team, this.perSide);
+    let index = 0;
+    this.players.forEach((player) => {
+      if (player.side !== 'away') return;
+      const data = roster[index++] ?? roster[0];
+      player.data = data;
+      player.hitRadius = PLAYER.hitRadius * getModifier(data, 'reach');
+    });
+  }
+
+  /** Canlar bitti — koşuyu kapat. */
+  finishSurvival() {
+    this.phase = PHASE.MATCH_END;
+    this.message = null;
+    this.finished = true;
+    Sfx.defeat();
+
+    this.emitState(true);
+    // Hayatta kalmada "galip" yok: koşu her zaman biter. `winner: null`
+    // sonuç ekranına ve rekor kaydına "bu bir maç değil" diyor.
+    this.emitFinish(null, {
+      survival: {
+        points: this.score.home,
+        wave: this.wave,
+        bestWave: this.stats.bestWave,
+        lives: 0,
+      },
+    });
   }
 
   // ===================================================================
@@ -1236,6 +1401,8 @@ export default class Game {
       chargeBucket,
       this.sultanArmed ? 1 : 0,
       this.running ? 1 : 0,
+      this.lives,
+      this.wave,
     ].join('|');
 
     if (!force && signature === this.lastSignature) return;
@@ -1254,6 +1421,18 @@ export default class Game {
       streak: { ...this.streak },
       pointsPerSet: this.rules.pointsPerSet,
       formatId: this.format.id,
+      campaign: this.campaign,
+      roundLabel: this.roundLabel,
+      roundNumber: this.roundNumber,
+      roundCount: this.roundCount,
+      survival: this.survivalMode
+        ? {
+            points: this.score.home,
+            lives: this.lives,
+            maxLives: SURVIVAL.lives,
+            wave: this.wave,
+          }
+        : null,
       opponentName: this.opponent.shortName,
       opponentAccent: this.opponent.colors.accent,
     });

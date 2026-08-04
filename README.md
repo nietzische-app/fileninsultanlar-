@@ -16,7 +16,8 @@ kırmızı-beyaz bir sahada, Türk bayraklarıyla dolu bir tribünün önünde.
 
 ## Oynanış
 
-**Modlar:** 1v1 ve 2v2 · **Format:** Klasik / Tek Set / Antrenman · **Zorluk:** Kolay / Normal / Zor
+**Oyun modları:** Hızlı Maç / Turnuva / Hayatta Kalma
+**Diziliş:** 1v1 ve 2v2 · **Format:** Klasik / Tek Set / Antrenman · **Zorluk:** Kolay / Normal / Zor
 
 Beş kurgusal rakip takım seçilebilir (veya rastgele): Atlas Fırtınası, Adriyatik,
 Nordik Buz, Balkan Ateşi, Pasifik Dalga.
@@ -72,11 +73,51 @@ yapay zekâsının tepkisi yavaşlar. Ebrar Karakurt'un barı %30 daha hızlı d
 
 Bir klasik maç ortalama 4–9 dakika sürer.
 
+### Turnuva — Kupa Yolu
+
+Beş tur, beş rakip, tek eleme. Her turu kazanan bir üste çıkar; tek yenilgi
+turnuvayı bitirir. Turlar hem uzunluk hem rakip gücü olarak kademeli sertleşir
+ve final tek maç değildir:
+
+| Tur | Rakip | Format | Rakip rampası |
+| --- | --- | --- | --- |
+| 1. Tur | Adriyatik | Tek set 11 sayı | — |
+| 2. Tur | Atlas Fırtınası | Tek set 11 sayı | +0.4 |
+| Çeyrek Final | Pasifik Dalga | Tek set 15 sayı | +0.8 |
+| Yarı Final | Balkan Ateşi | Tek set 15 sayı | +1.2 |
+| **Final** | Nordik Buz | 15 sayı, 3 sette 2 | +1.6 |
+
+Turlar arasında bracket ekranına dönülür: geçilen turlar, skorlar ve sıradaki
+rakibin künyesi orada. Yarım kalan turnuva tarayıcıda saklanır — sekmeyi
+kapatsan bile ana menüdeki **TURNUVAYA DEVAM ET** ile kaldığın turdan devam
+edersin. Maçtan çıkmak turnuvadan çekilmek anlamına gelir.
+
+Rampa yalnızca **rakibe** uygulanır; 2v2'deki AI takım arkadaşın seçtiğin
+zorlukta kalır.
+
+### Hayatta Kalma
+
+Set yok, maç yok — tek uzun sayı zinciri. Kazandığın her sayı **puan**,
+kaybettiğin her sayı bir **can**. 5 canın var; bittiğinde koşu kapanır.
+
+Her 3 puanda bir **dalga** yükselir: rakip takım değişir ve bir tık sertleşir.
+Eğri seçtiğin zorluğun altından başlar, ~7. puanda seçtiğin kademeye ulaşır
+ve oradan yukarı tırmanır; 14. dalgada durur (aksi hâlde mod bir beceri sınavı
+olmaktan çıkıp zaman aşımına dönüşüyor).
+
+Koşu sonunda puanına göre bir rütbe alırsın: Çaylak → Genç Takım →
+Profesyonel → Millî Oyuncu → Sultan → Efsane.
+
 ### Yerel rekorlar ve rehber
 
 Maç sonuçları tarayıcıda saklanır (galibiyet, seri, en uzun ralli, smaç/blok/
-kurtarış zirveleri). Ana menüdeki **Gurur Tablosu** bu rekorları gösterir;
+kurtarış zirveleri, kazanılan kupa, en ileri turnuva turu, en yüksek hayatta
+kalma puanı ve dalgası). Ana menüdeki **Gurur Tablosu** bu rekorları gösterir;
 maç sonunda kırılan rekorlar yıldızla işaretlenir.
+
+Hayatta kalma koşusu galibiyet/mağlubiyet tablosuna işlemez — koşu her zaman
+yenilgiyle biter, onu kayıp saymak galibiyet serisini anlamsızca sıfırlardı.
+Ralli/smaç gibi kişisel zirveler orada da geçerlidir.
 
 İlk açılışta (veya menüden **NASIL OYNANIR**) 4 adımlık Sultan Rehberi çıkar:
 manşet→pas→smaç, dalış, Sultan Gücü, kontroller.
@@ -162,12 +203,13 @@ Ortam değişkeni, backend ya da veritabanı yok; tamamen statik bir SPA.
 ```
 src/
 ├── main.jsx                  React mount
-├── App.jsx                   Ekran akışı: start → select → match → result
+├── App.jsx                   Ekran akışı: start → select → (bracket) → match → result
 ├── index.css                 Tailwind katmanları, retro bileşenler, animasyonlar
 ├── screens/
-│   ├── StartScreen.jsx       Giriş, Gurur Tablosu (rekorlar), kontroller
+│   ├── StartScreen.jsx       Giriş, mod seçimi, Gurur Tablosu (rekorlar)
 │   ├── TutorialScreen.jsx    Nasıl oynanır rehberi
-│   ├── CharacterSelect.jsx   Mod, zorluk ve kadro seçimi
+│   ├── CharacterSelect.jsx   Diziliş, zorluk ve kadro seçimi
+│   ├── TournamentScreen.jsx  Kupa yolu bracket'i — turlar arası ekran
 │   ├── MatchScreen.jsx       Canvas + skor tablosu + Sultan barı + dokunmatik
 │   └── ResultScreen.jsx      Kupa, konfeti, istatistikler, yeni rekorlar
 ├── components/
@@ -182,6 +224,9 @@ src/
 │   ├── constants.js          Ölçüler, fizik, kurallar, palet, zorluk kademeleri
 │   ├── Game.js               Motor: döngü, fizik, çarpışma, skor, çizim
 │   ├── rules.js              Saf set/maç/üç-temas kuralları
+│   ├── modes.js              Oyun modu tanımları (hızlı maç / turnuva / hayatta kalma)
+│   ├── tournament.js         Kupa yolu turları ve saf durum makinesi
+│   ├── survival.js           Dalga hesabı, zorluk rampası, rütbeler
 │   ├── ballistics.js         Saf smaç/pas balistiği
 │   ├── effects.js            Parçacık, darbe halkası, top izi
 │   ├── math.js               clamp yardımcısı
@@ -193,10 +238,11 @@ src/
 │   └── audio.js              8-bit ses motoru
 └── utils/
     ├── text.js               Türkçe büyük harf yardımcısı
-    └── storage.js            Mute / seçim / rekorlar / tutorial localStorage
+    └── storage.js            Mute / seçim / rekorlar / turnuva kaydı localStorage
 ```
 
-Saf motor mantığı (`rules.js`, `ballistics.js`, `effects.js`) Vitest ile test edilir
+Saf motor mantığı (`rules.js`, `ballistics.js`, `effects.js`, `tournament.js`,
+`survival.js`) ve `storage.js` Vitest ile test edilir
 (`*.test.js`). `Game.js` bu modülleri çağırır; canvas/React sarmalayıcı
 kalır.
 
@@ -300,13 +346,27 @@ yazılıyordu; font geç yüklendiğinde ölçüm kayıyor ve numara bulanıkla�
 Zorluk kademeleri, motoru headless sürerek ölçüldü — her hücre 7 maç, ortalama
 seviyede bir oyuncuyu temsil eden bir bot ile:
 
-| Mod | Kolay | Normal | Zor |
+| Diziliş | Kolay | Normal | Zor |
 | --- | --- | --- | --- |
 | 1v1 | %100 kazanma (32-19) | %57 (31-34) | %0 (23-34) |
 | 2v2 | %100 (30-15) | %14 (33-38) | %0 (24-35) |
 
+Hayatta kalma da aynı yöntemle ayarlandı (12 koşu ortalaması, ortalama beceride
+bot — medyan puan):
+
+| Zorluk | Zayıf oyuncu | Ortalama | Usta |
+| --- | --- | --- | --- |
+| Kolay | 2 puan | 9 puan (~3.8 dalga) | 10 puan |
+| Normal | 2 puan | 5 puan (~2.3 dalga) | 10 puan (~3.9 dalga) |
+| Zor | 1 puan | 2 puan | 3 puan |
+
+İlk deneme (3 can, yumuşama yok) ortalama oyuncuyu **0–1 puanda** eliyordu:
+rakip ilk ralliden itibaren tam güçte olduğu için koşu ~15 saniyede kapanıyor,
+mod dalga bile göstermeye fırsat bulamıyordu. `SURVIVAL.startEase` ve can
+sayısı bu ölçüm üzerine ayarlandı.
+
 Yeniden dengeleme yaparsan aynı ölçümü tekrarlamak mantıklı: tek maç örneklemi
-çok gürültülü, en az 5–7 maç ortalaması gerekiyor.
+çok gürültülü, en az 5–7 maç (hayatta kalmada ~12 koşu) ortalaması gerekiyor.
 
 ## Lisans
 

@@ -2,12 +2,18 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   DEFAULT_PREFS,
   DEFAULT_RECORDS,
+  clearTournament,
   loadPrefs,
   loadRecords,
+  loadTournament,
   recordMatchResult,
+  recordSurvivalResult,
+  recordTournamentResult,
   savePrefs,
   saveRecords,
+  saveTournament,
 } from './storage.js';
+import { createTournament } from '../game/tournament.js';
 import {
   getAge,
   getBonusRoster,
@@ -136,5 +142,135 @@ describe('players roster', () => {
     const gizem = getPlayerById('gizem-orge');
     const age = getAge(gizem, new Date('2026-08-04'));
     expect(age).toBe(33);
+  });
+});
+
+describe('hayatta kalma rekorları', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  const run = (points, wave, stats = {}) => ({
+    campaign: 'survival',
+    winner: null,
+    survival: { points, wave, bestWave: wave },
+    stats: { spikes: 0, blocks: 0, saves: 0, longestRally: 0, ...stats },
+  });
+
+  it('puan ve dalga zirvesini tutar', () => {
+    const { records, broken } = recordSurvivalResult(run(18, 4));
+    expect(records.bestSurvivalPoints).toBe(18);
+    expect(records.bestSurvivalWave).toBe(4);
+    expect(broken.bestSurvivalPoints).toBe(true);
+    expect(broken.bestSurvivalWave).toBe(true);
+  });
+
+  it('daha kötü koşu zirveyi düşürmez', () => {
+    recordSurvivalResult(run(18, 4));
+    const { records, broken } = recordSurvivalResult(run(5, 2));
+    expect(records.bestSurvivalPoints).toBe(18);
+    expect(broken.bestSurvivalPoints).toBe(false);
+  });
+
+  it('galibiyet/mağlubiyet tablosuna dokunmaz', () => {
+    saveRecords({ ...DEFAULT_RECORDS, wins: 3, winStreak: 3, bestWinStreak: 3 });
+    const { records } = recordSurvivalResult(run(9, 2));
+    expect(records.wins).toBe(3);
+    expect(records.losses).toBe(0);
+    // Koşu yenilgiyle biter ama galibiyet serisini bozmamalı
+    expect(records.winStreak).toBe(3);
+    expect(records.matchesPlayed).toBe(0);
+  });
+
+  it('kişisel zirveler burada da geçerli', () => {
+    const { records } = recordSurvivalResult(run(9, 2, { longestRally: 14, spikes: 7 }));
+    expect(records.longestRally).toBe(14);
+    expect(records.mostSpikes).toBe(7);
+  });
+
+  it('yanlış kapıdan gelen koşu maç sayılmaz', () => {
+    // recordMatchResult'a düşerse winner:null bir mağlubiyet gibi işlenirdi
+    const { records } = recordMatchResult(run(9, 2));
+    expect(records.losses).toBe(0);
+    expect(records.bestSurvivalPoints).toBe(9);
+  });
+});
+
+describe('turnuva rekorları ve kaydı', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  const state = (status, wonCount) => ({
+    status,
+    results: Array.from({ length: wonCount }, () => ({ won: true })).concat(
+      status === 'lost' ? [{ won: false }] : []
+    ),
+  });
+
+  it('kupa sayacını artırır', () => {
+    const { records, broken } = recordTournamentResult(state('won', 5));
+    expect(records.tournamentsWon).toBe(1);
+    expect(records.bestTournamentRound).toBe(5);
+    expect(broken.tournamentWon).toBe(true);
+  });
+
+  it('elenmede kupa sayacı artmaz, ulaşılan tur yazılır', () => {
+    const { records } = recordTournamentResult(state('lost', 2));
+    expect(records.tournamentsWon).toBe(0);
+    expect(records.bestTournamentRound).toBe(3);
+  });
+
+  it('daha erken elenme rekoru düşürmez', () => {
+    recordTournamentResult(state('lost', 3));
+    const { records } = recordTournamentResult(state('lost', 0));
+    expect(records.bestTournamentRound).toBe(4);
+  });
+
+  it('yarım turnuvayı saklar ve geri okur', () => {
+    const tournament = createTournament({ mode: '2v2', homeIds: ['gizem-orge', 'zehra-gunes'] });
+    saveTournament(tournament);
+    expect(loadTournament()).toMatchObject({ status: 'active', roundIndex: 0 });
+  });
+
+  it('kapanmış turnuvayı saklamaz', () => {
+    saveTournament(createTournament({ homeIds: ['gizem-orge'] }));
+    saveTournament({ ...createTournament({ homeIds: ['gizem-orge'] }), status: 'won' });
+    expect(loadTournament()).toBeNull();
+  });
+
+  it('bozuk kayıt null döner', () => {
+    localStorage.setItem('filenin-sultanlari-tournament', '{bozuk');
+    expect(loadTournament()).toBeNull();
+
+    localStorage.setItem(
+      'filenin-sultanlari-tournament',
+      JSON.stringify({ status: 'active', homeIds: [], roundIndex: 0 })
+    );
+    expect(loadTournament()).toBeNull();
+  });
+
+  it('temizlenen turnuva geri gelmez', () => {
+    saveTournament(createTournament({ homeIds: ['gizem-orge'] }));
+    clearTournament();
+    expect(loadTournament()).toBeNull();
+  });
+});
+
+describe('eski kayıtlarla uyum', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('yeni mod alanları olmayan kayıt sıfırla açılır', () => {
+    localStorage.setItem(
+      'filenin-sultanlari-records',
+      JSON.stringify({ wins: 4, losses: 1, matchesPlayed: 5, longestRally: 11 })
+    );
+    const records = loadRecords();
+    expect(records.wins).toBe(4);
+    expect(records.tournamentsWon).toBe(0);
+    expect(records.bestSurvivalPoints).toBe(0);
+    expect(records.bestSurvivalWave).toBe(0);
   });
 });

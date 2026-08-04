@@ -10,8 +10,10 @@ import {
   formatBirthDate,
   getAge,
 } from '../game/players.js';
-import { DIFFICULTY, FORMATS } from '../game/constants.js';
+import { DIFFICULTY, FORMATS, SURVIVAL } from '../game/constants.js';
 import { OPPONENT_TEAMS } from '../game/opponents.js';
+import { getGameMode } from '../game/modes.js';
+import { TOURNAMENT_ROUNDS } from '../game/tournament.js';
 import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
 
@@ -55,12 +57,17 @@ export default function CharacterSelect({
   onStart,
   muted,
   onToggleMute,
+  campaign = 'match',
   initialMode = '1v1',
   initialDifficulty = 'normal',
   initialFormat = 'classic',
   initialOpponentId = 'random',
   initialHomeIds,
 }) {
+  const gameMode = getGameMode(campaign);
+  // Turnuvada rakip ve format turlara bağlı, hayatta kalmada dalgalara —
+  // ikisi de oyuncunun seçeceği şey değil.
+  const picksMatchup = gameMode.pickOpponent;
   const [mode, setMode] = useState(initialMode === '2v2' ? '2v2' : '1v1');
   const [difficulty, setDifficulty] = useState(
     DIFFICULTY[initialDifficulty] ? initialDifficulty : 'normal'
@@ -113,7 +120,15 @@ export default function CharacterSelect({
   const handleStart = () => {
     if (!canStart) return;
     Sfx.confirm();
+
+    if (!picksMatchup) {
+      // Kampanya modlarında format/rakip yapılandırması çağırana ait
+      onStart({ campaign, mode, difficulty, homeIds: selected });
+      return;
+    }
+
     onStart({
+      campaign,
       mode,
       difficulty,
       format,
@@ -133,6 +148,9 @@ export default function CharacterSelect({
             KADRONU SEÇ
           </h2>
           <p className="mt-1 text-[7px] text-white/50 sm:mt-2 sm:text-[8px]">
+            {!picksMatchup && (
+              <span className="text-retro-accent">{gameMode.label} · </span>
+            )}
             {required === 2 ? 'İKİ SULTAN · 1. SEN, 2. AI' : 'BİR SULTAN SEÇ'} ·{' '}
             {selected.length}/{required}
           </p>
@@ -175,50 +193,63 @@ export default function CharacterSelect({
           ))}
         </ChipRow>
 
-        <ChipRow label="FORMAT">
-          {Object.values(FORMATS).map((item) => (
-            <Chip
-              key={item.id}
-              active={format === item.id}
-              onClick={() => {
-                Sfx.select();
-                setFormat(item.id);
-              }}
-              title={item.description}
-            >
-              {item.label}
-            </Chip>
-          ))}
-        </ChipRow>
+        {picksMatchup ? (
+          <>
+            <ChipRow label="FORMAT">
+              {Object.values(FORMATS).map((item) => (
+                <Chip
+                  key={item.id}
+                  active={format === item.id}
+                  onClick={() => {
+                    Sfx.select();
+                    setFormat(item.id);
+                  }}
+                  title={item.description}
+                >
+                  {item.label}
+                </Chip>
+              ))}
+            </ChipRow>
 
-        <ChipRow label="RAKİP" wrap>
-          <Chip
-            active={opponentId === 'random'}
-            onClick={() => {
-              Sfx.select();
-              setOpponentId('random');
-            }}
-          >
-            RASTGELE
-          </Chip>
-          {OPPONENT_TEAMS.map((team) => (
-            <Chip
-              key={team.id}
-              active={opponentId === team.id}
-              onClick={() => {
-                Sfx.select();
-                setOpponentId(team.id);
-              }}
-              title={team.blurb}
-            >
-              <span
-                className="mr-1.5 inline-block h-2 w-2 border border-black/40"
-                style={{ backgroundColor: team.colors.primary }}
-              />
-              {team.shortName}
-            </Chip>
-          ))}
-        </ChipRow>
+            <ChipRow label="RAKİP" wrap>
+              <Chip
+                active={opponentId === 'random'}
+                onClick={() => {
+                  Sfx.select();
+                  setOpponentId('random');
+                }}
+              >
+                RASTGELE
+              </Chip>
+              {OPPONENT_TEAMS.map((team) => (
+                <Chip
+                  key={team.id}
+                  active={opponentId === team.id}
+                  onClick={() => {
+                    Sfx.select();
+                    setOpponentId(team.id);
+                  }}
+                  title={team.blurb}
+                >
+                  <span
+                    className="mr-1.5 inline-block h-2 w-2 border border-black/40"
+                    style={{ backgroundColor: team.colors.primary }}
+                  />
+                  {team.shortName}
+                </Chip>
+              ))}
+            </ChipRow>
+          </>
+        ) : (
+          <div className="border-l-4 border-retro-accent/70 py-1 pl-3">
+            <p className="text-[8px] text-retro-accent">{gameMode.label}</p>
+            <p className="mt-1 text-[7px] leading-relaxed text-white/60">
+              {campaign === 'tournament'
+                ? `${TOURNAMENT_ROUNDS.length} tur, ${TOURNAMENT_ROUNDS.length} rakip. Rakip ve format turlara göre belirlenir; zorluk her turda bir tık artar.`
+                : `${SURVIVAL.lives} can. Her ${SURVIVAL.waveLength} puanda yeni dalga: rakip değişir ve sertleşir. Seçtiğin zorluk başlangıç seviyesidir.`}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Aktif kadro */}
@@ -313,7 +344,11 @@ export default function CharacterSelect({
             onClick={handleStart}
             disabled={!canStart}
           >
-            MAÇA BAŞLA
+            {campaign === 'tournament'
+              ? 'KUPA YOLUNA ÇIK'
+              : campaign === 'survival'
+                ? 'SAHAYA ÇIK'
+                : 'MAÇA BAŞLA'}
           </button>
           {!canStart && (
             <p className="text-[7px] text-white/45 sm:text-[8px]">

@@ -229,6 +229,72 @@ export const DIFFICULTY = {
 };
 
 /**
+ * Zorluk kademesini kademesiz olarak sertleştirir/yumuşatır.
+ *
+ * Turnuvada tur ilerledikçe, hayatta kalmada dalga yükseldikçe rakip
+ * güçlenmeli; ama üç sabit kademe arasında zıplamak kaba duruyor.
+ * Bunun yerine her kolu ayrı ayrı, kendi doğal yönünde kaydırıyoruz:
+ * `error` ve `reaction` küçüldükçe, `speed`/`power`/`placement` büyüdükçe
+ * rakip zorlaşır.
+ *
+ * Adım negatif olabilir: hayatta kalma seçilen kademenin altından
+ * başlayıp yukarı tırmanır, yoksa ilk ralliden itibaren tam güçte bir
+ * rakiple üç can harcanıyor ve mod on beş saniyede bitiyordu.
+ *
+ * @param {typeof DIFFICULTY.normal} base
+ * @param {number} step 0 = değişiklik yok, +1 ≈ bir kademe sertleşme
+ * @returns {typeof DIFFICULTY.normal}
+ */
+export function scaleDifficulty(base, step = 0) {
+  if (!step) return { ...base };
+
+  const t = clampRange(step, -2.5, 4);
+  return {
+    ...base,
+    speed: clampRange(base.speed * (1 + 0.075 * t), 0.4, 1.12),
+    reaction: clampRange(base.reaction * (1 - 0.18 * t), 0.13, 0.75),
+    error: clampRange(base.error * (1 - 0.16 * t), 52, 230),
+    power: clampRange(base.power * (1 + 0.04 * t), 0.6, 1.22),
+    placement: clampRange(base.placement + 0.14 * t, 0.02, 0.92),
+    diveSkill: clampRange(base.diveSkill + 0.12 * t, 0, 0.9),
+  };
+}
+
+function clampRange(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+/**
+ * Hayatta kalma modu.
+ *
+ * Set yok, maç yok: tek uzun ralli zinciri. Kaybedilen her sayı bir can
+ * götürür, kazanılan her sayı puandır. `waveLength` puanda bir dalga
+ * yükselir — rakip takım değişir ve bir tık sertleşir.
+ */
+export const SURVIVAL = {
+  lives: 5,
+  waveLength: 3,
+  /**
+   * 1. dalgada seçilen kademeden bu kadar yumuşak başlanır.
+   *
+   * Bu değerler headless örneklemeyle bulundu. Rampasız ilk hâlde
+   * ("normal", 3 can, yumuşama yok) ortalama bir oyuncu 0–1 puanda
+   * eleniyordu: rakip ilk ralliden itibaren tam güçte olduğu için üç
+   * can ~15 saniyede bitiyor, mod dalga bile göstermeye fırsat
+   * bulamadan kapanıyordu. Yumuşak başlangıç + beş canla ortalama
+   * oyuncu artık 3–4. dalgaya, ~60–90 saniyelik bir koşuya ulaşıyor.
+   * "Zor" kademesi kasıtlı olarak acımasız kalır.
+   */
+  startEase: 1.8,
+  /** Dalga başına `scaleDifficulty` adımı. */
+  rampPerWave: 0.32,
+  /** Sertleşmenin durduğu dalga — sonsuza kadar büyümesin. */
+  maxRampWave: 14,
+  /** Dalga değişiminde ekranda kalan duyuru süresi (sn). */
+  waveAnnounce: 1.9,
+};
+
+/**
  * Hücum vuruşlarının hedefleyebileceği aralık.
  *
  * Hem motor (vuruş çözümü) hem de yapay zekâ (nişan seçimi) aynı
