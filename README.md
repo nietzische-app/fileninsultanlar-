@@ -115,13 +115,13 @@ src/
 │   ├── SultanBar.jsx         Özel yetenek barı
 │   ├── StatBar.jsx           Piksel stat çubuğu
 │   └── TouchControls.jsx     Mobil kontroller
-└── game/
-    ├── constants.js          Ölçüler, fizik, kurallar, palet, zorluk kademeleri
-    ├── Game.js               Motor: döngü, fizik, çarpışma, skor, çizim
-    ├── players.js            Kadro verisi, statlar, bonuslar
-    ├── ai.js                 Rakip ve takım arkadaşı yapay zekâsı
-    ├── sprites.js            Piksel çizimleri (sultan, top, bayrak, kupa, rakamlar)
-    └── audio.js              8-bit ses motoru
+├── game/
+│   ├── constants.js          Ölçüler, fizik, kurallar, palet, zorluk kademeleri
+│   ├── Game.js               Motor: döngü, fizik, çarpışma, skor, çizim
+│   ├── players.js            Kadro verisi, statlar, bonuslar, görünüm
+│   ├── ai.js                 Rakip ve takım arkadaşı yapay zekâsı
+│   ├── sprites.js            Piksel çizimleri (sultan, top, bayrak, kupa, rakamlar)
+│   └── audio.js              8-bit ses motoru
 └── utils/
     └── text.js               Türkçe büyük harf yardımcısı
 ```
