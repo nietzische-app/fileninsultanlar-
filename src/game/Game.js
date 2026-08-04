@@ -11,7 +11,6 @@
  */
 
 import {
-  attackRange,
   DIFFICULTY,
   DIVE,
   GAME_HEIGHT,
@@ -35,13 +34,23 @@ import {
 import { pickChaser, sideBounds, updateAI } from './ai.js';
 import { drawBall, drawSultan } from './sprites.js';
 import { drawArena, drawFloor, drawNet } from './arena.js';
+import {
+  clearsNet as shotClearsNet,
+  computeAttackVelocity,
+  computeSetVelocity,
+} from './ballistics.js';
+import { clamp } from './math.js';
+import {
+  applyTouch,
+  canAttackOnTouch,
+  isMatchOver,
+  isSetOver,
+  matchWinner,
+  resolveHitType,
+  setWinner,
+} from './rules.js';
 import Sfx from './audio.js';
 import { upper } from '../utils/text.js';
-
-/** Bir değeri aralığa sıkıştırır. */
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
 
 /** Klavye tuşu → mantıksal girdi eşlemesi. */
 const KEY_MAP = {
@@ -743,13 +752,10 @@ export default class Game {
     const { data } = player;
 
     // --- Üç temas kuralı ---
-    if (this.touch.side === player.side) {
-      this.touch.count += 1;
-    } else {
-      this.touch = { side: player.side, count: 1 };
-    }
+    const touchResult = applyTouch(this.touch, player.side);
+    this.touch = touchResult.touch;
 
-    if (this.touch.count > RULES.maxTouches) {
+    if (touchResult.foul) {
       const opponent = player.side === 'home' ? 'away' : 'home';
       this.awardPoint(opponent, player.side, 'ÜÇ TEMAS!');
       return;
@@ -771,21 +777,21 @@ export default class Game {
     // karşılanır. Bu kural olmadan her ralli ilk dokunuşta smaçla
     // bitiyor ve karşı taraf hiçbir topu döndüremiyor.
     const incomingSpeed = Math.hypot(ball.vx, ball.vy);
-    const controlled =
-      incomingSpeed < PHYSICS.attackControlSpeed || this.touch.count > 1;
+    const attackReady = canAttackOnTouch(
+      incomingSpeed,
+      this.touch.count,
+      PHYSICS.attackControlSpeed
+    );
 
     // Dalış her zaman savunma temasıdır: topu kendi sahanda yükseğe
     // kaldırır, hücuma kalkma hakkını sana bırakır.
     const diving = player.diveTimer > 0 || player.recoverTimer > 0;
-
-    let type;
-    if (diving) {
-      type = 'dive';
-    } else if (acting && controlled) {
-      type = airborne ? 'spike' : 'hit';
-    } else {
-      type = 'bump';
-    }
+    const type = resolveHitType({
+      diving,
+      acting,
+      airborne,
+      controlled: attackReady,
+    });
 
     let power;
     if (type === 'spike') {
@@ -824,13 +830,27 @@ export default class Game {
 
     if (type === 'spike') {
       // Havada + vuruş tuşu: rakip sahaya inen sert smaç
-      const shot = this.computeAttackVelocity(player, power, toOpponent, nx, 1);
+      const shot = computeAttackVelocity({
+        ball,
+        player,
+        power,
+        toOpponent,
+        nx,
+        arc: 1,
+      });
       vx = shot.vx;
       vy = shot.vy;
       this.stats.spikes += 1;
     } else if (type === 'hit') {
       // Yerde + vuruş tuşu: kavisli, karşı sahaya gönderen vuruş
-      const shot = this.computeAttackVelocity(player, power, toOpponent, nx, 1.5);
+      const shot = computeAttackVelocity({
+        ball,
+        player,
+        power,
+        toOpponent,
+        nx,
+        arc: 1.5,
+      });
       vx = shot.vx;
       vy = shot.vy;
     } else {
@@ -922,123 +942,26 @@ export default class Game {
     }
   }
 
-  /**
-   * Hücum vuruşunun hızını hedefe göre çözer.
-   *
-   * Sabit oranlı bir vuruş (vx = güç × k, vy = güç × k) arka sahadan
-   * atıldığında topu kendi yarı sahasına düşürüyordu. Bunun yerine rakip
-   * sahada bir hedef nokta seçilir ve topu oraya götürecek hız hesaplanır:
-   *
-   *   vx = (hedefX − x) / t
-   *   vy = (hedefY − y − ½·g·t²) / t
-   *
-   * Uçuş süresi `t` vuruş gücüyle ters orantılıdır — güçlü sultanlar
-   * daha düz ve hızlı, zayıf vuruşlar daha kavisli gider.
-   *
-   * Nişan noktası oyuncunun kontrolündedir: koşu yönü ve topa gövdenin
-   * neresiyle dokunulduğu (nx) hedefi ileri/geri kaydırır.
-   *
-   * @param {object} player
-   * @param {number} power
-   * @param {1|-1} toOpponent Rakip sahanın yönü
-   * @param {number} nx Temas normalinin yatay bileşeni
-   * @param {number} [arc] Kavis çarpanı — 1 düz smaç, 1.5 yüksek vuruş
-   */
+  /** @deprecated Geliştirme konsolu — ballistics.computeAttackVelocity */
   computeAttackVelocity(player, power, toOpponent, nx, arc = 1) {
-    const ball = this.ball;
-    const { data } = player;
-
-    const { near, far } = attackRange(toOpponent);
-
-    let spread;
-    if (player.controlled) {
-      // İnsan oyuncu nişanı gövdesiyle alır: koşu yönü ve topa hangi
-      // noktadan dokunduğu vuruşu derinleştirir ya da kısaltır.
-      const drift = (player.vx * toOpponent) / 900 + nx * toOpponent * 0.28;
-      spread = clamp(
-        (0.5 + drift + (Math.random() * 0.24 - 0.12)) * getModifier(data, 'angle'),
-        0.12,
-        0.96
-      );
-    } else {
-      // Yapay zekâ nişanı önceden seçer (bkz. ai.js chooseAim)
-      spread = clamp((player.aimSpread ?? 0.5) * getModifier(data, 'angle'), 0.07, 0.95);
-    }
-
-    const targetX = near + (far - near) * spread;
-    const targetY = GROUND_Y - ball.radius;
-
-    // Güç arttıkça uçuş süresi kısalır (daha düz, daha sert vuruş)
-    let t = clamp((PHYSICS.spikePower / power) * 0.5 * arc, 0.3 * arc, 0.66 * arc);
-
-    const solve = (flight) => ({
-      vx: (targetX - ball.x) / flight,
-      vy:
-        (targetY - ball.y - 0.5 * PHYSICS.ballGravity * flight * flight) / flight,
+    return computeAttackVelocity({
+      ball: this.ball,
+      player,
+      power,
+      toOpponent,
+      nx,
+      arc,
     });
-
-    let shot = solve(t);
-
-    // Fileye takılacaksa kavisi kademeli olarak yükselt
-    let tries = 0;
-    while (!this.clearsNet(shot, t) && tries < 4) {
-      t = Math.min(1.3, t * 1.3);
-      shot = solve(t);
-      tries += 1;
-    }
-
-    // Gereken hız üst sınırı aşıyorsa uçuş süresini uzat.
-    // (Vektörü orantılı küçültmek hedefi bozar: top kısa düşer,
-    //  hatta kendi sahasına iner. Bu yüzden hızı değil süreyi ayarla.)
-    let guard = 0;
-    while (Math.hypot(shot.vx, shot.vy) > PHYSICS.ballMaxSpeed && guard < 6) {
-      t = Math.min(1.4, t * 1.18);
-      shot = solve(t);
-      guard += 1;
-    }
-
-    // Hiçbir açı fileyi aşmıyor (yerde ve file dibinde vuruş):
-    // topu boşa harcamak yerine pas at — sonraki temas smaç olabilsin.
-    if (!this.clearsNet(shot, t)) {
-      return this.computeSetVelocity(toOpponent);
-    }
-
-    return shot;
   }
 
-  /**
-   * Pas (kaldırma) hızı — top kendi sahasında, file önünde ve smaç
-   * yüksekliğinde karşılanacak şekilde havalanır.
-   *
-   * @param {1|-1} toOpponent Rakip sahanın yönü
-   */
+  /** @deprecated Geliştirme konsolu — ballistics.computeSetVelocity */
   computeSetVelocity(toOpponent) {
-    const ball = this.ball;
-    const t = 0.95;
-
-    // File önü, kendi sahada
-    const targetX = NET.x - toOpponent * (90 + Math.random() * 60);
-    // Smaç için ideal karşılama yüksekliği
-    const targetY = GROUND_Y - 150;
-
-    return {
-      vx: (targetX - ball.x) / t,
-      vy: (targetY - ball.y - 0.5 * PHYSICS.ballGravity * t * t) / t,
-    };
+    return computeSetVelocity(this.ball, toOpponent);
   }
 
-  /** Verilen hızla atılan top filenin üstünden geçiyor mu? */
+  /** @deprecated Geliştirme konsolu — ballistics.clearsNet */
   clearsNet(shot, flight) {
-    const ball = this.ball;
-    if (Math.abs(shot.vx) < 1) return false;
-
-    const tNet = (NET.x - ball.x) / shot.vx;
-    if (tNet <= 0 || tNet > flight) return true; // file yolda değil
-
-    const yAtNet =
-      ball.y + shot.vy * tNet + 0.5 * PHYSICS.ballGravity * tNet * tNet;
-
-    return yAtNet < NET.topY - 10;
+    return shotClearsNet(this.ball, shot, flight);
   }
 
   // ===================================================================
@@ -1111,16 +1034,9 @@ export default class Game {
   /** Sayı donması bitti — set bitti mi diye bak. */
   afterPoint() {
     const { home, away } = this.score;
-    const target = RULES.pointsPerSet;
 
-    const setOver =
-      (home >= target || away >= target) &&
-      (Math.abs(home - away) >= RULES.winBy ||
-        home >= RULES.pointCap ||
-        away >= RULES.pointCap);
-
-    if (setOver) {
-      const winner = home > away ? 'home' : 'away';
+    if (isSetOver(home, away)) {
+      const winner = setWinner(home, away);
       this.sets[winner] += 1;
       this.setHistory.push({ home, away, winner });
 
@@ -1147,15 +1063,12 @@ export default class Game {
 
   /** Set bitti — maç bitti mi, yoksa yeni set mi? */
   afterSet() {
-    const matchOver =
-      this.sets.home >= RULES.setsToWin || this.sets.away >= RULES.setsToWin;
-
-    if (matchOver) {
+    if (isMatchOver(this.sets)) {
       this.phase = PHASE.MATCH_END;
       this.message = null;
       this.finished = true;
 
-      const winner = this.sets.home > this.sets.away ? 'home' : 'away';
+      const winner = matchWinner(this.sets);
       if (winner === 'home') Sfx.victory();
       else Sfx.defeat();
 
