@@ -139,6 +139,11 @@ function blockPainter(ctx, originX, originY, u) {
 /**
  * Saç modelini çizer. Kafa 4–10, saç tepesi 0.8–3 birimleri arasında.
  *
+ * Desteklenen stiller:
+ *   short | short-spiky | short-fade | ponytail | high-ponytail |
+ *   half-ponytail | bun | sleek-bun | high-bun | braided-bun |
+ *   long | curly-long | half-up | braid
+ *
  * @param {(gx:number, gy:number, gw:number, gh:number, color:string, outline?:boolean) => void} px
  * @param {string} style
  * @param {string} hair Saç rengi
@@ -150,29 +155,94 @@ function drawHair(px, style, hair, facing) {
   px(3.2, 1.6, 1.2, 4.4, hair, false);
   px(9.6, 1.6, 1.2, 4.4, hair, false);
 
-  // Figürün arka tarafı — saç buradan aşağı iner
   const back = facing > 0 ? 2.0 : 9.9;
+  const front = facing > 0 ? 9.9 : 2.0;
 
   switch (style) {
     case 'short':
-      // Ek parça yok — ense hizasında biten kısa saç
       px(3.4, 5.4, 1.4, 1.2, hair, false);
       px(9.2, 5.4, 1.4, 1.2, hair, false);
       break;
 
+    case 'short-spiky':
+      // Dik kısa uçlar (Ebrar)
+      px(4.2, -0.2, 1.2, 1.4, hair);
+      px(6.0, -0.6, 1.4, 1.6, hair);
+      px(7.8, -0.2, 1.2, 1.4, hair);
+      px(3.4, 5.2, 1.3, 1.0, hair, false);
+      px(9.3, 5.2, 1.3, 1.0, hair, false);
+      break;
+
+    case 'short-fade':
+      // Yandan kısa + üstte küçük örgüler (Melissa)
+      px(3.0, 2.0, 1.0, 3.2, hair, false);
+      px(10.0, 2.0, 1.0, 3.2, hair, false);
+      px(5.2, -0.4, 1.4, 1.8, hair);
+      px(7.0, -0.6, 1.4, 2.0, hair);
+      px(back + 0.3, 2.8, 1.4, 2.6, hair);
+      px(back + 0.1, 5.2, 1.6, 1.8, hair);
+      break;
+
     case 'bun':
-      // Tepede toplanmış topuz
       px(5.6, -0.9, 2.8, 2.2, hair);
       px(6.2, -1.4, 1.6, 0.9, hair, false);
       break;
 
+    case 'sleek-bun':
+      // Yatık sıkı topuz — daha alçak ve düz
+      px(4.0, 1.2, 6.0, 1.0, hair, false);
+      px(5.8, -0.5, 2.4, 1.8, hair);
+      px(6.2, -0.9, 1.6, 0.7, hair, false);
+      break;
+
+    case 'high-bun':
+      // Yüksek / büyük topuz (Elif, Dilay)
+      px(5.2, -1.6, 3.6, 2.8, hair);
+      px(5.8, -2.2, 2.4, 1.2, hair, false);
+      px(6.4, -0.2, 1.2, 1.0, hair, false);
+      break;
+
+    case 'braided-bun':
+      // Örgülü topuz
+      px(5.6, -1.0, 2.8, 2.4, hair);
+      px(back + 0.2, 2.6, 1.5, 2.0, hair);
+      px(back, 4.4, 1.8, 1.6, hair);
+      break;
+
     case 'long':
-      // Omza dökülen uzun saç
-      px(back, 2.4, 2.2, 9.6, hair);
+      px(back, 2.4, 2.2, 10.2, hair);
+      px(front, 2.6, 1.6, 6.8, hair, false);
+      break;
+
+    case 'curly-long':
+      // Hacimli kıvırcık — omuzlara dökülen boblar
+      px(back - 0.2, 2.2, 2.6, 3.0, hair);
+      px(back - 0.4, 4.8, 2.8, 2.6, hair);
+      px(back - 0.2, 7.2, 2.6, 2.8, hair);
+      px(front, 2.8, 1.8, 2.4, hair, false);
+      px(front - 0.2, 5.0, 2.0, 2.2, hair, false);
+      break;
+
+    case 'half-up':
+      // Yarı bağlı + uzun dökülen (Zehra)
+      px(5.4, -0.8, 3.2, 2.0, hair);
+      px(back, 2.4, 2.2, 10.4, hair);
+      px(front, 3.0, 1.5, 7.6, hair, false);
+      break;
+
+    case 'high-ponytail':
+      px(5.8, -0.6, 2.4, 1.6, hair);
+      px(back + 0.1, 1.6, 1.7, 6.2, hair);
+      px(back - 0.1, 7.4, 2.1, 2.0, hair, false);
+      break;
+
+    case 'half-ponytail':
+      px(5.8, -0.3, 2.2, 1.4, hair);
+      px(back + 0.3, 2.8, 1.4, 3.6, hair);
+      px(front, 3.2, 1.4, 4.2, hair, false);
       break;
 
     case 'braid':
-      // Boğumlu örgü
       px(back + 0.2, 2.4, 1.7, 2.4, hair);
       px(back, 4.6, 2.1, 2.1, hair);
       px(back + 0.2, 6.5, 1.7, 2.1, hair);
@@ -181,10 +251,46 @@ function drawHair(px, style, hair, facing) {
 
     case 'ponytail':
     default:
-      // Arkada sallanan at kuyruğu
       px(back + 0.2, 2.6, 1.5, 4.6, hair);
       px(back, 6.8, 1.9, 1.7, hair, false);
       break;
+  }
+}
+
+/**
+ * Kolye, küpe ve kol dövmeleri.
+ * @param {(gx:number, gy:number, gw:number, gh:number, color:string, outline?:boolean) => void} px
+ * @param {object} look
+ * @param {number} facing
+ * @param {string} skin
+ */
+function drawExtras(px, look, facing, skin) {
+  // Kolye — boyun altı ince halka
+  if (look.necklace) {
+    px(5.4, 7.3, 3.2, 0.55, look.necklace, false);
+    px(6.4, 7.7, 1.2, 0.5, look.necklace, false);
+  }
+
+  // Küpe — kulak hizası
+  if (look.earring) {
+    const earX = facing > 0 ? 9.8 : 3.4;
+    px(earX, 4.6, 0.7, 0.9, look.earring, false);
+  }
+
+  // Kol dövmeleri — koyu piksel lekeleri
+  if (look.tattoos) {
+    const ink = '#2A1810';
+    if (facing > 0) {
+      px(10.6, 10.2, 1.4, 0.55, ink, false);
+      px(10.8, 11.2, 1.0, 0.45, ink, false);
+      px(1.7, 10.6, 1.2, 0.5, ink, false);
+    } else {
+      px(1.8, 10.2, 1.4, 0.55, ink, false);
+      px(2.0, 11.2, 1.0, 0.45, ink, false);
+      px(10.8, 10.6, 1.2, 0.5, ink, false);
+    }
+    // skin üstüne çok koyu olmasın diye ince tutuyoruz
+    void skin;
   }
 }
 
@@ -343,6 +449,9 @@ export function drawSultan(ctx, data, opts) {
   // --- Kafa bandı (aksesuar) ---
   px(3.3, 2.4, 7.4, 0.9, look.headband, false);
 
+  // Kolye / küpe / dövme
+  drawExtras(px, look, facing, skin);
+
   // --- Forma numarası (piksel font) ---
   // Rakam pikseli tam sayıya yuvarlanır, yoksa alt piksel kaymaları
   // glifi bulanıklaştırıyor. Kontur da çizilmez: küçük ölçeklerde
@@ -439,12 +548,27 @@ function drawDivingSultan(ctx, data, look, { x, y, u, facing }) {
   // Saç — dalışta arkaya savrulur
   px(3.2, -11.4, 5.2, 1.8, hair);
   px(0.6, -11.2, 3, 1.6, hair, false);
-  if (look.hairStyle !== 'short') {
+  const trailing =
+    look.hairStyle !== 'short' &&
+    look.hairStyle !== 'short-spiky' &&
+    look.hairStyle !== 'short-fade';
+  if (trailing) {
     px(-1.8, -11, 2.6, 1.4, hair, false);
+    if (
+      look.hairStyle === 'long' ||
+      look.hairStyle === 'curly-long' ||
+      look.hairStyle === 'half-up'
+    ) {
+      px(-4.0, -10.6, 2.4, 1.2, hair, false);
+    }
   }
 
   // Kafa bandı
   px(3.4, -10.6, 5, 0.9, look.headband, false);
+
+  if (look.necklace) {
+    px(4.2, -6.2, 2.4, 0.5, look.necklace, false);
+  }
 
   // Forma numarası
   drawPixelNumber(

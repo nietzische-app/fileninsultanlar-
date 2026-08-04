@@ -46,10 +46,13 @@ export const POSITIONS = {
  * `src/game/sprites.js` içinde Canvas API ile piksel piksel çizilir.
  * Aşağıdaki alanlar o çizimi kod seviyesinde özelleştirir:
  *
- *   hairStyle  Saç modeli: 'short' | 'ponytail' | 'bun' | 'long' | 'braid'
+ *   hairStyle  Saç modeli — bkz. HAIR_STYLES
  *   headband   Kafa bandı rengi — null ise takılmaz
  *   wristband  Bileklik rengi — null ise takılmaz
  *   kneePads   Dizlik rengi — null ise takılmaz
+ *   necklace   Kolye rengi — null ise takılmaz
+ *   earring    Küpe rengi — null ise takılmaz
+ *   tattoos    Kol dövmeleri (piksel lekeler)
  *
  * Saç rengi `colors.hair`, forma numarası `number` alanından gelir.
  * Kaptan pazıbandı `captain: true` olan oyuncuya otomatik çizilir
@@ -59,10 +62,13 @@ export const POSITIONS = {
  * görünümü yansıtma iddiası taşımaz — istediğin gibi değiştirebilirsin.
  *
  * @typedef {Object} Appearance
- * @property {'short'|'ponytail'|'bun'|'long'|'braid'} hairStyle
+ * @property {string} hairStyle
  * @property {string|null} headband
  * @property {string|null} wristband
  * @property {string|null} kneePads
+ * @property {string|null} [necklace]
+ * @property {string|null} [earring]
+ * @property {boolean} [tattoos]
  */
 
 /**
@@ -84,7 +90,22 @@ export const POSITIONS = {
  */
 
 /** Seçilebilir saç modelleri — yeni model eklerken sprites.js'i de güncelle. */
-export const HAIR_STYLES = ['short', 'ponytail', 'bun', 'long', 'braid'];
+export const HAIR_STYLES = [
+  'short',
+  'short-spiky',
+  'short-fade',
+  'ponytail',
+  'high-ponytail',
+  'half-ponytail',
+  'bun',
+  'sleek-bun',
+  'high-bun',
+  'braided-bun',
+  'long',
+  'curly-long',
+  'half-up',
+  'braid',
+];
 
 /** Görünüm alanı eksikse kullanılan varsayılan. */
 export const DEFAULT_APPEARANCE = {
@@ -92,6 +113,9 @@ export const DEFAULT_APPEARANCE = {
   headband: null,
   wristband: null,
   kneePads: '#FFFFFF',
+  necklace: null,
+  earring: null,
+  tattoos: false,
 };
 
 /** Millî takım forması. */
@@ -120,15 +144,18 @@ export const ROSTER = [
     stats: { attack: 38, block: 42, serve: 72, defense: 97, speed: 95, stamina: 93 },
     colors: {
       ...LIBERO_KIT,
-      skin: '#E8B48C',
-      hair: '#241812',
+      skin: '#F8D5C2',
+      hair: '#3D2314',
       accent: '#FFD24A',
     },
     appearance: {
-      hairStyle: 'braid',
-      headband: '#FFD24A',
-      wristband: '#FFD24A',
+      hairStyle: 'sleek-bun',
+      headband: null,
+      wristband: null,
       kneePads: '#FFD24A',
+      necklace: null,
+      earring: null,
+      tattoos: false,
     },
     bonus: {
       name: 'Kurtarış',
@@ -148,15 +175,18 @@ export const ROSTER = [
     stats: { attack: 70, block: 76, serve: 82, defense: 86, speed: 92, stamina: 90 },
     colors: {
       ...KIT,
-      skin: '#E8B48C',
-      hair: '#2B1B14',
+      skin: '#F8D5C2',
+      hair: '#2B1D0C',
       accent: '#B7F5C6',
     },
     appearance: {
-      hairStyle: 'ponytail',
-      headband: '#FFFFFF',
-      wristband: '#FFFFFF',
+      hairStyle: 'sleek-bun',
+      headband: null,
+      wristband: null,
       kneePads: null,
+      necklace: null,
+      earring: null,
+      tattoos: false,
     },
     bonus: {
       name: 'Hızlı Tempo',
@@ -176,15 +206,18 @@ export const ROSTER = [
     stats: { attack: 87, block: 80, serve: 84, defense: 82, speed: 85, stamina: 86 },
     colors: {
       ...KIT,
-      skin: '#EAC0A0',
-      hair: '#3A2418',
+      skin: '#F8D5C2',
+      hair: '#3B2219',
       accent: '#9BE7FF',
     },
     appearance: {
-      hairStyle: 'ponytail',
-      headband: '#9BE7FF',
-      wristband: '#FFFFFF',
+      hairStyle: 'bun',
+      headband: null,
+      wristband: null,
       kneePads: '#FFFFFF',
+      necklace: null,
+      earring: null,
+      tattoos: false,
     },
     bonus: {
       name: 'Çift Yönlü',
@@ -204,15 +237,18 @@ export const ROSTER = [
     stats: { attack: 90, block: 82, serve: 86, defense: 84, speed: 84, stamina: 87 },
     colors: {
       ...KIT,
-      skin: '#EAC0A0',
-      hair: '#4A2F1E',
+      skin: '#F8D5C2',
+      hair: '#2A1B0E',
       accent: '#FF9ED2',
     },
     appearance: {
-      hairStyle: 'ponytail',
+      hairStyle: 'sleek-bun',
       headband: null,
-      wristband: '#FF9ED2',
+      wristband: null,
       kneePads: '#FFFFFF',
+      necklace: null,
+      earring: null,
+      tattoos: false,
     },
     bonus: {
       name: 'Çapraz Plase',
@@ -232,15 +268,18 @@ export const ROSTER = [
     stats: { attack: 85, block: 92, serve: 78, defense: 76, speed: 74, stamina: 85 },
     colors: {
       ...KIT,
-      skin: '#8D5A3B',
-      hair: '#1A1008',
+      skin: '#4A2E1B',
+      hair: '#1A1A1A',
       accent: '#FFD24A',
     },
     appearance: {
-      hairStyle: 'bun',
-      headband: '#FFFFFF',
-      wristband: '#FFFFFF',
+      hairStyle: 'curly-long',
+      headband: null,
+      wristband: null,
       kneePads: '#1B1B2E',
+      necklace: '#FFD24A',
+      earring: null,
+      tattoos: false,
     },
     bonus: {
       name: 'Tecrübeli Duvar',
@@ -260,15 +299,18 @@ export const ROSTER = [
     stats: { attack: 36, block: 40, serve: 70, defense: 94, speed: 96, stamina: 92 },
     colors: {
       ...LIBERO_KIT,
-      skin: '#EFC7A6',
-      hair: '#5A3A22',
+      skin: '#F8D5C2',
+      hair: '#B8860B',
       accent: '#FFD24A',
     },
     appearance: {
       hairStyle: 'ponytail',
-      headband: '#FFD24A',
-      wristband: '#FFD24A',
+      headband: null,
+      wristband: null,
       kneePads: '#FFD24A',
+      necklace: null,
+      earring: null,
+      tattoos: false,
     },
     bonus: {
       name: 'Seri Refleks',
@@ -288,15 +330,18 @@ export const ROSTER = [
     stats: { attack: 74, block: 82, serve: 80, defense: 80, speed: 86, stamina: 88 },
     colors: {
       ...KIT,
-      skin: '#EAC0A0',
-      hair: '#2B1B14',
+      skin: '#F8D5C2',
+      hair: '#3B2219',
       accent: '#C8B7FF',
     },
     appearance: {
-      hairStyle: 'long',
-      headband: '#C8B7FF',
-      wristband: '#FFFFFF',
+      hairStyle: 'high-bun',
+      headband: null,
+      wristband: null,
       kneePads: '#FFFFFF',
+      necklace: null,
+      earring: null,
+      tattoos: false,
     },
     bonus: {
       name: 'Uzun Pasör',
@@ -311,20 +356,23 @@ export const ROSTER = [
     position: POSITIONS.PASOR,
     captain: false,
     birthDate: '2005-08-15',
-    height: 187,
+    height: 188,
     weight: 58,
     stats: { attack: 68, block: 72, serve: 78, defense: 82, speed: 88, stamina: 86 },
     colors: {
       ...KIT,
-      skin: '#E8B48C',
-      hair: '#33221A',
+      skin: '#F8D5C2',
+      hair: '#4A311E',
       accent: '#A8E6CF',
     },
     appearance: {
-      hairStyle: 'bun',
-      headband: '#A8E6CF',
-      wristband: '#FFFFFF',
+      hairStyle: 'high-bun',
+      headband: null,
+      wristband: null,
       kneePads: '#FFFFFF',
+      necklace: null,
+      earring: null,
+      tattoos: false,
     },
     bonus: {
       name: 'Sakin Dağıtım',
@@ -334,26 +382,29 @@ export const ROSTER = [
   },
   {
     id: 'eda-erdem',
-    name: 'Eda Erdem',
+    name: 'Eda Erdem Dündar',
     number: 14,
     position: POSITIONS.ORTA,
     captain: false,
     guest: true,
     birthDate: '1987-06-22',
     height: 188,
-    weight: 73,
+    weight: 75,
     stats: { attack: 88, block: 97, serve: 84, defense: 82, speed: 74, stamina: 90 },
     colors: {
       ...KIT,
-      skin: '#E8B48C',
-      hair: '#2B1B14',
+      skin: '#F8D5C2',
+      hair: '#7A5230',
       accent: '#FFD24A',
     },
     appearance: {
-      hairStyle: 'ponytail',
-      headband: '#FFFFFF',
-      wristband: '#FFD24A',
+      hairStyle: 'long',
+      headband: null,
+      wristband: null,
       kneePads: '#1B1B2E',
+      necklace: '#C0C0C0',
+      earring: null,
+      tattoos: false,
     },
     bonus: {
       name: 'Efsane Duvar',
@@ -373,15 +424,18 @@ export const ROSTER = [
     stats: { attack: 86, block: 93, serve: 76, defense: 74, speed: 76, stamina: 84 },
     colors: {
       ...KIT,
-      skin: '#EFC7A6',
-      hair: '#4A2F1E',
+      skin: '#F8D5C2',
+      hair: '#2B1B10',
       accent: '#FFB86B',
     },
     appearance: {
-      hairStyle: 'ponytail',
-      headband: '#FFB86B',
-      wristband: '#FFFFFF',
+      hairStyle: 'high-ponytail',
+      headband: null,
+      wristband: null,
       kneePads: '#1B1B2E',
+      necklace: '#E8E8E8',
+      earring: null,
+      tattoos: false,
     },
     bonus: {
       name: 'Yüksek Kademe',
@@ -401,15 +455,18 @@ export const ROSTER = [
     stats: { attack: 82, block: 88, serve: 74, defense: 76, speed: 82, stamina: 82 },
     colors: {
       ...KIT,
-      skin: '#EAC0A0',
-      hair: '#6B4423',
+      skin: '#F8D5C2',
+      hair: '#3D2314',
       accent: '#FFE066',
     },
     appearance: {
-      hairStyle: 'ponytail',
-      headband: '#FFE066',
-      wristband: '#FFE066',
+      hairStyle: 'high-ponytail',
+      headband: null,
+      wristband: null,
       kneePads: '#FFFFFF',
+      necklace: null,
+      earring: null,
+      tattoos: false,
     },
     bonus: {
       name: 'Genç Enerji',
@@ -429,15 +486,18 @@ export const ROSTER = [
     stats: { attack: 87, block: 96, serve: 78, defense: 76, speed: 72, stamina: 85 },
     colors: {
       ...KIT,
-      skin: '#EAC0A0',
-      hair: '#3A2418',
-      accent: '#9BE7FF',
+      skin: '#F8D5C2',
+      hair: '#3B2219',
+      accent: '#E30A17',
     },
     appearance: {
-      hairStyle: 'long',
-      headband: '#9BE7FF',
-      wristband: '#FFFFFF',
+      hairStyle: 'half-up',
+      headband: null,
+      wristband: '#E30A17',
       kneePads: '#FFFFFF',
+      necklace: null,
+      earring: null,
+      tattoos: false,
     },
     bonus: {
       name: 'Duvar',
@@ -457,15 +517,18 @@ export const ROSTER = [
     stats: { attack: 84, block: 76, serve: 82, defense: 84, speed: 92, stamina: 86 },
     colors: {
       ...KIT,
-      skin: '#E8B48C',
-      hair: '#8B5A2B',
+      skin: '#F8D5C2',
+      hair: '#2A1B0E',
       accent: '#B7F5C6',
     },
     appearance: {
-      hairStyle: 'ponytail',
-      headband: '#B7F5C6',
-      wristband: '#B7F5C6',
+      hairStyle: 'high-bun',
+      headband: null,
+      wristband: null,
       kneePads: '#FFFFFF',
+      necklace: null,
+      earring: null,
+      tattoos: false,
     },
     bonus: {
       name: 'Hafif Ayak',
@@ -485,15 +548,18 @@ export const ROSTER = [
     stats: { attack: 89, block: 78, serve: 88, defense: 82, speed: 88, stamina: 85 },
     colors: {
       ...KIT,
-      skin: '#EFC7A6',
-      hair: '#1F1410',
+      skin: '#F8D5C2',
+      hair: '#2B1D0C',
       accent: '#FF7A18',
     },
     appearance: {
-      hairStyle: 'short',
-      headband: '#FF7A18',
-      wristband: '#FF7A18',
+      hairStyle: 'braided-bun',
+      headband: null,
+      wristband: null,
       kneePads: '#1B1B2E',
+      necklace: null,
+      earring: null,
+      tattoos: false,
     },
     bonus: {
       name: 'Servis Ateşi',
@@ -514,15 +580,18 @@ export const ROSTER = [
     colors: {
       ...KIT,
       secondary: '#FFD24A',
-      skin: '#C98A5E',
-      hair: '#1A1008',
+      skin: '#7C5035',
+      hair: '#111111',
       accent: '#FFD24A',
     },
     appearance: {
-      hairStyle: 'bun',
+      hairStyle: 'short-fade',
       headband: null,
-      wristband: '#FFD24A',
+      wristband: null,
       kneePads: '#1B1B2E',
+      necklace: '#FFD24A',
+      earring: '#FFD24A',
+      tattoos: true,
     },
     bonus: {
       name: 'Top Sallama',
@@ -537,20 +606,23 @@ export const ROSTER = [
     position: POSITIONS.SMACOR,
     captain: false,
     birthDate: '2006-08-09',
-    height: 192,
+    height: 193,
     weight: 71,
     stats: { attack: 82, block: 76, serve: 80, defense: 80, speed: 86, stamina: 84 },
     colors: {
       ...KIT,
-      skin: '#EAC0A0',
-      hair: '#2E1D14',
+      skin: '#F8D5C2',
+      hair: '#4A3222',
       accent: '#FF9ED2',
     },
     appearance: {
-      hairStyle: 'ponytail',
+      hairStyle: 'half-ponytail',
       headband: null,
-      wristband: '#FF9ED2',
+      wristband: null,
       kneePads: '#FFFFFF',
+      necklace: '#E8E8E8',
+      earring: null,
+      tattoos: false,
     },
     bonus: {
       name: 'Taze Kan',
@@ -571,15 +643,18 @@ export const ROSTER = [
     stats: { attack: 96, block: 80, serve: 90, defense: 72, speed: 80, stamina: 88 },
     colors: {
       ...KIT,
-      skin: '#E8B48C',
-      hair: '#1A1008',
+      skin: '#F8D5C2',
+      hair: '#4A3525',
       accent: '#FF7A18',
     },
     appearance: {
-      hairStyle: 'braid',
-      headband: '#FF7A18',
-      wristband: '#FF7A18',
+      hairStyle: 'short-spiky',
+      headband: null,
+      wristband: null,
       kneePads: '#1B1B2E',
+      necklace: null,
+      earring: null,
+      tattoos: true,
     },
     bonus: {
       name: 'Kara Kurt',

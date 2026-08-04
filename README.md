@@ -224,16 +224,23 @@ Bir karakterin görünümü tamamen `src/game/players.js` içinden değiştirili
     accent: '#FF7A18',           // kaptan pazıbandı ve arayüz vurgusu
   },
   appearance: {
-    hairStyle: 'short',          // 'short'|'ponytail'|'bun'|'long'|'braid'
-    headband: '#FF7A18',         // kafa bandı — null ise takmaz
-    wristband: '#FF7A18',        // bileklik — null ise takmaz
+    hairStyle: 'braided-bun',    // bkz. HAIR_STYLES
+    headband: null,              // kafa bandı — null ise takmaz
+    wristband: null,             // bileklik — null ise takmaz
     kneePads: '#1B1B2E',         // dizlik — null ise takmaz
+    necklace: null,              // kolye rengi — null ise takmaz
+    earring: null,               // küpe rengi — null ise takmaz
+    tattoos: false,              // kol dövmeleri
   },
 }
 ```
 
 Liberolar (Gizem Örge, Eylül Akarçeşme Yatgın) kural gereği farklı renkte forma
 giyer; bu `LIBERO_KIT` sabitiyle verilir.
+
+Saç stilleri: `short`, `short-spiky`, `short-fade`, `ponytail`, `high-ponytail`,
+`half-ponytail`, `bun`, `sleek-bun`, `high-bun`, `braided-bun`, `long`,
+`curly-long`, `half-up`, `braid`.
 
 Aksesuar alanlarında `null` "bu parçayı çizme" demektir; eksik bırakılan alanlar
 `DEFAULT_APPEARANCE` ile tamamlanır. Yeni bir saç modeli eklemek için
