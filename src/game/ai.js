@@ -10,6 +10,7 @@
  */
 
 import {
+  DIVE,
   GAME_WIDTH,
   GROUND_Y,
   NET,
@@ -55,6 +56,21 @@ export function predictLanding(ball, targetY = GROUND_Y - PHYSICS.ballRadius) {
 }
 
 /**
+ * Bir dalışın verilen süre içinde kapatabileceği yatay mesafe.
+ *
+ * Dalış sabit hızla değil, sürtünmeyle yavaşlayarak ilerler. Bunu
+ * hesaplamadan "yetişemiyorsam dalayım" demek, yetişilemeyecek topa
+ * dalıp yerde kilitli kalmak demek oluyordu — dalış oyuncuyu
+ * kurtaracağına cezalandırıyordu.
+ *
+ * @param {number} t Topun yere inmesine kalan süre
+ */
+export function diveDistance(t) {
+  const capped = Math.min(t, DIVE.duration);
+  return Math.max(0, DIVE.speed * capped - 0.5 * DIVE.friction * capped * capped);
+}
+
+/**
  * Bir AI oyuncusunun girdilerini günceller.
  *
  * @param {object} player  Motor içindeki oyuncu nesnesi
@@ -75,6 +91,7 @@ export function updateAI(player, ball, opts, dt) {
   input.right = false;
   input.up = false;
   input.action = false;
+  input.dive = false;
 
   // --- Tepki gecikmesi: hedefi belirli aralıklarla yenile ---
   player.aiTimer -= dt;
@@ -136,6 +153,42 @@ export function updateAI(player, ball, opts, dt) {
     const dist = Math.hypot(ball.x - player.x, ball.y - (player.y - player.hitOffsetY));
     if (dist < reach) {
       input.action = true;
+    }
+
+    // Koşarak yetişemeyeceği topa dal.
+    // İnsan oyuncuya bu hamle verilip yapay zekâya verilmeseydi
+    // savunma dengesi tek taraflı bozulurdu.
+    if (chasing && player.diveCooldown <= 0 && player.onGround) {
+      const landing = predictLanding(ball);
+      const gap = Math.abs(landing.x - player.x);
+      const runReach =
+        player.hitRadius + PHYSICS.playerSpeed * difficulty.speed * landing.t;
+
+      // Yapay zekâ da insan gibi mesafeyi yanlış ölçebilir
+      const misjudge = (Math.random() * 2 - 1) * difficulty.error * 0.4;
+
+      // Dalış yalnızca son çaredir. Belirgin bir fark yoksa koşmak
+      // her zaman daha iyidir: ıskalanan dalış oyuncuyu yarım saniye
+      // yerde kilitler. Bu pay olmadan koşarak yetişilecek toplara da
+      // dalınıyor ve dalış kazandırmaktan çok kaybettiriyordu.
+      const tooFarToRun = gap > runReach + 25;
+      const withinDiveRange =
+        gap + misjudge < runReach + diveDistance(landing.t);
+      const soon = landing.t < 0.45;
+      // Dalış alçak toplar içindir; yüksek topu ayakta karşılarsın
+      const lowBall = ball.y > GROUND_Y - 150 || ball.vy > 0;
+
+      if (
+        tooFarToRun &&
+        withinDiveRange &&
+        soon &&
+        lowBall &&
+        Math.random() < difficulty.diveSkill
+      ) {
+        input.dive = true;
+        if (landing.x < player.x) input.left = true;
+        else input.right = true;
+      }
     }
   }
 

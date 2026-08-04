@@ -117,6 +117,22 @@ function blockPainter(ctx, originX, originY, u) {
     }
     ctx.fillStyle = color;
     ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+
+    // Hacim: üstten ışık, altta gölge. Düz renk bloklar karton gibi
+    // duruyordu; bu iki şerit figüre derinlik veriyor.
+    // Küçük parçalarda (aksesuar şeritleri) atlanır, yoksa ezilirler.
+    if (h >= u * 1.6 && w >= u * 1.2) {
+      const band = Math.max(1, Math.round(h * 0.24));
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
+      ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), band);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.20)';
+      ctx.fillRect(
+        Math.round(x),
+        Math.round(y + h - band),
+        Math.round(w),
+        band
+      );
+    }
   };
 }
 
@@ -215,6 +231,14 @@ export function drawSultan(ctx, data, opts) {
   if (glow) {
     ctx.shadowColor = PALETTE.gold;
     ctx.shadowBlur = 18;
+  }
+
+  // Dalış tamamen farklı bir düzen: figür yatay uzanır.
+  // Ayakta duran iskeleti döndürmek yerine kendi çizimi var.
+  if (pose === 'dive') {
+    drawDivingSultan(ctx, data, look, { x, y, u, facing });
+    ctx.restore();
+    return;
   }
 
   // --- Bacaklar (koşu fazına göre açılır) ---
@@ -339,6 +363,100 @@ export function drawSultan(ctx, data, opts) {
   ctx.restore();
 }
 
+/**
+ * Dalan sultan — yere paralel uzanmış figür.
+ *
+ * Koordinatlar (x, y) ikilisine göre birim cinsinden verilir:
+ * x ayakların değil gövdenin yatay merkezi, y zemin çizgisidir.
+ * `facing` yönünde baş ve uzanan kol öndedir.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {object} data
+ * @param {object} look getAppearance sonucu
+ * @param {{x:number, y:number, u:number, facing:number}} opts
+ */
+function drawDivingSultan(ctx, data, look, { x, y, u, facing }) {
+  const { primary, secondary, skin, hair, accent } = data.colors;
+  const f = facing >= 0 ? 1 : -1;
+
+  /** Birim cinsinden, yöne göre aynalanan blok. */
+  const px = (gx, gy, gw, gh, color, outline = true) => {
+    if (!color) return;
+    // gx figürün merkezine göre; negatif yön aynalanır
+    const left = x + (f > 0 ? gx : -gx - gw) * u;
+    const top = y + gy * u;
+    const w = gw * u;
+    const h = gh * u;
+
+    if (outline) {
+      ctx.fillStyle = PALETTE.outline;
+      ctx.fillRect(
+        Math.round(left - 1),
+        Math.round(top - 1),
+        Math.round(w + 2),
+        Math.round(h + 2)
+      );
+    }
+    ctx.fillStyle = color;
+    ctx.fillRect(Math.round(left), Math.round(top), Math.round(w), Math.round(h));
+  };
+
+  // Arkada sürüklenen bacaklar
+  px(-11, -6.5, 6, 2.6, skin);
+  px(-9.4, -7, 2.6, 1.3, look.kneePads, false);
+  px(-12.6, -6.6, 2, 2.4, '#F5F5F5'); // ayakkabı
+
+  // Şort
+  px(-6.5, -8.6, 4.6, 4.2, '#1B1B2E');
+
+  // Gövde (forma)
+  px(-2.6, -9.6, 6.8, 5.4, primary);
+  px(-2.6, -9.6, 6.8, 1, secondary, false); // omuz şeridi
+  px(-2.6, -4.8, 6.8, 0.8, secondary, false);
+
+  // Kaptan pazıbandı
+  if (data.captain) {
+    px(2.2, -9.2, 1.6, 1.2, accent, false);
+  }
+
+  // Uzanan kol — topa yetişen
+  px(6.6, -7.6, 6, 2.4, skin);
+  px(11.4, -7.9, 1.6, 3, look.wristband, false);
+
+  // Baş
+  px(3.4, -10.6, 5, 4.8, skin);
+
+  // Göz
+  ctx.fillStyle = PALETTE.outline;
+  const eye = Math.max(1, Math.round(u * 0.8));
+  ctx.fillRect(
+    Math.round(x + (f > 0 ? 6.4 : -7.2) * u),
+    Math.round(y - 9.2 * u),
+    eye,
+    eye
+  );
+
+  // Saç — dalışta arkaya savrulur
+  px(3.2, -11.4, 5.2, 1.8, hair);
+  px(0.6, -11.2, 3, 1.6, hair, false);
+  if (look.hairStyle !== 'short') {
+    px(-1.8, -11, 2.6, 1.4, hair, false);
+  }
+
+  // Kafa bandı
+  px(3.4, -10.6, 5, 0.9, look.headband, false);
+
+  // Forma numarası
+  drawPixelNumber(
+    ctx,
+    data.number,
+    x + (f > 0 ? 0.8 : -0.8) * u,
+    y - 7 * u,
+    Math.max(1, Math.round(u * 0.5)),
+    secondary === primary ? '#FFFFFF' : secondary
+  );
+}
+
 // =====================================================================
 // Voleybol topu
 // =====================================================================
@@ -403,6 +521,15 @@ export function drawBall(ctx, ball, flaming = false) {
   }
 
   ctx.restore();
+
+  // Işık vurgusu — dönmeyle birlikte kaymasın diye rotasyon dışında
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+  ctx.fillRect(
+    Math.round(x - r * 0.55),
+    Math.round(y - r * 0.62),
+    Math.ceil(cell),
+    Math.ceil(cell)
+  );
 }
 
 // =====================================================================
@@ -454,7 +581,7 @@ export function drawTurkishFlag(ctx, x, y, u, wave = 0) {
 }
 
 /** 12×8 bayrak ızgarasındaki beyaz hücreler: hilal + yıldız. */
-const FLAG_WHITE = [
+export const FLAG_WHITE = [
   // Hilal
   [3, 3], [3, 4],
   [4, 2], [4, 5],

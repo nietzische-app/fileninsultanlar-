@@ -103,9 +103,10 @@ export default function ResultScreen({ result, onRematch, onHome }) {
           </div>
 
           {/* Maç istatistikleri */}
-          <div className="mt-5 grid grid-cols-3 gap-3 border-t-2 border-white/15 pt-4 text-center">
+          <div className="mt-5 grid grid-cols-2 gap-3 border-t-2 border-white/15 pt-4 text-center sm:grid-cols-4">
             <Stat label="SMAÇ" value={result.stats.spikes} />
             <Stat label="BLOK" value={result.stats.blocks} />
+            <Stat label="KURTARIŞ" value={result.stats.saves} />
             <Stat label="EN UZUN RALLİ" value={result.stats.longestRally} />
           </div>
         </div>

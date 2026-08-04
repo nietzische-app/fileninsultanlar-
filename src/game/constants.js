@@ -95,6 +95,33 @@ export const PLAYER = {
   spriteScale: 3.4,
 };
 
+/**
+ * Dalış kurtarışı (plonjon).
+ *
+ * Yere düşmek üzere olan topa son anda uzanmak için: oyuncu yatay
+ * olarak fırlar, yerde kayar ve bu sırada temas dairesi alçalıp
+ * genişler. Bedeli, kaymadan sonraki kalkma süresidir — o sırada
+ * hareket edilemez, yani ıskalayan dalış pahalıdır.
+ */
+export const DIVE = {
+  speed: 660, // fırlama hızı (px/s)
+  duration: 0.42, // kayma süresi (sn)
+  recovery: 0.24, // yerden kalkma — hareket kilitli
+  cooldown: 0.85, // ard arda dalışı engeller
+  friction: 950, // kaymadaki yavaşlama (px/s²)
+  hitOffsetY: 17, // dalışta temas merkezinin yerden yüksekliği
+  reachBonus: 18, // dalışta erişim artışı
+  liftBoost: 1.3, // kurtarılan topun kaldırma gücü çarpanı
+  /**
+   * Kurtarılan top bu hızla yükselir ve yatayda en fazla `maxDrift`
+   * kadar kayar. Yüksek ve yakın kalkmazsa dalan oyuncu kalkıp topa
+   * yetişemiyor; kurtarış sayıyı kurtarmıyor, yalnızca erteliyordu.
+   */
+  saveLift: 520,
+  maxDrift: 150,
+  chargeBonus: 10, // başarılı kurtarışta Sultan barı dolumu
+};
+
 /** Maç kuralları. */
 export const RULES = {
   /**
@@ -169,10 +196,11 @@ export const PALETTE = {
  */
 export const DIFFICULTY = {
   // placement: vuruşu rakibin boş bıraktığı alana yerleştirme becerisi
-  // (0 = tamamen rastgele, 1 = her zaman en uzak boşluğa)
-  kolay: { label: 'KOLAY', speed: 0.68, reaction: 0.4, error: 130, power: 0.85, placement: 0.12 },
-  normal: { label: 'NORMAL', speed: 0.79, reaction: 0.32, error: 112, power: 0.95, placement: 0.32 },
-  zor: { label: 'ZOR', speed: 0.94, reaction: 0.19, error: 70, power: 1.08, placement: 0.66 },
+  //            (0 = tamamen rastgele, 1 = her zaman en uzak boşluğa)
+  // diveSkill: yetişemeyeceği topa dalma olasılığı
+  kolay: { label: 'KOLAY', speed: 0.68, reaction: 0.4, error: 130, power: 0.85, placement: 0.12, diveSkill: 0.12 },
+  normal: { label: 'NORMAL', speed: 0.82, reaction: 0.29, error: 98, power: 0.97, placement: 0.4, diveSkill: 0.48 },
+  zor: { label: 'ZOR', speed: 0.94, reaction: 0.2, error: 82, power: 1.06, placement: 0.62, diveSkill: 0.6 },
 };
 
 /**

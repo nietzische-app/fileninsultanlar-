@@ -115,6 +115,19 @@ class SfxEngine {
     this.tone({ freq: 700, endFreq: 180, duration: 0.16, type: 'sawtooth', gain: 0.5 });
   }
 
+  /** Dalış — kısa hava sesi. */
+  dive() {
+    this.noise({ duration: 0.22, gain: 0.28, filterFreq: 700 });
+    this.tone({ freq: 260, endFreq: 140, duration: 0.18, type: 'sine', gain: 0.3 });
+  }
+
+  /** Dalış kurtarışı — yükselen kısa motif. */
+  save() {
+    this.tone({ freq: 392, duration: 0.08, gain: 0.5 });
+    this.tone({ freq: 587, duration: 0.13, gain: 0.5, delay: 0.07 });
+    this.noise({ duration: 0.16, gain: 0.25, filterFreq: 1200 });
+  }
+
   /** Blok. */
   block() {
     this.tone({ freq: 240, endFreq: 120, duration: 0.14, type: 'square', gain: 0.65 });

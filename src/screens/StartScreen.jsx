@@ -85,10 +85,11 @@ export default function StartScreen({ onStart, muted, onToggleMute }) {
       <div className="flex flex-col items-center gap-4">
         <div className="retro-panel px-4 py-3">
           <p className="mb-2 text-center text-[8px] text-white/50">KONTROLLER</p>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-[7px] text-white/70 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-[7px] text-white/70 sm:grid-cols-3">
             <span>← → / A D · HAREKET</span>
             <span>↑ / W · ZIPLA</span>
             <span>BOŞLUK / Z · VUR</span>
+            <span className="text-[#9BE7FF]">↓ / S · DALIŞ</span>
             <span className="text-retro-accent">X · SULTAN GÜCÜ</span>
           </div>
         </div>

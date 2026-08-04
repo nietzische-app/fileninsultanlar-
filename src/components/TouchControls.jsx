@@ -10,10 +10,11 @@ import { useCallback, useRef } from 'react';
 export default function TouchControls({ onInput, sultanReady }) {
   return (
     <div className="flex w-full max-w-[900px] select-none items-end justify-between gap-4 md:hidden">
-      {/* Sol: hareket */}
+      {/* Sol: hareket ve dalış */}
       <div className="flex gap-3">
         <HoldButton onInput={onInput} action="left" label="◀" className="h-16 w-16 text-xl" />
         <HoldButton onInput={onInput} action="right" label="▶" className="h-16 w-16 text-xl" />
+        <HoldButton onInput={onInput} action="dive" label="DAL" className="h-16 w-14 text-[8px]" />
       </div>
 
       {/* Sağ: aksiyon */}

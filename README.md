@@ -19,6 +19,7 @@ kırmızı-beyaz bir sahada, Türk bayraklarıyla dolu bir tribünün önünde.
 | --- | --- |
 | `←` `→` veya `A` `D` | Hareket |
 | `↑` veya `W` | Zıpla |
+| `↓` veya `S` | **Dalış** — yere düşmek üzere olan topa uzan |
 | `Boşluk` veya `Z` | Vur (manşet / smaç / blok) |
 | `X` | **Sultan Gücü** — alevli smaç |
 | `ESC` veya `P` | Duraklat |
@@ -35,7 +36,19 @@ Gerçek voleybol gibi çalışır ve oyunun bel kemiği budur:
 3. **Üçüncü temas hücumdur.** Zıpla + vuruş tuşu = smaç.
 
 Bir taraf topu karşıya göndermeden **en fazla 3 kez** dokunabilir; dördüncüsü
-faul, rakibe sayı. Ekranda "TEMAS" göstergesi kaç hakkın kaldığını gösterir.
+faul, rakibe sayı. Duvar skorbordlarının altındaki üç nokta kaç hakkın
+kaldığını gösterir.
+
+### Dalış kurtarışı
+
+Koşarak yetişemeyeceğin topa `↓` ile dalarsın: oyuncu yatay olarak fırlar ve
+yerde kayar; bu sırada temas alanı alçalıp genişler, yani yere değmek üzere
+olan topu yakalar. Kurtarılan top yükseğe ve yakına kalkar, toparlanıp
+hücuma geçecek zamanın olur.
+
+Bedeli var: kaymadan sonra oyuncu kısa süre yerde kalır ve yönlendirilemez.
+Iskalanan dalış yarım saniyeyi kaybettirir, o yüzden son çare olarak
+kullanılmalı — koşarak yetişebiliyorsan koş. Rakip yapay zekâsı da dalar.
 
 ### Sultan Gücü
 
@@ -121,6 +134,7 @@ src/
 │   ├── players.js            Kadro verisi, statlar, bonuslar, görünüm
 │   ├── ai.js                 Rakip ve takım arkadaşı yapay zekâsı
 │   ├── sprites.js            Piksel çizimleri (sultan, top, bayrak, kupa, rakamlar)
+│   ├── arena.js              Salon, tribün, zemin ve file çizimi
 │   └── audio.js              8-bit ses motoru
 └── utils/
     └── text.js               Türkçe büyük harf yardımcısı
@@ -182,6 +196,12 @@ küçültülmez — uçuş süresi uzatılır, çünkü vektörü küçültmek h
 gömülü sayı yok. Renkler hem burada (`PALETTE`) hem `tailwind.config.js` içinde
 tanımlı — birini değiştirirken diğerini de güncelle.
 
+**Dalış bir son çaredir, motor bunu bilir.** Yapay zekâ (ve denge testindeki
+bot) yalnızca koşarak yetişemeyeceği, dalışın gerçekten kapatabileceği ve
+yakında yere inecek toplara dalar (`diveDistance`). Bu koşullar olmadan
+"yetişemiyorsam dalayım" demek, yetişilebilecek toplara dalıp yerde kilitli
+kalmak oluyordu — dalış kazandırmaktan çok kaybettiriyordu.
+
 **Zorluk kolu `error` değeridir.** Yapay zekânın tahmini düşüş noktasına
 eklediği sapma. Temas dairesi ~53px olduğu için bunun altındaki sapmalar ıskaya
 dönüşmez ve rakip hiç sayı vermez — kademeleri ayarlarken bunu göz önünde tut.
@@ -204,8 +224,8 @@ seviyede bir oyuncuyu temsil eden bir bot ile:
 
 | Mod | Kolay | Normal | Zor |
 | --- | --- | --- | --- |
-| 1v1 | %100 kazanma (32-22) | %43 (27-28) | %0 (17-30) |
-| 2v2 | %100 (30-13) | %86 (33-21) | %0 (16-32) |
+| 1v1 | %100 kazanma (32-19) | %57 (31-34) | %0 (23-34) |
+| 2v2 | %100 (30-15) | %14 (33-38) | %0 (24-35) |
 
 Yeniden dengeleme yaparsan aynı ölçümü tekrarlamak mantıklı: tek maç örneklemi
 çok gürültülü, en az 5–7 maç ortalaması gerekiyor.

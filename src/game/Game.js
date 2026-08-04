@@ -13,6 +13,7 @@
 import {
   attackRange,
   DIFFICULTY,
+  DIVE,
   GAME_HEIGHT,
   GAME_WIDTH,
   GROUND_Y,
@@ -48,6 +49,9 @@ const KEY_MAP = {
   ArrowUp: 'up',
   w: 'up',
   W: 'up',
+  ArrowDown: 'dive',
+  s: 'dive',
+  S: 'dive',
   ' ': 'action',
   z: 'action',
   Z: 'action',
@@ -86,7 +90,15 @@ export default class Game {
     this.time = 0;
 
     /** İnsan oyuncunun girdileri (klavye + dokunmatik ortak). */
-    this.input = { left: false, right: false, up: false, action: false, sultan: false };
+    this.input = {
+      left: false,
+      right: false,
+      up: false,
+      down: false,
+      action: false,
+      dive: false,
+      sultan: false,
+    };
     this.sultanKeyLatch = false;
 
     // Maç durumu
@@ -119,7 +131,7 @@ export default class Game {
     this.shake = 0;
     this.finished = false;
 
-    this.stats = { spikes: 0, blocks: 0, longestRally: 0, rallyTouches: 0 };
+    this.stats = { spikes: 0, blocks: 0, saves: 0, longestRally: 0, rallyTouches: 0 };
 
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleKeyUp = this.handleKeyUp.bind(this);
@@ -209,7 +221,12 @@ export default class Game {
       hitCooldown: 0,
       hitRadius: PLAYER.hitRadius * getModifier(data, 'reach'),
       hitOffsetY: PLAYER.hitOffsetY,
-      input: { left: false, right: false, up: false, action: false },
+      input: { left: false, right: false, up: false, action: false, dive: false },
+      // Dalış durumu
+      diveTimer: 0,
+      recoverTimer: 0,
+      diveCooldown: 0,
+      diveDir: 1,
       // AI durumu
       aiTimer: 0,
       aiTargetX: 0,
@@ -256,6 +273,9 @@ export default class Game {
       player.onGround = true;
       player.pose = 'idle';
       player.hitCooldown = 0;
+      player.diveTimer = 0;
+      player.recoverTimer = 0;
+      player.diveCooldown = 0;
       player.aiTimer = 0;
       player.aiJumpCooldown = 0;
       player.facing = player.side === 'home' ? 1 : -1;
@@ -427,6 +447,7 @@ export default class Game {
         player.input.right = active && this.input.right;
         player.input.up = active && this.input.up;
         player.input.action = active && this.input.action;
+        player.input.dive = active && this.input.dive;
         player.aiSpeedScale = 1;
       } else if (active) {
         const isAway = player.side === 'away';
@@ -447,14 +468,86 @@ export default class Game {
         player.input.right = false;
         player.input.up = false;
         player.input.action = false;
+        player.input.dive = false;
       }
 
       this.movePlayer(player, dt);
     });
   }
 
+  /** Dalışı başlatır: oyuncu yatay olarak fırlar. */
+  startDive(player, input) {
+    const dir = input.left ? -1 : input.right ? 1 : player.facing;
+
+    player.diveTimer = DIVE.duration;
+    player.diveCooldown = DIVE.cooldown;
+    player.diveDir = dir;
+    player.facing = dir;
+    player.vx = dir * DIVE.speed * getModifier(player.data, 'speed');
+    player.vy = 0;
+    player.onGround = true;
+    player.pose = 'dive';
+    player.squash = 0;
+
+    this.spawnDust(player.x - dir * 12, GROUND_Y, 6);
+    Sfx.dive();
+  }
+
+  /**
+   * Kayma ve kalkma aşaması. Bu sırada oyuncu yönlendirilemez —
+   * dalışın bedeli budur.
+   */
+  updateDiving(player, dt) {
+    if (player.diveTimer > 0) {
+      player.diveTimer -= dt;
+
+      // Sürtünmeyle yavaşla, ters yöne geçme
+      const dir = Math.sign(player.vx) || player.diveDir;
+      player.vx -= dir * DIVE.friction * dt;
+      if (Math.sign(player.vx) !== dir) player.vx = 0;
+
+      player.x += player.vx * dt;
+
+      // Kayma tozu
+      if (Math.abs(player.vx) > 140 && Math.random() < 0.55) {
+        this.spawnDust(player.x - dir * 16, GROUND_Y, 1);
+      }
+
+      if (player.diveTimer <= 0) {
+        player.recoverTimer = DIVE.recovery;
+        player.vx = 0;
+      }
+    } else {
+      player.recoverTimer -= dt;
+    }
+
+    player.y = GROUND_Y;
+    player.vy = 0;
+    player.onGround = true;
+    player.pose = 'dive';
+
+    const bounds = sideBounds(player.side, 22);
+    player.x = clamp(player.x, bounds.min, bounds.max);
+
+    player.hitCooldown = Math.max(0, player.hitCooldown - dt);
+  }
+
   movePlayer(player, dt) {
     const { data, input } = player;
+
+    player.diveCooldown = Math.max(0, player.diveCooldown - dt);
+
+    // --- Dalış: kayma ve kalkma hareket kontrolünü devralır ---
+    if (player.diveTimer > 0 || player.recoverTimer > 0) {
+      this.updateDiving(player, dt);
+      return;
+    }
+
+    // Dalışı başlat — yerdeyken ve bekleme dolmuşken
+    if (input.dive && player.onGround && player.diveCooldown <= 0) {
+      this.startDive(player, input);
+      return;
+    }
 
     const speed =
       PHYSICS.playerSpeed * getModifier(data, 'speed') * (player.aiSpeedScale ?? 1);
@@ -610,11 +703,18 @@ export default class Game {
     this.players.forEach((player) => {
       if (player.hitCooldown > 0) return;
 
+      const diving = player.diveTimer > 0 || player.recoverTimer > 0;
+
+      // Dalışta gövde yere yakın ve uzanmış: temas merkezi alçalır,
+      // erişim artar. Yere düşmek üzere olan topu bu yakalar.
       const cx = player.x;
-      const cy = player.y - player.hitOffsetY;
-      const reach =
-        (player.hitRadius + (player.input.action ? PLAYER.reachBonus : 0)) *
-        speedPenalty;
+      const cy = player.y - (diving ? DIVE.hitOffsetY : player.hitOffsetY);
+      const bonus = diving
+        ? DIVE.reachBonus
+        : player.input.action
+          ? PLAYER.reachBonus
+          : 0;
+      const reach = (player.hitRadius + bonus) * speedPenalty;
 
       const dx = ball.x - cx;
       const dy = ball.y - cy;
@@ -669,8 +769,14 @@ export default class Game {
     const controlled =
       incomingSpeed < PHYSICS.attackControlSpeed || this.touch.count > 1;
 
+    // Dalış her zaman savunma temasıdır: topu kendi sahanda yükseğe
+    // kaldırır, hücuma kalkma hakkını sana bırakır.
+    const diving = player.diveTimer > 0 || player.recoverTimer > 0;
+
     let type;
-    if (acting && controlled) {
+    if (diving) {
+      type = 'dive';
+    } else if (acting && controlled) {
       type = airborne ? 'spike' : 'hit';
     } else {
       type = 'bump';
@@ -692,6 +798,8 @@ export default class Game {
         PHYSICS.bumpPower *
         getModifier(data, 'bumpPower') *
         (0.85 + (data.stats.defense / 100) * 0.25);
+
+      if (type === 'dive') power *= DIVE.liftBoost;
     }
 
     // Blok: file önünde havada karşılama
@@ -721,12 +829,21 @@ export default class Game {
       vx = shot.vx;
       vy = shot.vy;
     } else {
-      // Manşet: savunma teması. Temas noktasının normali yönü verir,
-      // top kendi sahanda kalır — sonraki temasta hücuma kalkarsın.
+      // Manşet ve dalış: savunma teması. Temas noktasının normali yönü
+      // verir, top kendi sahanda kalır — sonraki temasta hücuma kalkarsın.
       vx = nx * power + player.vx * 0.3;
       vy = ny * power;
-      if (vy > -260) {
-        vy = -260 - Math.random() * 70;
+
+      // Dalış kurtarışı topu daha dik ve yükseğe kaldırır ki yerden
+      // aldığın topu toparlayacak zamanın olsun.
+      const minLift = type === 'dive' ? DIVE.saveLift : 260;
+      if (vy > -minLift) {
+        vy = -minLift - Math.random() * 70;
+      }
+      if (type === 'dive') {
+        // Kurtarış yakına kalksın: dalan oyuncunun kalkıp topa
+        // yetişebilmesi için top hem yüksek hem yakın olmalı.
+        vx = clamp(vx, -DIVE.maxDrift, DIVE.maxDrift);
       }
     }
 
@@ -766,7 +883,11 @@ export default class Game {
     // Sultan barı dolumu (yalnızca insan oyuncunun tarafı)
     if (player.side === 'home') {
       const chargeMod = getModifier(this.getControlledPlayer()?.data ?? data, 'charge');
-      if (isBlock) {
+      if (type === 'dive') {
+        this.addSultanCharge(DIVE.chargeBonus * chargeMod);
+        this.stats.saves += 1;
+        this.message = { text: 'KURTARIŞ!', timer: 0.8, color: '#9BE7FF' };
+      } else if (isBlock) {
         this.addSultanCharge(SULTAN.onBlock * chargeMod);
         this.stats.blocks += 1;
         this.message = { text: 'BLOK!', timer: 0.7, color: PALETTE.gold };
@@ -777,18 +898,22 @@ export default class Game {
 
     // Ses ve parçacık
     if (!sultanFired) {
-      if (isBlock) Sfx.block();
+      if (type === 'dive') Sfx.save();
+      else if (isBlock) Sfx.block();
       else if (type === 'spike') Sfx.spike();
       else if (type === 'hit') Sfx.hit();
       else Sfx.bump();
+    }
+
+    if (type === 'dive') {
+      this.spawnRing(ball.x, ball.y, '#9BE7FF', 44);
+      this.spawnBurst(ball.x, ball.y, 10, '#9BE7FF');
     }
 
     if (type === 'spike' || isBlock) {
       this.shake = Math.max(this.shake, 8);
       this.spawnBurst(ball.x, ball.y, 12, isBlock ? PALETTE.gold : '#FFFFFF');
       this.spawnRing(ball.x, ball.y, isBlock ? PALETTE.gold : '#FFFFFF', 54);
-    } else {
-      this.spawnRing(ball.x, ball.y, 'rgba(255,255,255,0.8)', 30);
     }
   }
 
@@ -1153,7 +1278,7 @@ export default class Game {
     }
 
     this.ballTrail.push({ x: ball.x, y: ball.y });
-    if (this.ballTrail.length > 7) this.ballTrail.shift();
+    if (this.ballTrail.length > 5) this.ballTrail.shift();
   }
 
   drawBallTrail() {
@@ -1165,9 +1290,9 @@ export default class Game {
 
     this.ballTrail.forEach((point, i) => {
       const t = (i + 1) / count;
-      ctx.globalAlpha = t * 0.4;
+      ctx.globalAlpha = t * 0.26;
       ctx.fillStyle = flaming ? PALETTE.flame[1] : '#FFFFFF';
-      const size = this.ball.radius * 1.4 * t;
+      const size = this.ball.radius * 1.1 * t;
       ctx.fillRect(point.x - size / 2, point.y - size / 2, size, size);
     });
 
@@ -1251,11 +1376,17 @@ export default class Game {
       );
     }
 
-    drawArena(ctx, this.time, this.hype);
+    drawArena(ctx, this.time, this.hype, this.score, this.touch);
     drawFloor(ctx);
 
     // Gölgeler önce
     this.players.forEach((p) => {
+      const isDiving = p.diveTimer > 0 || p.recoverTimer > 0;
+      if (isDiving) {
+        // Yatan gövde geniş ve yakın bir gölge bırakır
+        this.drawShadow(p.x - p.facing * 8, GROUND_Y, 44);
+        return;
+      }
       // Havadayken gölge küçülür — yükseklik hissi verir
       const lift = clamp((GROUND_Y - p.y) / 170, 0, 1);
       this.drawShadow(p.x, GROUND_Y, 30 * (1 - lift * 0.45));
@@ -1272,7 +1403,6 @@ export default class Game {
 
     ctx.restore();
 
-    this.drawTouchIndicator();
     this.drawMessages();
   }
 
@@ -1300,7 +1430,13 @@ export default class Game {
     let scaleX = 1;
     let scaleY = 1;
 
-    if (player.squash > 0) {
+    const diving = player.diveTimer > 0 || player.recoverTimer > 0;
+
+    if (diving) {
+      // Dalış sprite'ı zaten yatay — ölçekleme bozar
+      scaleX = 1;
+      scaleY = 1;
+    } else if (player.squash > 0) {
       const t = player.squash / 0.16;
       scaleY = 1 - 0.24 * t;
       scaleX = 1 + 0.2 * t;
@@ -1357,53 +1493,6 @@ export default class Game {
       ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
     });
     ctx.globalAlpha = 1;
-  }
-
-  /**
-   * Üç temas göstergesi — hangi tarafın kaç dokunuşu kaldığını gösterir.
-   * Sayıları belirleyen bir kural olduğu için oyuncunun görmesi şart.
-   */
-  drawTouchIndicator() {
-    if (this.phase !== PHASE.RALLY || !this.touch.side) return;
-
-    const { ctx } = this;
-    const isHome = this.touch.side === 'home';
-    const centerX = isHome ? GAME_WIDTH * 0.25 : GAME_WIDTH * 0.75;
-    // Panoların altındaki temiz bant. Panoya değmemeli, mesaj
-    // kutusunun da altında kalmalı.
-    const y = 292;
-    const box = 14;
-    const gap = 8;
-    const totalW = RULES.maxTouches * box + (RULES.maxTouches - 1) * gap;
-
-    // Okunabilirlik için koyu zemin
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(centerX - totalW / 2 - 12, y - 22, totalW + 24, box + 30);
-
-    ctx.font = '8px "Press Start 2P", monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.fillText('TEMAS', centerX, y - 12);
-
-    for (let i = 0; i < RULES.maxTouches; i += 1) {
-      const x = centerX - totalW / 2 + i * (box + gap);
-      const used = i < this.touch.count;
-      const last = this.touch.count === RULES.maxTouches;
-
-      ctx.fillStyle = used
-        ? last
-          ? PALETTE.turkishRed
-          : isHome
-            ? PALETTE.gold
-            : '#9BB0FF'
-        : 'rgba(255,255,255,0.12)';
-      ctx.fillRect(x, y, box, box);
-
-      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x, y, box, box);
-    }
   }
 
   /** Aşama mesajları ve geri sayım. */

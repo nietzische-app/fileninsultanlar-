@@ -23,7 +23,7 @@ import {
   PALETTE,
   WALL_PAD,
 } from './constants.js';
-import { drawTurkishFlag } from './sprites.js';
+import { drawPixelNumber, drawTurkishFlag, FLAG_WHITE } from './sprites.js';
 
 /** Tavandaki ışıkların yatay konumları. */
 const LIGHT_X = [GAME_WIDTH * 0.18, GAME_WIDTH * 0.5, GAME_WIDTH * 0.82];
@@ -58,8 +58,10 @@ function rand(seed) {
  * @param {CanvasRenderingContext2D} ctx
  * @param {number} time Saniye
  * @param {number} [hype] 0–1, sayı sonrası tribün coşkusu
+ * @param {{home:number, away:number}} [score] Duvar skorbordunda gösterilir
+ * @param {{side:string, count:number}} [touch] Üç temas göstergesi
  */
-export function drawArena(ctx, time, hype = 0) {
+export function drawArena(ctx, time, hype = 0, score = null, touch = null) {
   drawShell(ctx);
   drawRoof(ctx, time);
 
@@ -99,6 +101,7 @@ export function drawArena(ctx, time, hype = 0) {
 
   drawAdBoards(ctx, time);
   drawBackWall(ctx);
+  drawWallScoreboards(ctx, score, touch);
   drawLightBeams(ctx, time);
 }
 
@@ -340,6 +343,66 @@ function drawBackWall(ctx) {
   ctx.fillRect(0, GROUND_Y - 60, GAME_WIDTH, 60);
 }
 
+/**
+ * Salonun iki yanındaki duvar skorbordları.
+ *
+ * Panoların altındaki geniş bant bomboştu. Skorbordlar hem o boşluğu
+ * dolduruyor hem de salon hissini güçlendiriyor. Topun uçtuğu orta
+ * koridordan uzakta, kenarlara yerleştirildiler.
+ */
+function drawWallScoreboards(ctx, score, touch) {
+  if (!score) return;
+
+  const boards = [
+    { x: 112, label: PALETTE.turkishRed, value: score.home, side: 'home' },
+    { x: GAME_WIDTH - 112, label: '#7d8ad8', value: score.away, side: 'away' },
+  ];
+
+  boards.forEach(({ x, label, value, side }) => {
+    const w = 96;
+    const h = 62;
+    const top = 246;
+    const left = x - w / 2;
+
+    // Gövde ve çerçeve
+    ctx.fillStyle = '#05050c';
+    ctx.fillRect(left, top, w, h);
+    ctx.fillStyle = '#2a2a4a';
+    ctx.fillRect(left, top, w, 3);
+    ctx.fillRect(left, top + h - 3, w, 3);
+    ctx.fillRect(left, top, 3, h);
+    ctx.fillRect(left + w - 3, top, 3, h);
+
+    // Askı çubukları
+    ctx.fillStyle = '#1d1d38';
+    ctx.fillRect(x - 22, top - 10, 4, 10);
+    ctx.fillRect(x + 18, top - 10, 4, 10);
+
+    // Takım şeridi
+    ctx.fillStyle = label;
+    ctx.fillRect(left + 8, top + 9, w - 16, 5);
+
+    // Skor — piksel rakamlarla
+    drawPixelNumber(ctx, value, x, top + 32, 4, '#FF6B3D');
+
+    // Üç temas göstergesi — skorbordun altında.
+    // Ayrı bir kutu olarak sahaya konduğunda oyuncu isim etiketiyle
+    // çakışıyordu; skorbord zaten doğru yerde ve boşta duruyor.
+    const active = touch && touch.side === side ? touch.count : 0;
+    for (let i = 0; i < 3; i += 1) {
+      const dotX = x - 21 + i * 15;
+      const dotY = top + h - 14;
+      const used = i < active;
+      ctx.fillStyle = used
+        ? active >= 3
+          ? PALETTE.turkishRed
+          : PALETTE.gold
+        : 'rgba(255,255,255,0.14)';
+      ctx.fillRect(dotX, dotY, 10, 8);
+    }
+  });
+}
+
 /** Projektör huzmeleri — üstte parlak, zeminde sönen gradyan. */
 function drawLightBeams(ctx, time) {
   LIGHT_X.forEach((x, i) => {
@@ -417,6 +480,9 @@ export function drawFloor(ctx) {
     NET.x + 130,
   ].forEach((x) => drawConvergingLine(ctx, x, GROUND_Y, nearY));
 
+  drawCourtEmblem(ctx);
+  drawFloorTexture(ctx);
+
   // Parke parlaması — zeminde yatay şeritler
   ctx.fillStyle = PALETTE.floorSheen;
   for (let y = GROUND_Y + 12; y < nearY; y += 16) {
@@ -424,6 +490,57 @@ export function drawFloor(ctx) {
     const r = floorX(GAME_WIDTH - WALL_PAD, y);
     ctx.fillRect(Math.round(l), Math.round(y), Math.round(r - l), 1);
   }
+}
+
+/**
+ * Sahanın ortasındaki ay-yıldız amblemi.
+ *
+ * Bayraktaki hilal-yıldız deseninin büyütülmüş hali kullanılır: kendi
+ * eğri hesabımla çizdiğim yay kopuk çıkıyor ve zeminde leke gibi
+ * duruyordu. Zemin düzlemine yatmış görünmesi için dikeyde basıktır.
+ */
+function drawCourtEmblem(ctx) {
+  const cx = GAME_WIDTH / 2;
+  // File tabanının altında, açık zeminde dursun
+  const cy = GROUND_Y + (FLOOR.nearY - GROUND_Y) * 0.66;
+
+  const cellW = 14;
+  const cellH = 9;
+  // Desen 12 sütun × 8 satır; merkeze hizala
+  const originX = cx - (12 * cellW) / 2;
+  const originY = cy - (8 * cellH) / 2;
+
+  ctx.save();
+  ctx.globalAlpha = 0.3;
+  ctx.fillStyle = '#FFFFFF';
+
+  FLAG_WHITE.forEach(([c, r]) => {
+    ctx.fillRect(
+      Math.round(originX + c * cellW),
+      Math.round(originY + r * cellH),
+      Math.ceil(cellW),
+      Math.ceil(cellH)
+    );
+  });
+
+  ctx.restore();
+}
+
+/** Zemin dokusu — seyrek koyu benekler, düz boya hissini kırar. */
+function drawFloorTexture(ctx) {
+  ctx.save();
+  ctx.globalAlpha = 0.09;
+  ctx.fillStyle = '#000000';
+
+  for (let i = 0; i < 220; i += 1) {
+    const n = rand(i * 3.13);
+    const m = rand(i * 7.77);
+    const y = GROUND_Y + m * (FLOOR.nearY - GROUND_Y);
+    const x = floorX(WALL_PAD + n * (GAME_WIDTH - WALL_PAD * 2), y);
+    ctx.fillRect(Math.round(x), Math.round(y), 3, 2);
+  }
+
+  ctx.restore();
 }
 
 /** Perspektifle genişleyen bir saha çizgisi. */
@@ -472,6 +589,20 @@ export function drawNet(ctx, netFloorY) {
   ctx.fillRect(left, topY, NET.width, NET.height);
   ctx.fillStyle = 'rgba(0,0,0,0.28)';
   ctx.fillRect(left + NET.width - 4, topY, 4, NET.height);
+
+  // Direk pedi — gerçek sahalarda direğin alt bölümü yastıklıdır.
+  // Örgünün altında başlamalı; üstüne taşınca ikisi birleşip kırmızı
+  // bir boru gibi görünüyordu.
+  const padTop = meshBottom + 6;
+  const padH = netFloorY - padTop;
+  ctx.fillStyle = PALETTE.turkishRed;
+  ctx.fillRect(left - 3, padTop, NET.width + 6, padH);
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx.fillRect(left - 3, padTop, 3, padH);
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';
+  ctx.fillRect(left + NET.width, padTop, 3, padH);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(left - 3, padTop, NET.width + 6, 3);
 
   // Direk tabanı
   ctx.fillStyle = '#8d90a0';

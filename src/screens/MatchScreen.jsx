@@ -183,7 +183,7 @@ export default function MatchScreen({ config, onFinish, onQuit }) {
       </div>
 
       <p className="hidden text-center text-[7px] leading-relaxed text-white/35 md:block">
-        ← → HAREKET · ↑ ZIPLA · BOŞLUK VUR · X SULTAN GÜCÜ · ESC DURAKLAT
+        ← → HAREKET · ↑ ZIPLA · ↓ DALIŞ · BOŞLUK VUR · X SULTAN GÜCÜ · ESC DURAKLAT
       </p>
     </div>
   );
