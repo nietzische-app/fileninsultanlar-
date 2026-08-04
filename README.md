@@ -179,11 +179,19 @@ src/
 │   ├── MuteButton.jsx        Ses aç/kapa (tüm ekranlar)
 │   ├── TouchControls.jsx     Mobil kontroller
 │   └── ErrorBoundary.jsx     Yakalanmamış hata ekranı
+├── screens/
+│   ├── StartScreen.jsx       Solo / Co-Op / VS menü
+│   ├── CharacterSelect.jsx   Solo kadro seçimi
+│   ├── VersusSelect.jsx      Street Fighter tarzı 2P seçim
+│   ├── MatchScreen.jsx       Maç HUD + canvas
+│   ├── ResultScreen.jsx      Sonuç
+│   └── TutorialScreen.jsx    Sultan Rehberi
 ├── game/
 │   ├── constants.js          Ölçüler, fizik, kurallar, palet, zorluk kademeleri
 │   ├── Game.js               Motor: döngü, fizik, çarpışma, skor, çizim
 │   ├── rules.js              Saf set/maç/üç-temas kuralları
 │   ├── ballistics.js         Saf smaç/pas balistiği
+│   ├── serve.js              Servis gücü / nişan
 │   ├── effects.js            Parçacık, darbe halkası, top izi
 │   ├── combo.js              Ralli kombosu kuralları
 │   ├── math.js               clamp yardımcısı
