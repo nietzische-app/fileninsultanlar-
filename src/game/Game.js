@@ -1027,7 +1027,8 @@ export default class Game {
         timer: this.rules.servePause,
         color: reason ? PALETTE.gold : PALETTE.turkishRed,
       };
-      Sfx.point();
+      if (this.streak.count >= 3) Sfx.streak(this.streak.count);
+      else Sfx.point();
     } else {
       this.message = {
         text: reason ?? `${this.opponent.shortName} SAYI`,

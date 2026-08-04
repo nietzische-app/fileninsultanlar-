@@ -11,6 +11,7 @@ export default function Scoreboard({
   awayName = 'RAKİP',
   awayAccent = 'text-[#9BB0FF]',
   pointsPerSet = RULES.pointsPerSet,
+  compact = false,
 }) {
   const accentClass = awayAccent.startsWith('text-') || awayAccent.startsWith('#')
     ? awayAccent.startsWith('#')
@@ -20,7 +21,11 @@ export default function Scoreboard({
   const accentStyle = awayAccent.startsWith('#') ? { color: awayAccent } : undefined;
 
   return (
-    <div className="retro-panel w-full max-w-[900px] px-3 py-3 sm:px-5">
+    <div
+      className={`retro-panel w-full max-w-[900px] ${
+        compact ? 'px-2 py-2 sm:px-5 sm:py-3' : 'px-3 py-3 sm:px-5'
+      }`}
+    >
       <div className="flex items-center justify-between gap-2">
         <TeamBlock
           name="TÜRKİYE"
@@ -29,6 +34,7 @@ export default function Scoreboard({
           sets={sets.home}
           accent="text-turkiye-red"
           align="left"
+          compact={compact}
         />
 
         <div className="flex shrink-0 flex-col items-center gap-1">
@@ -46,10 +52,11 @@ export default function Scoreboard({
           accent={accentClass ?? 'text-[#9BB0FF]'}
           accentStyle={accentStyle}
           align="right"
+          compact={compact}
         />
       </div>
 
-      {setHistory.length > 0 && (
+      {setHistory.length > 0 && !compact && (
         <div className="mt-3 flex flex-wrap items-center justify-center gap-2 border-t-2 border-white/15 pt-2">
           {setHistory.map((set, i) => (
             <span
@@ -65,30 +72,50 @@ export default function Scoreboard({
           ))}
         </div>
       )}
+
+      {setHistory.length > 0 && compact && (
+        <div className="mt-1 hidden flex-wrap items-center justify-center gap-1 border-t border-white/10 pt-1 sm:flex">
+          {setHistory.map((set, i) => (
+            <span key={i} className="text-[6px] text-white/40">
+              {set.home}-{set.away}
+              {i < setHistory.length - 1 ? ' · ' : ''}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function TeamBlock({ name, points, sets, accent, accentStyle, align, flag = false }) {
+function TeamBlock({ name, points, sets, accent, accentStyle, align, flag = false, compact = false }) {
   const isLeft = align === 'left';
 
   return (
     <div
-      className={`flex min-w-0 flex-1 items-center gap-2 sm:gap-3 ${
+      className={`flex min-w-0 flex-1 items-center gap-1.5 sm:gap-3 ${
         isLeft ? 'justify-start' : 'flex-row-reverse justify-start'
       }`}
     >
-      {flag && <MiniFlag />}
+      {flag && !compact && <MiniFlag />}
+      {flag && compact && (
+        <span className="hidden sm:inline-flex">
+          <MiniFlag />
+        </span>
+      )}
       <div className={`flex min-w-0 flex-col ${isLeft ? 'items-start' : 'items-end'}`}>
         <span
-          className={`truncate text-[8px] sm:text-[10px] ${accent ?? ''}`}
+          className={`truncate text-[7px] sm:text-[10px] ${accent ?? ''}`}
           style={accentStyle}
         >
           {name}
         </span>
-        <span className="text-[8px] text-white/40">{sets} SET</span>
+        <span className="text-[7px] text-white/40 sm:text-[8px]">{sets} SET</span>
       </div>
-      <span className="ml-auto text-xl text-white text-shadow-pixel sm:text-3xl">
+      <span
+        className={`ml-auto text-shadow-pixel text-white ${
+          compact ? 'text-lg sm:text-3xl' : 'text-xl sm:text-3xl'
+        }`}
+      >
         {points}
       </span>
     </div>

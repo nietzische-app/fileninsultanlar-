@@ -1,43 +1,56 @@
 import { useCallback, useRef } from 'react';
+import Sfx from '../game/audio.js';
 
 /**
  * Mobil cihazlar için ekran üstü kontroller.
  *
- * Pointer olaylarını motorun `setInput` API'sine bağlar. Parmak
- * butondan kayarsa tuş takılı kalmasın diye pointer capture ve
- * pointercancel/pointerleave da dinlenir.
+ * Pointer capture ile çoklu dokunuş desteklenir (ör. sol + zıpla).
+ * `pointerleave` bilerek yok — kaydırırken tuşun erken bırakılmasını
+ * ve bazı mobil tarayıcılarda takılı kalmayı önler.
  */
 export default function TouchControls({ onInput, sultanReady }) {
   return (
-    <div className="flex w-full max-w-[900px] select-none items-end justify-between gap-4 md:hidden">
-      {/* Sol: hareket ve dalış */}
-      <div className="flex gap-3">
-        <HoldButton onInput={onInput} action="left" label="◀" className="h-16 w-16 text-xl" />
-        <HoldButton onInput={onInput} action="right" label="▶" className="h-16 w-16 text-xl" />
-        <HoldButton onInput={onInput} action="dive" label="DAL" className="h-16 w-14 text-[8px]" />
+    <div
+      className="touch-controls flex w-full max-w-[900px] select-none items-end justify-between gap-3 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] md:hidden"
+      onPointerDown={() => Sfx.unlock()}
+    >
+      {/* Sol: hareket + dalış */}
+      <div className="flex flex-col gap-2">
+        <div className="flex gap-2">
+          <HoldButton onInput={onInput} action="left" label="◀" className="h-[3.75rem] w-[3.75rem] text-2xl" />
+          <HoldButton onInput={onInput} action="right" label="▶" className="h-[3.75rem] w-[3.75rem] text-2xl" />
+        </div>
+        <HoldButton
+          onInput={onInput}
+          action="dive"
+          label="DAL"
+          className="h-12 w-full min-w-[7.75rem] text-[9px]"
+        />
       </div>
 
-      {/* Sağ: aksiyon */}
-      <div className="flex items-end gap-3">
-        <HoldButton
-          onInput={onInput}
-          action="sultan"
-          label="SULTAN"
-          className={`h-14 w-16 text-[7px] ${
-            sultanReady ? 'animate-pulse-gold border-retro-accent bg-turkiye-red' : ''
-          }`}
-        />
-        <HoldButton
-          onInput={onInput}
-          action="action"
-          label="VUR"
-          className="h-16 w-16 text-[9px]"
-        />
+      {/* Sağ: aksiyonlar */}
+      <div className="flex items-end gap-2">
+        <div className="flex flex-col gap-2">
+          <HoldButton
+            onInput={onInput}
+            action="sultan"
+            label="SULTAN"
+            className={`h-12 w-[3.5rem] text-[7px] ${
+              sultanReady ? 'animate-pulse-gold border-retro-accent bg-turkiye-red' : ''
+            }`}
+          />
+          <HoldButton
+            onInput={onInput}
+            action="action"
+            label="VUR"
+            className="h-[3.75rem] w-[3.5rem] text-[9px]"
+          />
+        </div>
         <HoldButton
           onInput={onInput}
           action="up"
           label="ZIPLA"
-          className="h-20 w-20 text-[9px]"
+          className="h-[7.25rem] w-[4.25rem] text-[9px]"
         />
       </div>
     </div>
@@ -50,7 +63,12 @@ function HoldButton({ onInput, action, label, className = '' }) {
   const press = useCallback(
     (event) => {
       event.preventDefault();
-      event.currentTarget.setPointerCapture?.(event.pointerId);
+      event.stopPropagation();
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        // bazı tarayıcılarda capture başarısız olabilir
+      }
       event.currentTarget.dataset.pressed = 'true';
       pressedRef.current = true;
       onInput(action, true);
@@ -64,6 +82,13 @@ function HoldButton({ onInput, action, label, className = '' }) {
       event.preventDefault();
       event.currentTarget.dataset.pressed = 'false';
       pressedRef.current = false;
+      if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+        try {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        } catch {
+          // ignore
+        }
+      }
       onInput(action, false);
     },
     [action, onInput]
@@ -77,7 +102,7 @@ function HoldButton({ onInput, action, label, className = '' }) {
       onPointerDown={press}
       onPointerUp={release}
       onPointerCancel={release}
-      onPointerLeave={release}
+      onLostPointerCapture={release}
       onContextMenu={(e) => e.preventDefault()}
     >
       {label}

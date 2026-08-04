@@ -6,25 +6,25 @@ import { SULTAN } from '../game/constants.js';
  * Sayı alındıkça ve başarılı bloklarla dolar. Dolduğunda X tuşu
  * (veya dokunmatik SULTAN butonu) alevli smacı tetikler.
  */
-export default function SultanBar({ charge, ready, armed, onActivate }) {
+export default function SultanBar({ charge, ready, armed, onActivate, compact = false }) {
   const percent = Math.min(100, (charge / SULTAN.max) * 100);
-  const segments = 20;
+  const segments = compact ? 12 : 20;
   const filled = Math.round((percent / 100) * segments);
 
   return (
-    <div className="flex w-full max-w-[900px] items-center gap-3">
+    <div className={`flex w-full max-w-[900px] items-center ${compact ? 'gap-2' : 'gap-3'}`}>
       <span
-        className={`shrink-0 text-[8px] uppercase ${
-          ready ? 'text-retro-accent' : 'text-white/50'
-        }`}
+        className={`shrink-0 uppercase ${
+          compact ? 'text-[7px]' : 'text-[8px]'
+        } ${ready ? 'text-retro-accent' : 'text-white/50'}`}
       >
-        Sultan Gücü
+        {compact ? 'SULTAN' : 'Sultan Gücü'}
       </span>
 
       <div
-        className={`relative flex h-6 flex-1 gap-[2px] border-2 p-[3px] ${
-          ready ? 'border-retro-accent' : 'border-white/30'
-        }`}
+        className={`relative flex flex-1 gap-[2px] border-2 p-[3px] ${
+          compact ? 'h-4' : 'h-6'
+        } ${ready ? 'border-retro-accent' : 'border-white/30'}`}
       >
         {Array.from({ length: segments }, (_, i) => (
           <span
@@ -44,20 +44,22 @@ export default function SultanBar({ charge, ready, armed, onActivate }) {
         )}
       </div>
 
-      <button
-        type="button"
-        onClick={onActivate}
-        disabled={!ready || armed}
-        className={`shrink-0 border-2 px-3 py-2 text-[8px] uppercase transition ${
-          armed
-            ? 'border-retro-accent bg-retro-accent text-black'
-            : ready
-              ? 'animate-pulse-gold border-retro-accent bg-turkiye-red text-white'
-              : 'cursor-not-allowed border-white/20 text-white/30'
-        }`}
-      >
-        {armed ? 'AKTİF!' : 'X · ATEŞLE'}
-      </button>
+      {!compact && (
+        <button
+          type="button"
+          onClick={onActivate}
+          disabled={!ready || armed}
+          className={`shrink-0 border-2 px-3 py-2 text-[8px] uppercase transition ${
+            armed
+              ? 'border-retro-accent bg-retro-accent text-black'
+              : ready
+                ? 'animate-pulse-gold border-retro-accent bg-turkiye-red text-white'
+                : 'cursor-not-allowed border-white/20 text-white/30'
+          }`}
+        >
+          {armed ? 'AKTİF!' : 'X · ATEŞLE'}
+        </button>
+      )}
     </div>
   );
 }

@@ -69,6 +69,15 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
     };
   }, [config]);
 
+  // --- Maç sırasında sayfa kaydırmasını kilitle (mobil) ---
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   // --- Sekme arka plana geçince duraklat ---
   useEffect(() => {
     const handleVisibility = () => {
@@ -106,6 +115,7 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
     const game = gameRef.current;
     if (!game || game.finished) return;
 
+    Sfx.unlock();
     Sfx.select();
     if (game.running) {
       game.stop();
@@ -117,48 +127,58 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
   }, []);
 
   const handleTouchInput = useCallback((name, pressed) => {
+    Sfx.unlock();
     gameRef.current?.setInput(name, pressed);
   }, []);
 
   const handleSultan = useCallback(() => {
+    Sfx.unlock();
     gameRef.current?.activateSultan();
   }, []);
+
+  const handleQuit = useCallback(() => {
+    Sfx.unlock();
+    onQuit();
+  }, [onQuit]);
 
   const squad = config.homeIds.map((id) => getPlayerById(id)).filter(Boolean);
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-[960px] flex-col items-center gap-4 px-3 py-5">
-      <Scoreboard
-        score={hud.score}
-        sets={hud.sets}
-        setNumber={hud.setNumber}
-        setHistory={hud.setHistory}
-        awayName={hud.opponentName}
-        awayAccent={hud.opponentAccent}
-        pointsPerSet={hud.pointsPerSet}
-      />
+    <div className="match-screen mx-auto flex min-h-full w-full max-w-[960px] flex-col items-center gap-3 px-2 py-3 max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:justify-between max-md:overflow-hidden max-md:overscroll-none max-md:py-2 sm:gap-4 sm:px-3 sm:py-5">
+      <div className="w-full shrink-0">
+        <Scoreboard
+          score={hud.score}
+          sets={hud.sets}
+          setNumber={hud.setNumber}
+          setHistory={hud.setHistory}
+          awayName={hud.opponentName}
+          awayAccent={hud.opponentAccent}
+          pointsPerSet={hud.pointsPerSet}
+          compact
+        />
+      </div>
 
-      {/* Oyun alanı */}
-      <div className="scanlines relative w-full max-w-[900px] border-4 border-white/85 bg-black">
+      {/* Oyun alanı — mobilde viewport'un ~%40'ı */}
+      <div className="scanlines relative w-full max-w-[900px] shrink border-4 border-white/85 bg-black max-md:max-h-[min(42dvh,280px)]">
         <canvas
           ref={canvasRef}
           width={GAME_WIDTH}
           height={GAME_HEIGHT}
-          className="pixelated block h-auto w-full"
+          className="pixelated block h-auto max-h-full w-full"
           style={{ aspectRatio: `${GAME_WIDTH} / ${GAME_HEIGHT}` }}
           aria-label="Filenin Sultanları voleybol sahası"
         />
 
         {/* Duraklatma katmanı */}
         {paused && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-5 bg-black/80">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-black/80 px-3">
             <p className="text-lg text-retro-accent">DURAKLATILDI</p>
             <div className="flex flex-wrap justify-center gap-3">
               <button type="button" className="retro-button" onClick={togglePause}>
                 DEVAM ET
               </button>
               <MuteButton muted={muted} onToggle={onToggleMute} />
-              <button type="button" className="retro-button-ghost" onClick={onQuit}>
+              <button type="button" className="retro-button-ghost" onClick={handleQuit}>
                 MAÇTAN ÇIK
               </button>
             </div>
@@ -166,18 +186,30 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
         )}
       </div>
 
-      <SultanBar
-        charge={hud.sultanCharge}
-        ready={hud.sultanReady}
-        armed={hud.sultanArmed}
-        onActivate={handleSultan}
-      />
+      <div className="w-full shrink-0 max-md:hidden">
+        <SultanBar
+          charge={hud.sultanCharge}
+          ready={hud.sultanReady}
+          armed={hud.sultanArmed}
+          onActivate={handleSultan}
+        />
+      </div>
 
-      <TouchControls onInput={handleTouchInput} sultanReady={hud.sultanReady} />
+      {/* Mobil: ince sultan barı + dokunmatik */}
+      <div className="flex w-full shrink-0 flex-col gap-2 md:hidden">
+        <SultanBar
+          charge={hud.sultanCharge}
+          ready={hud.sultanReady}
+          armed={hud.sultanArmed}
+          onActivate={handleSultan}
+          compact
+        />
+        <TouchControls onInput={handleTouchInput} sultanReady={hud.sultanReady} />
+      </div>
 
-      {/* Alt bilgi çubuğu */}
-      <div className="flex w-full max-w-[900px] flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3 text-[7px] text-white/45">
+      {/* Alt bilgi — masaüstünde tam, mobilde yalnız hızlı aksiyonlar */}
+      <div className="flex w-full max-w-[900px] shrink-0 flex-wrap items-center justify-between gap-2 max-md:pb-[env(safe-area-inset-bottom)]">
+        <div className="hidden items-center gap-3 text-[7px] text-white/45 sm:flex">
           <span>{upper(config.mode)}</span>
           <span className="text-white/20">|</span>
           <span>{upper(config.format ?? 'classic')}</span>
@@ -191,12 +223,20 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
           )}
         </div>
 
-        <div className="flex flex-wrap gap-3">
-          <MuteButton muted={muted} onToggle={onToggleMute} />
-          <button type="button" className="retro-button-ghost px-4 py-2 text-[8px]" onClick={togglePause}>
+        <div className="flex w-full justify-end gap-2 sm:w-auto sm:gap-3">
+          <MuteButton muted={muted} onToggle={onToggleMute} className="max-md:px-3 max-md:py-2" />
+          <button
+            type="button"
+            className="retro-button-ghost px-4 py-2 text-[8px] max-md:px-3"
+            onClick={togglePause}
+          >
             {paused ? 'DEVAM' : 'DURAKLAT'}
           </button>
-          <button type="button" className="retro-button-ghost px-4 py-2 text-[8px]" onClick={onQuit}>
+          <button
+            type="button"
+            className="retro-button-ghost hidden px-4 py-2 text-[8px] sm:inline-flex"
+            onClick={handleQuit}
+          >
             ÇIK
           </button>
         </div>

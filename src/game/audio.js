@@ -67,7 +67,7 @@ class SfxEngine {
     osc.stop(start + duration + 0.02);
   }
 
-  /** Beyaz gürültü patlaması — smaç ve alkış için. */
+  /** Beyaz gürültü patlaması — smaç, alkış ve tribün için. */
   noise({ duration = 0.14, gain = 0.35, delay = 0, filterFreq = 1400 }) {
     if (!this.ctx || this.muted) return;
 
@@ -97,6 +97,27 @@ class SfxEngine {
     src.start(start);
   }
 
+  /**
+   * Tribün / alkış katmanı — birkaç frekansta gürültü patlaması.
+   * @param {{ intensity?: number, duration?: number, delay?: number }} [opts]
+   */
+  crowd({ intensity = 1, duration = 0.7, delay = 0 } = {}) {
+    const g = Math.min(1.6, intensity);
+    this.noise({ duration, gain: 0.11 * g, filterFreq: 2400, delay });
+    this.noise({
+      duration: duration * 0.75,
+      gain: 0.09 * g,
+      filterFreq: 1100,
+      delay: delay + 0.04,
+    });
+    this.noise({
+      duration: duration * 0.55,
+      gain: 0.07 * g,
+      filterFreq: 3800,
+      delay: delay + 0.09,
+    });
+  }
+
   // --- Oyun efektleri -------------------------------------------------
 
   /** Manşet / normal temas. */
@@ -121,16 +142,18 @@ class SfxEngine {
     this.tone({ freq: 260, endFreq: 140, duration: 0.18, type: 'sine', gain: 0.3 });
   }
 
-  /** Dalış kurtarışı — yükselen kısa motif. */
+  /** Dalış kurtarışı — yükselen kısa motif + hafif alkış. */
   save() {
     this.tone({ freq: 392, duration: 0.08, gain: 0.5 });
     this.tone({ freq: 587, duration: 0.13, gain: 0.5, delay: 0.07 });
     this.noise({ duration: 0.16, gain: 0.25, filterFreq: 1200 });
+    this.crowd({ intensity: 0.55, duration: 0.35, delay: 0.05 });
   }
 
   /** Blok. */
   block() {
     this.tone({ freq: 240, endFreq: 120, duration: 0.14, type: 'square', gain: 0.65 });
+    this.crowd({ intensity: 0.45, duration: 0.28, delay: 0.02 });
   }
 
   /** File teması. */
@@ -143,11 +166,26 @@ class SfxEngine {
     this.tone({ freq: 150, endFreq: 70, duration: 0.18, type: 'sine', gain: 0.7 });
   }
 
-  /** Sayı — kısa yükselen arpej. */
+  /** Sayı — yükselen arpej + tribün. */
   point() {
-    this.tone({ freq: 523, duration: 0.09, gain: 0.5 });
-    this.tone({ freq: 659, duration: 0.09, gain: 0.5, delay: 0.08 });
-    this.tone({ freq: 784, duration: 0.14, gain: 0.5, delay: 0.16 });
+    this.tone({ freq: 523, duration: 0.09, gain: 0.52 });
+    this.tone({ freq: 659, duration: 0.09, gain: 0.52, delay: 0.08 });
+    this.tone({ freq: 784, duration: 0.14, gain: 0.52, delay: 0.16 });
+    this.tone({ freq: 1047, duration: 0.12, gain: 0.35, type: 'triangle', delay: 0.26 });
+    this.crowd({ intensity: 0.85, duration: 0.55, delay: 0.04 });
+  }
+
+  /**
+   * Üst üste sayı — daha coşkulu sevinç.
+   * @param {number} [count]
+   */
+  streak(count = 3) {
+    const steps = Math.min(6, Math.max(3, count));
+    const base = [523, 659, 784, 988, 1175, 1319];
+    base.slice(0, steps).forEach((freq, i) => {
+      this.tone({ freq, duration: 0.1, gain: 0.5, delay: i * 0.07 });
+    });
+    this.crowd({ intensity: 0.9 + steps * 0.12, duration: 0.7, delay: 0.05 });
   }
 
   /** Rakip sayı aldı — alçalan iki nota. */
@@ -167,6 +205,7 @@ class SfxEngine {
   sultanFire() {
     this.tone({ freq: 180, endFreq: 1200, duration: 0.28, type: 'sawtooth', gain: 0.55 });
     this.noise({ duration: 0.3, gain: 0.35, filterFreq: 900 });
+    this.crowd({ intensity: 0.7, duration: 0.4, delay: 0.05 });
   }
 
   /** Hakem düdüğü — set/maç başı. */
@@ -175,20 +214,33 @@ class SfxEngine {
     this.tone({ freq: 2400, endFreq: 2000, duration: 0.12, type: 'sine', gain: 0.35, delay: 0.1 });
   }
 
-  /** Set kazanıldı. */
+  /** Set kazanıldı — fanfar + alkış. */
   setWon() {
-    [659, 784, 988].forEach((freq, i) => {
-      this.tone({ freq, duration: 0.12, gain: 0.5, delay: i * 0.09 });
+    [659, 784, 988, 1175].forEach((freq, i) => {
+      this.tone({ freq, duration: 0.13, gain: 0.52, delay: i * 0.09 });
     });
+    this.tone({ freq: 1319, duration: 0.22, gain: 0.45, type: 'triangle', delay: 0.38 });
+    this.crowd({ intensity: 1.2, duration: 0.9, delay: 0.08 });
   }
 
-  /** Maç kazanıldı — kısa zafer marşı. */
+  /** Maç kazanıldı — zafer marşı + coşkulu tribün. */
   victory() {
-    const melody = [523, 659, 784, 1047, 784, 1047, 1319];
+    const melody = [523, 659, 784, 1047, 784, 1047, 1319, 1568];
     melody.forEach((freq, i) => {
-      this.tone({ freq, duration: 0.18, gain: 0.5, delay: i * 0.13 });
+      this.tone({ freq, duration: 0.17, gain: 0.52, delay: i * 0.12 });
     });
-    this.noise({ duration: 0.9, gain: 0.18, filterFreq: 2600, delay: 0.2 });
+    // İkinci ses katmanı — daha “canlı” his
+    [784, 988, 1175, 1568].forEach((freq, i) => {
+      this.tone({
+        freq,
+        duration: 0.2,
+        gain: 0.28,
+        type: 'triangle',
+        delay: 0.35 + i * 0.14,
+      });
+    });
+    this.crowd({ intensity: 1.5, duration: 1.5, delay: 0.1 });
+    this.crowd({ intensity: 1.1, duration: 1.0, delay: 0.55 });
   }
 
   /** Maç kaybedildi. */
