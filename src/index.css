@@ -111,6 +111,14 @@
   /* Maç ekranı — mobil kaydırma / bounce engeli */
   .match-screen {
     touch-action: manipulation;
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .touch-button:disabled {
+    @apply cursor-not-allowed opacity-50;
+    pointer-events: none;
   }
 }
 

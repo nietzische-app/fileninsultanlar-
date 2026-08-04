@@ -765,13 +765,11 @@ export function drawTrophy(ctx, x, y, u) {
 // =====================================================================
 
 /**
- * Sekme simgesini çalışma anında üretir — repoda ikon dosyası tutmamak
- * için. Aynı piksel top çizimi 32×32'lik bir canvas'a basılır.
- *
+ * Sekme / PWA ikonunu çalışma anında üretir — repoda PNG tutulmaz.
+ * @param {number} [size=32]
  * @returns {string} data: URL
  */
-export function createFaviconDataUrl() {
-  const size = 32;
+export function createAppIconDataUrl(size = 32) {
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
@@ -779,10 +777,21 @@ export function createFaviconDataUrl() {
   const ctx = canvas.getContext('2d');
   if (!ctx) return '';
 
-  ctx.fillStyle = PALETTE.night;
+  ctx.fillStyle = PALETTE.turkishRed;
   ctx.fillRect(0, 0, size, size);
 
-  drawBall(ctx, { x: size / 2, y: size / 2, radius: 14, rotation: 0.35 }, false);
+  // Hafif koyu çerçeve
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(0, 0, size, Math.max(2, size * 0.06));
+  ctx.fillRect(0, size - Math.max(2, size * 0.06), size, Math.max(2, size * 0.06));
+
+  const radius = size * 0.36;
+  drawBall(ctx, { x: size / 2, y: size / 2, radius, rotation: 0.35 }, false);
 
   return canvas.toDataURL('image/png');
+}
+
+/** @returns {string} data: URL */
+export function createFaviconDataUrl() {
+  return createAppIconDataUrl(32);
 }

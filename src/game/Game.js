@@ -172,6 +172,7 @@ export default class Game {
 
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleKeyUp = this.handleKeyUp.bind(this);
+    this.handleWindowBlur = this.handleWindowBlur.bind(this);
     this.loop = this.loop.bind(this);
 
     this.players = this.createPlayers();
@@ -187,11 +188,13 @@ export default class Game {
 
   start() {
     if (this.running || this.finished) return;
+    this.clearInput();
     this.running = true;
     this.lastTime = performance.now();
 
     window.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('keyup', this.handleKeyUp);
+    window.addEventListener('blur', this.handleWindowBlur);
 
     this.rafId = requestAnimationFrame(this.loop);
     this.emitState(true);
@@ -208,6 +211,10 @@ export default class Game {
 
     window.removeEventListener('keydown', this.handleKeyDown);
     window.removeEventListener('keyup', this.handleKeyUp);
+    window.removeEventListener('blur', this.handleWindowBlur);
+
+    // Duraklatınca basılı kalan tuş/dokunuş devam etmesin
+    this.clearInput();
 
     // Duraklatınca son kare ekranda kalsın
     this.render();
@@ -216,6 +223,7 @@ export default class Game {
 
   destroy() {
     this.stop();
+    this.clearInput();
     this.particles.length = 0;
     this.rings.length = 0;
     this.ballTrail.length = 0;
@@ -369,7 +377,7 @@ export default class Game {
 
   /**
    * Dokunmatik butonlar için dışarıdan girdi ayarlar.
-   * @param {'left'|'right'|'up'|'action'|'sultan'} name
+   * @param {'left'|'right'|'up'|'action'|'dive'|'sultan'} name
    * @param {boolean} pressed
    */
   setInput(name, pressed) {
@@ -380,6 +388,35 @@ export default class Game {
     if (name in this.input) {
       this.input[name] = pressed;
     }
+  }
+
+  /**
+   * Tüm insan girdilerini sıfırlar.
+   * Duraklatma / sekme değişimi / pencere blur sonrası yapışmayı önler.
+   */
+  clearInput() {
+    this.input.left = false;
+    this.input.right = false;
+    this.input.up = false;
+    this.input.down = false;
+    this.input.action = false;
+    this.input.dive = false;
+    this.input.sultan = false;
+    this.sultanKeyLatch = false;
+
+    this.players?.forEach((player) => {
+      if (!player.controlled) return;
+      player.input.left = false;
+      player.input.right = false;
+      player.input.up = false;
+      player.input.action = false;
+      player.input.dive = false;
+    });
+  }
+
+  /** Pencere odağını kaybedince basılı tuşlar takılı kalmasın. */
+  handleWindowBlur() {
+    this.clearInput();
   }
 
   /** Sultan Gücü'nü kurar — bir sonraki temasta alevli top. */

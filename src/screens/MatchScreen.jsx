@@ -35,9 +35,11 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
   const gameRef = useRef(null);
   const onFinishRef = useRef(onFinish);
   onFinishRef.current = onFinish;
+  const confirmCancelRef = useRef(null);
 
   const [hud, setHud] = useState(INITIAL_HUD);
   const [paused, setPaused] = useState(false);
+  const [quitConfirm, setQuitConfirm] = useState(false);
 
   // --- Motorun kurulumu ---
   useEffect(() => {
@@ -71,45 +73,61 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
 
   // --- Maç sırasında sayfa kaydırmasını kilitle (mobil) ---
   useEffect(() => {
-    const prev = document.body.style.overflow;
+    const prevOverflow = document.body.style.overflow;
+    const prevOverscroll = document.body.style.overscrollBehavior;
     document.body.style.overflow = 'hidden';
+    document.body.style.overscrollBehavior = 'none';
     return () => {
-      document.body.style.overflow = prev;
+      document.body.style.overflow = prevOverflow;
+      document.body.style.overscrollBehavior = prevOverscroll;
     };
+  }, []);
+
+  const pauseGame = useCallback(() => {
+    const game = gameRef.current;
+    if (!game || game.finished) return;
+    if (game.running) game.stop();
+    setPaused(true);
+  }, []);
+
+  const resumeGame = useCallback(() => {
+    const game = gameRef.current;
+    if (!game || game.finished) return;
+    setQuitConfirm(false);
+    if (!game.running) game.start();
+    setPaused(false);
   }, []);
 
   // --- Sekme arka plana geçince duraklat ---
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.hidden && gameRef.current?.running) {
-        gameRef.current.stop();
-        setPaused(true);
+      if (document.hidden && gameRef.current && !gameRef.current.finished) {
+        pauseGame();
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [pauseGame]);
+
+  const requestQuit = useCallback(() => {
+    Sfx.unlock();
+    Sfx.select();
+    pauseGame();
+    setQuitConfirm(true);
+  }, [pauseGame]);
+
+  const cancelQuit = useCallback(() => {
+    Sfx.select();
+    setQuitConfirm(false);
   }, []);
 
-  // --- Escape ile duraklat ---
-  useEffect(() => {
-    const handleKey = (event) => {
-      if (event.key !== 'Escape' && event.key !== 'p' && event.key !== 'P') return;
-      const game = gameRef.current;
-      if (!game || game.finished) return;
-
-      if (game.running) {
-        game.stop();
-        setPaused(true);
-      } else {
-        game.start();
-        setPaused(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, []);
+  const confirmQuit = useCallback(() => {
+    Sfx.unlock();
+    Sfx.select();
+    setQuitConfirm(false);
+    onQuit();
+  }, [onQuit]);
 
   const togglePause = useCallback(() => {
     const game = gameRef.current;
@@ -117,31 +135,62 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
 
     Sfx.unlock();
     Sfx.select();
-    if (game.running) {
-      game.stop();
-      setPaused(true);
-    } else {
-      game.start();
-      setPaused(false);
+    if (quitConfirm) {
+      setQuitConfirm(false);
+      return;
     }
-  }, []);
+    if (game.running) {
+      pauseGame();
+    } else {
+      resumeGame();
+    }
+  }, [pauseGame, resumeGame, quitConfirm]);
+
+  // --- Escape / P ile duraklat; onay açıkken iptal ---
+  useEffect(() => {
+    const handleKey = (event) => {
+      if (event.key === 'Escape' && quitConfirm) {
+        event.preventDefault();
+        cancelQuit();
+        return;
+      }
+      if (event.key !== 'Escape' && event.key !== 'p' && event.key !== 'P') return;
+      if (quitConfirm) return;
+
+      const game = gameRef.current;
+      if (!game || game.finished) return;
+
+      if (game.running) {
+        pauseGame();
+      } else {
+        resumeGame();
+      }
+    };
+
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [pauseGame, resumeGame, quitConfirm, cancelQuit]);
+
+  // Onay diyaloğu açılınca iptal düğmesine odak
+  useEffect(() => {
+    if (!quitConfirm) return;
+    confirmCancelRef.current?.focus?.();
+  }, [quitConfirm]);
 
   const handleTouchInput = useCallback((name, pressed) => {
+    if (paused || quitConfirm) return;
     Sfx.unlock();
     gameRef.current?.setInput(name, pressed);
-  }, []);
+  }, [paused, quitConfirm]);
 
   const handleSultan = useCallback(() => {
+    if (paused || quitConfirm) return;
     Sfx.unlock();
     gameRef.current?.activateSultan();
-  }, []);
-
-  const handleQuit = useCallback(() => {
-    Sfx.unlock();
-    onQuit();
-  }, [onQuit]);
+  }, [paused, quitConfirm]);
 
   const squad = config.homeIds.map((id) => getPlayerById(id)).filter(Boolean);
+  const controlsLocked = paused || quitConfirm;
 
   return (
     <div className="match-screen mx-auto flex min-h-full w-full max-w-[960px] flex-col items-center gap-3 px-2 py-3 max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:justify-between max-md:overflow-hidden max-md:overscroll-none max-md:py-2 sm:gap-4 sm:px-3 sm:py-5">
@@ -170,16 +219,55 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
         />
 
         {/* Duraklatma katmanı */}
-        {paused && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-black/80 px-3">
+        {paused && !quitConfirm && (
+          <div
+            className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-black/80 px-3"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Oyun duraklatıldı"
+          >
             <p className="text-lg text-retro-accent">DURAKLATILDI</p>
             <div className="flex flex-wrap justify-center gap-3">
-              <button type="button" className="retro-button" onClick={togglePause}>
+              <button type="button" className="retro-button" onClick={resumeGame}>
                 DEVAM ET
               </button>
               <MuteButton muted={muted} onToggle={onToggleMute} />
-              <button type="button" className="retro-button-ghost" onClick={handleQuit}>
+              <button type="button" className="retro-button-ghost" onClick={requestQuit}>
                 MAÇTAN ÇIK
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Çıkış onayı */}
+        {quitConfirm && (
+          <div
+            className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-black/90 px-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="quit-confirm-title"
+          >
+            <p id="quit-confirm-title" className="text-center text-sm text-white sm:text-lg">
+              MAÇTAN ÇIKILSIN MI?
+            </p>
+            <p className="max-w-xs text-center text-[7px] leading-relaxed text-white/55 sm:text-[8px]">
+              Skor kaydedilmez. Kadro seçimine dönersin.
+            </p>
+            <div className="flex flex-wrap justify-center gap-3">
+              <button
+                ref={confirmCancelRef}
+                type="button"
+                className="retro-button px-6 py-3"
+                onClick={cancelQuit}
+              >
+                DEVAM ET
+              </button>
+              <button
+                type="button"
+                className="retro-button-ghost px-6 py-3"
+                onClick={confirmQuit}
+              >
+                ÇIK
               </button>
             </div>
           </div>
@@ -204,10 +292,14 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
           onActivate={handleSultan}
           compact
         />
-        <TouchControls onInput={handleTouchInput} sultanReady={hud.sultanReady} />
+        <TouchControls
+          onInput={handleTouchInput}
+          sultanReady={hud.sultanReady}
+          disabled={controlsLocked}
+        />
       </div>
 
-      {/* Alt bilgi — masaüstünde tam, mobilde yalnız hızlı aksiyonlar */}
+      {/* Alt bilgi — masaüstünde tam, mobilde hızlı aksiyonlar */}
       <div className="flex w-full max-w-[900px] shrink-0 flex-wrap items-center justify-between gap-2 max-md:pb-[env(safe-area-inset-bottom)]">
         <div className="hidden items-center gap-3 text-[7px] text-white/45 sm:flex">
           <span>{upper(config.mode)}</span>
@@ -234,8 +326,8 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
           </button>
           <button
             type="button"
-            className="retro-button-ghost hidden px-4 py-2 text-[8px] sm:inline-flex"
-            onClick={handleQuit}
+            className="retro-button-ghost px-4 py-2 text-[8px] max-md:px-3"
+            onClick={requestQuit}
           >
             ÇIK
           </button>
