@@ -200,6 +200,10 @@ Saf motor mantığı (`rules.js`, `ballistics.js`, `effects.js`) Vitest ile test
 (`*.test.js`). `Game.js` bu modülleri çağırır; canvas/React sarmalayıcı
 kalır.
 
+Üretim build'inde hafif bir service worker (`public/sw.js`) kabuğu
+önbelleğe alır. PWA ikonları çalışma anında canvas'tan üretilir
+(`createAppIconDataUrl`) — repoda PNG yoktur.
+
 ## Karakter Özelleştirme
 
 Projede **tek bir görsel dosyası yok**. Sultanlar, voleybol topu, file, tribün,
