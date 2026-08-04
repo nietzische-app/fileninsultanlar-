@@ -93,8 +93,9 @@ Ortam değişkeni, backend ya da veritabanı yok; tamamen statik bir SPA.
 | UI / ekranlar | React 18 |
 | Stil | Tailwind CSS 3 |
 | Oyun | HTML5 Canvas 2D + `requestAnimationFrame` |
+| Grafik | %100 kod — PNG/JPG/SVG yok, `drawImage` yok |
 | Ses | Web Audio API (osilatörle üretilen 8-bit efektler, dosya yok) |
-| Font | Press Start 2P (Google Fonts) |
+| Font | Arayüzde Press Start 2P; forma numaraları kendi piksel fontumuz |
 
 ## Dosya Yapısı
 
@@ -119,9 +120,49 @@ src/
     ├── Game.js               Motor: döngü, fizik, çarpışma, skor, çizim
     ├── players.js            Kadro verisi, statlar, bonuslar
     ├── ai.js                 Rakip ve takım arkadaşı yapay zekâsı
-    ├── sprites.js            Piksel çizimleri (sultan, top, bayrak, kupa)
+    ├── sprites.js            Piksel çizimleri (sultan, top, bayrak, kupa, rakamlar)
     └── audio.js              8-bit ses motoru
+└── utils/
+    └── text.js               Türkçe büyük harf yardımcısı
 ```
+
+## Karakter Özelleştirme
+
+Projede **tek bir görsel dosyası yok**. Sultanlar, voleybol topu, file, tribün,
+Türk bayrakları, kupa ve forma numaraları dahil her şey `src/game/sprites.js`
+içinde Canvas 2D API'siyle (`ctx.fillRect`, `ctx.arc`) blok blok çizilir.
+Sekme simgesi bile çalışma anında canvas'tan üretilir (`createFaviconDataUrl`).
+
+Bir karakterin görünümü tamamen `src/game/players.js` içinden değiştirilir:
+
+```js
+{
+  name: 'Ebrar Karakurt',
+  number: 10,                    // formaya piksel fontla basılır
+  captain: false,                // true ise kaptan pazıbandı çizilir
+  colors: {
+    primary: '#E30A17',          // forma gövdesi
+    secondary: '#00BFFF',        // yaka, yan şerit, numara rengi
+    skin: '#EFC7A6',
+    hair: '#5FC2E8',             // saç rengi
+    accent: '#5FC2E8',           // kaptan pazıbandı ve arayüz vurgusu
+  },
+  appearance: {
+    hairStyle: 'short',          // 'short'|'ponytail'|'bun'|'long'|'braid'
+    headband: '#FFFFFF',         // kafa bandı — null ise takmaz
+    wristband: '#00BFFF',        // bileklik — null ise takmaz
+    kneePads: '#1B1B2E',         // dizlik — null ise takmaz
+  },
+}
+```
+
+Aksesuar alanlarında `null` "bu parçayı çizme" demektir; eksik bırakılan alanlar
+`DEFAULT_APPEARANCE` ile tamamlanır. Yeni bir saç modeli eklemek için
+`HAIR_STYLES` dizisine adını yaz ve `sprites.js` içindeki `drawHair`
+fonksiyonuna bir `case` ekle.
+
+Aynı çizim fonksiyonu hem sahada hem karakter seçim ekranındaki avatarlarda
+kullanılır (`PixelAvatar`), yani bir renk değişikliği iki yerde birden görünür.
 
 ## Mimari Notlar
 
@@ -144,6 +185,14 @@ tanımlı — birini değiştirirken diğerini de güncelle.
 **Zorluk kolu `error` değeridir.** Yapay zekânın tahmini düşüş noktasına
 eklediği sapma. Temas dairesi ~53px olduğu için bunun altındaki sapmalar ıskaya
 dönüşmez ve rakip hiç sayı vermez — kademeleri ayarlarken bunu göz önünde tut.
+
+**Forma numaraları kendi bitmap fontuyla çizilir.** Önce "Press Start 2P" ile
+yazılıyordu; font geç yüklendiğinde ölçüm kayıyor ve numara bulanıklaşıyordu.
+`sprites.js` içindeki 3×5 piksel rakam tablosu font yüklemesinden bağımsızdır.
+
+**Türkçe büyük harf.** `String.toUpperCase()` İngilizce eşlemesi yapar ve
+"Gizem" → "GIZEM" verir. Arayüz tamamen Türkçe olduğu için her yerde
+`src/utils/text.js` içindeki `upper()` kullanılır (`GİZEM`).
 
 **Geliştirme kolaylığı:** dev modda motor `window.__game` üzerinden erişilebilir
 (production build'de yoktur).

@@ -6,6 +6,7 @@ import Scoreboard from '../components/Scoreboard.jsx';
 import SultanBar from '../components/SultanBar.jsx';
 import TouchControls from '../components/TouchControls.jsx';
 import Sfx from '../game/audio.js';
+import { upper } from '../utils/text.js';
 
 const INITIAL_HUD = {
   score: { home: 0, away: 0 },
@@ -166,9 +167,9 @@ export default function MatchScreen({ config, onFinish, onQuit }) {
       {/* Alt bilgi çubuğu */}
       <div className="flex w-full max-w-[900px] flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3 text-[7px] text-white/45">
-          <span>{config.mode.toUpperCase()}</span>
+          <span>{upper(config.mode)}</span>
           <span className="text-white/20">|</span>
-          <span>{squad.map((p) => p.name.toUpperCase()).join(' + ')}</span>
+          <span>{squad.map((p) => upper(p.name)).join(' + ')}</span>
         </div>
 
         <div className="flex gap-3">

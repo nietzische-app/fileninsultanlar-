@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import PixelAvatar from '../components/PixelAvatar.jsx';
 import { ROSTER } from '../game/players.js';
 import Sfx from '../game/audio.js';
+import { upper } from '../utils/text.js';
 
 /** Gurur Tablosu — dönüşümlü onur mesajları. */
 const PRIDE_MESSAGES = [
@@ -67,7 +68,7 @@ export default function StartScreen({ onStart, muted, onToggleMute }) {
             style={{ animationDelay: `${i * 0.35}s` }}
           >
             <PixelAvatar player={player} scale={4} pose={i === 1 ? 'cheer' : 'idle'} />
-            <span className="text-[7px] text-white/60">{player.name.toUpperCase()}</span>
+            <span className="text-[7px] text-white/60">{upper(player.name)}</span>
           </div>
         ))}
       </div>

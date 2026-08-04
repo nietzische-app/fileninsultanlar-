@@ -4,6 +4,7 @@ import StatBar from '../components/StatBar.jsx';
 import { ROSTER } from '../game/players.js';
 import { DIFFICULTY } from '../game/constants.js';
 import Sfx from '../game/audio.js';
+import { upper } from '../utils/text.js';
 
 const MODES = [
   { id: '1v1', label: '1 vs 1', description: 'Tek sultan, tek rakip. Klasik düello.' },
@@ -162,7 +163,7 @@ export default function CharacterSelect({ onBack, onStart }) {
 
               <PixelAvatar player={player} scale={3} />
 
-              <span className="text-[8px] leading-tight">{player.name.toUpperCase()}</span>
+              <span className="text-[8px] leading-tight">{upper(player.name)}</span>
               <span className="text-[7px] text-white/45">
                 #{player.number} · {player.position}
               </span>
@@ -179,7 +180,7 @@ export default function CharacterSelect({ onBack, onStart }) {
         </div>
 
         <div className="flex-1">
-          <h3 className="text-sm text-white">{focusedPlayer.name.toUpperCase()}</h3>
+          <h3 className="text-sm text-white">{upper(focusedPlayer.name)}</h3>
           <p className="mt-1 text-[8px] text-white/50">
             {focusedPlayer.position} · {focusedPlayer.height} CM
             {focusedPlayer.captain && ' · KAPTAN'}
@@ -190,7 +191,7 @@ export default function CharacterSelect({ onBack, onStart }) {
             style={{ borderColor: focusedPlayer.colors.accent }}
           >
             <p className="text-[8px]" style={{ color: focusedPlayer.colors.accent }}>
-              BONUS: {focusedPlayer.bonus.name.toUpperCase()}
+              BONUS: {upper(focusedPlayer.bonus.name)}
             </p>
             <p className="mt-1 text-[7px] leading-relaxed text-white/60">
               {focusedPlayer.bonus.description}

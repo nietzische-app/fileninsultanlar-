@@ -33,18 +33,62 @@ export const POSITIONS = {
  */
 
 /**
+ * Görünüm (appearance) sözleşmesi.
+ *
+ * Oyunda tek bir harici görsel dosyası yoktur — her karakter
+ * `src/game/sprites.js` içinde Canvas API ile piksel piksel çizilir.
+ * Aşağıdaki alanlar o çizimi kod seviyesinde özelleştirir:
+ *
+ *   hairStyle  Saç modeli: 'short' | 'ponytail' | 'bun' | 'long' | 'braid'
+ *   headband   Kafa bandı rengi — null ise takılmaz
+ *   wristband  Bileklik rengi — null ise takılmaz
+ *   kneePads   Dizlik rengi — null ise takılmaz
+ *
+ * Saç rengi `colors.hair`, forma numarası `number` alanından gelir.
+ * Kaptan pazıbandı `captain: true` olan oyuncuya otomatik çizilir
+ * (rengi `colors.accent`).
+ *
+ * @typedef {Object} Appearance
+ * @property {'short'|'ponytail'|'bun'|'long'|'braid'} hairStyle
+ * @property {string|null} headband
+ * @property {string|null} wristband
+ * @property {string|null} kneePads
+ */
+
+/**
  * @typedef {Object} Player
  * @property {string} id
  * @property {string} name
- * @property {number} number
+ * @property {number} number Forma numarası (sprite üzerine çizilir)
  * @property {string} position
  * @property {boolean} captain
  * @property {number} height
  * @property {{attack:number, block:number, serve:number, defense:number, speed:number, stamina:number}} stats
  * @property {{primary:string, secondary:string, skin:string, hair:string, accent:string}} colors
+ * @property {Appearance} appearance
  * @property {{name:string, description:string}} bonus
  * @property {Record<string, number>} modifiers
  */
+
+/** Seçilebilir saç modelleri — yeni model eklerken sprites.js'i de güncelle. */
+export const HAIR_STYLES = ['short', 'ponytail', 'bun', 'long', 'braid'];
+
+/** Görünüm alanı eksikse kullanılan varsayılan. */
+export const DEFAULT_APPEARANCE = {
+  hairStyle: 'ponytail',
+  headband: null,
+  wristband: null,
+  kneePads: '#FFFFFF',
+};
+
+/**
+ * Bir oyuncunun görünüm ayarlarını varsayılanlarla birleştirir.
+ * @param {Player} data
+ * @returns {Appearance}
+ */
+export function getAppearance(data) {
+  return { ...DEFAULT_APPEARANCE, ...(data?.appearance ?? {}) };
+}
 
 /** @type {Player[]} */
 export const ROSTER = [
@@ -62,6 +106,12 @@ export const ROSTER = [
       skin: '#E8B48C',
       hair: '#2B1B14',
       accent: '#FFD24A',
+    },
+    appearance: {
+      hairStyle: 'ponytail',
+      headband: '#FFD24A',
+      wristband: '#FFFFFF',
+      kneePads: '#FFFFFF',
     },
     bonus: {
       name: 'Kaptan Duruşu',
@@ -84,6 +134,12 @@ export const ROSTER = [
       hair: '#1A1008',
       accent: '#FFD24A',
     },
+    appearance: {
+      hairStyle: 'bun',
+      headband: null,
+      wristband: '#FFD24A',
+      kneePads: '#1B1B2E',
+    },
     bonus: {
       name: 'Top Sallama',
       description: 'Smaç çıkış hızı %25 daha yüksek.',
@@ -104,6 +160,12 @@ export const ROSTER = [
       skin: '#EAC0A0',
       hair: '#3A2418',
       accent: '#9BE7FF',
+    },
+    appearance: {
+      hairStyle: 'long',
+      headband: '#9BE7FF',
+      wristband: '#FFFFFF',
+      kneePads: '#FFFFFF',
     },
     bonus: {
       name: 'Duvar',
@@ -126,6 +188,12 @@ export const ROSTER = [
       hair: '#5FC2E8',
       accent: '#5FC2E8',
     },
+    appearance: {
+      hairStyle: 'short',
+      headband: '#FFFFFF',
+      wristband: '#00BFFF',
+      kneePads: '#1B1B2E',
+    },
     bonus: {
       name: 'Enerji Patlaması',
       description: 'Sultan Gücü barı %30 daha hızlı dolar.',
@@ -146,6 +214,12 @@ export const ROSTER = [
       skin: '#E8B48C',
       hair: '#2B1B14',
       accent: '#B7F5C6',
+    },
+    appearance: {
+      hairStyle: 'ponytail',
+      headband: '#FFFFFF',
+      wristband: '#FFFFFF',
+      kneePads: null,
     },
     bonus: {
       name: 'Hızlı Tempo',
@@ -168,6 +242,12 @@ export const ROSTER = [
       hair: '#241812',
       accent: '#FFD24A',
     },
+    appearance: {
+      hairStyle: 'braid',
+      headband: '#FFD24A',
+      wristband: '#FFD24A',
+      kneePads: '#FFD24A',
+    },
     bonus: {
       name: 'Kurtarış',
       description: 'Manşette üstün savunma; alçak toplara geniş erişim.',
@@ -188,6 +268,12 @@ export const ROSTER = [
       skin: '#EAC0A0',
       hair: '#4A2F1E',
       accent: '#FF9ED2',
+    },
+    appearance: {
+      hairStyle: 'ponytail',
+      headband: null,
+      wristband: '#FF9ED2',
+      kneePads: '#FFFFFF',
     },
     bonus: {
       name: 'Çapraz Plase',
@@ -212,6 +298,12 @@ export const OPPONENT_TEMPLATE = {
     skin: '#D9A57C',
     hair: '#22303F',
     accent: '#9BB0FF',
+  },
+  appearance: {
+    hairStyle: 'short',
+    headband: null,
+    wristband: '#9BB0FF',
+    kneePads: '#1B1B2E',
   },
   bonus: { name: '—', description: '—' },
   modifiers: {},

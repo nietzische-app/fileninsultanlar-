@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import PixelAvatar from '../components/PixelAvatar.jsx';
 import { drawTrophy } from '../game/sprites.js';
 import { getPlayerById } from '../game/players.js';
+import { upper } from '../utils/text.js';
 
 const CONFETTI_COLORS = ['#E30A17', '#FFFFFF', '#FFD24A', '#FF7A18', '#9BE7FF'];
 
@@ -120,7 +121,7 @@ export default function ResultScreen({ result, onRematch, onHome }) {
               <div className={won ? 'animate-float' : ''}>
                 <PixelAvatar player={player} scale={4} pose={won ? 'cheer' : 'idle'} />
               </div>
-              <span className="text-[7px] text-white/60">{player.name.toUpperCase()}</span>
+              <span className="text-[7px] text-white/60">{upper(player.name)}</span>
             </div>
           ))}
         </div>

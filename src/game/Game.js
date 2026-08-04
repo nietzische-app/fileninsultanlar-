@@ -29,6 +29,7 @@ import { OPPONENT_TEMPLATE, getModifier, getPlayerById } from './players.js';
 import { pickChaser, sideBounds, updateAI } from './ai.js';
 import { drawBall, drawSultan, drawTurkishFlag } from './sprites.js';
 import Sfx from './audio.js';
+import { upper } from '../utils/text.js';
 
 /** Bir değeri aralığa sıkıştırır. */
 function clamp(value, min, max) {
@@ -1345,7 +1346,7 @@ export default class Game {
       ctx.font = '7px "Press Start 2P", monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(player.data.name.toUpperCase(), player.x, top - 34 + bounce);
+      ctx.fillText(upper(player.data.name), player.x, top - 34 + bounce);
     }
   }
 
@@ -1359,23 +1360,20 @@ export default class Game {
     ctx.fillStyle = 'rgba(0,0,0,0.25)';
     ctx.fillRect(left + NET.width - 3, NET.topY, 3, NET.height);
 
-    // File örgüsü
-    ctx.strokeStyle = 'rgba(242, 242, 242, 0.85)';
-    ctx.lineWidth = 1.5;
+    // File örgüsü — piksel blokları (çizgi yerine fillRect ki
+    // sahanın geri kalanıyla aynı piksel dilinde kalsın)
     const meshTop = NET.topY;
     const meshBottom = NET.topY + 78;
+    const meshLeft = left - 22;
+    const meshRight = left + NET.width + 22;
+    const meshStep = 9;
 
-    for (let y = meshTop; y <= meshBottom; y += 9) {
-      ctx.beginPath();
-      ctx.moveTo(left - 22, y);
-      ctx.lineTo(left + NET.width + 22, y);
-      ctx.stroke();
+    ctx.fillStyle = 'rgba(242, 242, 242, 0.85)';
+    for (let y = meshTop; y <= meshBottom; y += meshStep) {
+      ctx.fillRect(meshLeft, Math.round(y), meshRight - meshLeft, 2);
     }
-    for (let x = left - 22; x <= left + NET.width + 22; x += 9) {
-      ctx.beginPath();
-      ctx.moveTo(x, meshTop);
-      ctx.lineTo(x, meshBottom);
-      ctx.stroke();
+    for (let x = meshLeft; x <= meshRight; x += meshStep) {
+      ctx.fillRect(Math.round(x), meshTop, 2, meshBottom - meshTop);
     }
 
     // Üst bant
