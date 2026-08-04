@@ -20,6 +20,11 @@ const STEPS = [
     accent: '#FFD24A',
   },
   {
+    title: 'KOMBO ZİNCİRİ',
+    body: 'Smaç, blok ve kurtarış peş peşe gelirse kombo artar. x2’den itibaren ekranda görünür; bar daha hızlı dolar. Sayı alırsan kombo kutlanır, sayı kaybedersen zincir kırılır.',
+    accent: '#FF7A18',
+  },
+  {
     title: 'KONTROLLER',
     body: '← → / A D hareket · ↑ / W zıpla · ↓ / S dalış · Boşluk / Z vur · X Sultan Gücü · ESC / P duraklat. Mobilde altta dokunmatik butonlar çıkar.',
     accent: '#FFFFFF',

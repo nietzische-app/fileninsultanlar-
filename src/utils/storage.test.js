@@ -99,7 +99,7 @@ describe('storage records', () => {
     const { records, broken } = recordMatchResult({
       winner: 'home',
       format: 'practice',
-      stats: { spikes: 8, blocks: 0, saves: 0, longestRally: 20 },
+      stats: { spikes: 8, blocks: 0, saves: 0, longestRally: 20, bestCombo: 6 },
     });
 
     expect(records.wins).toBe(before.wins);
@@ -108,9 +108,11 @@ describe('storage records', () => {
     expect(records.bestWinStreak).toBe(before.bestWinStreak);
     expect(records.longestRally).toBe(20);
     expect(records.mostSpikes).toBe(8);
+    expect(records.bestCombo).toBe(6);
     expect(broken.firstWin).toBe(false);
     expect(broken.bestWinStreak).toBe(false);
     expect(broken.longestRally).toBe(true);
+    expect(broken.bestCombo).toBe(true);
   });
 });
 

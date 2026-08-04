@@ -174,6 +174,7 @@ src/
 │   ├── PixelAvatar.jsx       Sahadakiyle aynı sprite'ı çizen avatar
 │   ├── Scoreboard.jsx        Türkiye vs Rakip, set takibi
 │   ├── SultanBar.jsx         Özel yetenek barı
+│   ├── ComboMeter.jsx        Ralli kombosu göstergesi
 │   ├── StatBar.jsx           Piksel stat çubuğu
 │   ├── MuteButton.jsx        Ses aç/kapa (tüm ekranlar)
 │   ├── TouchControls.jsx     Mobil kontroller
@@ -184,6 +185,7 @@ src/
 │   ├── rules.js              Saf set/maç/üç-temas kuralları
 │   ├── ballistics.js         Saf smaç/pas balistiği
 │   ├── effects.js            Parçacık, darbe halkası, top izi
+│   ├── combo.js              Ralli kombosu kuralları
 │   ├── math.js               clamp yardımcısı
 │   ├── opponents.js          Rakip takımlar ve away kadrosu
 │   ├── players.js            Kadro verisi, statlar, bonuslar, görünüm
@@ -196,7 +198,7 @@ src/
     └── storage.js            Mute / seçim / rekorlar / tutorial localStorage
 ```
 
-Saf motor mantığı (`rules.js`, `ballistics.js`, `effects.js`) Vitest ile test edilir
+Saf motor mantığı (`rules.js`, `ballistics.js`, `effects.js`, `combo.js`) Vitest ile test edilir
 (`*.test.js`). `Game.js` bu modülleri çağırır; canvas/React sarmalayıcı
 kalır.
 

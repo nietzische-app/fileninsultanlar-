@@ -38,6 +38,7 @@ export default function ResultScreen({
     if (brokenRecords.mostSpikes) labels.push('EN ÇOK SMAÇ');
     if (brokenRecords.mostBlocks) labels.push('EN ÇOK BLOK');
     if (brokenRecords.mostSaves) labels.push('EN ÇOK KURTARIŞ');
+    if (brokenRecords.bestCombo) labels.push('EN İYİ KOMBO');
     return labels;
   }, [brokenRecords]);
 
@@ -139,7 +140,7 @@ export default function ResultScreen({
           </div>
 
           {/* Maç istatistikleri */}
-          <div className="mt-5 grid grid-cols-2 gap-3 border-t-2 border-white/15 pt-4 text-center sm:grid-cols-4">
+          <div className="mt-5 grid grid-cols-2 gap-3 border-t-2 border-white/15 pt-4 text-center sm:grid-cols-5">
             <Stat label="SMAÇ" value={result.stats.spikes} highlight={brokenRecords?.mostSpikes} />
             <Stat label="BLOK" value={result.stats.blocks} highlight={brokenRecords?.mostBlocks} />
             <Stat label="KURTARIŞ" value={result.stats.saves} highlight={brokenRecords?.mostSaves} />
@@ -147,6 +148,11 @@ export default function ResultScreen({
               label="EN UZUN RALLİ"
               value={result.stats.longestRally}
               highlight={brokenRecords?.longestRally}
+            />
+            <Stat
+              label="EN İYİ KOMBO"
+              value={result.stats.bestCombo ?? 0}
+              highlight={brokenRecords?.bestCombo}
             />
           </div>
         </div>

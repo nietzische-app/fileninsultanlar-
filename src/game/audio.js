@@ -188,6 +188,22 @@ class SfxEngine {
     this.crowd({ intensity: 0.9 + steps * 0.12, duration: 0.7, delay: 0.05 });
   }
 
+  /**
+   * Ralli kombosu — yükselen kısa çip sesi.
+   * @param {number} [count]
+   */
+  combo(count = 2) {
+    const step = Math.min(8, Math.max(1, count));
+    const freq = 440 + step * 70;
+    this.tone({ freq, endFreq: freq + 180, duration: 0.09, type: 'square', gain: 0.45 });
+    if (step >= 3) {
+      this.tone({ freq: freq + 220, duration: 0.08, gain: 0.35, delay: 0.05 });
+    }
+    if (step >= 5) {
+      this.crowd({ intensity: 0.55 + step * 0.05, duration: 0.3, delay: 0.02 });
+    }
+  }
+
   /** Rakip sayı aldı — alçalan iki nota. */
   pointLost() {
     this.tone({ freq: 330, duration: 0.1, gain: 0.45, type: 'triangle' });

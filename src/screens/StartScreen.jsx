@@ -61,11 +61,12 @@ export default function StartScreen({ onStart, onTutorial, muted, onToggleMute, 
       <div className="retro-panel w-full max-w-xl px-5 py-4 text-center">
         <p className="mb-3 text-[8px] tracking-widest text-retro-accent">★ GURUR TABLOSU ★</p>
         {hasRecords ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             <RecordStat label="GALİBİYET" value={records.wins} />
             <RecordStat label="SERİ" value={records.winStreak} />
             <RecordStat label="EN İYİ SERİ" value={records.bestWinStreak} />
             <RecordStat label="EN UZUN RALLİ" value={records.longestRally} />
+            <RecordStat label="EN İYİ KOMBO" value={records.bestCombo ?? 0} />
           </div>
         ) : (
           <p

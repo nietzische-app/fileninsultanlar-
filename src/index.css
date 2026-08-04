@@ -170,6 +170,25 @@
   animation: float-up 2.4s ease-in-out infinite;
 }
 
+@keyframes combo-pop {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-combo-pop {
+  animation: combo-pop 0.28s steps(3, end);
+}
+
 @keyframes pulse-gold {
   0%,
   100% {
@@ -231,6 +250,7 @@
   .animate-float,
   .animate-pulse-gold,
   .animate-shine,
+  .animate-combo-pop,
   .confetti-piece {
     animation: none;
   }

@@ -4,6 +4,7 @@ import { GAME_HEIGHT, GAME_WIDTH, PHASE } from '../game/constants.js';
 import { getPlayerById } from '../game/players.js';
 import Scoreboard from '../components/Scoreboard.jsx';
 import SultanBar from '../components/SultanBar.jsx';
+import ComboMeter from '../components/ComboMeter.jsx';
 import TouchControls from '../components/TouchControls.jsx';
 import MuteButton from '../components/MuteButton.jsx';
 import Sfx from '../game/audio.js';
@@ -20,6 +21,8 @@ const INITIAL_HUD = {
   sultanArmed: false,
   running: false,
   streak: { side: null, count: 0 },
+  combo: 0,
+  bestCombo: 0,
   pointsPerSet: 15,
   formatId: 'classic',
   opponentName: 'RAKİP',
@@ -205,6 +208,9 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
           pointsPerSet={hud.pointsPerSet}
           compact
         />
+        <div className="mt-1">
+          <ComboMeter combo={hud.combo} best={hud.bestCombo} compact />
+        </div>
       </div>
 
       {/* Oyun alanı — mobilde viewport'un ~%40'ı */}

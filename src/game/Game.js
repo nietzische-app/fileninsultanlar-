@@ -55,6 +55,16 @@ import {
   setWinner,
 } from './rules.js';
 import {
+  comboCallout,
+  comboChargeBonus,
+  comboPointBonus,
+  comboPointMessage,
+  hitStopFor,
+  isComboAction,
+  nextCombo,
+  COMBO,
+} from './combo.js';
+import {
   drawBallTrail as fxDrawBallTrail,
   drawParticles as fxDrawParticles,
   drawRings as fxDrawRings,
@@ -166,9 +176,23 @@ export default class Game {
     /** Sayı sonrası tribün coşkusu (0–1, zamanla söner). */
     this.hype = 0;
     this.shake = 0;
+    /** Kısa hit-stop (sn) — smaç/blok/kurtarışta ağırlık hissi. */
+    this.hitStop = 0;
+    /** Ralli kombosu — ev sahibi smaç/blok/kurtarış zinciri. */
+    this.combo = 0;
+    this.bestCombo = 0;
+    /** Kombo çağrısı — message'dan bağımsız üst katman. */
+    this.callout = null;
     this.finished = false;
 
-    this.stats = { spikes: 0, blocks: 0, saves: 0, longestRally: 0, rallyTouches: 0 };
+    this.stats = {
+      spikes: 0,
+      blocks: 0,
+      saves: 0,
+      longestRally: 0,
+      rallyTouches: 0,
+      bestCombo: 0,
+    };
 
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleKeyUp = this.handleKeyUp.bind(this);
@@ -454,11 +478,24 @@ export default class Game {
 
   update(dt) {
     this.time += dt;
+
+    // Hit-stop: fizik donar, parçacık/çağrı/sarsıntı devam eder
+    if (this.hitStop > 0) {
+      this.hitStop = Math.max(0, this.hitStop - dt);
+      this.shake = Math.max(0, this.shake - dt * 60);
+      this.hype = Math.max(0, this.hype - dt * 0.9);
+      this.updateParticles(dt);
+      this.updateRings(dt);
+      this.updateCallout(dt);
+      return;
+    }
+
     this.shake = Math.max(0, this.shake - dt * 60);
     this.hype = Math.max(0, this.hype - dt * 0.9);
     this.updateParticles(dt);
     this.updateRings(dt);
     this.updateBallTrail();
+    this.updateCallout(dt);
 
     switch (this.phase) {
       case PHASE.READY:
@@ -979,6 +1016,32 @@ export default class Game {
       } else {
         this.addSultanCharge(SULTAN.onRally * chargeMod);
       }
+
+      // Ralli kombosu — smaç / blok / kurtarış
+      const action = { type, isBlock, sultanFired };
+      if (isComboAction(action)) {
+        this.combo = nextCombo(this.combo, action);
+        this.bestCombo = Math.max(this.bestCombo, this.combo);
+        this.stats.bestCombo = this.bestCombo;
+
+        const bonus = comboChargeBonus(this.combo) * chargeMod;
+        if (bonus > 0) this.addSultanCharge(bonus);
+
+        const stop = hitStopFor(action);
+        if (stop > 0) this.hitStop = Math.max(this.hitStop, stop);
+
+        const text = comboCallout(this.combo, action);
+        if (text) {
+          this.callout = {
+            text,
+            timer: COMBO.calloutTime,
+            color: this.combo >= 5 ? PALETTE.turkishRed : PALETTE.gold,
+          };
+          if (this.combo >= COMBO.showAt) Sfx.combo(this.combo);
+        }
+
+        this.emitState(true);
+      }
     }
 
     // Ses ve parçacık
@@ -999,6 +1062,11 @@ export default class Game {
       this.shake = Math.max(this.shake, 8);
       this.spawnBurst(ball.x, ball.y, 12, isBlock ? PALETTE.gold : '#FFFFFF');
       this.spawnRing(ball.x, ball.y, isBlock ? PALETTE.gold : '#FFFFFF', 54);
+    }
+
+    // Sultan ateşi — ekstra hit-stop
+    if (sultanFired) {
+      this.hitStop = Math.max(this.hitStop, COMBO.hitStopSultan);
     }
   }
 
@@ -1046,11 +1114,13 @@ export default class Game {
    * @param {string} [reason] Faul mesajı (ör. "ÜÇ TEMAS!")
    */
   awardPoint(side, landedSide, reason) {
+    const finishingCombo = side === 'home' ? this.combo : 0;
+
     this.score[side] += 1;
     this.servingSide = side;
     this.phase = PHASE.POINT;
     this.phaseTimer = this.rules.servePause;
-    this.shake = 10;
+    this.shake = Math.max(this.shake, finishingCombo >= 3 ? 14 : 10);
 
     this.spawnDust(this.ball.x, GROUND_Y, 16);
     this.hype = 1;
@@ -1067,17 +1137,28 @@ export default class Game {
       const chargeMod = getModifier(this.getControlledPlayer()?.data, 'charge');
       let gain = SULTAN.onPoint;
       if (this.streak.count > 1) gain += SULTAN.streakBonus;
+      gain += comboPointBonus(finishingCombo);
       this.addSultanCharge(gain * chargeMod);
 
       this.message = {
-        text:
-          reason ??
-          (this.streak.count > 2 ? `${this.streak.count} SAYI ÜST ÜSTE!` : 'SAYI!'),
+        text: comboPointMessage(finishingCombo, reason, this.streak.count),
         timer: this.rules.servePause,
         color: reason ? PALETTE.gold : PALETTE.turkishRed,
       };
-      if (this.streak.count >= 3) Sfx.streak(this.streak.count);
-      else Sfx.point();
+
+      if (finishingCombo >= 3) {
+        this.callout = {
+          text: `x${finishingCombo} KOMBO!`,
+          timer: 1.1,
+          color: PALETTE.gold,
+        };
+        this.spawnBurst(this.ball.x, this.ball.y, 18, PALETTE.gold);
+        Sfx.combo(finishingCombo + 2);
+      } else if (this.streak.count >= 3) {
+        Sfx.streak(this.streak.count);
+      } else {
+        Sfx.point();
+      }
     } else {
       this.message = {
         text: reason ?? `${this.opponent.shortName} SAYI`,
@@ -1086,6 +1167,9 @@ export default class Game {
       };
       Sfx.pointLost();
     }
+
+    // Ralli kombosu sayı ile biter (kazanırken kutlanır, kaybederken kırılır)
+    this.combo = 0;
 
     // Konsol dışı bir amaç için tutulur (istatistik ekranı)
     this.lastLandedSide = landedSide;
@@ -1156,6 +1240,9 @@ export default class Game {
     this.setNumber += 1;
     this.score = { home: 0, away: 0 };
     this.streak = { side: null, count: 0 };
+    this.combo = 0;
+    this.callout = null;
+    this.hitStop = 0;
     this.resetRally(this.servingSide);
 
     this.phase = PHASE.READY;
@@ -1215,6 +1302,12 @@ export default class Game {
     }
   }
 
+  updateCallout(dt) {
+    if (!this.callout) return;
+    this.callout.timer -= dt;
+    if (this.callout.timer <= 0) this.callout = null;
+  }
+
   // ===================================================================
   // React'e durum bildirimi
   // ===================================================================
@@ -1236,6 +1329,7 @@ export default class Game {
       chargeBucket,
       this.sultanArmed ? 1 : 0,
       this.running ? 1 : 0,
+      this.combo,
     ].join('|');
 
     if (!force && signature === this.lastSignature) return;
@@ -1252,6 +1346,8 @@ export default class Game {
       sultanArmed: this.sultanArmed,
       running: this.running,
       streak: { ...this.streak },
+      combo: this.combo,
+      bestCombo: this.bestCombo,
       pointsPerSet: this.rules.pointsPerSet,
       formatId: this.format.id,
       opponentName: this.opponent.shortName,
@@ -1305,6 +1401,7 @@ export default class Game {
     ctx.restore();
 
     this.drawMessages();
+    this.drawCallout();
   }
 
   ballShadowScale() {
@@ -1441,5 +1538,25 @@ export default class Game {
     ctx.fillText(text, GAME_WIDTH / 2, 241);
 
     ctx.globalAlpha = 1;
+  }
+
+  /** Kombo çağrısı — üst şerit, message kutusundan bağımsız. */
+  drawCallout() {
+    if (!this.callout) return;
+    const { ctx } = this;
+    const alpha = Math.min(1, this.callout.timer * 4);
+    const pop = 1 + Math.max(0, (this.callout.timer - COMBO.calloutTime + 0.12) * 2);
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `${Math.round(16 * pop)}px "Press Start 2P", monospace`;
+    ctx.fillStyle = this.callout.color;
+    ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+    ctx.lineWidth = 4;
+    ctx.strokeText(this.callout.text, GAME_WIDTH / 2, 72);
+    ctx.fillText(this.callout.text, GAME_WIDTH / 2, 72);
+    ctx.restore();
   }
 }

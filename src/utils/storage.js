@@ -17,6 +17,7 @@ const RECORDS_KEY = 'filenin-sultanlari-records';
  *   mostSpikes: number,
  *   mostBlocks: number,
  *   mostSaves: number,
+ *   bestCombo: number,
  *   winStreak: number,
  *   bestWinStreak: number,
  * }} Records
@@ -42,6 +43,7 @@ export const DEFAULT_RECORDS = {
   mostSpikes: 0,
   mostBlocks: 0,
   mostSaves: 0,
+  bestCombo: 0,
   winStreak: 0,
   bestWinStreak: 0,
 };
@@ -108,6 +110,7 @@ export function loadRecords() {
       mostSpikes: num(parsed.mostSpikes),
       mostBlocks: num(parsed.mostBlocks),
       mostSaves: num(parsed.mostSaves),
+      bestCombo: num(parsed.bestCombo),
       winStreak: num(parsed.winStreak),
       bestWinStreak: num(parsed.bestWinStreak),
     };
@@ -133,7 +136,7 @@ export function saveRecords(records) {
  * Maç sonucunu rekorlara işler.
  * Antrenman formatı galibiyet/seri tablosunu şişirmesin diye
  * yalnızca ralli/smaç gibi kişisel zirveleri günceller.
- * @param {{ winner: string, format?: string, stats?: { spikes?: number, blocks?: number, saves?: number, longestRally?: number } }} result
+ * @param {{ winner: string, format?: string, stats?: { spikes?: number, blocks?: number, saves?: number, longestRally?: number, bestCombo?: number } }} result
  * @returns {{ records: Records, broken: Record<string, boolean> }}
  */
 export function recordMatchResult(result) {
@@ -146,6 +149,7 @@ export function recordMatchResult(result) {
   const blocks = num(stats.blocks);
   const saves = num(stats.saves);
   const rally = num(stats.longestRally);
+  const combo = num(stats.bestCombo);
   const nextStreak = !practice && won ? prev.winStreak + 1 : practice ? prev.winStreak : 0;
 
   const next = {
@@ -156,6 +160,7 @@ export function recordMatchResult(result) {
     mostSpikes: Math.max(prev.mostSpikes, spikes),
     mostBlocks: Math.max(prev.mostBlocks, blocks),
     mostSaves: Math.max(prev.mostSaves, saves),
+    bestCombo: Math.max(prev.bestCombo, combo),
     winStreak: practice ? prev.winStreak : nextStreak,
     bestWinStreak: practice
       ? prev.bestWinStreak
@@ -167,6 +172,7 @@ export function recordMatchResult(result) {
     mostSpikes: spikes > prev.mostSpikes && spikes > 0,
     mostBlocks: blocks > prev.mostBlocks && blocks > 0,
     mostSaves: saves > prev.mostSaves && saves > 0,
+    bestCombo: combo > prev.bestCombo && combo > 0,
     bestWinStreak: !practice && won && nextStreak > prev.bestWinStreak,
     firstWin: !practice && won && prev.wins === 0,
   };
