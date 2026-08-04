@@ -47,7 +47,7 @@ function installIcons() {
         background_color: '#0b0b12',
         theme_color: '#E30A17',
         lang: 'tr',
-        orientation: 'any',
+        orientation: 'landscape',
         categories: ['games', 'sports'],
         icons: [
           { src: icon192, sizes: '192x192', type: 'image/png', purpose: 'any' },

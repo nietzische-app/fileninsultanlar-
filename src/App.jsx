@@ -5,6 +5,8 @@ import CharacterSelect from './screens/CharacterSelect.jsx';
 import VersusSelect from './screens/VersusSelect.jsx';
 import MatchScreen from './screens/MatchScreen.jsx';
 import ResultScreen from './screens/ResultScreen.jsx';
+import LandscapeGate from './components/LandscapeGate.jsx';
+import { useLandscapeGate } from './hooks/useLandscapeGate.js';
 import Sfx from './game/audio.js';
 import {
   loadPrefs,
@@ -30,11 +32,22 @@ export default function App() {
   const [tutorialFromMenu, setTutorialFromMenu] = useState(false);
   /** Tutorial sonrası açılacak oyun tarzı. */
   const [pendingPlayMode, setPendingPlayMode] = useState('solo');
+  const { blocked: landscapeBlocked, tryLock } = useLandscapeGate();
 
   useEffect(() => {
     Sfx.setMuted(initialPrefs.muted);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- yalnızca mount
   }, []);
+
+  // Mobilde body kaydırmasını her zaman kilitle (özellikle maç / kapı)
+  useEffect(() => {
+    if (!landscapeBlocked) return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [landscapeBlocked]);
 
   const toggleMute = useCallback(() => {
     setMuted((prev) => {
@@ -145,7 +158,9 @@ export default function App() {
   }, [goHome]);
 
   return (
-    <div className="min-h-full">
+    <div className={`min-h-full ${landscapeBlocked ? 'pointer-events-none select-none' : ''}`}>
+      <LandscapeGate blocked={landscapeBlocked} onUnlock={tryLock} />
+
       {screen === 'start' && (
         <StartScreen
           onStart={handleStart}

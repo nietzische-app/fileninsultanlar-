@@ -203,7 +203,7 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
   const controlsLocked = paused || quitConfirm;
 
   return (
-    <div className="match-screen mx-auto flex min-h-full w-full max-w-[960px] flex-col items-center gap-3 px-2 py-3 max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:justify-between max-md:overflow-hidden max-md:overscroll-none max-md:py-2 sm:gap-4 sm:px-3 sm:py-5">
+    <div className="match-screen mx-auto flex min-h-full w-full max-w-[1100px] flex-col items-center gap-2 px-2 py-2 max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:justify-between max-md:overflow-hidden max-md:overscroll-none max-md:landscape:gap-1.5 max-md:landscape:py-1.5 sm:gap-4 sm:px-3 sm:py-5">
       <div className="w-full shrink-0">
         <Scoreboard
           score={hud.score}
@@ -215,13 +215,13 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
           pointsPerSet={hud.pointsPerSet}
           compact
         />
-        <div className="mt-1">
+        <div className="mt-1 max-md:landscape:mt-0.5">
           <ComboMeter combo={hud.combo} best={hud.bestCombo} compact />
         </div>
       </div>
 
-      {/* Oyun alanı — mobilde viewport'un ~%40'ı */}
-      <div className="scanlines relative w-full max-w-[900px] shrink border-4 border-white/85 bg-black max-md:max-h-[min(42dvh,280px)]">
+      {/* Oyun alanı — yatay mobilde daha yüksek */}
+      <div className="scanlines relative w-full max-w-[960px] shrink border-4 border-white/85 bg-black max-md:max-h-[min(42dvh,280px)] max-md:landscape:max-h-[min(62dvh,380px)]">
         <canvas
           ref={canvasRef}
           width={GAME_WIDTH}
