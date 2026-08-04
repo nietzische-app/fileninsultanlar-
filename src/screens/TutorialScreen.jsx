@@ -62,8 +62,8 @@ export default function TutorialScreen({ onDone, onBack, muted, onToggleMute }) 
   };
 
   return (
-    <div className="relative mx-auto flex min-h-full w-full max-w-2xl flex-col items-center justify-center gap-6 px-4 py-10">
-      <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+    <div className="relative mx-auto flex min-h-full w-full max-w-2xl flex-col items-center justify-center gap-5 px-4 pb-28 pt-10 sm:gap-6 sm:pb-10 sm:py-10">
+      <div className="absolute right-4 top-4 z-10 sm:right-6 sm:top-6">
         <MuteButton muted={muted} onToggle={onToggleMute} />
       </div>
 
@@ -105,27 +105,35 @@ export default function TutorialScreen({ onDone, onBack, muted, onToggleMute }) 
         </p>
       </div>
 
-      <div className="flex w-full flex-wrap items-center justify-center gap-3">
-        <button
-          type="button"
-          className="retro-button-ghost px-5 py-3 text-[9px]"
-          onClick={prev}
-          disabled={step === 0 && !onBack}
-        >
-          {step === 0 ? (onBack ? '← GERİ' : '←') : '← ÖNCEKİ'}
-        </button>
-        <button type="button" className="retro-button px-8 py-3 text-[9px]" onClick={next}>
-          {isLast ? 'ANLADIM' : 'SONRAKİ →'}
-        </button>
+      {/* Sticky CTA — mobilde başparmak erişimi */}
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t-4 border-white/15 bg-retro-bg/95 px-3 py-3 backdrop-blur-sm sm:static sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
+        <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-3 pb-[env(safe-area-inset-bottom)]">
+          <div className="flex w-full flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              className="retro-button-ghost min-h-12 flex-1 px-5 py-3 text-[9px] sm:flex-none"
+              onClick={prev}
+              disabled={step === 0 && !onBack}
+            >
+              {step === 0 ? (onBack ? '← GERİ' : '←') : '← ÖNCEKİ'}
+            </button>
+            <button
+              type="button"
+              className="retro-button min-h-12 flex-[1.4] px-8 py-3 text-[9px] sm:flex-none"
+              onClick={next}
+            >
+              {isLast ? 'ANLADIM' : 'SONRAKİ →'}
+            </button>
+          </div>
+          <button
+            type="button"
+            className="min-h-10 px-3 py-2 text-[8px] text-white/45 underline-offset-2 hover:text-white/70 hover:underline"
+            onClick={() => finish(true)}
+          >
+            ATLA VE MAÇA GEÇ
+          </button>
+        </div>
       </div>
-
-      <button
-        type="button"
-        className="text-[7px] text-white/35 underline-offset-2 hover:text-white/60 hover:underline"
-        onClick={() => finish(true)}
-      >
-        ATLA VE MAÇA GEÇ
-      </button>
     </div>
   );
 }
