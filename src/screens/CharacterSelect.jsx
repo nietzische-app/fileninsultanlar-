@@ -16,8 +16,12 @@ import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
 
 const MODES = [
-  { id: '1v1', label: '1 vs 1', description: 'Tek sultan, tek rakip. Klasik düello.' },
-  { id: '2v2', label: '2 vs 2', description: 'İki sultan sahada — biri sen, biri takım arkadaşın.' },
+  { id: '1v1', label: '1 vs 1', description: 'Tek sultan, tek rakip.' },
+  {
+    id: '2v2',
+    label: '2 vs 2',
+    description: 'İki sultan — sen + AI takım arkadaşı.',
+  },
 ];
 
 /** Künye satırı — bilinmeyen değer '—' gösterilir. */
@@ -31,7 +35,6 @@ function Fact({ label, value }) {
 }
 
 /**
- * Son tercihten gelen id listesini geçerli kadroya ve moda göre kırpar.
  * @param {string[]} ids
  * @param {string} mode
  */
@@ -45,7 +48,7 @@ function sanitizeHomeIds(ids, mode) {
 }
 
 /**
- * Karakter seçim ekranı — mod, zorluk ve kadro seçimi.
+ * Karakter seçim ekranı — mod, zorluk, format, rakip ve kadro.
  */
 export default function CharacterSelect({
   onBack,
@@ -87,7 +90,6 @@ export default function CharacterSelect({
   const handleModeChange = (nextMode) => {
     Sfx.select();
     setMode(nextMode);
-    // 2v2 → 1v1 geçişinde fazla seçimi kırp
     setSelected((prev) => prev.slice(0, nextMode === '2v2' ? 2 : 1));
   };
 
@@ -97,11 +99,9 @@ export default function CharacterSelect({
 
     setSelected((prev) => {
       if (prev.includes(id)) {
-        // Son oyuncuyu çıkarmaya izin verme
         return prev.length === 1 ? prev : prev.filter((p) => p !== id);
       }
       if (prev.length >= required) {
-        // Kadro dolu — en eski seçimi düşür (kaydırmalı seçim)
         return [...prev.slice(1), id];
       }
       return [...prev, id];
@@ -117,157 +117,108 @@ export default function CharacterSelect({
       mode,
       difficulty,
       format,
+      // random ise undefined — Game rastgele seçer; bitişte id kilitlenir
       opponentId: opponentId === 'random' ? undefined : opponentId,
+      opponentRandom: opponentId === 'random',
       homeIds: selected,
     });
   };
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-[1100px] flex-col gap-6 px-4 py-8">
+    <div className="mx-auto flex min-h-full w-full max-w-[1100px] flex-col gap-4 px-3 pb-28 pt-5 sm:gap-6 sm:px-4 sm:pb-10 sm:py-8">
       {/* Başlık */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg text-turkiye-red text-outline-red sm:text-xl">
+          <h2 className="text-base text-turkiye-red text-outline-red sm:text-xl">
             KADRONU SEÇ
           </h2>
-          <p className="mt-2 text-[8px] text-white/50">
-            {required === 2 ? 'İKİ SULTAN SEÇ' : 'BİR SULTAN SEÇ'} · SEÇİLEN{' '}
+          <p className="mt-1 text-[7px] text-white/50 sm:mt-2 sm:text-[8px]">
+            {required === 2 ? 'İKİ SULTAN · 1. SEN, 2. AI' : 'BİR SULTAN SEÇ'} ·{' '}
             {selected.length}/{required}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <MuteButton muted={muted} onToggle={onToggleMute} />
-          <button type="button" className="retro-button-ghost" onClick={onBack}>
+          <button type="button" className="retro-button-ghost px-3 py-2 text-[8px]" onClick={onBack}>
             ← GERİ
           </button>
         </div>
       </div>
 
-      {/* Mod ve zorluk */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <fieldset className="retro-panel px-4 py-4">
-          <legend className="px-2 text-[8px] text-retro-accent">OYUN MODU</legend>
-          <div className="flex flex-col gap-3">
-            {MODES.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => handleModeChange(item.id)}
-                className={`border-2 px-3 py-3 text-left transition ${
-                  mode === item.id
-                    ? 'border-turkiye-red bg-turkiye-red/20'
-                    : 'border-white/20 hover:border-white/50'
-                }`}
-              >
-                <div className="text-[10px]">{item.label}</div>
-                <div className="mt-1 text-[7px] leading-relaxed text-white/50">
-                  {item.description}
-                </div>
-              </button>
-            ))}
-          </div>
-        </fieldset>
+      {/* Ayarlar — kompakt chip satırları */}
+      <div className="retro-panel flex flex-col gap-3 px-3 py-3 sm:gap-4 sm:px-4 sm:py-4">
+        <ChipRow label="MOD">
+          {MODES.map((item) => (
+            <Chip
+              key={item.id}
+              active={mode === item.id}
+              onClick={() => handleModeChange(item.id)}
+              title={item.description}
+            >
+              {item.label}
+            </Chip>
+          ))}
+        </ChipRow>
 
-        <fieldset className="retro-panel px-4 py-4">
-          <legend className="px-2 text-[8px] text-retro-accent">ZORLUK</legend>
-          <div className="flex flex-col gap-3">
-            {Object.entries(DIFFICULTY).map(([key, value]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => {
-                  Sfx.select();
-                  setDifficulty(key);
-                }}
-                className={`border-2 px-3 py-3 text-left transition ${
-                  difficulty === key
-                    ? 'border-turkiye-red bg-turkiye-red/20'
-                    : 'border-white/20 hover:border-white/50'
-                }`}
-              >
-                <div className="text-[10px]">{value.label}</div>
-                <div className="mt-1 text-[7px] text-white/50">
-                  Rakip hızı %{Math.round(value.speed * 100)} · Hata payı{' '}
-                  {value.error}px
-                </div>
-              </button>
-            ))}
-          </div>
-        </fieldset>
-      </div>
-
-      {/* Format + rakip */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <fieldset className="retro-panel px-4 py-4">
-          <legend className="px-2 text-[8px] text-retro-accent">MAÇ FORMATI</legend>
-          <div className="flex flex-col gap-3">
-            {Object.values(FORMATS).map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => {
-                  Sfx.select();
-                  setFormat(item.id);
-                }}
-                className={`border-2 px-3 py-3 text-left transition ${
-                  format === item.id
-                    ? 'border-turkiye-red bg-turkiye-red/20'
-                    : 'border-white/20 hover:border-white/50'
-                }`}
-              >
-                <div className="text-[10px]">{item.label}</div>
-                <div className="mt-1 text-[7px] leading-relaxed text-white/50">
-                  {item.description}
-                </div>
-              </button>
-            ))}
-          </div>
-        </fieldset>
-
-        <fieldset className="retro-panel px-4 py-4">
-          <legend className="px-2 text-[8px] text-retro-accent">RAKİP TAKIM</legend>
-          <div className="flex flex-col gap-2">
-            <button
-              type="button"
+        <ChipRow label="ZORLUK">
+          {Object.entries(DIFFICULTY).map(([key, value]) => (
+            <Chip
+              key={key}
+              active={difficulty === key}
               onClick={() => {
                 Sfx.select();
-                setOpponentId('random');
+                setDifficulty(key);
               }}
-              className={`border-2 px-3 py-2 text-left transition ${
-                opponentId === 'random'
-                  ? 'border-turkiye-red bg-turkiye-red/20'
-                  : 'border-white/20 hover:border-white/50'
-              }`}
             >
-              <div className="text-[9px]">RASTGELE</div>
-              <div className="mt-1 text-[7px] text-white/45">Her maçta farklı rakip</div>
-            </button>
-            {OPPONENT_TEAMS.map((team) => (
-              <button
-                key={team.id}
-                type="button"
-                onClick={() => {
-                  Sfx.select();
-                  setOpponentId(team.id);
-                }}
-                className={`border-2 px-3 py-2 text-left transition ${
-                  opponentId === team.id
-                    ? 'border-turkiye-red bg-turkiye-red/20'
-                    : 'border-white/20 hover:border-white/50'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className="inline-block h-3 w-3 border border-black/40"
-                    style={{ backgroundColor: team.colors.primary }}
-                  />
-                  <span className="text-[9px]">{upper(team.name)}</span>
-                </div>
-                <div className="mt-1 text-[7px] text-white/45">{team.blurb}</div>
-              </button>
-            ))}
-          </div>
-        </fieldset>
+              {value.label}
+            </Chip>
+          ))}
+        </ChipRow>
+
+        <ChipRow label="FORMAT">
+          {Object.values(FORMATS).map((item) => (
+            <Chip
+              key={item.id}
+              active={format === item.id}
+              onClick={() => {
+                Sfx.select();
+                setFormat(item.id);
+              }}
+              title={item.description}
+            >
+              {item.label}
+            </Chip>
+          ))}
+        </ChipRow>
+
+        <ChipRow label="RAKİP" wrap>
+          <Chip
+            active={opponentId === 'random'}
+            onClick={() => {
+              Sfx.select();
+              setOpponentId('random');
+            }}
+          >
+            RASTGELE
+          </Chip>
+          {OPPONENT_TEAMS.map((team) => (
+            <Chip
+              key={team.id}
+              active={opponentId === team.id}
+              onClick={() => {
+                Sfx.select();
+                setOpponentId(team.id);
+              }}
+              title={team.blurb}
+            >
+              <span
+                className="mr-1.5 inline-block h-2 w-2 border border-black/40"
+                style={{ backgroundColor: team.colors.primary }}
+              />
+              {team.shortName}
+            </Chip>
+          ))}
+        </ChipRow>
       </div>
 
       {/* Aktif kadro */}
@@ -280,13 +231,12 @@ export default function CharacterSelect({
         onFocus={setFocused}
       />
 
-      {/* Bonus kadro — Milletler Ligi dinlenmesi */}
       {bonusRoster.length > 0 && (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2 sm:gap-3">
           <div>
             <p className="text-[8px] tracking-widest text-retro-accent">★ BONUS KADRO ★</p>
             <p className="mt-1 text-[7px] text-white/40">
-              Milletler Ligi&apos;nde dinlenen sultanlar — özel seçilebilir eklenti
+              Milletler Ligi&apos;nde dinlenen sultanlar
             </p>
           </div>
           <RosterGrid
@@ -300,10 +250,10 @@ export default function CharacterSelect({
         </div>
       )}
 
-      {/* Odaklanılan oyuncunun kartı */}
-      <div className="retro-panel flex flex-col gap-5 px-5 py-5 sm:flex-row sm:items-start">
+      {/* Odak kartı — mobilde daha sıkı */}
+      <div className="retro-panel flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-start sm:gap-5 sm:px-5 sm:py-5">
         <div className="flex shrink-0 flex-col items-center gap-2">
-          <PixelAvatar player={focusedPlayer} scale={5} pose="cheer" />
+          <PixelAvatar player={focusedPlayer} scale={4} pose="cheer" />
           <span className="text-[9px] text-retro-accent">#{focusedPlayer.number}</span>
         </div>
 
@@ -315,7 +265,6 @@ export default function CharacterSelect({
             {focusedPlayer.guest && ' · BONUS'}
           </p>
 
-          {/* Künye — kadro listesindeki gerçek bilgiler */}
           <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-[7px] sm:grid-cols-4">
             <Fact label="DOĞUM" value={formatBirthDate(focusedPlayer)} />
             <Fact
@@ -355,31 +304,63 @@ export default function CharacterSelect({
         </div>
       </div>
 
-      {/* Başlat */}
-      <div className="flex flex-col items-center gap-3 pb-4">
-        <button
-          type="button"
-          className="retro-button px-10 py-4 text-sm"
-          onClick={handleStart}
-          disabled={!canStart}
-        >
-          MAÇA BAŞLA
-        </button>
-        {!canStart && (
-          <p className="text-[8px] text-white/45">
-            2v2 MODU İÇİN {required - selected.length} SULTAN DAHA SEÇ
-          </p>
-        )}
+      {/* Sticky CTA — mobilde her zaman erişilir */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t-4 border-white/20 bg-retro-bg/95 px-3 py-3 backdrop-blur-sm sm:static sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
+        <div className="mx-auto flex max-w-[1100px] flex-col items-center gap-2 pb-[env(safe-area-inset-bottom)] sm:pb-4">
+          <button
+            type="button"
+            className="retro-button w-full max-w-md px-8 py-3 text-sm sm:w-auto sm:px-10 sm:py-4"
+            onClick={handleStart}
+            disabled={!canStart}
+          >
+            MAÇA BAŞLA
+          </button>
+          {!canStart && (
+            <p className="text-[7px] text-white/45 sm:text-[8px]">
+              2v2 İÇİN {required - selected.length} SULTAN DAHA
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
+function ChipRow({ label, children, wrap = false }) {
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+      <span className="shrink-0 text-[7px] tracking-widest text-retro-accent sm:w-14">
+        {label}
+      </span>
+      <div className={`flex gap-2 ${wrap ? 'flex-wrap' : 'flex-wrap sm:flex-nowrap'}`}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Chip({ active, onClick, children, title }) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      className={`border-2 px-2.5 py-1.5 text-[8px] transition sm:px-3 sm:py-2 sm:text-[9px] ${
+        active
+          ? 'border-turkiye-red bg-turkiye-red/25 text-white'
+          : 'border-white/20 text-white/70 hover:border-white/50'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 function RosterGrid({ title, players, selected, focused, onSelect, onFocus, guest = false }) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2 sm:gap-3">
       {title && <p className="text-[8px] tracking-widest text-white/45">{title}</p>}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
         {players.map((player) => {
           const isSelected = selected.includes(player.id);
           const order = selected.indexOf(player.id) + 1;
@@ -390,40 +371,39 @@ function RosterGrid({ title, players, selected, focused, onSelect, onFocus, gues
               type="button"
               onClick={() => onSelect(player.id)}
               onMouseEnter={() => onFocus(player.id)}
-              className={`relative flex flex-col items-center gap-2 border-4 px-2 py-3 transition ${
+              className={`relative flex flex-col items-center gap-1 border-4 px-1 py-2 transition sm:gap-2 sm:px-2 sm:py-3 ${
                 isSelected
                   ? 'border-retro-accent bg-turkiye-red/25'
                   : focused === player.id
                     ? 'border-white/60 bg-retro-panel'
                     : 'border-white/15 bg-retro-panel/60 hover:border-white/40'
               }`}
-              style={{ boxShadow: isSelected ? '5px 5px 0 0 rgba(0,0,0,0.6)' : undefined }}
+              style={{ boxShadow: isSelected ? '4px 4px 0 0 rgba(0,0,0,0.6)' : undefined }}
             >
               {isSelected && (
-                <span className="absolute -left-2 -top-2 flex h-6 w-6 items-center justify-center border-2 border-black bg-retro-accent text-[9px] text-black">
+                <span className="absolute -left-1.5 -top-1.5 flex h-5 w-5 items-center justify-center border-2 border-black bg-retro-accent text-[8px] text-black sm:h-6 sm:w-6 sm:text-[9px]">
                   {order}
                 </span>
               )}
               {player.captain && (
-                <span className="absolute right-1 top-1 text-[7px] text-retro-accent">
+                <span className="absolute right-0.5 top-0.5 text-[6px] text-retro-accent sm:text-[7px]">
                   ★ K
                 </span>
               )}
               {guest && !player.captain && (
-                <span className="absolute right-1 top-1 text-[6px] text-[#FFD24A]/80">
+                <span className="absolute right-0.5 top-0.5 text-[5px] text-[#FFD24A]/80 sm:text-[6px]">
                   BONUS
                 </span>
               )}
 
-              <PixelAvatar player={player} scale={3} />
+              <PixelAvatar player={player} scale={2} />
 
-              <span className="text-[8px] leading-tight">{upper(player.name)}</span>
-              <span className="text-[7px] text-white/45">
+              <span className="text-center text-[6px] leading-tight sm:text-[8px]">
+                {upper(player.name)}
+              </span>
+              <span className="hidden text-[7px] text-white/45 sm:block">
                 #{player.number} · {player.position}
               </span>
-              {player.height && (
-                <span className="text-[7px] text-white/30">{player.height} cm</span>
-              )}
             </button>
           );
         })}

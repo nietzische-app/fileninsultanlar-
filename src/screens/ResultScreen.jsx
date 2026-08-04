@@ -3,6 +3,7 @@ import PixelAvatar from '../components/PixelAvatar.jsx';
 import MuteButton from '../components/MuteButton.jsx';
 import { drawTrophy } from '../game/sprites.js';
 import { getPlayerById } from '../game/players.js';
+import { FORMATS } from '../game/constants.js';
 import { upper } from '../utils/text.js';
 
 const CONFETTI_COLORS = ['#E30A17', '#FFFFFF', '#FFD24A', '#FF7A18', '#9BE7FF'];
@@ -20,6 +21,8 @@ export default function ResultScreen({
   onToggleMute,
 }) {
   const won = result.winner === 'home';
+  const formatLabel = FORMATS[result.format]?.label ?? result.format ?? 'KLASİK';
+  const practice = result.format === 'practice';
 
   const squad = useMemo(
     () => result.homeIds.map((id) => getPlayerById(id)).filter(Boolean),
@@ -92,6 +95,11 @@ export default function ResultScreen({
             {won
               ? 'FİLENİN SULTANLARI KAZANDI'
               : `${result.opponent?.name ?? 'RAKİP'} BU MAÇI ALDI`}
+          </p>
+          <p className="mt-2 text-[7px] tracking-widest text-white/35">
+            {formatLabel}
+            {result.opponent?.shortName ? ` · vs ${result.opponent.shortName}` : ''}
+            {practice ? ' · REKORLARA YAZILMAZ' : ''}
           </p>
         </div>
 

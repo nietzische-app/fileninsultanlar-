@@ -54,6 +54,18 @@ import {
   resolveHitType,
   setWinner,
 } from './rules.js';
+import {
+  drawBallTrail as fxDrawBallTrail,
+  drawParticles as fxDrawParticles,
+  drawRings as fxDrawRings,
+  spawnBurst as fxSpawnBurst,
+  spawnDust as fxSpawnDust,
+  spawnFlame as fxSpawnFlame,
+  spawnRing as fxSpawnRing,
+  updateBallTrail as fxUpdateBallTrail,
+  updateParticles as fxUpdateParticles,
+  updateRings as fxUpdateRings,
+} from './effects.js';
 import Sfx from './audio.js';
 import { upper } from '../utils/text.js';
 
@@ -1120,137 +1132,45 @@ export default class Game {
   }
 
   // ===================================================================
-  // Parçacıklar
+  // Parçacıklar (effects.js)
   // ===================================================================
 
   spawnBurst(x, y, count, color) {
-    for (let i = 0; i < count; i += 1) {
-      const angle = (Math.PI * 2 * i) / count + Math.random() * 0.4;
-      const speed = 90 + Math.random() * 210;
-      this.particles.push({
-        x,
-        y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        life: 0.45 + Math.random() * 0.3,
-        maxLife: 0.75,
-        size: 3 + Math.random() * 3,
-        color,
-        gravity: 420,
-      });
-    }
+    fxSpawnBurst(this.particles, x, y, count, color);
   }
 
   spawnFlame(x, y) {
-    const colors = PALETTE.flame;
-    this.particles.push({
-      x: x + (Math.random() * 8 - 4),
-      y: y + (Math.random() * 8 - 4),
-      vx: (Math.random() * 2 - 1) * 40,
-      vy: (Math.random() * 2 - 1) * 40 - 30,
-      life: 0.3 + Math.random() * 0.2,
-      maxLife: 0.5,
-      size: 4 + Math.random() * 4,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      gravity: -60,
-    });
+    fxSpawnFlame(this.particles, x, y);
   }
 
   spawnDust(x, y, count = 7) {
-    for (let i = 0; i < count; i += 1) {
-      this.particles.push({
-        x,
-        y,
-        vx: (Math.random() * 2 - 1) * 130,
-        vy: -Math.random() * 120,
-        life: 0.3 + Math.random() * 0.25,
-        maxLife: 0.55,
-        size: 2 + Math.random() * 3,
-        color: 'rgba(255,255,255,0.75)',
-        gravity: 500,
-      });
-    }
+    fxSpawnDust(this.particles, x, y, count);
   }
 
-  /**
-   * Vuruş anında genişleyen darbe halkası.
-   * Küçük parçacıklardan farklı olarak temasın nerede olduğunu
-   * tek bakışta okutur.
-   */
+  /** Vuruş anında genişleyen darbe halkası. */
   spawnRing(x, y, color, maxRadius = 46) {
-    this.rings.push({ x, y, r: 6, maxRadius, life: 0.26, maxLife: 0.26, color });
+    fxSpawnRing(this.rings, x, y, color, maxRadius);
   }
 
   updateRings(dt) {
-    for (let i = this.rings.length - 1; i >= 0; i -= 1) {
-      const ring = this.rings[i];
-      ring.life -= dt;
-      if (ring.life <= 0) {
-        this.rings.splice(i, 1);
-        continue;
-      }
-      const t = 1 - ring.life / ring.maxLife;
-      ring.r = 6 + (ring.maxRadius - 6) * t;
-    }
+    fxUpdateRings(this.rings, dt);
   }
 
   drawRings() {
-    const { ctx } = this;
-    this.rings.forEach((ring) => {
-      ctx.globalAlpha = Math.max(0, ring.life / ring.maxLife) * 0.85;
-      ctx.strokeStyle = ring.color;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2);
-      ctx.stroke();
-    });
-    ctx.globalAlpha = 1;
+    fxDrawRings(this.ctx, this.rings);
   }
 
   /** Hızlı topun arkasında kalan iz — hareketi okutur. */
   updateBallTrail() {
-    const ball = this.ball;
-    const speed = Math.hypot(ball.vx, ball.vy);
-
-    if (this.phase !== PHASE.RALLY || speed < 420) {
-      if (this.ballTrail.length > 0) this.ballTrail.shift();
-      return;
-    }
-
-    this.ballTrail.push({ x: ball.x, y: ball.y });
-    if (this.ballTrail.length > 5) this.ballTrail.shift();
+    fxUpdateBallTrail(this.ballTrail, this.ball, this.phase);
   }
 
   drawBallTrail() {
-    const { ctx } = this;
-    const count = this.ballTrail.length;
-    if (count === 0) return;
-
-    const flaming = this.ball.flaming > 0;
-
-    this.ballTrail.forEach((point, i) => {
-      const t = (i + 1) / count;
-      ctx.globalAlpha = t * 0.26;
-      ctx.fillStyle = flaming ? PALETTE.flame[1] : '#FFFFFF';
-      const size = this.ball.radius * 1.1 * t;
-      ctx.fillRect(point.x - size / 2, point.y - size / 2, size, size);
-    });
-
-    ctx.globalAlpha = 1;
+    fxDrawBallTrail(this.ctx, this.ballTrail, this.ball);
   }
 
   updateParticles(dt) {
-    for (let i = this.particles.length - 1; i >= 0; i -= 1) {
-      const p = this.particles[i];
-      p.life -= dt;
-      if (p.life <= 0) {
-        this.particles.splice(i, 1);
-        continue;
-      }
-      p.vy += p.gravity * dt;
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-    }
+    fxUpdateParticles(this.particles, dt);
 
     if (this.message && this.message.timer > 0) {
       this.message.timer -= dt;
@@ -1429,14 +1349,7 @@ export default class Game {
   }
 
   drawParticles() {
-    const { ctx } = this;
-    this.particles.forEach((p) => {
-      const alpha = Math.max(0, p.life / p.maxLife);
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = p.color;
-      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
-    });
-    ctx.globalAlpha = 1;
+    fxDrawParticles(this.ctx, this.particles);
   }
 
   /** Aşama mesajları ve geri sayım. */

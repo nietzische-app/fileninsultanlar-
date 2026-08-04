@@ -131,30 +131,35 @@ export function saveRecords(records) {
 
 /**
  * Maç sonucunu rekorlara işler.
- * @param {{ winner: string, stats?: { spikes?: number, blocks?: number, saves?: number, longestRally?: number } }} result
+ * Antrenman formatı galibiyet/seri tablosunu şişirmesin diye
+ * yalnızca ralli/smaç gibi kişisel zirveleri günceller.
+ * @param {{ winner: string, format?: string, stats?: { spikes?: number, blocks?: number, saves?: number, longestRally?: number } }} result
  * @returns {{ records: Records, broken: Record<string, boolean> }}
  */
 export function recordMatchResult(result) {
   const prev = loadRecords();
   const won = result.winner === 'home';
+  const practice = result.format === 'practice';
   const stats = result.stats ?? {};
 
   const spikes = num(stats.spikes);
   const blocks = num(stats.blocks);
   const saves = num(stats.saves);
   const rally = num(stats.longestRally);
-  const nextStreak = won ? prev.winStreak + 1 : 0;
+  const nextStreak = !practice && won ? prev.winStreak + 1 : practice ? prev.winStreak : 0;
 
   const next = {
-    wins: prev.wins + (won ? 1 : 0),
-    losses: prev.losses + (won ? 0 : 1),
-    matchesPlayed: prev.matchesPlayed + 1,
+    wins: prev.wins + (!practice && won ? 1 : 0),
+    losses: prev.losses + (!practice && !won ? 1 : 0),
+    matchesPlayed: prev.matchesPlayed + (practice ? 0 : 1),
     longestRally: Math.max(prev.longestRally, rally),
     mostSpikes: Math.max(prev.mostSpikes, spikes),
     mostBlocks: Math.max(prev.mostBlocks, blocks),
     mostSaves: Math.max(prev.mostSaves, saves),
-    winStreak: nextStreak,
-    bestWinStreak: Math.max(prev.bestWinStreak, nextStreak),
+    winStreak: practice ? prev.winStreak : nextStreak,
+    bestWinStreak: practice
+      ? prev.bestWinStreak
+      : Math.max(prev.bestWinStreak, nextStreak),
   };
 
   const broken = {
@@ -162,8 +167,8 @@ export function recordMatchResult(result) {
     mostSpikes: spikes > prev.mostSpikes && spikes > 0,
     mostBlocks: blocks > prev.mostBlocks && blocks > 0,
     mostSaves: saves > prev.mostSaves && saves > 0,
-    bestWinStreak: won && nextStreak > prev.bestWinStreak,
-    firstWin: won && prev.wins === 0,
+    bestWinStreak: !practice && won && nextStreak > prev.bestWinStreak,
+    firstWin: !practice && won && prev.wins === 0,
   };
 
   saveRecords(next);

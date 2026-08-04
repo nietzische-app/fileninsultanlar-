@@ -176,12 +176,14 @@ src/
 │   ├── SultanBar.jsx         Özel yetenek barı
 │   ├── StatBar.jsx           Piksel stat çubuğu
 │   ├── MuteButton.jsx        Ses aç/kapa (tüm ekranlar)
-│   └── TouchControls.jsx     Mobil kontroller
+│   ├── TouchControls.jsx     Mobil kontroller
+│   └── ErrorBoundary.jsx     Yakalanmamış hata ekranı
 ├── game/
 │   ├── constants.js          Ölçüler, fizik, kurallar, palet, zorluk kademeleri
 │   ├── Game.js               Motor: döngü, fizik, çarpışma, skor, çizim
 │   ├── rules.js              Saf set/maç/üç-temas kuralları
 │   ├── ballistics.js         Saf smaç/pas balistiği
+│   ├── effects.js            Parçacık, darbe halkası, top izi
 │   ├── math.js               clamp yardımcısı
 │   ├── opponents.js          Rakip takımlar ve away kadrosu
 │   ├── players.js            Kadro verisi, statlar, bonuslar, görünüm
@@ -194,7 +196,7 @@ src/
     └── storage.js            Mute / seçim / rekorlar / tutorial localStorage
 ```
 
-Saf motor mantığı (`rules.js`, `ballistics.js`) Vitest ile test edilir
+Saf motor mantığı (`rules.js`, `ballistics.js`, `effects.js`) Vitest ile test edilir
 (`*.test.js`). `Game.js` bu modülleri çağırır; canvas/React sarmalayıcı
 kalır.
 

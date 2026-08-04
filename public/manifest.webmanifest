@@ -1,0 +1,12 @@
+{
+  "name": "Filenin Sultanları",
+  "short_name": "Sultanlar",
+  "description": "Filenin Sultanları'na adanmış retro piksel voleybol oyunu.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0b12",
+  "theme_color": "#E30A17",
+  "lang": "tr",
+  "orientation": "any",
+  "categories": ["games", "sports"]
+}

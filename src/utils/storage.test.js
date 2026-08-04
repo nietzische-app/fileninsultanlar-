@@ -87,6 +87,31 @@ describe('storage records', () => {
     expect(records.mostSpikes).toBe(9);
     expect(loadRecords().mostSpikes).toBe(9);
   });
+
+  it('antrenman galibiyet/seri/maç sayısını şişirmez', () => {
+    recordMatchResult({
+      winner: 'home',
+      format: 'classic',
+      stats: { spikes: 2, blocks: 1, saves: 1, longestRally: 5 },
+    });
+    const before = loadRecords();
+
+    const { records, broken } = recordMatchResult({
+      winner: 'home',
+      format: 'practice',
+      stats: { spikes: 8, blocks: 0, saves: 0, longestRally: 20 },
+    });
+
+    expect(records.wins).toBe(before.wins);
+    expect(records.matchesPlayed).toBe(before.matchesPlayed);
+    expect(records.winStreak).toBe(before.winStreak);
+    expect(records.bestWinStreak).toBe(before.bestWinStreak);
+    expect(records.longestRally).toBe(20);
+    expect(records.mostSpikes).toBe(8);
+    expect(broken.firstWin).toBe(false);
+    expect(broken.bestWinStreak).toBe(false);
+    expect(broken.longestRally).toBe(true);
+  });
 });
 
 describe('players roster', () => {

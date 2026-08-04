@@ -39,20 +39,22 @@ export default function StartScreen({ onStart, onTutorial, muted, onToggleMute, 
   };
 
   return (
-    <div className="relative flex min-h-full flex-col items-center justify-center gap-8 px-4 py-10">
-      <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+    <div className="relative flex min-h-full flex-col items-center justify-center gap-6 px-4 py-8 sm:gap-8 sm:py-10">
+      <div className="absolute right-4 top-4 z-10 sm:right-6 sm:top-6">
         <MuteButton muted={muted} onToggle={onToggleMute} />
       </div>
 
       {/* Başlık */}
       <div className="text-center">
-        <p className="mb-3 text-[9px] tracking-[0.35em] text-white/50">RETRO VOLLEYBALL</p>
+        <p className="mb-2 text-[8px] tracking-[0.35em] text-white/50 sm:mb-3 sm:text-[9px]">
+          RETRO VOLLEYBALL
+        </p>
         <h1 className="text-2xl leading-relaxed text-turkiye-red text-outline-red sm:text-4xl md:text-5xl">
           FİLENİN
           <br />
           SULTANLARI
         </h1>
-        <div className="mx-auto mt-5 h-1 w-40 bg-white/80" />
+        <div className="mx-auto mt-4 h-1 w-32 bg-white/80 sm:mt-5 sm:w-40" />
       </div>
 
       {/* Gurur Tablosu — yerel rekorlar veya onur mesajı */}

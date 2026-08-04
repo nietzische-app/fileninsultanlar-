@@ -92,6 +92,13 @@ export default function App() {
   }, []);
 
   const handleFinish = useCallback((matchResult) => {
+    // Rematch aynı rakiple devam etsin (rastgele seçilmiş olsa bile)
+    setMatchConfig((prev) =>
+      prev && matchResult?.opponent?.id
+        ? { ...prev, opponentId: matchResult.opponent.id, opponentRandom: false }
+        : prev
+    );
+
     const { records: nextRecords, broken } = recordMatchResult(matchResult);
     setRecords(nextRecords);
     setBrokenRecords(broken);
@@ -105,11 +112,17 @@ export default function App() {
       return;
     }
     Sfx.confirm();
-    setMatchConfig((prev) => ({ ...prev, startedAt: Date.now() }));
+    setMatchConfig((prev) => ({
+      ...prev,
+      startedAt: Date.now(),
+      // result sonrası opponentId kilitlenmiş olmalı
+      opponentId: prev.opponentId ?? result?.opponent?.id,
+      opponentRandom: false,
+    }));
     setResult(null);
     setBrokenRecords(null);
     setScreen('match');
-  }, [matchConfig]);
+  }, [matchConfig, result]);
 
   const goHome = useCallback(() => {
     Sfx.select();
