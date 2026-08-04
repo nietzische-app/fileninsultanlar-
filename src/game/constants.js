@@ -138,6 +138,31 @@ export const RULES = {
   readyPause: 1.6, // set başı geri sayım (sn)
 };
 
+/**
+ * Maç formatları — set sayısı / set uzunluğu.
+ * `rules` alanları RULES üzerine yazılır.
+ */
+export const FORMATS = {
+  classic: {
+    id: 'classic',
+    label: 'KLASİK',
+    description: '15 sayı · 3 sette 2 — turnuva temposu.',
+    rules: {},
+  },
+  single: {
+    id: 'single',
+    label: 'TEK SET',
+    description: 'Tek set 15 sayı (2 fark). Hızlı düello.',
+    rules: { setsToWin: 1 },
+  },
+  practice: {
+    id: 'practice',
+    label: 'ANTRENMAN',
+    description: 'Tek set 7 sayı. Kısa tempo, deneme için.',
+    rules: { setsToWin: 1, pointsPerSet: 7, winBy: 1, pointCap: 7 },
+  },
+};
+
 /** Sultan Gücü barı. */
 export const SULTAN = {
   max: 100,

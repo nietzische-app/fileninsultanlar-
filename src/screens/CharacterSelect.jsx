@@ -10,7 +10,8 @@ import {
   formatBirthDate,
   getAge,
 } from '../game/players.js';
-import { DIFFICULTY } from '../game/constants.js';
+import { DIFFICULTY, FORMATS } from '../game/constants.js';
+import { OPPONENT_TEAMS } from '../game/opponents.js';
 import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
 
@@ -53,11 +54,21 @@ export default function CharacterSelect({
   onToggleMute,
   initialMode = '1v1',
   initialDifficulty = 'normal',
+  initialFormat = 'classic',
+  initialOpponentId = 'random',
   initialHomeIds,
 }) {
   const [mode, setMode] = useState(initialMode === '2v2' ? '2v2' : '1v1');
   const [difficulty, setDifficulty] = useState(
     DIFFICULTY[initialDifficulty] ? initialDifficulty : 'normal'
+  );
+  const [format, setFormat] = useState(
+    FORMATS[initialFormat] ? initialFormat : 'classic'
+  );
+  const [opponentId, setOpponentId] = useState(
+    initialOpponentId === 'random' || OPPONENT_TEAMS.some((t) => t.id === initialOpponentId)
+      ? initialOpponentId
+      : 'random'
   );
   const [selected, setSelected] = useState(() =>
     sanitizeHomeIds(initialHomeIds, initialMode === '2v2' ? '2v2' : '1v1')
@@ -102,7 +113,13 @@ export default function CharacterSelect({
   const handleStart = () => {
     if (!canStart) return;
     Sfx.confirm();
-    onStart({ mode, difficulty, homeIds: selected });
+    onStart({
+      mode,
+      difficulty,
+      format,
+      opponentId: opponentId === 'random' ? undefined : opponentId,
+      homeIds: selected,
+    });
   };
 
   return (
@@ -173,6 +190,80 @@ export default function CharacterSelect({
                   Rakip hızı %{Math.round(value.speed * 100)} · Hata payı{' '}
                   {value.error}px
                 </div>
+              </button>
+            ))}
+          </div>
+        </fieldset>
+      </div>
+
+      {/* Format + rakip */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <fieldset className="retro-panel px-4 py-4">
+          <legend className="px-2 text-[8px] text-retro-accent">MAÇ FORMATI</legend>
+          <div className="flex flex-col gap-3">
+            {Object.values(FORMATS).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  Sfx.select();
+                  setFormat(item.id);
+                }}
+                className={`border-2 px-3 py-3 text-left transition ${
+                  format === item.id
+                    ? 'border-turkiye-red bg-turkiye-red/20'
+                    : 'border-white/20 hover:border-white/50'
+                }`}
+              >
+                <div className="text-[10px]">{item.label}</div>
+                <div className="mt-1 text-[7px] leading-relaxed text-white/50">
+                  {item.description}
+                </div>
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset className="retro-panel px-4 py-4">
+          <legend className="px-2 text-[8px] text-retro-accent">RAKİP TAKIM</legend>
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                Sfx.select();
+                setOpponentId('random');
+              }}
+              className={`border-2 px-3 py-2 text-left transition ${
+                opponentId === 'random'
+                  ? 'border-turkiye-red bg-turkiye-red/20'
+                  : 'border-white/20 hover:border-white/50'
+              }`}
+            >
+              <div className="text-[9px]">RASTGELE</div>
+              <div className="mt-1 text-[7px] text-white/45">Her maçta farklı rakip</div>
+            </button>
+            {OPPONENT_TEAMS.map((team) => (
+              <button
+                key={team.id}
+                type="button"
+                onClick={() => {
+                  Sfx.select();
+                  setOpponentId(team.id);
+                }}
+                className={`border-2 px-3 py-2 text-left transition ${
+                  opponentId === team.id
+                    ? 'border-turkiye-red bg-turkiye-red/20'
+                    : 'border-white/20 hover:border-white/50'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className="inline-block h-3 w-3 border border-black/40"
+                    style={{ backgroundColor: team.colors.primary }}
+                  />
+                  <span className="text-[9px]">{upper(team.name)}</span>
+                </div>
+                <div className="mt-1 text-[7px] text-white/45">{team.blurb}</div>
               </button>
             ))}
           </div>

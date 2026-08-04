@@ -79,6 +79,8 @@ export default function App() {
     const nextPrefs = savePrefs({
       mode: config.mode,
       difficulty: config.difficulty,
+      format: config.format,
+      opponentId: config.opponentId ?? 'random',
       homeIds: config.homeIds,
     });
     setPrefs(nextPrefs);
@@ -143,6 +145,8 @@ export default function App() {
           onToggleMute={toggleMute}
           initialMode={prefs.mode}
           initialDifficulty={prefs.difficulty}
+          initialFormat={prefs.format}
+          initialOpponentId={prefs.opponentId}
           initialHomeIds={prefs.homeIds}
         />
       )}

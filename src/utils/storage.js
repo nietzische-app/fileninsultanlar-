@@ -6,7 +6,7 @@
 const PREFS_KEY = 'filenin-sultanlari-prefs';
 const RECORDS_KEY = 'filenin-sultanlari-records';
 
-/** @typedef {{ muted: boolean, mode: string, difficulty: string, homeIds: string[], tutorialSeen: boolean }} Prefs */
+/** @typedef {{ muted: boolean, mode: string, difficulty: string, format: string, opponentId: string, homeIds: string[], tutorialSeen: boolean }} Prefs */
 
 /**
  * @typedef {{
@@ -27,6 +27,8 @@ export const DEFAULT_PREFS = {
   muted: false,
   mode: '1v1',
   difficulty: 'normal',
+  format: 'classic',
+  opponentId: 'random',
   homeIds: ['gizem-orge'],
   tutorialSeen: false,
 };
@@ -60,9 +62,13 @@ export function loadPrefs() {
     return {
       muted: Boolean(parsed.muted),
       mode: parsed.mode === '2v2' ? '2v2' : '1v1',
-      difficulty: ['easy', 'normal', 'hard'].includes(parsed.difficulty)
-        ? parsed.difficulty
+      difficulty: ['kolay', 'normal', 'zor', 'easy', 'hard'].includes(parsed.difficulty)
+        ? ({ easy: 'kolay', hard: 'zor' }[parsed.difficulty] ?? parsed.difficulty)
         : DEFAULT_PREFS.difficulty,
+      format: ['classic', 'single', 'practice'].includes(parsed.format)
+        ? parsed.format
+        : DEFAULT_PREFS.format,
+      opponentId: typeof parsed.opponentId === 'string' ? parsed.opponentId : DEFAULT_PREFS.opponentId,
       homeIds,
       tutorialSeen: Boolean(parsed.tutorialSeen),
     };

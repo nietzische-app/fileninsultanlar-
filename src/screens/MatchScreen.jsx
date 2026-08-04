@@ -20,6 +20,10 @@ const INITIAL_HUD = {
   sultanArmed: false,
   running: false,
   streak: { side: null, count: 0 },
+  pointsPerSet: 15,
+  formatId: 'classic',
+  opponentName: 'RAKİP',
+  opponentAccent: '#9BB0FF',
 };
 
 /**
@@ -44,6 +48,8 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
       mode: config.mode,
       homeIds: config.homeIds,
       difficulty: config.difficulty,
+      format: config.format,
+      opponentId: config.opponentId,
       onState: setHud,
       onFinish: (result) => onFinishRef.current(result),
     });
@@ -127,6 +133,9 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
         sets={hud.sets}
         setNumber={hud.setNumber}
         setHistory={hud.setHistory}
+        awayName={hud.opponentName}
+        awayAccent={hud.opponentAccent}
+        pointsPerSet={hud.pointsPerSet}
       />
 
       {/* Oyun alanı */}
@@ -171,7 +180,15 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
         <div className="flex items-center gap-3 text-[7px] text-white/45">
           <span>{upper(config.mode)}</span>
           <span className="text-white/20">|</span>
+          <span>{upper(config.format ?? 'classic')}</span>
+          <span className="text-white/20">|</span>
           <span>{squad.map((p) => upper(p.name)).join(' + ')}</span>
+          {hud.opponentName && (
+            <>
+              <span className="text-white/20">vs</span>
+              <span style={{ color: hud.opponentAccent }}>{hud.opponentName}</span>
+            </>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-3">

@@ -31,11 +31,27 @@ describe('storage prefs', () => {
   });
 
   it('mute ve tutorialSeen kaydeder', () => {
-    savePrefs({ muted: true, tutorialSeen: true, mode: '2v2' });
+    savePrefs({
+      muted: true,
+      tutorialSeen: true,
+      mode: '2v2',
+      difficulty: 'zor',
+      format: 'practice',
+    });
     const prefs = loadPrefs();
     expect(prefs.muted).toBe(true);
     expect(prefs.tutorialSeen).toBe(true);
     expect(prefs.mode).toBe('2v2');
+    expect(prefs.difficulty).toBe('zor');
+    expect(prefs.format).toBe('practice');
+  });
+
+  it('eski easy/hard anahtarlarını kolay/zor çevirir', () => {
+    localStorage.setItem(
+      'filenin-sultanlari-prefs',
+      JSON.stringify({ muted: false, difficulty: 'hard', mode: '1v1', homeIds: ['gizem-orge'] })
+    );
+    expect(loadPrefs().difficulty).toBe('zor');
   });
 });
 

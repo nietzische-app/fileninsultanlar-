@@ -89,7 +89,9 @@ export default function ResultScreen({
             {won ? 'ŞAMPİYON!' : 'MAÇ BİTTİ'}
           </h2>
           <p className="mt-3 text-[9px] text-white/55">
-            {won ? 'FİLENİN SULTANLARI KAZANDI' : 'RAKİP BU MAÇI ALDI'}
+            {won
+              ? 'FİLENİN SULTANLARI KAZANDI'
+              : `${result.opponent?.name ?? 'RAKİP'} BU MAÇI ALDI`}
           </p>
         </div>
 
@@ -105,7 +107,9 @@ export default function ResultScreen({
             </div>
             <span className="text-lg text-white/30">—</span>
             <div className="text-center">
-              <p className="text-[9px] text-[#9BB0FF]">RAKİP</p>
+              <p className="text-[9px] text-[#9BB0FF]">
+                {result.opponent?.shortName ?? 'RAKİP'}
+              </p>
               <p className="mt-2 text-3xl text-shadow-pixel">{result.sets.away}</p>
             </div>
           </div>

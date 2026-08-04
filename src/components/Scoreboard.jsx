@@ -1,13 +1,27 @@
 import { RULES } from '../game/constants.js';
 
 /**
- * Maç skor tablosu — Türkiye vs Rakip, set takibi ve set geçmişi.
+ * Maç skor tablosu — Türkiye vs rakip takım, set takibi.
  */
-export default function Scoreboard({ score, sets, setNumber, setHistory }) {
+export default function Scoreboard({
+  score,
+  sets,
+  setNumber,
+  setHistory,
+  awayName = 'RAKİP',
+  awayAccent = 'text-[#9BB0FF]',
+  pointsPerSet = RULES.pointsPerSet,
+}) {
+  const accentClass = awayAccent.startsWith('text-') || awayAccent.startsWith('#')
+    ? awayAccent.startsWith('#')
+      ? undefined
+      : awayAccent
+    : undefined;
+  const accentStyle = awayAccent.startsWith('#') ? { color: awayAccent } : undefined;
+
   return (
     <div className="retro-panel w-full max-w-[900px] px-3 py-3 sm:px-5">
       <div className="flex items-center justify-between gap-2">
-        {/* Türkiye */}
         <TeamBlock
           name="TÜRKİYE"
           flag
@@ -17,28 +31,24 @@ export default function Scoreboard({ score, sets, setNumber, setHistory }) {
           align="left"
         />
 
-        {/* Orta: set bilgisi */}
         <div className="flex shrink-0 flex-col items-center gap-1">
           <span className="text-[8px] text-white/50">SET {setNumber}</span>
           <span className="text-[9px] text-retro-accent sm:text-[11px]">
             {sets.home} — {sets.away}
           </span>
-          <span className="text-[7px] text-white/35">
-            {RULES.pointsPerSet} SAYI
-          </span>
+          <span className="text-[7px] text-white/35">{pointsPerSet} SAYI</span>
         </div>
 
-        {/* Rakip */}
         <TeamBlock
-          name="RAKİP"
+          name={awayName}
           points={score.away}
           sets={sets.away}
-          accent="text-[#9BB0FF]"
+          accent={accentClass ?? 'text-[#9BB0FF]'}
+          accentStyle={accentStyle}
           align="right"
         />
       </div>
 
-      {/* Biten setlerin skorları */}
       {setHistory.length > 0 && (
         <div className="mt-3 flex flex-wrap items-center justify-center gap-2 border-t-2 border-white/15 pt-2">
           {setHistory.map((set, i) => (
@@ -59,7 +69,7 @@ export default function Scoreboard({ score, sets, setNumber, setHistory }) {
   );
 }
 
-function TeamBlock({ name, points, sets, accent, align, flag = false }) {
+function TeamBlock({ name, points, sets, accent, accentStyle, align, flag = false }) {
   const isLeft = align === 'left';
 
   return (
@@ -70,7 +80,12 @@ function TeamBlock({ name, points, sets, accent, align, flag = false }) {
     >
       {flag && <MiniFlag />}
       <div className={`flex min-w-0 flex-col ${isLeft ? 'items-start' : 'items-end'}`}>
-        <span className={`truncate text-[8px] sm:text-[10px] ${accent}`}>{name}</span>
+        <span
+          className={`truncate text-[8px] sm:text-[10px] ${accent ?? ''}`}
+          style={accentStyle}
+        >
+          {name}
+        </span>
         <span className="text-[8px] text-white/40">{sets} SET</span>
       </div>
       <span className="ml-auto text-xl text-white text-shadow-pixel sm:text-3xl">

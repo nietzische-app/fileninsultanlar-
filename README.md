@@ -16,7 +16,10 @@ kırmızı-beyaz bir sahada, Türk bayraklarıyla dolu bir tribünün önünde.
 
 ## Oynanış
 
-**Modlar:** 1v1 ve 2v2 · **Zorluk:** Kolay / Normal / Zor
+**Modlar:** 1v1 ve 2v2 · **Format:** Klasik / Tek Set / Antrenman · **Zorluk:** Kolay / Normal / Zor
+
+Beş kurgusal rakip takım seçilebilir (veya rastgele): Atlas Fırtınası, Adriyatik,
+Nordik Buz, Balkan Ateşi, Pasifik Dalga.
 
 | Tuş | Aksiyon |
 | --- | --- |
@@ -61,8 +64,13 @@ yapay zekâsının tepkisi yavaşlar. Ebrar Karakurt'un barı %30 daha hızlı d
 
 ### Maç formatı
 
-15 sayılık setler (2 fark, 21 tavan), 3 sette 2 kazanan maçı alır.
-Bir maç ortalama 4–9 dakika sürer.
+| Format | Kural |
+| --- | --- |
+| **Klasik** | 15 sayı, 3 sette 2 |
+| **Tek Set** | Tek set 15 sayı (2 fark) |
+| **Antrenman** | Tek set 7 sayı — kısa tempo |
+
+Bir klasik maç ortalama 4–9 dakika sürer.
 
 ### Yerel rekorlar ve rehber
 
@@ -175,6 +183,7 @@ src/
 │   ├── rules.js              Saf set/maç/üç-temas kuralları
 │   ├── ballistics.js         Saf smaç/pas balistiği
 │   ├── math.js               clamp yardımcısı
+│   ├── opponents.js          Rakip takımlar ve away kadrosu
 │   ├── players.js            Kadro verisi, statlar, bonuslar, görünüm
 │   ├── ai.js                 Rakip ve takım arkadaşı yapay zekâsı
 │   ├── sprites.js            Piksel çizimleri (sultan, top, bayrak, kupa, rakamlar)

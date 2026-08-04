@@ -13,6 +13,7 @@
 import {
   DIFFICULTY,
   DIVE,
+  FORMATS,
   GAME_HEIGHT,
   GAME_WIDTH,
   GROUND_Y,
@@ -27,10 +28,14 @@ import {
 } from './constants.js';
 import {
   DEFAULT_PLAYER_ID,
-  OPPONENT_TEMPLATE,
   getModifier,
   getPlayerById,
 } from './players.js';
+import {
+  buildAwayPlayers,
+  getOpponentTeam,
+  pickRandomOpponent,
+} from './opponents.js';
 import { pickChaser, sideBounds, updateAI } from './ai.js';
 import { drawBall, drawSultan } from './sprites.js';
 import { drawArena, drawFloor, drawNet } from './arena.js';
@@ -80,6 +85,8 @@ export default class Game {
    * @param {'1v1'|'2v2'} options.mode
    * @param {string[]} options.homeIds Seçilen sultanların id'leri
    * @param {'kolay'|'normal'|'zor'} [options.difficulty]
+   * @param {'classic'|'single'|'practice'} [options.format]
+   * @param {string} [options.opponentId] Rakip takım id — yoksa rastgele
    * @param {(state: object) => void} [options.onState]
    * @param {(result: object) => void} [options.onFinish]
    */
@@ -90,6 +97,10 @@ export default class Game {
     this.mode = options.mode === '2v2' ? '2v2' : '1v1';
     this.perSide = this.mode === '2v2' ? 2 : 1;
     this.difficulty = DIFFICULTY[options.difficulty] ?? DIFFICULTY.normal;
+    this.format = FORMATS[options.format] ?? FORMATS.classic;
+    this.rules = { ...RULES, ...this.format.rules };
+    this.opponent =
+      getOpponentTeam(options.opponentId) ?? pickRandomOpponent();
     this.onState = options.onState ?? (() => {});
     this.onFinish = options.onFinish ?? (() => {});
 
@@ -132,7 +143,7 @@ export default class Game {
     this.sultanWasReady = false;
 
     this.phase = PHASE.READY;
-    this.phaseTimer = RULES.readyPause;
+    this.phaseTimer = this.rules.readyPause;
     this.message = null;
 
     this.particles = [];
@@ -210,10 +221,10 @@ export default class Game {
       players.push(this.makePlayer(`home-${index}`, data, 'home', index === 0));
     });
 
-    for (let i = 0; i < this.perSide; i += 1) {
-      const data = { ...OPPONENT_TEMPLATE, number: i + 1 };
+    const awayRoster = buildAwayPlayers(this.opponent, this.perSide);
+    awayRoster.forEach((data, i) => {
       players.push(this.makePlayer(`away-${i}`, data, 'away', false));
-    }
+    });
 
     return players;
   }
@@ -752,7 +763,7 @@ export default class Game {
     const { data } = player;
 
     // --- Üç temas kuralı ---
-    const touchResult = applyTouch(this.touch, player.side);
+    const touchResult = applyTouch(this.touch, player.side, this.rules);
     this.touch = touchResult.touch;
 
     if (touchResult.foul) {
@@ -989,7 +1000,7 @@ export default class Game {
     this.score[side] += 1;
     this.servingSide = side;
     this.phase = PHASE.POINT;
-    this.phaseTimer = RULES.servePause;
+    this.phaseTimer = this.rules.servePause;
     this.shake = 10;
 
     this.spawnDust(this.ball.x, GROUND_Y, 16);
@@ -1013,15 +1024,15 @@ export default class Game {
         text:
           reason ??
           (this.streak.count > 2 ? `${this.streak.count} SAYI ÜST ÜSTE!` : 'SAYI!'),
-        timer: RULES.servePause,
+        timer: this.rules.servePause,
         color: reason ? PALETTE.gold : PALETTE.turkishRed,
       };
       Sfx.point();
     } else {
       this.message = {
-        text: reason ?? 'RAKİP SAYI',
-        timer: RULES.servePause,
-        color: reason ? PALETTE.gold : '#9BB0FF',
+        text: reason ?? `${this.opponent.shortName} SAYI`,
+        timer: this.rules.servePause,
+        color: reason ? PALETTE.gold : this.opponent.colors.accent,
       };
       Sfx.pointLost();
     }
@@ -1035,7 +1046,7 @@ export default class Game {
   afterPoint() {
     const { home, away } = this.score;
 
-    if (isSetOver(home, away)) {
+    if (isSetOver(home, away, this.rules)) {
       const winner = setWinner(home, away);
       this.sets[winner] += 1;
       this.setHistory.push({ home, away, winner });
@@ -1046,9 +1057,9 @@ export default class Game {
         text:
           winner === 'home'
             ? `${this.setNumber}. SET TÜRKİYE'NİN!`
-            : `${this.setNumber}. SET RAKİBİN`,
+            : `${this.setNumber}. SET ${this.opponent.shortName}`,
         timer: 2.6,
-        color: winner === 'home' ? PALETTE.gold : '#9BB0FF',
+        color: winner === 'home' ? PALETTE.gold : this.opponent.colors.accent,
       };
 
       if (winner === 'home') Sfx.setWon();
@@ -1063,7 +1074,7 @@ export default class Game {
 
   /** Set bitti — maç bitti mi, yoksa yeni set mi? */
   afterSet() {
-    if (isMatchOver(this.sets)) {
+    if (isMatchOver(this.sets, this.rules)) {
       this.phase = PHASE.MATCH_END;
       this.message = null;
       this.finished = true;
@@ -1079,8 +1090,14 @@ export default class Game {
         setHistory: [...this.setHistory],
         stats: { ...this.stats },
         mode: this.mode,
+        format: this.format.id,
         homeIds: [...this.homeIds],
         difficulty: this.difficulty.label,
+        opponent: {
+          id: this.opponent.id,
+          name: this.opponent.name,
+          shortName: this.opponent.shortName,
+        },
       });
       return;
     }
@@ -1092,8 +1109,12 @@ export default class Game {
     this.resetRally(this.servingSide);
 
     this.phase = PHASE.READY;
-    this.phaseTimer = RULES.readyPause;
-    this.message = { text: `${this.setNumber}. SET`, timer: RULES.readyPause, color: '#FFFFFF' };
+    this.phaseTimer = this.rules.readyPause;
+    this.message = {
+      text: `${this.setNumber}. SET`,
+      timer: this.rules.readyPause,
+      color: '#FFFFFF',
+    };
     this.emitState(true);
   }
 
@@ -1273,6 +1294,10 @@ export default class Game {
       sultanArmed: this.sultanArmed,
       running: this.running,
       streak: { ...this.streak },
+      pointsPerSet: this.rules.pointsPerSet,
+      formatId: this.format.id,
+      opponentName: this.opponent.shortName,
+      opponentAccent: this.opponent.colors.accent,
     });
   }
 
