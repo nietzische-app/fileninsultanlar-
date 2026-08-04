@@ -90,6 +90,7 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
     const game = gameRef.current;
     if (!game || game.finished) return;
     if (game.running) game.stop();
+    Sfx.setAtmosphere(0.08);
     setPaused(true);
   }, []);
 
@@ -137,7 +138,7 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
     if (!game || game.finished) return;
 
     Sfx.unlock();
-    Sfx.select();
+    Sfx.pause();
     if (quitConfirm) {
       setQuitConfirm(false);
       return;

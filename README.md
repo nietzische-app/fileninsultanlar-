@@ -192,7 +192,7 @@ src/
 │   ├── ai.js                 Rakip ve takım arkadaşı yapay zekâsı
 │   ├── sprites.js            Piksel çizimleri (sultan, top, bayrak, kupa, rakamlar)
 │   ├── arena.js              Salon, tribün, zemin ve file çizimi
-│   └── audio.js              8-bit ses motoru
+│   └── audio.js              8-bit ses motoru (katmanlar, atmosphere, jitter)
 └── utils/
     ├── text.js               Türkçe büyük harf yardımcısı
     └── storage.js            Mute / seçim / rekorlar / tutorial localStorage
