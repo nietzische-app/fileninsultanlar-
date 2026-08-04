@@ -1,109 +1,135 @@
-import { ROSTER, STARTING_SIX, FORMATION, getPlayerById } from './players.js';
-
 /**
- * Oyun motoru — Filenin Sultanları retro voleybol.
+ * Filenin Sultanları — arcade voleybol motoru.
  *
- * Yan görünüş (side-view) arcade voleybol düzeni:
- *   - Sol yarı saha: Türkiye (oyuncunun kontrol ettiği taraf)
- *   - Sağ yarı saha: rakip
- *   - Ortada file, altta kırmızı/beyaz saha zemini
+ * Slime Volleyball tarzı akıcı fizik: her oyuncunun bir "temas dairesi"
+ * vardır, top bu daireye çarptığı noktanın normaline göre sekerek yön
+ * alır. Vuruş tuşu erişimi ve gücü artırır; havada basılırsa smaç olur.
  *
- * Motor React'ten tamamen bağımsızdır: bir <canvas> alır, kendi
- * requestAnimationFrame döngüsünü kurar ve dışarıya sadece
- * `onStateChange` callback'i ile skor/durum bilgisi yollar.
- *
- * Genişletme noktaları (Cursor için TODO'lar dosya içinde işaretli):
- *   update()      → çarpışma, sayı kuralları, rakip yapay zekâsı
- *   drawPlayer()  → sprite / animasyon karesi
+ * Motor React'ten bağımsızdır — bir <canvas> alır, kendi
+ * requestAnimationFrame döngüsünü kurar ve dışarıya yalnızca
+ * `onState` / `onFinish` callback'leriyle konuşur.
  */
 
-export const GAME_WIDTH = 960;
-export const GAME_HEIGHT = 540;
+import {
+  attackRange,
+  DIFFICULTY,
+  GAME_HEIGHT,
+  GAME_WIDTH,
+  GROUND_Y,
+  NET,
+  PALETTE,
+  PHASE,
+  PHYSICS,
+  PLAYER,
+  RULES,
+  SULTAN,
+  WALL_PAD,
+} from './constants.js';
+import { OPPONENT_TEMPLATE, getModifier, getPlayerById } from './players.js';
+import { pickChaser, sideBounds, updateAI } from './ai.js';
+import { drawBall, drawSultan, drawTurkishFlag } from './sprites.js';
+import Sfx from './audio.js';
 
-/** Sahaya ait sabitler (piksel). */
-export const COURT = {
-  floorY: 400, // saha zemininin üst (uzak) kenarı
-  backY: 500, // saha zemininin alt (yakın) kenarı
-  marginX: 60, // saha kenar boşluğu
-  netWidth: 8,
-  netHeight: 190,
-  lineWidth: 4,
-};
+/** Bir değeri aralığa sıkıştırır. */
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
 
-/** Topun düştüğü zemin düzlemi — sahanın orta derinliği. */
-export const BALL_FLOOR_Y = (COURT.floorY + COURT.backY) / 2;
-
-/** Basit fizik sabitleri. */
-export const PHYSICS = {
-  gravity: 1400, // px / s²
-  ballRestitution: 0.72, // zıplama kaybı
-  ballRadius: 14,
-  playerSpeed: 300, // px / s
-  jumpVelocity: -640, // px / s
-  maxDelta: 1 / 30, // sekme (frame spike) koruması
-};
-
-/**
- * Renk paleti — Tailwind config'indeki değerlerle aynı.
- *
- * Not: saha zemini formalardan (parlak #E30A17) belirgin biçimde koyu
- * tutulur, yoksa kırmızı forma kırmızı zeminde kayboluyor.
- */
-export const PALETTE = {
-  sky: '#0b0b12',
-  crowd: '#16162a',
-  courtIn: '#8E1018', // saha içi (koyu kırmızı)
-  courtOut: '#5C070D', // serbest bölge (daha koyu)
-  line: '#FFFFFF',
-  net: '#F5F5F5',
-  netPost: '#DDDDDD',
-  ballA: '#FFFFFF',
-  ballB: '#E30A17',
-  ballC: '#1B4FE0',
-  outline: '#17141A', // piksel figür dış hattı
-  shadow: 'rgba(0, 0, 0, 0.35)',
+/** Klavye tuşu → mantıksal girdi eşlemesi. */
+const KEY_MAP = {
+  ArrowLeft: 'left',
+  a: 'left',
+  A: 'left',
+  ArrowRight: 'right',
+  d: 'right',
+  D: 'right',
+  ArrowUp: 'up',
+  w: 'up',
+  W: 'up',
+  ' ': 'action',
+  z: 'action',
+  Z: 'action',
+  x: 'sultan',
+  X: 'sultan',
 };
 
 export default class Game {
   /**
    * @param {HTMLCanvasElement} canvas
-   * @param {{ onStateChange?: (state: object) => void }} [options]
+   * @param {object} options
+   * @param {'1v1'|'2v2'} options.mode
+   * @param {string[]} options.homeIds Seçilen sultanların id'leri
+   * @param {'kolay'|'normal'|'zor'} [options.difficulty]
+   * @param {(state: object) => void} [options.onState]
+   * @param {(result: object) => void} [options.onFinish]
    */
   constructor(canvas, options = {}) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    this.onStateChange = options.onStateChange ?? (() => {});
+
+    this.mode = options.mode === '2v2' ? '2v2' : '1v1';
+    this.perSide = this.mode === '2v2' ? 2 : 1;
+    this.difficulty = DIFFICULTY[options.difficulty] ?? DIFFICULTY.normal;
+    this.onState = options.onState ?? (() => {});
+    this.onFinish = options.onFinish ?? (() => {});
+
+    this.homeIds = (options.homeIds ?? ['eda-erdem']).slice(0, this.perSide);
+    while (this.homeIds.length < this.perSide) {
+      this.homeIds.push('eda-erdem');
+    }
 
     this.running = false;
     this.rafId = null;
     this.lastTime = 0;
+    this.time = 0;
 
-    /** Basılı tuşlar. */
-    this.keys = new Set();
+    /** İnsan oyuncunun girdileri (klavye + dokunmatik ortak). */
+    this.input = { left: false, right: false, up: false, action: false, sultan: false };
+    this.sultanKeyLatch = false;
 
-    /** Skor / maç durumu. */
+    // Maç durumu
     this.score = { home: 0, away: 0 };
-    this.set = 1;
+    this.sets = { home: 0, away: 0 };
+    this.setHistory = [];
+    this.setNumber = 1;
+    this.servingSide = 'home';
+    this.streak = { side: null, count: 0 };
 
-    /** Kontrol edilen oyuncu — varsayılan kaptan Eda Erdem. */
-    this.activePlayerId = 'eda-erdem';
+    /** Üç temas kuralı takibi — hangi taraf kaç kez dokundu. */
+    this.touch = { side: null, count: 0 };
 
-    this.entities = { ball: null, players: [] };
+    // Sultan Gücü
+    this.sultanCharge = 0;
+    this.sultanArmed = false;
+    this.sultanWasReady = false;
+
+    this.phase = PHASE.READY;
+    this.phaseTimer = RULES.readyPause;
+    this.message = null;
+
+    this.particles = [];
+    this.shake = 0;
+    this.finished = false;
+
+    this.stats = { spikes: 0, blocks: 0, longestRally: 0, rallyTouches: 0 };
 
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleKeyUp = this.handleKeyUp.bind(this);
     this.loop = this.loop.bind(this);
 
-    this.reset();
+    this.players = this.createPlayers();
+    this.ball = this.createBall('home');
+    this.resetPositions();
+
+    this.lastSignature = '';
   }
 
-  // ---------------------------------------------------------------------
+  // ===================================================================
   // Yaşam döngüsü
-  // ---------------------------------------------------------------------
+  // ===================================================================
 
-  /** Oyun döngüsünü başlatır ve klavye dinleyicilerini bağlar. */
   start() {
-    if (this.running) return;
+    if (this.running || this.finished) return;
     this.running = true;
     this.lastTime = performance.now();
 
@@ -111,10 +137,9 @@ export default class Game {
     window.addEventListener('keyup', this.handleKeyUp);
 
     this.rafId = requestAnimationFrame(this.loop);
-    this.emitState();
+    this.emitState(true);
   }
 
-  /** Döngüyü duraklatır (durum korunur). */
   stop() {
     if (!this.running) return;
     this.running = false;
@@ -127,501 +152,1348 @@ export default class Game {
     window.removeEventListener('keydown', this.handleKeyDown);
     window.removeEventListener('keyup', this.handleKeyUp);
 
-    this.emitState();
     // Duraklatınca son kare ekranda kalsın
     this.render();
+    this.emitState(true);
   }
 
-  /** Döngüyü durdurur ve kaynakları serbest bırakır (React unmount). */
   destroy() {
     this.stop();
-    this.keys.clear();
-    this.entities = { ball: null, players: [] };
+    this.particles.length = 0;
   }
 
-  /** Topu ve oyuncuları başlangıç konumuna alır, skoru sıfırlar. */
-  reset() {
-    this.score = { home: 0, away: 0 };
-    this.set = 1;
-    this.entities.ball = this.createBall();
-    this.entities.players = this.createPlayers();
-    this.emitState();
-    this.render();
+  // ===================================================================
+  // Varlıklar
+  // ===================================================================
+
+  createPlayers() {
+    const players = [];
+
+    this.homeIds.forEach((id, index) => {
+      const data = getPlayerById(id) ?? getPlayerById('eda-erdem');
+      players.push(this.makePlayer(`home-${index}`, data, 'home', index === 0));
+    });
+
+    for (let i = 0; i < this.perSide; i += 1) {
+      const data = { ...OPPONENT_TEMPLATE, number: i + 1 };
+      players.push(this.makePlayer(`away-${i}`, data, 'away', false));
+    }
+
+    return players;
   }
 
-  /** Sadece rallyi yeniden başlatır (skor korunur). */
-  resetRally() {
-    this.entities.ball = this.createBall();
-    this.entities.players = this.createPlayers();
-  }
-
-  // ---------------------------------------------------------------------
-  // Varlıkların oluşturulması
-  // ---------------------------------------------------------------------
-
-  /** Servis pozisyonundaki top. */
-  createBall() {
+  makePlayer(id, data, side, controlled) {
     return {
-      x: COURT.marginX + 120,
-      y: 160,
-      vx: 180,
+      id,
+      data,
+      side,
+      controlled,
+      x: 0,
+      y: GROUND_Y,
+      vx: 0,
       vy: 0,
-      radius: PHYSICS.ballRadius,
-      rotation: 0,
+      onGround: true,
+      facing: side === 'home' ? 1 : -1,
+      pose: 'idle',
+      runFrame: 0,
+      hitCooldown: 0,
+      hitRadius: PLAYER.hitRadius * getModifier(data, 'reach'),
+      hitOffsetY: PLAYER.hitOffsetY,
+      input: { left: false, right: false, up: false, action: false },
+      // AI durumu
+      aiTimer: 0,
+      aiTargetX: 0,
+      aiJumpCooldown: 0,
+      aiSpeedScale: 1,
+      aimSpread: 0.5,
     };
   }
 
-  /**
-   * Sahadaki altılıyı oluşturur.
-   *
-   * FORMATION.x sol yarı sahaya, FORMATION.y ise sahte derinlik
-   * (uzaktaki oyuncu daha küçük ve daha yukarıda) olarak kullanılır.
-   */
-  createPlayers() {
-    return STARTING_SIX.map((id) => {
-      const data = getPlayerById(id) ?? ROSTER[0];
-      const spot = FORMATION[id] ?? { x: 0.4, y: 0.5 };
+  createBall(side) {
+    return {
+      x: side === 'home' ? GAME_WIDTH * 0.25 : GAME_WIDTH * 0.75,
+      y: 130,
+      vx: 0,
+      vy: 0,
+      radius: PHYSICS.ballRadius,
+      rotation: 0,
+      flaming: 0,
+      lastHitBy: null,
+      lastHitSide: null,
+    };
+  }
 
-      // Derinlik: y 0 → uzak (küçük ve yukarıda), y 1 → yakın (büyük ve aşağıda)
-      const depth = 0.8 + spot.y * 0.35;
+  /** Oyuncuları set/sayı başı dizilişine yerleştirir. */
+  resetPositions() {
+    const homeSpots =
+      this.perSide === 1 ? [0.26] : [0.14, 0.36];
+    const awaySpots =
+      this.perSide === 1 ? [0.74] : [0.64, 0.86];
 
-      return {
-        id,
-        data,
-        x: COURT.marginX + spot.x * this.halfCourtWidth(),
-        y: this.groundYFor(spot.y), // ayakların değdiği çizgi
-        groundY: this.groundYFor(spot.y),
-        vx: 0,
-        vy: 0,
-        width: 26 * depth,
-        height: 76 * depth,
-        depth,
-        onGround: true,
-        facing: 1, // 1 = sağa (filenin olduğu yön)
-      };
+    let homeIndex = 0;
+    let awayIndex = 0;
+
+    this.players.forEach((player) => {
+      const spots = player.side === 'home' ? homeSpots : awaySpots;
+      const index = player.side === 'home' ? homeIndex++ : awayIndex++;
+
+      player.x = GAME_WIDTH * spots[index];
+      player.homeX = player.x;
+      player.y = GROUND_Y;
+      player.vx = 0;
+      player.vy = 0;
+      player.onGround = true;
+      player.pose = 'idle';
+      player.hitCooldown = 0;
+      player.aiTimer = 0;
+      player.aiJumpCooldown = 0;
+      player.facing = player.side === 'home' ? 1 : -1;
     });
   }
 
-  /** Sol yarı sahanın dip çizgiden fileye kadar piksel genişliği. */
-  halfCourtWidth() {
-    return GAME_WIDTH / 2 - COURT.netWidth / 2 - COURT.marginX;
+  /** Yeni ralli — top servis atan tarafın üstünde belirir. */
+  resetRally(servingSide) {
+    this.resetPositions();
+    this.ball = this.createBall(servingSide);
+    this.touch = { side: null, count: 0 };
+    this.stats.rallyTouches = 0;
   }
 
-  /**
-   * Derinlik oranını (0 uzak, 1 yakın) zemindeki piksel Y'sine çevirir.
-   * @param {number} depthRatio
-   */
-  groundYFor(depthRatio) {
-    return COURT.floorY + 8 + depthRatio * (COURT.backY - COURT.floorY - 16);
+  /** İnsan oyuncunun kontrol ettiği sultan. */
+  getControlledPlayer() {
+    return this.players.find((p) => p.controlled);
   }
 
-  /** Şu an kontrol edilen oyuncu nesnesi. */
-  getActivePlayer() {
-    return this.entities.players.find((p) => p.id === this.activePlayerId);
-  }
-
-  // ---------------------------------------------------------------------
+  // ===================================================================
   // Girdi
-  // ---------------------------------------------------------------------
+  // ===================================================================
 
   handleKeyDown(event) {
-    // Boşluk sayfayı kaydırmasın
-    if ([' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
-      event.preventDefault();
+    const action = KEY_MAP[event.key];
+    if (!action) return;
+    event.preventDefault();
+
+    if (action === 'sultan') {
+      // Tek basışta bir kez tetiklensin (tuş basılı tutulunca tekrarlamasın)
+      if (!this.sultanKeyLatch) {
+        this.sultanKeyLatch = true;
+        this.activateSultan();
+      }
+      return;
     }
-    this.keys.add(event.key);
+
+    this.input[action] = true;
   }
 
   handleKeyUp(event) {
-    this.keys.delete(event.key);
+    const action = KEY_MAP[event.key];
+    if (!action) return;
+    event.preventDefault();
+
+    if (action === 'sultan') {
+      this.sultanKeyLatch = false;
+      return;
+    }
+
+    this.input[action] = false;
   }
 
-  // ---------------------------------------------------------------------
-  // Ana döngü
-  // ---------------------------------------------------------------------
-
   /**
-   * requestAnimationFrame döngüsü.
-   * @param {number} timestamp
+   * Dokunmatik butonlar için dışarıdan girdi ayarlar.
+   * @param {'left'|'right'|'up'|'action'|'sultan'} name
+   * @param {boolean} pressed
    */
+  setInput(name, pressed) {
+    if (name === 'sultan') {
+      if (pressed) this.activateSultan();
+      return;
+    }
+    if (name in this.input) {
+      this.input[name] = pressed;
+    }
+  }
+
+  /** Sultan Gücü'nü kurar — bir sonraki temasta alevli top. */
+  activateSultan() {
+    if (this.sultanCharge < SULTAN.max || this.sultanArmed) return;
+    if (this.phase !== PHASE.RALLY) return;
+
+    this.sultanArmed = true;
+    Sfx.sultanFire();
+    this.spawnBurst(
+      this.getControlledPlayer()?.x ?? GAME_WIDTH * 0.25,
+      GROUND_Y - 60,
+      18,
+      PALETTE.gold
+    );
+    this.emitState(true);
+  }
+
+  // ===================================================================
+  // Ana döngü
+  // ===================================================================
+
   loop(timestamp) {
     if (!this.running) return;
 
-    // Saniye cinsinden delta; sekmeye karşı üst sınırlanır
     const delta = Math.min((timestamp - this.lastTime) / 1000, PHYSICS.maxDelta);
     this.lastTime = timestamp;
 
     this.update(delta);
     this.render();
+    this.emitState();
 
     this.rafId = requestAnimationFrame(this.loop);
   }
 
-  /**
-   * Oyun mantığını bir kare ilerletir.
-   * @param {number} dt Saniye cinsinden geçen süre
-   */
   update(dt) {
-    this.updateActivePlayer(dt);
-    this.updateBall(dt);
+    this.time += dt;
+    this.shake = Math.max(0, this.shake - dt * 60);
+    this.updateParticles(dt);
 
-    // TODO(cursor): top–oyuncu çarpışması ve vuruş (manşet / smaç) mekaniği
-    // TODO(cursor): sayı kuralları — top zeminde kalan tarafın rakibine sayı
-    // TODO(cursor): rakip takım yapay zekâsı
-    // TODO(cursor): rotasyon ve servis sırası
+    switch (this.phase) {
+      case PHASE.READY:
+        this.updatePlayers(dt, false);
+        this.phaseTimer -= dt;
+        if (this.phaseTimer <= 0) {
+          this.phase = PHASE.RALLY;
+          this.message = null;
+          Sfx.whistle();
+        }
+        break;
+
+      case PHASE.RALLY:
+        this.updatePlayers(dt, true);
+        this.updateBall(dt);
+        this.resolveCollisions();
+        break;
+
+      case PHASE.POINT:
+        this.updatePlayers(dt, false);
+        this.updateBall(dt, true);
+        this.phaseTimer -= dt;
+        if (this.phaseTimer <= 0) this.afterPoint();
+        break;
+
+      case PHASE.SET_END:
+        this.updatePlayers(dt, false);
+        this.phaseTimer -= dt;
+        if (this.phaseTimer <= 0) this.afterSet();
+        break;
+
+      case PHASE.MATCH_END:
+      default:
+        this.updatePlayers(dt, false);
+        break;
+    }
   }
 
-  /** Klavye girdisine göre aktif oyuncuyu hareket ettirir. */
-  updateActivePlayer(dt) {
-    const player = this.getActivePlayer();
-    if (!player) return;
+  // ===================================================================
+  // Oyuncu hareketi
+  // ===================================================================
 
-    const left = this.keys.has('ArrowLeft') || this.keys.has('a');
-    const right = this.keys.has('ArrowRight') || this.keys.has('d');
-    const jump = this.keys.has(' ') || this.keys.has('ArrowUp') || this.keys.has('w');
+  updatePlayers(dt, active) {
+    const ball = this.ball;
 
-    // Yatay hareket — statlardaki hız değeri ivmeyi ölçekler
-    const speedScale = 0.7 + (player.data.stats.speed / 100) * 0.6;
-    player.vx = 0;
-    if (left) {
-      player.vx = -PHYSICS.playerSpeed * speedScale;
-      player.facing = -1;
-    }
-    if (right) {
-      player.vx = PHYSICS.playerSpeed * speedScale;
-      player.facing = 1;
-    }
+    // 2v2'de her takımda topu kovalayacak oyuncuyu seç
+    const homeAI = this.players.filter((p) => p.side === 'home' && !p.controlled);
+    const awayAI = this.players.filter((p) => p.side === 'away');
 
-    // Zıplama — sadece yerdeyken
-    if (jump && player.onGround) {
-      player.vy = PHYSICS.jumpVelocity;
+    const homeChaser = active ? pickChaser([...homeAI, this.getControlledPlayer()].filter(Boolean), ball) : null;
+    const awayChaser = active ? pickChaser(awayAI, ball) : null;
+
+    // Alevli top rakibin tepkisini yavaşlatır
+    const slow = ball.flaming > 0 ? SULTAN.aiPenalty : 1;
+
+    this.players.forEach((player) => {
+      if (player.controlled) {
+        // İnsan girdisi doğrudan aktarılır
+        player.input.left = active && this.input.left;
+        player.input.right = active && this.input.right;
+        player.input.up = active && this.input.up;
+        player.input.action = active && this.input.action;
+        player.aiSpeedScale = 1;
+      } else if (active) {
+        const isAway = player.side === 'away';
+        updateAI(
+          player,
+          ball,
+          {
+            difficulty: this.difficulty,
+            chasing: player.id === (isAway ? awayChaser : homeChaser),
+            homeX: player.homeX,
+            slowFactor: isAway ? slow : 1,
+            foes: this.players.filter((p) => p.side !== player.side),
+          },
+          dt
+        );
+      } else {
+        player.input.left = false;
+        player.input.right = false;
+        player.input.up = false;
+        player.input.action = false;
+      }
+
+      this.movePlayer(player, dt);
+    });
+  }
+
+  movePlayer(player, dt) {
+    const { data, input } = player;
+
+    const speed =
+      PHYSICS.playerSpeed * getModifier(data, 'speed') * (player.aiSpeedScale ?? 1);
+    const control = player.onGround ? 1 : PHYSICS.airControl;
+
+    let dir = 0;
+    if (input.left) dir -= 1;
+    if (input.right) dir += 1;
+
+    player.vx = dir * speed * control;
+    if (dir !== 0) player.facing = dir;
+
+    if (input.up && player.onGround) {
+      player.vy = PHYSICS.jumpVelocity * getModifier(data, 'jump');
       player.onGround = false;
     }
 
-    player.vy += PHYSICS.gravity * dt;
+    player.vy += PHYSICS.playerGravity * dt;
     player.x += player.vx * dt;
     player.y += player.vy * dt;
 
-    // Zemine oturt
-    if (player.y >= player.groundY) {
-      player.y = player.groundY;
+    if (player.y >= GROUND_Y) {
+      if (!player.onGround) {
+        this.spawnDust(player.x, GROUND_Y);
+      }
+      player.y = GROUND_Y;
       player.vy = 0;
       player.onGround = true;
     }
 
-    // Kendi yarı sahasının dışına çıkamaz (fileyi geçemez)
-    const minX = COURT.marginX + player.width / 2;
-    const maxX = GAME_WIDTH / 2 - COURT.netWidth - player.width / 2;
-    player.x = Math.max(minX, Math.min(maxX, player.x));
+    // Kendi yarı sahasında kal
+    const bounds = sideBounds(player.side, 22);
+    player.x = Math.max(bounds.min, Math.min(bounds.max, player.x));
+
+    // Poz seçimi
+    if (!player.onGround) {
+      player.pose = input.action ? 'spike' : 'jump';
+    } else if (input.action) {
+      player.pose = 'bump';
+    } else if (dir !== 0) {
+      player.pose = 'run';
+      player.runFrame = (player.runFrame + dt * 6) % 1;
+    } else {
+      player.pose = 'idle';
+    }
+
+    player.hitCooldown = Math.max(0, player.hitCooldown - dt);
   }
 
-  /** Topun fiziği: yerçekimi, zemin sekmesi, duvar ve file teması. */
-  updateBall(dt) {
-    const ball = this.entities.ball;
-    if (!ball) return;
+  // ===================================================================
+  // Top fiziği
+  // ===================================================================
 
-    ball.vy += PHYSICS.gravity * dt;
+  updateBall(dt, frozen = false) {
+    const ball = this.ball;
+
+    ball.flaming = Math.max(0, ball.flaming - dt);
+
+    if (frozen) {
+      // Sayı anında top yerinde döner, sahne donar
+      ball.rotation += dt * 2;
+      return;
+    }
+
+    ball.vy += PHYSICS.ballGravity * dt;
+    ball.vx *= PHYSICS.ballAirDrag;
+
     ball.x += ball.vx * dt;
     ball.y += ball.vy * dt;
-    ball.rotation += ball.vx * dt * 0.02;
+    ball.rotation += ball.vx * dt * 0.03;
 
-    // Zemin
-    if (ball.y + ball.radius >= BALL_FLOOR_Y) {
-      ball.y = BALL_FLOOR_Y - ball.radius;
-      ball.vy *= -PHYSICS.ballRestitution;
-      ball.vx *= 0.98;
-
-      // Çok yavaşladıysa rally biter
-      if (Math.abs(ball.vy) < 60) {
-        this.handlePointScored(ball.x < GAME_WIDTH / 2 ? 'away' : 'home');
-      }
+    // Alev izi
+    if (ball.flaming > 0) {
+      this.spawnFlame(ball.x, ball.y);
     }
 
     // Yan duvarlar
-    if (ball.x - ball.radius <= COURT.marginX) {
-      ball.x = COURT.marginX + ball.radius;
-      ball.vx *= -1;
-    }
-    if (ball.x + ball.radius >= GAME_WIDTH - COURT.marginX) {
-      ball.x = GAME_WIDTH - COURT.marginX - ball.radius;
-      ball.vx *= -1;
+    if (ball.x - ball.radius <= WALL_PAD) {
+      ball.x = WALL_PAD + ball.radius;
+      ball.vx = Math.abs(ball.vx) * PHYSICS.wallRestitution;
+    } else if (ball.x + ball.radius >= GAME_WIDTH - WALL_PAD) {
+      ball.x = GAME_WIDTH - WALL_PAD - ball.radius;
+      ball.vx = -Math.abs(ball.vx) * PHYSICS.wallRestitution;
     }
 
     // Tavan
     if (ball.y - ball.radius <= 0) {
       ball.y = ball.radius;
-      ball.vy *= -0.6;
+      ball.vy = Math.abs(ball.vy) * 0.5;
     }
 
-    // File — üstünden geçemezse geri seker
-    const netX = GAME_WIDTH / 2;
-    const netTop = BALL_FLOOR_Y - COURT.netHeight;
-    const touchesNetBand = ball.y + ball.radius > netTop;
-    const touchesNetColumn =
-      Math.abs(ball.x - netX) < COURT.netWidth / 2 + ball.radius;
+    this.resolveNet();
 
-    if (touchesNetBand && touchesNetColumn) {
-      ball.x = ball.x < netX
-        ? netX - COURT.netWidth / 2 - ball.radius
-        : netX + COURT.netWidth / 2 + ball.radius;
-      ball.vx *= -0.5;
+    // Zemin → sayı
+    if (ball.y + ball.radius >= GROUND_Y) {
+      ball.y = GROUND_Y - ball.radius;
+      const landedSide = ball.x < NET.x ? 'home' : 'away';
+      this.awardPoint(landedSide === 'home' ? 'away' : 'home', landedSide);
+    }
+  }
+
+  /** File çarpışması — yan yüzey ve üst bant. */
+  resolveNet() {
+    const ball = this.ball;
+    const netLeft = NET.x - NET.width / 2;
+    const netRight = NET.x + NET.width / 2;
+
+    const withinColumn =
+      ball.x + ball.radius > netLeft && ball.x - ball.radius < netRight;
+
+    if (!withinColumn) return;
+
+    // Üst bandın üstünden geçiyor
+    if (ball.y + ball.radius < NET.topY) return;
+
+    // Bandın hemen üstüne düşerse hafifçe seker
+    if (ball.vy > 0 && ball.y < NET.topY && ball.y + ball.radius >= NET.topY) {
+      ball.y = NET.topY - ball.radius;
+      ball.vy = -Math.abs(ball.vy) * 0.45;
+      ball.vx *= 1.1;
+      Sfx.net();
+      return;
+    }
+
+    // Yan yüzeye çarptı
+    if (ball.x < NET.x) {
+      ball.x = netLeft - ball.radius;
+      ball.vx = -Math.abs(ball.vx) * PHYSICS.netRestitution;
+    } else {
+      ball.x = netRight + ball.radius;
+      ball.vx = Math.abs(ball.vx) * PHYSICS.netRestitution;
+    }
+    Sfx.net();
+  }
+
+  /** Top–oyuncu temasları. */
+  resolveCollisions() {
+    const ball = this.ball;
+
+    // Hızlı topa temiz dokunmak zordur: temas alanı topun hızıyla daralır.
+    // Bu olmadan sert smaç ile yavaş pas aynı kolaylıkta kurtarılıyor ve
+    // özellikle 2v2'de ralliler hiç bitmiyor.
+    const ballSpeed = Math.hypot(ball.vx, ball.vy);
+    const speedPenalty = clamp(
+      1 - (ballSpeed - PHYSICS.cleanTouchSpeed) / 1600,
+      PLAYER.minReachFactor,
+      1
+    );
+
+    this.players.forEach((player) => {
+      if (player.hitCooldown > 0) return;
+
+      const cx = player.x;
+      const cy = player.y - player.hitOffsetY;
+      const reach =
+        (player.hitRadius + (player.input.action ? PLAYER.reachBonus : 0)) *
+        speedPenalty;
+
+      const dx = ball.x - cx;
+      const dy = ball.y - cy;
+      const dist = Math.hypot(dx, dy) || 0.001;
+
+      if (dist > reach + ball.radius) return;
+
+      this.hitBall(player, dx / dist, dy / dist, cx, cy, reach);
+    });
+  }
+
+  /**
+   * Temas çözümü — çarpma noktasının normali yönü belirler.
+   *
+   * @param {object} player
+   * @param {number} nx Normal x
+   * @param {number} ny Normal y
+   */
+  hitBall(player, nx, ny, cx, cy, reach) {
+    const ball = this.ball;
+    const { data } = player;
+
+    // --- Üç temas kuralı ---
+    if (this.touch.side === player.side) {
+      this.touch.count += 1;
+    } else {
+      this.touch = { side: player.side, count: 1 };
+    }
+
+    if (this.touch.count > RULES.maxTouches) {
+      const opponent = player.side === 'home' ? 'away' : 'home';
+      this.awardPoint(opponent, player.side, 'ÜÇ TEMAS!');
+      return;
+    }
+
+    // Topu daireden dışarı it (iç içe geçmeyi engeller)
+    ball.x = cx + nx * (reach + ball.radius + 1);
+    ball.y = cy + ny * (reach + ball.radius + 1);
+
+    const airborne = !player.onGround;
+    const acting = player.input.action;
+    const toOpponent = player.side === 'home' ? 1 : -1;
+
+    // Topun geldiği yön — blok tespiti için
+    const cameFromOpponent =
+      player.side === 'home' ? ball.vx < 0 : ball.vx > 0;
+
+    // Sert gelen topa ilk temasta hücum yapılamaz — önce manşetle
+    // karşılanır. Bu kural olmadan her ralli ilk dokunuşta smaçla
+    // bitiyor ve karşı taraf hiçbir topu döndüremiyor.
+    const incomingSpeed = Math.hypot(ball.vx, ball.vy);
+    const controlled =
+      incomingSpeed < PHYSICS.attackControlSpeed || this.touch.count > 1;
+
+    let type;
+    if (acting && controlled) {
+      type = airborne ? 'spike' : 'hit';
+    } else {
+      type = 'bump';
+    }
+
+    let power;
+    if (type === 'spike') {
+      power =
+        PHYSICS.spikePower *
+        getModifier(data, 'spikePower') *
+        (0.85 + (data.stats.attack / 100) * 0.3);
+    } else if (type === 'hit') {
+      power =
+        PHYSICS.hitPower *
+        getModifier(data, 'bumpPower') *
+        (0.85 + (data.stats.defense / 100) * 0.25);
+    } else {
+      power =
+        PHYSICS.bumpPower *
+        getModifier(data, 'bumpPower') *
+        (0.85 + (data.stats.defense / 100) * 0.25);
+    }
+
+    // Blok: file önünde havada karşılama
+    const isBlock =
+      airborne && cameFromOpponent && Math.abs(player.x - NET.x) < 120;
+    if (isBlock) {
+      power *= getModifier(data, 'blockPower');
+    }
+
+    // AI zorluk gücü
+    if (!player.controlled && player.side === 'away') {
+      power *= this.difficulty.power;
+    }
+
+    let vx;
+    let vy;
+
+    if (type === 'spike') {
+      // Havada + vuruş tuşu: rakip sahaya inen sert smaç
+      const shot = this.computeAttackVelocity(player, power, toOpponent, nx, 1);
+      vx = shot.vx;
+      vy = shot.vy;
+      this.stats.spikes += 1;
+    } else if (type === 'hit') {
+      // Yerde + vuruş tuşu: kavisli, karşı sahaya gönderen vuruş
+      const shot = this.computeAttackVelocity(player, power, toOpponent, nx, 1.5);
+      vx = shot.vx;
+      vy = shot.vy;
+    } else {
+      // Manşet: savunma teması. Temas noktasının normali yönü verir,
+      // top kendi sahanda kalır — sonraki temasta hücuma kalkarsın.
+      vx = nx * power + player.vx * 0.3;
+      vy = ny * power;
+      if (vy > -260) {
+        vy = -260 - Math.random() * 70;
+      }
+    }
+
+    // Sultan Gücü — kurulmuşsa bu temasta patlar
+    let sultanFired = false;
+    if (this.sultanArmed && player.controlled) {
+      vx *= SULTAN.speedMultiplier;
+      vy *= SULTAN.speedMultiplier;
+      ball.flaming = SULTAN.duration;
+      this.sultanArmed = false;
+      this.sultanCharge = 0;
+      this.sultanWasReady = false;
+      sultanFired = true;
+      this.shake = 14;
+      this.spawnBurst(ball.x, ball.y, 26, PALETTE.flame[2]);
+    }
+
+    // Mutlak hız tavanı — yalnızca güvenlik amaçlı.
+    // Hedefli vuruşlar zaten computeAttackVelocity içinde sınırlanır;
+    // burada asıl amaç Sultan Gücü çarpanının kontrolden çıkmaması.
+    const speed = Math.hypot(vx, vy);
+    if (speed > PHYSICS.ballSpeedCeiling) {
+      const scale = PHYSICS.ballSpeedCeiling / speed;
+      vx *= scale;
+      vy *= scale;
+    }
+
+    ball.vx = vx;
+    ball.vy = vy;
+    ball.lastHitBy = player.id;
+    ball.lastHitSide = player.side;
+
+    player.hitCooldown = PHYSICS.hitCooldown;
+    this.stats.rallyTouches += 1;
+    this.stats.longestRally = Math.max(this.stats.longestRally, this.stats.rallyTouches);
+
+    // Sultan barı dolumu (yalnızca insan oyuncunun tarafı)
+    if (player.side === 'home') {
+      const chargeMod = getModifier(this.getControlledPlayer()?.data ?? data, 'charge');
+      if (isBlock) {
+        this.addSultanCharge(SULTAN.onBlock * chargeMod);
+        this.stats.blocks += 1;
+        this.message = { text: 'BLOK!', timer: 0.7, color: PALETTE.gold };
+      } else {
+        this.addSultanCharge(SULTAN.onRally * chargeMod);
+      }
+    }
+
+    // Ses ve parçacık
+    if (!sultanFired) {
+      if (isBlock) Sfx.block();
+      else if (type === 'spike') Sfx.spike();
+      else if (type === 'hit') Sfx.hit();
+      else Sfx.bump();
+    }
+
+    if (type === 'spike' || isBlock) {
+      this.shake = Math.max(this.shake, 8);
+      this.spawnBurst(ball.x, ball.y, 12, isBlock ? PALETTE.gold : '#FFFFFF');
     }
   }
 
   /**
-   * Sayıyı işler ve rallyi yeniden başlatır.
-   * @param {'home'|'away'} side Sayıyı alan taraf
+   * Hücum vuruşunun hızını hedefe göre çözer.
+   *
+   * Sabit oranlı bir vuruş (vx = güç × k, vy = güç × k) arka sahadan
+   * atıldığında topu kendi yarı sahasına düşürüyordu. Bunun yerine rakip
+   * sahada bir hedef nokta seçilir ve topu oraya götürecek hız hesaplanır:
+   *
+   *   vx = (hedefX − x) / t
+   *   vy = (hedefY − y − ½·g·t²) / t
+   *
+   * Uçuş süresi `t` vuruş gücüyle ters orantılıdır — güçlü sultanlar
+   * daha düz ve hızlı, zayıf vuruşlar daha kavisli gider.
+   *
+   * Nişan noktası oyuncunun kontrolündedir: koşu yönü ve topa gövdenin
+   * neresiyle dokunulduğu (nx) hedefi ileri/geri kaydırır.
+   *
+   * @param {object} player
+   * @param {number} power
+   * @param {1|-1} toOpponent Rakip sahanın yönü
+   * @param {number} nx Temas normalinin yatay bileşeni
+   * @param {number} [arc] Kavis çarpanı — 1 düz smaç, 1.5 yüksek vuruş
    */
-  handlePointScored(side) {
-    this.score[side] += 1;
-    this.resetRally();
-    this.emitState();
+  computeAttackVelocity(player, power, toOpponent, nx, arc = 1) {
+    const ball = this.ball;
+    const { data } = player;
+
+    const { near, far } = attackRange(toOpponent);
+
+    let spread;
+    if (player.controlled) {
+      // İnsan oyuncu nişanı gövdesiyle alır: koşu yönü ve topa hangi
+      // noktadan dokunduğu vuruşu derinleştirir ya da kısaltır.
+      const drift = (player.vx * toOpponent) / 900 + nx * toOpponent * 0.28;
+      spread = clamp(
+        (0.5 + drift + (Math.random() * 0.24 - 0.12)) * getModifier(data, 'angle'),
+        0.12,
+        0.96
+      );
+    } else {
+      // Yapay zekâ nişanı önceden seçer (bkz. ai.js chooseAim)
+      spread = clamp((player.aimSpread ?? 0.5) * getModifier(data, 'angle'), 0.07, 0.95);
+    }
+
+    const targetX = near + (far - near) * spread;
+    const targetY = GROUND_Y - ball.radius;
+
+    // Güç arttıkça uçuş süresi kısalır (daha düz, daha sert vuruş)
+    let t = clamp((PHYSICS.spikePower / power) * 0.5 * arc, 0.3 * arc, 0.66 * arc);
+
+    const solve = (flight) => ({
+      vx: (targetX - ball.x) / flight,
+      vy:
+        (targetY - ball.y - 0.5 * PHYSICS.ballGravity * flight * flight) / flight,
+    });
+
+    let shot = solve(t);
+
+    // Fileye takılacaksa kavisi kademeli olarak yükselt
+    let tries = 0;
+    while (!this.clearsNet(shot, t) && tries < 4) {
+      t = Math.min(1.3, t * 1.3);
+      shot = solve(t);
+      tries += 1;
+    }
+
+    // Gereken hız üst sınırı aşıyorsa uçuş süresini uzat.
+    // (Vektörü orantılı küçültmek hedefi bozar: top kısa düşer,
+    //  hatta kendi sahasına iner. Bu yüzden hızı değil süreyi ayarla.)
+    let guard = 0;
+    while (Math.hypot(shot.vx, shot.vy) > PHYSICS.ballMaxSpeed && guard < 6) {
+      t = Math.min(1.4, t * 1.18);
+      shot = solve(t);
+      guard += 1;
+    }
+
+    // Hiçbir açı fileyi aşmıyor (yerde ve file dibinde vuruş):
+    // topu boşa harcamak yerine pas at — sonraki temas smaç olabilsin.
+    if (!this.clearsNet(shot, t)) {
+      return this.computeSetVelocity(toOpponent);
+    }
+
+    return shot;
   }
 
-  /** Güncel durumu React tarafına bildirir. */
-  emitState() {
-    this.onStateChange({
-      score: { ...this.score },
-      set: this.set,
-      running: this.running,
-      activePlayer: this.activePlayerId,
+  /**
+   * Pas (kaldırma) hızı — top kendi sahasında, file önünde ve smaç
+   * yüksekliğinde karşılanacak şekilde havalanır.
+   *
+   * @param {1|-1} toOpponent Rakip sahanın yönü
+   */
+  computeSetVelocity(toOpponent) {
+    const ball = this.ball;
+    const t = 0.95;
+
+    // File önü, kendi sahada
+    const targetX = NET.x - toOpponent * (90 + Math.random() * 60);
+    // Smaç için ideal karşılama yüksekliği
+    const targetY = GROUND_Y - 150;
+
+    return {
+      vx: (targetX - ball.x) / t,
+      vy: (targetY - ball.y - 0.5 * PHYSICS.ballGravity * t * t) / t,
+    };
+  }
+
+  /** Verilen hızla atılan top filenin üstünden geçiyor mu? */
+  clearsNet(shot, flight) {
+    const ball = this.ball;
+    if (Math.abs(shot.vx) < 1) return false;
+
+    const tNet = (NET.x - ball.x) / shot.vx;
+    if (tNet <= 0 || tNet > flight) return true; // file yolda değil
+
+    const yAtNet =
+      ball.y + shot.vy * tNet + 0.5 * PHYSICS.ballGravity * tNet * tNet;
+
+    return yAtNet < NET.topY - 10;
+  }
+
+  // ===================================================================
+  // Skor / maç akışı
+  // ===================================================================
+
+  addSultanCharge(amount) {
+    if (this.sultanArmed) return;
+
+    this.sultanCharge = Math.min(SULTAN.max, this.sultanCharge + amount);
+
+    if (this.sultanCharge >= SULTAN.max && !this.sultanWasReady) {
+      this.sultanWasReady = true;
+      Sfx.sultanReady();
+      this.message = { text: 'SULTAN GÜCÜ HAZIR!', timer: 1.2, color: PALETTE.gold };
+    }
+  }
+
+  /**
+   * @param {'home'|'away'} side Sayıyı alan taraf
+   * @param {'home'|'away'} landedSide Topun düştüğü yarı saha
+   * @param {string} [reason] Faul mesajı (ör. "ÜÇ TEMAS!")
+   */
+  awardPoint(side, landedSide, reason) {
+    this.score[side] += 1;
+    this.servingSide = side;
+    this.phase = PHASE.POINT;
+    this.phaseTimer = RULES.servePause;
+    this.shake = 10;
+
+    this.spawnDust(this.ball.x, GROUND_Y, 16);
+    Sfx.ground();
+
+    // Sayı serisi
+    if (this.streak.side === side) {
+      this.streak.count += 1;
+    } else {
+      this.streak = { side, count: 1 };
+    }
+
+    if (side === 'home') {
+      const chargeMod = getModifier(this.getControlledPlayer()?.data, 'charge');
+      let gain = SULTAN.onPoint;
+      if (this.streak.count > 1) gain += SULTAN.streakBonus;
+      this.addSultanCharge(gain * chargeMod);
+
+      this.message = {
+        text:
+          reason ??
+          (this.streak.count > 2 ? `${this.streak.count} SAYI ÜST ÜSTE!` : 'SAYI!'),
+        timer: RULES.servePause,
+        color: reason ? PALETTE.gold : PALETTE.turkishRed,
+      };
+      Sfx.point();
+    } else {
+      this.message = {
+        text: reason ?? 'RAKİP SAYI',
+        timer: RULES.servePause,
+        color: reason ? PALETTE.gold : '#9BB0FF',
+      };
+      Sfx.pointLost();
+    }
+
+    // Konsol dışı bir amaç için tutulur (istatistik ekranı)
+    this.lastLandedSide = landedSide;
+    this.emitState(true);
+  }
+
+  /** Sayı donması bitti — set bitti mi diye bak. */
+  afterPoint() {
+    const { home, away } = this.score;
+    const target = RULES.pointsPerSet;
+
+    const setOver =
+      (home >= target || away >= target) &&
+      (Math.abs(home - away) >= RULES.winBy ||
+        home >= RULES.pointCap ||
+        away >= RULES.pointCap);
+
+    if (setOver) {
+      const winner = home > away ? 'home' : 'away';
+      this.sets[winner] += 1;
+      this.setHistory.push({ home, away, winner });
+
+      this.phase = PHASE.SET_END;
+      this.phaseTimer = 2.6;
+      this.message = {
+        text:
+          winner === 'home'
+            ? `${this.setNumber}. SET TÜRKİYE'NİN!`
+            : `${this.setNumber}. SET RAKİBİN`,
+        timer: 2.6,
+        color: winner === 'home' ? PALETTE.gold : '#9BB0FF',
+      };
+
+      if (winner === 'home') Sfx.setWon();
+      this.emitState(true);
+      return;
+    }
+
+    this.phase = PHASE.RALLY;
+    this.message = null;
+    this.resetRally(this.servingSide);
+  }
+
+  /** Set bitti — maç bitti mi, yoksa yeni set mi? */
+  afterSet() {
+    const matchOver =
+      this.sets.home >= RULES.setsToWin || this.sets.away >= RULES.setsToWin;
+
+    if (matchOver) {
+      this.phase = PHASE.MATCH_END;
+      this.message = null;
+      this.finished = true;
+
+      const winner = this.sets.home > this.sets.away ? 'home' : 'away';
+      if (winner === 'home') Sfx.victory();
+      else Sfx.defeat();
+
+      this.emitState(true);
+      this.onFinish({
+        winner,
+        sets: { ...this.sets },
+        setHistory: [...this.setHistory],
+        stats: { ...this.stats },
+        mode: this.mode,
+        homeIds: [...this.homeIds],
+        difficulty: this.difficulty.label,
+      });
+      return;
+    }
+
+    // Yeni set
+    this.setNumber += 1;
+    this.score = { home: 0, away: 0 };
+    this.streak = { side: null, count: 0 };
+    this.resetRally(this.servingSide);
+
+    this.phase = PHASE.READY;
+    this.phaseTimer = RULES.readyPause;
+    this.message = { text: `${this.setNumber}. SET`, timer: RULES.readyPause, color: '#FFFFFF' };
+    this.emitState(true);
+  }
+
+  // ===================================================================
+  // Parçacıklar
+  // ===================================================================
+
+  spawnBurst(x, y, count, color) {
+    for (let i = 0; i < count; i += 1) {
+      const angle = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+      const speed = 90 + Math.random() * 210;
+      this.particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 0.45 + Math.random() * 0.3,
+        maxLife: 0.75,
+        size: 3 + Math.random() * 3,
+        color,
+        gravity: 420,
+      });
+    }
+  }
+
+  spawnFlame(x, y) {
+    const colors = PALETTE.flame;
+    this.particles.push({
+      x: x + (Math.random() * 8 - 4),
+      y: y + (Math.random() * 8 - 4),
+      vx: (Math.random() * 2 - 1) * 40,
+      vy: (Math.random() * 2 - 1) * 40 - 30,
+      life: 0.3 + Math.random() * 0.2,
+      maxLife: 0.5,
+      size: 4 + Math.random() * 4,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      gravity: -60,
     });
   }
 
-  // ---------------------------------------------------------------------
-  // Çizim
-  // ---------------------------------------------------------------------
+  spawnDust(x, y, count = 7) {
+    for (let i = 0; i < count; i += 1) {
+      this.particles.push({
+        x,
+        y,
+        vx: (Math.random() * 2 - 1) * 130,
+        vy: -Math.random() * 120,
+        life: 0.3 + Math.random() * 0.25,
+        maxLife: 0.55,
+        size: 2 + Math.random() * 3,
+        color: 'rgba(255,255,255,0.75)',
+        gravity: 500,
+      });
+    }
+  }
 
-  /** Bir kareyi baştan çizer. */
+  updateParticles(dt) {
+    for (let i = this.particles.length - 1; i >= 0; i -= 1) {
+      const p = this.particles[i];
+      p.life -= dt;
+      if (p.life <= 0) {
+        this.particles.splice(i, 1);
+        continue;
+      }
+      p.vy += p.gravity * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+    }
+
+    if (this.message && this.message.timer > 0) {
+      this.message.timer -= dt;
+      if (this.message.timer <= 0) this.message = null;
+    }
+  }
+
+  // ===================================================================
+  // React'e durum bildirimi
+  // ===================================================================
+
+  /**
+   * Durum değiştiyse React'e bildirir.
+   * Her karede setState çağırmamak için imza karşılaştırması yapılır.
+   * @param {boolean} [force]
+   */
+  emitState(force = false) {
+    const chargeBucket = Math.round(this.sultanCharge / 4);
+    const signature = [
+      this.score.home,
+      this.score.away,
+      this.sets.home,
+      this.sets.away,
+      this.setNumber,
+      this.phase,
+      chargeBucket,
+      this.sultanArmed ? 1 : 0,
+      this.running ? 1 : 0,
+    ].join('|');
+
+    if (!force && signature === this.lastSignature) return;
+    this.lastSignature = signature;
+
+    this.onState({
+      score: { ...this.score },
+      sets: { ...this.sets },
+      setNumber: this.setNumber,
+      setHistory: [...this.setHistory],
+      phase: this.phase,
+      sultanCharge: this.sultanCharge,
+      sultanReady: this.sultanCharge >= SULTAN.max,
+      sultanArmed: this.sultanArmed,
+      running: this.running,
+      streak: { ...this.streak },
+    });
+  }
+
+  // ===================================================================
+  // Çizim
+  // ===================================================================
+
   render() {
     const { ctx } = this;
     if (!ctx) return;
 
-    ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    ctx.save();
 
-    this.drawBackground();
+    // Ekran sarsıntısı
+    if (this.shake > 0) {
+      ctx.translate(
+        (Math.random() * 2 - 1) * this.shake * 0.5,
+        (Math.random() * 2 - 1) * this.shake * 0.5
+      );
+    }
+
+    this.drawHall();
+    this.drawCrowd();
     this.drawCourt();
+
+    // Gölgeler önce
+    this.players.forEach((p) => this.drawShadow(p.x, p.y, 30));
+    this.drawShadow(this.ball.x, GROUND_Y, 16 * this.ballShadowScale());
+
+    this.players.forEach((player) => this.drawPlayer(player));
+
     this.drawNet();
+    drawBall(ctx, this.ball, this.ball.flaming > 0);
+    this.drawParticles();
 
-    // Arka sıradakiler önce çizilsin (sahte derinlik sıralaması)
-    const ordered = [...this.entities.players].sort((a, b) => a.depth - b.depth);
-    ordered.forEach((player) => this.drawPlayer(player));
+    ctx.restore();
 
-    this.drawBall();
+    this.drawTouchIndicator();
+    this.drawMessages();
   }
 
-  /** Salon zemini üstü: tribün ve arka fon. */
-  drawBackground() {
-    const { ctx } = this;
-    const crowdBottom = BALL_FLOOR_Y - COURT.netHeight - 30;
+  ballShadowScale() {
+    const height = GROUND_Y - this.ball.y;
+    return Math.max(0.35, 1 - height / 500);
+  }
 
-    ctx.fillStyle = PALETTE.sky;
+  /** Salon duvarları ve zemin dışı alan. */
+  drawHall() {
+    const { ctx } = this;
+
+    ctx.fillStyle = PALETTE.night;
     ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-    // Tribün bandı
-    ctx.fillStyle = PALETTE.crowd;
-    ctx.fillRect(0, 0, GAME_WIDTH, crowdBottom);
+    // Arka duvar
+    ctx.fillStyle = PALETTE.hallWall;
+    ctx.fillRect(0, 0, GAME_WIDTH, GROUND_Y - 10);
 
-    // Piksel seyirci noktaları
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
-    for (let x = 12; x < GAME_WIDTH; x += 24) {
-      for (let y = 20; y < crowdBottom - 20; y += 22) {
-        const offset = (x / 24) % 2 === 0 ? 0 : 8;
-        ctx.fillRect(x, y + offset, 8, 8);
-      }
+    // Duvar panelleri (dikey şeritler)
+    ctx.fillStyle = PALETTE.hallWallDark;
+    for (let x = 0; x < GAME_WIDTH; x += 60) {
+      ctx.fillRect(x, 0, 4, GROUND_Y - 10);
     }
-  }
 
-  /** Kırmızı/beyaz saha zemini ve çizgileri. */
-  drawCourt() {
-    const { ctx } = this;
-    const { floorY, backY, marginX, lineWidth } = COURT;
-    const courtHeight = backY - floorY;
-
-    // Serbest bölge (koyu kırmızı) — sahanın çevresi
-    ctx.fillStyle = PALETTE.courtOut;
-    ctx.fillRect(0, floorY - 24, GAME_WIDTH, GAME_HEIGHT - floorY + 24);
-
-    // Saha içi (canlı kırmızı)
-    ctx.fillStyle = PALETTE.courtIn;
-    ctx.fillRect(marginX, floorY, GAME_WIDTH - marginX * 2, courtHeight);
-
-    // Dış çizgi
-    ctx.strokeStyle = PALETTE.line;
-    ctx.lineWidth = lineWidth;
-    ctx.strokeRect(marginX, floorY, GAME_WIDTH - marginX * 2, courtHeight);
-
-    // Orta çizgi (filenin altı)
-    ctx.beginPath();
-    ctx.moveTo(GAME_WIDTH / 2, floorY);
-    ctx.lineTo(GAME_WIDTH / 2, backY);
-    ctx.stroke();
-
-    // Hücum çizgileri (3 metre)
-    [GAME_WIDTH / 2 - 130, GAME_WIDTH / 2 + 130].forEach((x) => {
+    // Salon ışıkları
+    [GAME_WIDTH * 0.2, GAME_WIDTH * 0.5, GAME_WIDTH * 0.8].forEach((x) => {
+      const flicker = 0.85 + Math.sin(this.time * 3 + x) * 0.05;
+      ctx.fillStyle = `rgba(255, 245, 200, ${0.14 * flicker})`;
       ctx.beginPath();
-      ctx.moveTo(x, floorY);
-      ctx.lineTo(x, backY);
-      ctx.stroke();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x - 110, GROUND_Y);
+      ctx.lineTo(x + 110, GROUND_Y);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#FFF6C8';
+      ctx.fillRect(x - 22, 0, 44, 10);
     });
   }
 
-  /** File ve direkler. */
+  /** Tribün: piksel taraftarlar ve dalgalanan Türk bayrakları. */
+  drawCrowd() {
+    const { ctx } = this;
+    const rows = 4;
+    const rowHeight = 30;
+    const top = 46;
+
+    for (let row = 0; row < rows; row += 1) {
+      const y = top + row * rowHeight;
+
+      // Tribün basamağı
+      ctx.fillStyle = row % 2 === 0 ? PALETTE.standRow : PALETTE.hallWallDark;
+      ctx.fillRect(0, y + 20, GAME_WIDTH, rowHeight);
+
+      for (let i = 0; i < 26; i += 1) {
+        const seed = row * 31 + i * 17;
+        const x = 14 + i * 34 + (row % 2) * 12;
+        if (x > GAME_WIDTH - 10) continue;
+
+        // Deterministik "rastgelelik" — her karede aynı taraftar
+        const bob = Math.sin(this.time * 2.4 + seed) * 2.5;
+        const isFlagBearer = seed % 4 === 0;
+
+        if (isFlagBearer) {
+          drawTurkishFlag(ctx, x - 4, y + bob - 2, 2, this.time * 3 + seed);
+        } else {
+          // Baş
+          ctx.fillStyle = seed % 3 === 0 ? '#C98A5E' : '#E8B48C';
+          ctx.fillRect(x, y + 6 + bob, 9, 9);
+          // Gövde — kırmızı/beyaz taraftar formaları
+          ctx.fillStyle = seed % 2 === 0 ? PALETTE.turkishRed : '#F0F0F5';
+          ctx.fillRect(x - 2, y + 15 + bob, 13, 12);
+        }
+      }
+    }
+
+    // Tribün önü korkuluk + pankart
+    ctx.fillStyle = PALETTE.hallWallDark;
+    ctx.fillRect(0, top + rows * rowHeight + 18, GAME_WIDTH, 14);
+
+    ctx.fillStyle = PALETTE.turkishRed;
+    ctx.fillRect(GAME_WIDTH / 2 - 190, top + rows * rowHeight + 16, 380, 20);
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(GAME_WIDTH / 2 - 190, top + rows * rowHeight + 16, 380, 20);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '10px "Press Start 2P", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('FİLENİN SULTANLARI', GAME_WIDTH / 2, top + rows * rowHeight + 27);
+  }
+
+  /** Kırmızı/beyaz saha ve çizgiler. */
+  drawCourt() {
+    const { ctx } = this;
+
+    // Serbest bölge
+    ctx.fillStyle = PALETTE.courtOut;
+    ctx.fillRect(0, GROUND_Y - 10, GAME_WIDTH, GAME_HEIGHT - GROUND_Y + 10);
+
+    // Saha içi
+    ctx.fillStyle = PALETTE.courtIn;
+    ctx.fillRect(WALL_PAD, GROUND_Y, GAME_WIDTH - WALL_PAD * 2, GAME_HEIGHT - GROUND_Y - 22);
+
+    // Zemin çizgisi (oyun düzlemi)
+    ctx.fillStyle = PALETTE.courtLine;
+    ctx.fillRect(WALL_PAD, GROUND_Y - 3, GAME_WIDTH - WALL_PAD * 2, 3);
+
+    // Dip çizgiler
+    ctx.fillRect(WALL_PAD, GROUND_Y, 3, GAME_HEIGHT - GROUND_Y - 22);
+    ctx.fillRect(GAME_WIDTH - WALL_PAD - 3, GROUND_Y, 3, GAME_HEIGHT - GROUND_Y - 22);
+
+    // Alt çizgi
+    ctx.fillRect(WALL_PAD, GAME_HEIGHT - 25, GAME_WIDTH - WALL_PAD * 2, 3);
+
+    // Hücum çizgileri (3 metre)
+    [NET.x - 120, NET.x + 120].forEach((x) => {
+      ctx.fillRect(x, GROUND_Y, 3, GAME_HEIGHT - GROUND_Y - 22);
+    });
+
+    // Orta çizgi
+    ctx.fillRect(NET.x - 1, GROUND_Y, 3, GAME_HEIGHT - GROUND_Y - 22);
+  }
+
+  drawShadow(x, y, radius) {
+    const { ctx } = this;
+    ctx.fillStyle = PALETTE.shadow;
+    ctx.beginPath();
+    ctx.ellipse(x, y + 2, radius, radius * 0.28, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  drawPlayer(player) {
+    const glow =
+      player.controlled && (this.sultanArmed || this.sultanCharge >= SULTAN.max);
+
+    drawSultan(this.ctx, player.data, {
+      x: player.x,
+      y: player.y,
+      scale: PLAYER.spriteScale,
+      pose: player.pose,
+      facing: player.facing,
+      frame: player.runFrame,
+      glow,
+    });
+
+    // Kontrol edilen oyuncunun göstergesi
+    if (player.controlled) {
+      const { ctx } = this;
+      const top = player.y - 22 * PLAYER.spriteScale;
+      const bounce = Math.sin(this.time * 6) * 3;
+
+      ctx.fillStyle = PALETTE.gold;
+      ctx.beginPath();
+      ctx.moveTo(player.x, top - 12 + bounce);
+      ctx.lineTo(player.x - 7, top - 24 + bounce);
+      ctx.lineTo(player.x + 7, top - 24 + bounce);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '7px "Press Start 2P", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(player.data.name.toUpperCase(), player.x, top - 34 + bounce);
+    }
+  }
+
   drawNet() {
     const { ctx } = this;
-    const netX = GAME_WIDTH / 2 - COURT.netWidth / 2;
-    const netTop = BALL_FLOOR_Y - COURT.netHeight;
+    const left = NET.x - NET.width / 2;
 
     // Direk
     ctx.fillStyle = PALETTE.netPost;
-    ctx.fillRect(netX, netTop, COURT.netWidth, COURT.netHeight);
+    ctx.fillRect(left, NET.topY, NET.width, NET.height);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(left + NET.width - 3, NET.topY, 3, NET.height);
 
     // File örgüsü
-    ctx.strokeStyle = PALETTE.net;
-    ctx.lineWidth = 2;
-    for (let y = netTop; y < netTop + 70; y += 10) {
+    ctx.strokeStyle = 'rgba(242, 242, 242, 0.85)';
+    ctx.lineWidth = 1.5;
+    const meshTop = NET.topY;
+    const meshBottom = NET.topY + 78;
+
+    for (let y = meshTop; y <= meshBottom; y += 9) {
       ctx.beginPath();
-      ctx.moveTo(netX - 18, y);
-      ctx.lineTo(netX + COURT.netWidth + 18, y);
+      ctx.moveTo(left - 22, y);
+      ctx.lineTo(left + NET.width + 22, y);
       ctx.stroke();
     }
-    for (let x = netX - 18; x <= netX + COURT.netWidth + 18; x += 10) {
+    for (let x = left - 22; x <= left + NET.width + 22; x += 9) {
       ctx.beginPath();
-      ctx.moveTo(x, netTop);
-      ctx.lineTo(x, netTop + 70);
+      ctx.moveTo(x, meshTop);
+      ctx.lineTo(x, meshBottom);
       ctx.stroke();
     }
 
     // Üst bant
-    ctx.fillStyle = PALETTE.line;
-    ctx.fillRect(netX - 20, netTop - 6, COURT.netWidth + 40, 8);
+    ctx.fillStyle = PALETTE.courtLine;
+    ctx.fillRect(left - 24, NET.topY - 7, NET.width + 48, 8);
+    ctx.fillStyle = PALETTE.turkishRed;
+    ctx.fillRect(left - 24, NET.topY - 7, 10, 8);
+    ctx.fillRect(left + NET.width + 14, NET.topY - 7, 10, 8);
+  }
+
+  drawParticles() {
+    const { ctx } = this;
+    this.particles.forEach((p) => {
+      const alpha = Math.max(0, p.life / p.maxLife);
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    });
+    ctx.globalAlpha = 1;
   }
 
   /**
-   * Voleybol topu — beyaz gövde, kırmızı/mavi panel şeritleri.
+   * Üç temas göstergesi — hangi tarafın kaç dokunuşu kaldığını gösterir.
+   * Sayıları belirleyen bir kural olduğu için oyuncunun görmesi şart.
    */
-  drawBall() {
+  drawTouchIndicator() {
+    if (this.phase !== PHASE.RALLY || !this.touch.side) return;
+
     const { ctx } = this;
-    const ball = this.entities.ball;
-    if (!ball) return;
+    const isHome = this.touch.side === 'home';
+    const centerX = isHome ? GAME_WIDTH * 0.25 : GAME_WIDTH * 0.75;
+    // Tribünün altındaki boş bant — kalabalığın üstünde okunmuyordu
+    const y = 214;
+    const box = 14;
+    const gap = 8;
+    const totalW = RULES.maxTouches * box + (RULES.maxTouches - 1) * gap;
 
-    // Zemin gölgesi
-    const shadowScale = Math.max(0.3, 1 - (BALL_FLOOR_Y - ball.y) / 400);
-    ctx.fillStyle = PALETTE.shadow;
-    ctx.beginPath();
-    ctx.ellipse(
-      ball.x,
-      BALL_FLOOR_Y + 4,
-      ball.radius * shadowScale,
-      ball.radius * 0.35 * shadowScale,
-      0,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
+    // Okunabilirlik için koyu zemin
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(centerX - totalW / 2 - 12, y - 22, totalW + 24, box + 30);
 
-    ctx.save();
-    ctx.translate(ball.x, ball.y);
-    ctx.rotate(ball.rotation);
-
-    // Gövde
-    ctx.fillStyle = PALETTE.ballA;
-    ctx.beginPath();
-    ctx.arc(0, 0, ball.radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Paneller
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = PALETTE.ballB;
-    ctx.beginPath();
-    ctx.arc(0, 0, ball.radius * 0.62, Math.PI * 0.15, Math.PI * 0.95);
-    ctx.stroke();
-
-    ctx.strokeStyle = PALETTE.ballC;
-    ctx.beginPath();
-    ctx.arc(0, 0, ball.radius * 0.62, Math.PI * 1.15, Math.PI * 1.95);
-    ctx.stroke();
-
-    // Dış hat
-    ctx.strokeStyle = '#20202a';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(0, 0, ball.radius, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.restore();
-  }
-
-  /**
-   * Oyuncuyu basit piksel bloklarıyla çizer.
-   *
-   * Renkler players.js'teki `colors` alanından gelir, böylece her
-   * sporcu kendi forma/saç rengiyle görünür.
-   *
-   * TODO(cursor): burayı sprite sheet + animasyon karesiyle değiştir.
-   *
-   * @param {object} player
-   */
-  drawPlayer(player) {
-    const { ctx } = this;
-    const { data, x, y, width: w, height: h } = player;
-    const { primary, secondary, skin, hair } = data.colors;
-
-    const left = x - w / 2;
-    const top = y - h;
-
-    /** Blokları koyu dış hatla çizer — figürün zeminden ayrışması için. */
-    const block = (bx, by, bw, bh, color) => {
-      ctx.fillStyle = PALETTE.outline;
-      ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
-      ctx.fillStyle = color;
-      ctx.fillRect(bx, by, bw, bh);
-    };
-
-    // Zemin gölgesi
-    ctx.fillStyle = PALETTE.shadow;
-    ctx.beginPath();
-    ctx.ellipse(x, player.groundY + 2, w * 0.55, w * 0.2, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Bacaklar
-    block(left + w * 0.15, top + h * 0.62, w * 0.25, h * 0.38, secondary);
-    block(left + w * 0.6, top + h * 0.62, w * 0.25, h * 0.38, secondary);
-
-    // Kollar (gövdenin arkasında kalsın)
-    block(left - w * 0.18, top + h * 0.32, w * 0.18, h * 0.26, skin);
-    block(left + w, top + h * 0.32, w * 0.18, h * 0.26, skin);
-
-    // Forma (gövde)
-    block(left, top + h * 0.3, w, h * 0.34, primary);
-
-    // Baş
-    block(left + w * 0.2, top + h * 0.08, w * 0.6, h * 0.22, skin);
-
-    // Saç
-    block(left + w * 0.16, top + h * 0.04, w * 0.68, h * 0.1, hair);
-
-    // Forma numarası
-    ctx.fillStyle = secondary;
-    ctx.font = `${Math.round(h * 0.12)}px "Press Start 2P", monospace`;
+    ctx.font = '8px "Press Start 2P", monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(String(data.number), x, top + h * 0.46);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillText('TEMAS', centerX, y - 12);
 
-    // Aktif oyuncu göstergesi
-    if (player.id === this.activePlayerId) {
-      ctx.fillStyle = '#FFD700';
-      ctx.beginPath();
-      ctx.moveTo(x, top - 14);
-      ctx.lineTo(x - 8, top - 26);
-      ctx.lineTo(x + 8, top - 26);
-      ctx.closePath();
-      ctx.fill();
+    for (let i = 0; i < RULES.maxTouches; i += 1) {
+      const x = centerX - totalW / 2 + i * (box + gap);
+      const used = i < this.touch.count;
+      const last = this.touch.count === RULES.maxTouches;
 
-      // İsim etiketi
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = '8px "Press Start 2P", monospace';
-      ctx.fillText(data.name.toUpperCase(), x, top - 36);
+      ctx.fillStyle = used
+        ? last
+          ? PALETTE.turkishRed
+          : isHome
+            ? PALETTE.gold
+            : '#9BB0FF'
+        : 'rgba(255,255,255,0.12)';
+      ctx.fillRect(x, y, box, box);
+
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, box, box);
     }
+  }
+
+  /** Aşama mesajları ve geri sayım. */
+  drawMessages() {
+    const { ctx } = this;
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Set başı geri sayım
+    if (this.phase === PHASE.READY) {
+      const count = Math.ceil(this.phaseTimer);
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillRect(0, GAME_HEIGHT / 2 - 60, GAME_WIDTH, 120);
+
+      ctx.fillStyle = PALETTE.gold;
+      ctx.font = '48px "Press Start 2P", monospace';
+      ctx.fillText(String(count), GAME_WIDTH / 2, GAME_HEIGHT / 2 - 6);
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '12px "Press Start 2P", monospace';
+      ctx.fillText(
+        this.message?.text ?? 'HAZIR OL',
+        GAME_WIDTH / 2,
+        GAME_HEIGHT / 2 + 38
+      );
+      return;
+    }
+
+    if (!this.message) return;
+
+    const alpha = Math.min(1, this.message.timer * 3);
+    ctx.globalAlpha = alpha;
+
+    const text = this.message.text;
+    ctx.font = '20px "Press Start 2P", monospace';
+
+    // Retro font geç yüklenirse ölçüm değişir — bol iç boşluk bırakılır
+    const width = ctx.measureText(text).width;
+    const padX = 26;
+    const boxW = width + padX * 2;
+    const boxX = GAME_WIDTH / 2 - boxW / 2;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.72)';
+    ctx.fillRect(boxX, 240, boxW, 44);
+
+    ctx.strokeStyle = this.message.color;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(boxX, 240, boxW, 44);
+
+    ctx.fillStyle = this.message.color;
+    ctx.fillText(text, GAME_WIDTH / 2, 263);
+
+    ctx.globalAlpha = 1;
   }
 }

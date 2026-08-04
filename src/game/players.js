@@ -1,13 +1,13 @@
 /**
  * Filenin Sultanları kadro verisi.
  *
- * Bu dosya oyunun "veri katmanı"dır — motor (Game.js) buradaki
- * nesneleri okuyup sahaya çizer. Yeni oyuncu eklemek için ROSTER
- * dizisine aynı şekilde bir nesne eklemen yeterli.
+ * Oyunun veri katmanı — motor (Game.js) ve React ekranları buradaki
+ * nesneleri okur. Yeni oyuncu eklemek için ROSTER dizisine aynı
+ * şekilde bir nesne eklemek yeterli.
  *
- * Statlar 0–100 arası ölçeklenmiştir ve oyun dengesi içindir;
- * gerçek sporcu performansının bir ölçüsü değildir. Forma numaraları
- * da örnek değerlerdir, güncel kadroya göre düzenleyebilirsin.
+ * Statlar 0–100 arası, oyun dengesi içindir; gerçek sporcu
+ * performansının ölçüsü değildir. Forma numaraları da örnek
+ * değerlerdir, güncel kadroya göre düzenlenebilir.
  */
 
 /** Oyun içi mevkiler. */
@@ -20,26 +20,30 @@ export const POSITIONS = {
 };
 
 /**
- * @typedef {Object} PlayerStats
- * @property {number} attack   Smaç gücü
- * @property {number} block    Blok
- * @property {number} serve    Servis
- * @property {number} defense  Savunma / manşet
- * @property {number} speed    Saha içi hareket hızı
- * @property {number} stamina  Dayanıklılık
+ * Motorun okuduğu çarpan anahtarları. Tanımlı olmayan her anahtar
+ * için varsayılan 1 kullanılır (bkz. getModifier).
+ *
+ *   spikePower  → smaç çıkış hızı
+ *   bumpPower   → manşet / normal temas gücü
+ *   blockPower  → file üstünde karşılama gücü
+ *   reach       → çarpışma dairesi yarıçapı
+ *   speed       → yatay hareket hızı
+ *   jump        → zıplama yüksekliği
+ *   charge      → Sultan Gücü barının dolum hızı
  */
 
 /**
  * @typedef {Object} Player
  * @property {string} id
  * @property {string} name
- * @property {number} number         Forma numarası
- * @property {string} position       POSITIONS değerlerinden biri
+ * @property {number} number
+ * @property {string} position
  * @property {boolean} captain
- * @property {number} height         cm
- * @property {PlayerStats} stats
- * @property {{primary: string, secondary: string, skin: string, hair: string}} colors
- * @property {string} signature      Oyuncuya özel hamle (ileride yetenek sistemi için)
+ * @property {number} height
+ * @property {{attack:number, block:number, serve:number, defense:number, speed:number, stamina:number}} stats
+ * @property {{primary:string, secondary:string, skin:string, hair:string, accent:string}} colors
+ * @property {{name:string, description:string}} bonus
+ * @property {Record<string, number>} modifiers
  */
 
 /** @type {Player[]} */
@@ -51,21 +55,19 @@ export const ROSTER = [
     position: POSITIONS.ORTA,
     captain: true,
     height: 187,
-    stats: {
-      attack: 84,
-      block: 93,
-      serve: 80,
-      defense: 82,
-      speed: 74,
-      stamina: 88,
-    },
+    stats: { attack: 84, block: 93, serve: 80, defense: 82, speed: 74, stamina: 88 },
     colors: {
-      primary: '#E30A17', // forma
-      secondary: '#FFFFFF', // şort / detay
+      primary: '#E30A17',
+      secondary: '#FFFFFF',
       skin: '#E8B48C',
       hair: '#2B1B14',
+      accent: '#FFD24A',
     },
-    signature: 'Kaptan Blok',
+    bonus: {
+      name: 'Kaptan Duruşu',
+      description: 'Dengeli stat dağılımı, blokta %20 ek güç.',
+    },
+    modifiers: { blockPower: 1.2, bumpPower: 1.08, reach: 1.05 },
   },
   {
     id: 'melissa-vargas',
@@ -74,21 +76,19 @@ export const ROSTER = [
     position: POSITIONS.PASOR_CAPRAZI,
     captain: false,
     height: 193,
-    stats: {
-      attack: 98,
-      block: 85,
-      serve: 95,
-      defense: 74,
-      speed: 76,
-      stamina: 86,
-    },
+    stats: { attack: 98, block: 85, serve: 95, defense: 74, speed: 76, stamina: 86 },
     colors: {
       primary: '#E30A17',
-      secondary: '#FFD700',
+      secondary: '#FFD24A',
       skin: '#C98A5E',
       hair: '#1A1008',
+      accent: '#FFD24A',
     },
-    signature: 'Top Sallama',
+    bonus: {
+      name: 'Top Sallama',
+      description: 'Smaç çıkış hızı %25 daha yüksek.',
+    },
+    modifiers: { spikePower: 1.25, bumpPower: 1.05, speed: 0.96 },
   },
   {
     id: 'zehra-gunes',
@@ -97,21 +97,19 @@ export const ROSTER = [
     position: POSITIONS.ORTA,
     captain: false,
     height: 197,
-    stats: {
-      attack: 86,
-      block: 95,
-      serve: 78,
-      defense: 76,
-      speed: 72,
-      stamina: 84,
-    },
+    stats: { attack: 86, block: 95, serve: 78, defense: 76, speed: 72, stamina: 84 },
     colors: {
       primary: '#E30A17',
       secondary: '#FFFFFF',
       skin: '#EAC0A0',
       hair: '#3A2418',
+      accent: '#9BE7FF',
     },
-    signature: 'Duvar',
+    bonus: {
+      name: 'Duvar',
+      description: 'Geniş erişim alanı — file üstünde daha yüksek kademe.',
+    },
+    modifiers: { reach: 1.18, blockPower: 1.15, jump: 1.06, speed: 0.94 },
   },
   {
     id: 'ebrar-karakurt',
@@ -120,21 +118,19 @@ export const ROSTER = [
     position: POSITIONS.SMACOR,
     captain: false,
     height: 192,
-    stats: {
-      attack: 94,
-      block: 82,
-      serve: 88,
-      defense: 78,
-      speed: 84,
-      stamina: 85,
-    },
+    stats: { attack: 94, block: 82, serve: 88, defense: 78, speed: 84, stamina: 85 },
     colors: {
       primary: '#E30A17',
       secondary: '#00BFFF',
       skin: '#EFC7A6',
-      hair: '#5FC2E8', // ikonik mavi saç
+      hair: '#5FC2E8',
+      accent: '#5FC2E8',
     },
-    signature: 'Çapraz Bomba',
+    bonus: {
+      name: 'Enerji Patlaması',
+      description: 'Sultan Gücü barı %30 daha hızlı dolar.',
+    },
+    modifiers: { charge: 1.3, spikePower: 1.12, speed: 1.05 },
   },
   {
     id: 'cansu-ozbay',
@@ -143,21 +139,19 @@ export const ROSTER = [
     position: POSITIONS.PASOR,
     captain: false,
     height: 180,
-    stats: {
-      attack: 70,
-      block: 74,
-      serve: 82,
-      defense: 86,
-      speed: 92,
-      stamina: 90,
-    },
+    stats: { attack: 70, block: 74, serve: 82, defense: 86, speed: 92, stamina: 90 },
     colors: {
       primary: '#E30A17',
       secondary: '#FFFFFF',
       skin: '#E8B48C',
       hair: '#2B1B14',
+      accent: '#B7F5C6',
     },
-    signature: 'Hızlı Pas',
+    bonus: {
+      name: 'Hızlı Tempo',
+      description: 'En hızlı saha içi hareket ve yüksek sıçrama.',
+    },
+    modifiers: { speed: 1.22, jump: 1.1, spikePower: 0.9, bumpPower: 1.1 },
   },
   {
     id: 'gizem-orge',
@@ -166,21 +160,19 @@ export const ROSTER = [
     position: POSITIONS.LIBERO,
     captain: false,
     height: 170,
-    stats: {
-      attack: 40,
-      block: 45,
-      serve: 72,
-      defense: 97,
-      speed: 95,
-      stamina: 93,
-    },
+    stats: { attack: 40, block: 45, serve: 72, defense: 97, speed: 95, stamina: 93 },
     colors: {
-      primary: '#1B1B3A', // libero farklı forma
-      secondary: '#FFD700',
+      primary: '#1B1B3A',
+      secondary: '#FFD24A',
       skin: '#E8B48C',
       hair: '#241812',
+      accent: '#FFD24A',
     },
-    signature: 'Kurtarış',
+    bonus: {
+      name: 'Kurtarış',
+      description: 'Manşette üstün savunma; alçak toplara geniş erişim.',
+    },
+    modifiers: { bumpPower: 1.3, speed: 1.18, reach: 1.12, spikePower: 0.78, jump: 0.94 },
   },
   {
     id: 'hande-baladin',
@@ -189,54 +181,50 @@ export const ROSTER = [
     position: POSITIONS.SMACOR,
     captain: false,
     height: 186,
-    stats: {
-      attack: 89,
-      block: 80,
-      serve: 86,
-      defense: 84,
-      speed: 86,
-      stamina: 87,
-    },
+    stats: { attack: 89, block: 80, serve: 86, defense: 84, speed: 86, stamina: 87 },
     colors: {
       primary: '#E30A17',
       secondary: '#FFFFFF',
       skin: '#EAC0A0',
       hair: '#4A2F1E',
+      accent: '#FF9ED2',
     },
-    signature: 'Plase',
+    bonus: {
+      name: 'Çapraz Plase',
+      description: 'Dengeli hücum; vuruşlarda daha keskin açı.',
+    },
+    modifiers: { spikePower: 1.14, angle: 1.25, speed: 1.06 },
   },
 ];
 
-/** Sahaya ilk çıkan altılı (rotasyon 1 → 6). */
-export const STARTING_SIX = [
-  'cansu-ozbay',
-  'melissa-vargas',
-  'zehra-gunes',
-  'ebrar-karakurt',
-  'eda-erdem',
-  'hande-baladin',
-];
+/** Rakip takım — jenerik piksel görünüm, isimsiz. */
+export const OPPONENT_TEMPLATE = {
+  id: 'rakip',
+  name: 'Rakip',
+  number: 1,
+  position: POSITIONS.SMACOR,
+  captain: false,
+  height: 188,
+  stats: { attack: 86, block: 86, serve: 84, defense: 84, speed: 84, stamina: 86 },
+  colors: {
+    primary: '#2B3A8F',
+    secondary: '#E8ECFF',
+    skin: '#D9A57C',
+    hair: '#22303F',
+    accent: '#9BB0FF',
+  },
+  bonus: { name: '—', description: '—' },
+  modifiers: {},
+};
 
 /**
- * Sahadaki 6 oyuncunun başlangıç koordinatları (0–1 aralığında oransal).
- * Game.js bunları saha ölçüleriyle çarparak piksele çevirir.
- *
- *   x → fileye uzaklık: 0 = dip çizgi, 1 = file
- *   y → derinlik (yan görünüşte ekrana doğru): 0 = uzak, 1 = yakın
- *
- * Uzaktaki oyuncu daha yukarıda ve daha küçük çizilir (sahte perspektif).
- * Ön sıra (file yakını) x ≥ 0.6, arka sıra x ≤ 0.5 olacak şekilde dizildi.
+ * Bir oyuncunun çarpan değerini döndürür; tanımlı değilse 1.
+ * @param {Player} data
+ * @param {string} key
  */
-export const FORMATION = {
-  // Ön sıra
-  'zehra-gunes': { x: 0.78, y: 0.3 },
-  'melissa-vargas': { x: 0.9, y: 0.58 },
-  'ebrar-karakurt': { x: 0.63, y: 0.86 },
-  // Arka sıra
-  'cansu-ozbay': { x: 0.46, y: 0.18 },
-  'eda-erdem': { x: 0.26, y: 0.62 },
-  'hande-baladin': { x: 0.1, y: 0.95 },
-};
+export function getModifier(data, key) {
+  return data?.modifiers?.[key] ?? 1;
+}
 
 /**
  * id ile oyuncu bulur.
@@ -249,8 +237,7 @@ export function getPlayerById(id) {
 
 /**
  * Mevkiye göre oyuncuları filtreler.
- * @param {string} position POSITIONS değerlerinden biri
- * @returns {Player[]}
+ * @param {string} position
  */
 export function getPlayersByPosition(position) {
   return ROSTER.filter((player) => player.position === position);

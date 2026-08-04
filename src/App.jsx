@@ -1,123 +1,84 @@
-import { useEffect, useRef, useState } from 'react';
-import Game, { GAME_WIDTH, GAME_HEIGHT } from './game/Game.js';
-import { ROSTER, STARTING_SIX } from './game/players.js';
+import { useCallback, useState } from 'react';
+import StartScreen from './screens/StartScreen.jsx';
+import CharacterSelect from './screens/CharacterSelect.jsx';
+import MatchScreen from './screens/MatchScreen.jsx';
+import ResultScreen from './screens/ResultScreen.jsx';
+import Sfx from './game/audio.js';
 
 /**
- * Filenin Sultanları — ana uygulama bileşeni.
+ * Ekran akışı:
  *
- * Canvas'ı DOM'a basar, Game motorunu mount sırasında başlatır,
- * unmount sırasında döngüyü durdurur. Skor/durum bilgisi motordan
- * `onStateChange` callback'i ile React state'ine akar.
+ *   start → select → match → result
+ *                ↑              │
+ *                └──────────────┘  (tekrar oyna / ana menü)
  */
 export default function App() {
-  const canvasRef = useRef(null);
-  const gameRef = useRef(null);
+  const [screen, setScreen] = useState('start');
+  const [matchConfig, setMatchConfig] = useState(null);
+  const [result, setResult] = useState(null);
+  const [muted, setMuted] = useState(false);
 
-  const [hud, setHud] = useState({
-    score: { home: 0, away: 0 },
-    set: 1,
-    running: false,
-    activePlayer: STARTING_SIX[0],
-  });
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return undefined;
-
-    const game = new Game(canvas, {
-      onStateChange: (state) => setHud((prev) => ({ ...prev, ...state })),
+  const toggleMute = useCallback(() => {
+    setMuted((prev) => {
+      const next = !prev;
+      Sfx.setMuted(next);
+      return next;
     });
-
-    gameRef.current = game;
-    game.start();
-
-    return () => {
-      game.destroy();
-      gameRef.current = null;
-    };
   }, []);
 
-  const handleToggle = () => {
-    const game = gameRef.current;
-    if (!game) return;
-    if (game.running) {
-      game.stop();
-    } else {
-      game.start();
-    }
-    setHud((prev) => ({ ...prev, running: game.running }));
-  };
+  const startMatch = useCallback((config) => {
+    // Yeni nesne referansı → MatchScreen motoru sıfırdan kurar
+    setMatchConfig({ ...config, startedAt: Date.now() });
+    setResult(null);
+    setScreen('match');
+  }, []);
 
-  const handleReset = () => {
-    gameRef.current?.reset();
-  };
+  const handleFinish = useCallback((matchResult) => {
+    setResult(matchResult);
+    setScreen('result');
+  }, []);
+
+  const handleRematch = useCallback(() => {
+    if (!matchConfig) {
+      setScreen('select');
+      return;
+    }
+    Sfx.confirm();
+    setMatchConfig((prev) => ({ ...prev, startedAt: Date.now() }));
+    setResult(null);
+    setScreen('match');
+  }, [matchConfig]);
+
+  const goHome = useCallback(() => {
+    Sfx.select();
+    setScreen('start');
+  }, []);
 
   return (
-    <div className="min-h-full flex flex-col items-center gap-6 px-4 py-8">
-      <header className="text-center space-y-3">
-        <h1 className="text-turkiye-red text-2xl md:text-3xl drop-shadow-[3px_3px_0_rgba(255,255,255,0.9)]">
-          FİLENİN SULTANLARI
-        </h1>
-        <p className="text-[10px] md:text-xs text-white/70 leading-relaxed">
-          Retro Voleybol · Milli Takımımıza Saygıyla
-        </p>
-      </header>
-
-      {/* Skor tablosu */}
-      <div className="retro-panel flex items-center gap-6 px-6 py-4 text-xs">
-        <span className="text-turkiye-red">TÜRKİYE</span>
-        <span className="text-retro-accent text-lg">
-          {hud.score.home} - {hud.score.away}
-        </span>
-        <span className="text-white/70">RAKİP</span>
-        <span className="text-[10px] text-white/50">SET {hud.set}</span>
-      </div>
-
-      {/* Oyun alanı — Game.js bu canvas üzerine çizer */}
-      <div
-        id="game-container"
-        className="retro-panel p-2 w-full max-w-[960px]"
-      >
-        <canvas
-          ref={canvasRef}
-          width={GAME_WIDTH}
-          height={GAME_HEIGHT}
-          className="pixelated block w-full h-auto bg-court-out"
-          aria-label="Filenin Sultanları voleybol sahası"
+    <div className="min-h-full">
+      {screen === 'start' && (
+        <StartScreen
+          onStart={() => setScreen('select')}
+          muted={muted}
+          onToggleMute={toggleMute}
         />
-      </div>
+      )}
 
-      {/* Kontroller */}
-      <div className="flex flex-wrap justify-center gap-4">
-        <button type="button" className="retro-button" onClick={handleToggle}>
-          {hud.running ? 'DURAKLAT' : 'BAŞLAT'}
-        </button>
-        <button type="button" className="retro-button" onClick={handleReset}>
-          YENİDEN
-        </button>
-      </div>
+      {screen === 'select' && (
+        <CharacterSelect onBack={goHome} onStart={startMatch} />
+      )}
 
-      <p className="text-[9px] text-white/50 text-center leading-relaxed max-w-md">
-        ← → HAREKET · BOŞLUK ZIPLA / SMAÇ
-      </p>
+      {screen === 'match' && matchConfig && (
+        <MatchScreen
+          config={matchConfig}
+          onFinish={handleFinish}
+          onQuit={() => setScreen('select')}
+        />
+      )}
 
-      {/* Kadro şeridi */}
-      <section className="w-full max-w-[960px]">
-        <h2 className="text-[10px] text-white/70 mb-3">KADRO</h2>
-        <ul className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {ROSTER.map((player) => (
-            <li
-              key={player.id}
-              className="retro-panel px-3 py-3 text-[8px] leading-relaxed"
-              style={{ borderColor: player.colors.primary }}
-            >
-              <div className="text-retro-accent">#{player.number}</div>
-              <div className="mt-1">{player.name.toUpperCase()}</div>
-              <div className="mt-1 text-white/50">{player.position}</div>
-            </li>
-          ))}
-        </ul>
-      </section>
+      {screen === 'result' && result && (
+        <ResultScreen result={result} onRematch={handleRematch} onHome={goHome} />
+      )}
     </div>
   );
 }
