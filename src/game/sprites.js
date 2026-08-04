@@ -421,38 +421,49 @@ export function drawBall(ctx, ball, flaming = false) {
 export function drawTurkishFlag(ctx, x, y, u, wave = 0) {
   const cols = 12;
   const rows = 8;
+  const cell = Math.ceil(u);
+
+  // Kırmızı zemin sütun sütun çizilir: dalgalanma sütun bazlı olduğu
+  // için her sütun tek dikdörtgen yeter. (Hücre hücre çizmek kare
+  // başına 96 çağrı demekti; tribünde 20+ bayrak varken bu ağır.)
+  const offsets = new Array(cols);
+  ctx.fillStyle = PALETTE.turkishRed;
 
   for (let c = 0; c < cols; c += 1) {
-    // Sütun bazlı dikey kaydırma → bayrak dalgalanıyor gibi görünür
     const offset = Math.sin(wave + c * 0.55) * u * 0.5;
+    offsets[c] = offset;
+    ctx.fillRect(
+      Math.round(x + c * u),
+      Math.round(y + offset),
+      cell,
+      Math.ceil(rows * u)
+    );
+  }
 
-    for (let r = 0; r < rows; r += 1) {
-      ctx.fillStyle = flagPixel(c, r) ? '#FFFFFF' : PALETTE.turkishRed;
-      ctx.fillRect(
-        Math.round(x + c * u),
-        Math.round(y + r * u + offset),
-        Math.ceil(u),
-        Math.ceil(u)
-      );
-    }
+  // Beyaz hilal ve yıldız pikselleri
+  ctx.fillStyle = '#FFFFFF';
+  for (let i = 0; i < FLAG_WHITE.length; i += 1) {
+    const [c, r] = FLAG_WHITE[i];
+    ctx.fillRect(
+      Math.round(x + c * u),
+      Math.round(y + r * u + offsets[c]),
+      cell,
+      cell
+    );
   }
 }
 
-/** 12×8 bayrak ızgarasında verilen hücre beyaz mı? */
-function flagPixel(c, r) {
-  // Hilal: 3–7 sütunlarında C şekli
-  const crescent =
-    (c === 3 && r >= 3 && r <= 4) ||
-    (c === 4 && (r === 2 || r === 5)) ||
-    (c === 5 && (r === 1 || r === 6)) ||
-    (c === 6 && (r === 1 || r === 6)) ||
-    (c === 7 && (r === 2 || r === 5));
-
+/** 12×8 bayrak ızgarasındaki beyaz hücreler: hilal + yıldız. */
+const FLAG_WHITE = [
+  // Hilal
+  [3, 3], [3, 4],
+  [4, 2], [4, 5],
+  [5, 1], [5, 6],
+  [6, 1], [6, 6],
+  [7, 2], [7, 5],
   // Yıldız
-  const star = (c === 9 && (r === 3 || r === 4)) || (c === 10 && r === 4);
-
-  return crescent || star;
-}
+  [9, 3], [9, 4], [10, 4],
+];
 
 // =====================================================================
 // Kupa

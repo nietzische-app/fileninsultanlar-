@@ -53,13 +53,46 @@ export const PHYSICS = {
   maxDelta: 1 / 30,
 };
 
+/**
+ * Salon katmanları — arka planın derinlik düzeni (piksel, yukarıdan aşağı).
+ *
+ * Kalabalık üstte yoğun, oyun hacminin arkası (panoların altı) kasıtlı
+ * olarak sade ve koyu tutulur: top oradan geçiyor ve okunur kalmalı.
+ */
+export const ARENA = {
+  roofH: 22,
+  upperTierY: 24,
+  upperTierH: 68,
+  ribbonY: 96,
+  ribbonH: 18,
+  lowerTierY: 118,
+  lowerTierH: 66,
+  boardsY: 188,
+  boardsH: 24,
+  /**
+   * Panoların altı oyun hacmidir. Zıplayan oyuncunun kafası ~y228'e
+   * kadar çıkıyor; panolar bundan yukarıda kalmalı, yoksa oyuncular
+   * tribünün içinde duruyormuş gibi görünüyor.
+   */
+  backWallY: 212,
+};
+
+/**
+ * Zeminin sahte perspektifi: yakın kenar bu oranda genişler, saha
+ * çizgileri kaçış noktasına doğru yakınsar.
+ */
+export const FLOOR = {
+  spread: 1.7,
+  nearY: GAME_HEIGHT - 10,
+};
+
 /** Oyuncu gövde ölçüleri (çarpışma dairesi). */
 export const PLAYER = {
   hitRadius: 40, // gövde + kollar
   hitOffsetY: 44, // ayaklardan gövde merkezine
   reachBonus: 12, // vuruş tuşu basılıyken erişim artışı
   minReachFactor: 0.55, // hızlı toplarda temas alanının inebileceği alt sınır
-  spriteScale: 3,
+  spriteScale: 3.4,
 };
 
 /** Maç kuralları. */
@@ -109,6 +142,18 @@ export const PALETTE = {
   shadow: 'rgba(0, 0, 0, 0.38)',
   turkishRed: '#E30A17',
   gold: '#FFD24A',
+  // Salon katmanları
+  roof: '#0a0a14',
+  truss: '#242440',
+  tierBack: '#12122a',
+  tierStep: '#1b1b38',
+  ribbonDark: '#0d0d1c',
+  ribbonOn: '#FFD24A',
+  adBoard: '#101024',
+  backWall: '#0e0e1c',
+  backWallPanel: '#14142c',
+  lightWarm: 'rgba(255, 244, 205,',
+  floorSheen: 'rgba(255, 255, 255, 0.05)',
   awayPrimary: '#2B3A8F',
   awaySecondary: '#E8ECFF',
   awaySkin: '#D9A57C',

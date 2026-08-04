@@ -27,7 +27,8 @@ import {
 } from './constants.js';
 import { OPPONENT_TEMPLATE, getModifier, getPlayerById } from './players.js';
 import { pickChaser, sideBounds, updateAI } from './ai.js';
-import { drawBall, drawSultan, drawTurkishFlag } from './sprites.js';
+import { drawBall, drawSultan } from './sprites.js';
+import { drawArena, drawFloor, drawNet } from './arena.js';
 import Sfx from './audio.js';
 import { upper } from '../utils/text.js';
 
@@ -109,6 +110,12 @@ export default class Game {
     this.message = null;
 
     this.particles = [];
+    /** Vuruş anında genişleyen darbe halkaları. */
+    this.rings = [];
+    /** Topun son konumları — hızlıyken iz bırakır. */
+    this.ballTrail = [];
+    /** Sayı sonrası tribün coşkusu (0–1, zamanla söner). */
+    this.hype = 0;
     this.shake = 0;
     this.finished = false;
 
@@ -161,6 +168,8 @@ export default class Game {
   destroy() {
     this.stop();
     this.particles.length = 0;
+    this.rings.length = 0;
+    this.ballTrail.length = 0;
   }
 
   // ===================================================================
@@ -207,6 +216,7 @@ export default class Game {
       aiJumpCooldown: 0,
       aiSpeedScale: 1,
       aimSpread: 0.5,
+      squash: 0,
     };
   }
 
@@ -256,6 +266,7 @@ export default class Game {
   resetRally(servingSide) {
     this.resetPositions();
     this.ball = this.createBall(servingSide);
+    this.ballTrail.length = 0;
     this.touch = { side: null, count: 0 };
     this.stats.rallyTouches = 0;
   }
@@ -350,7 +361,10 @@ export default class Game {
   update(dt) {
     this.time += dt;
     this.shake = Math.max(0, this.shake - dt * 60);
+    this.hype = Math.max(0, this.hype - dt * 0.9);
     this.updateParticles(dt);
+    this.updateRings(dt);
+    this.updateBallTrail();
 
     switch (this.phase) {
       case PHASE.READY:
@@ -465,6 +479,8 @@ export default class Game {
     if (player.y >= GROUND_Y) {
       if (!player.onGround) {
         this.spawnDust(player.x, GROUND_Y);
+        // Sert inişte ezilme animasyonu
+        player.squash = Math.min(0.16, Math.abs(player.vy) / 5000 + 0.06);
       }
       player.y = GROUND_Y;
       player.vy = 0;
@@ -488,6 +504,7 @@ export default class Game {
     }
 
     player.hitCooldown = Math.max(0, player.hitCooldown - dt);
+    player.squash = Math.max(0, (player.squash ?? 0) - dt);
   }
 
   // ===================================================================
@@ -769,6 +786,9 @@ export default class Game {
     if (type === 'spike' || isBlock) {
       this.shake = Math.max(this.shake, 8);
       this.spawnBurst(ball.x, ball.y, 12, isBlock ? PALETTE.gold : '#FFFFFF');
+      this.spawnRing(ball.x, ball.y, isBlock ? PALETTE.gold : '#FFFFFF', 54);
+    } else {
+      this.spawnRing(ball.x, ball.y, 'rgba(255,255,255,0.8)', 30);
     }
   }
 
@@ -920,6 +940,7 @@ export default class Game {
     this.shake = 10;
 
     this.spawnDust(this.ball.x, GROUND_Y, 16);
+    this.hype = 1;
     Sfx.ground();
 
     // Sayı serisi
@@ -1086,6 +1107,73 @@ export default class Game {
     }
   }
 
+  /**
+   * Vuruş anında genişleyen darbe halkası.
+   * Küçük parçacıklardan farklı olarak temasın nerede olduğunu
+   * tek bakışta okutur.
+   */
+  spawnRing(x, y, color, maxRadius = 46) {
+    this.rings.push({ x, y, r: 6, maxRadius, life: 0.26, maxLife: 0.26, color });
+  }
+
+  updateRings(dt) {
+    for (let i = this.rings.length - 1; i >= 0; i -= 1) {
+      const ring = this.rings[i];
+      ring.life -= dt;
+      if (ring.life <= 0) {
+        this.rings.splice(i, 1);
+        continue;
+      }
+      const t = 1 - ring.life / ring.maxLife;
+      ring.r = 6 + (ring.maxRadius - 6) * t;
+    }
+  }
+
+  drawRings() {
+    const { ctx } = this;
+    this.rings.forEach((ring) => {
+      ctx.globalAlpha = Math.max(0, ring.life / ring.maxLife) * 0.85;
+      ctx.strokeStyle = ring.color;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  /** Hızlı topun arkasında kalan iz — hareketi okutur. */
+  updateBallTrail() {
+    const ball = this.ball;
+    const speed = Math.hypot(ball.vx, ball.vy);
+
+    if (this.phase !== PHASE.RALLY || speed < 420) {
+      if (this.ballTrail.length > 0) this.ballTrail.shift();
+      return;
+    }
+
+    this.ballTrail.push({ x: ball.x, y: ball.y });
+    if (this.ballTrail.length > 7) this.ballTrail.shift();
+  }
+
+  drawBallTrail() {
+    const { ctx } = this;
+    const count = this.ballTrail.length;
+    if (count === 0) return;
+
+    const flaming = this.ball.flaming > 0;
+
+    this.ballTrail.forEach((point, i) => {
+      const t = (i + 1) / count;
+      ctx.globalAlpha = t * 0.4;
+      ctx.fillStyle = flaming ? PALETTE.flame[1] : '#FFFFFF';
+      const size = this.ball.radius * 1.4 * t;
+      ctx.fillRect(point.x - size / 2, point.y - size / 2, size, size);
+    });
+
+    ctx.globalAlpha = 1;
+  }
+
   updateParticles(dt) {
     for (let i = this.particles.length - 1; i >= 0; i -= 1) {
       const p = this.particles[i];
@@ -1163,18 +1251,23 @@ export default class Game {
       );
     }
 
-    this.drawHall();
-    this.drawCrowd();
-    this.drawCourt();
+    drawArena(ctx, this.time, this.hype);
+    drawFloor(ctx);
 
     // Gölgeler önce
-    this.players.forEach((p) => this.drawShadow(p.x, p.y, 30));
+    this.players.forEach((p) => {
+      // Havadayken gölge küçülür — yükseklik hissi verir
+      const lift = clamp((GROUND_Y - p.y) / 170, 0, 1);
+      this.drawShadow(p.x, GROUND_Y, 30 * (1 - lift * 0.45));
+    });
     this.drawShadow(this.ball.x, GROUND_Y, 16 * this.ballShadowScale());
 
     this.players.forEach((player) => this.drawPlayer(player));
 
-    this.drawNet();
+    drawNet(ctx, GROUND_Y);
+    this.drawBallTrail();
     drawBall(ctx, this.ball, this.ball.flaming > 0);
+    this.drawRings();
     this.drawParticles();
 
     ctx.restore();
@@ -1186,124 +1279,6 @@ export default class Game {
   ballShadowScale() {
     const height = GROUND_Y - this.ball.y;
     return Math.max(0.35, 1 - height / 500);
-  }
-
-  /** Salon duvarları ve zemin dışı alan. */
-  drawHall() {
-    const { ctx } = this;
-
-    ctx.fillStyle = PALETTE.night;
-    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-
-    // Arka duvar
-    ctx.fillStyle = PALETTE.hallWall;
-    ctx.fillRect(0, 0, GAME_WIDTH, GROUND_Y - 10);
-
-    // Duvar panelleri (dikey şeritler)
-    ctx.fillStyle = PALETTE.hallWallDark;
-    for (let x = 0; x < GAME_WIDTH; x += 60) {
-      ctx.fillRect(x, 0, 4, GROUND_Y - 10);
-    }
-
-    // Salon ışıkları
-    [GAME_WIDTH * 0.2, GAME_WIDTH * 0.5, GAME_WIDTH * 0.8].forEach((x) => {
-      const flicker = 0.85 + Math.sin(this.time * 3 + x) * 0.05;
-      ctx.fillStyle = `rgba(255, 245, 200, ${0.14 * flicker})`;
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x - 110, GROUND_Y);
-      ctx.lineTo(x + 110, GROUND_Y);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = '#FFF6C8';
-      ctx.fillRect(x - 22, 0, 44, 10);
-    });
-  }
-
-  /** Tribün: piksel taraftarlar ve dalgalanan Türk bayrakları. */
-  drawCrowd() {
-    const { ctx } = this;
-    const rows = 4;
-    const rowHeight = 30;
-    const top = 46;
-
-    for (let row = 0; row < rows; row += 1) {
-      const y = top + row * rowHeight;
-
-      // Tribün basamağı
-      ctx.fillStyle = row % 2 === 0 ? PALETTE.standRow : PALETTE.hallWallDark;
-      ctx.fillRect(0, y + 20, GAME_WIDTH, rowHeight);
-
-      for (let i = 0; i < 26; i += 1) {
-        const seed = row * 31 + i * 17;
-        const x = 14 + i * 34 + (row % 2) * 12;
-        if (x > GAME_WIDTH - 10) continue;
-
-        // Deterministik "rastgelelik" — her karede aynı taraftar
-        const bob = Math.sin(this.time * 2.4 + seed) * 2.5;
-        const isFlagBearer = seed % 4 === 0;
-
-        if (isFlagBearer) {
-          drawTurkishFlag(ctx, x - 4, y + bob - 2, 2, this.time * 3 + seed);
-        } else {
-          // Baş
-          ctx.fillStyle = seed % 3 === 0 ? '#C98A5E' : '#E8B48C';
-          ctx.fillRect(x, y + 6 + bob, 9, 9);
-          // Gövde — kırmızı/beyaz taraftar formaları
-          ctx.fillStyle = seed % 2 === 0 ? PALETTE.turkishRed : '#F0F0F5';
-          ctx.fillRect(x - 2, y + 15 + bob, 13, 12);
-        }
-      }
-    }
-
-    // Tribün önü korkuluk + pankart
-    ctx.fillStyle = PALETTE.hallWallDark;
-    ctx.fillRect(0, top + rows * rowHeight + 18, GAME_WIDTH, 14);
-
-    ctx.fillStyle = PALETTE.turkishRed;
-    ctx.fillRect(GAME_WIDTH / 2 - 190, top + rows * rowHeight + 16, 380, 20);
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(GAME_WIDTH / 2 - 190, top + rows * rowHeight + 16, 380, 20);
-
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = '10px "Press Start 2P", monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('FİLENİN SULTANLARI', GAME_WIDTH / 2, top + rows * rowHeight + 27);
-  }
-
-  /** Kırmızı/beyaz saha ve çizgiler. */
-  drawCourt() {
-    const { ctx } = this;
-
-    // Serbest bölge
-    ctx.fillStyle = PALETTE.courtOut;
-    ctx.fillRect(0, GROUND_Y - 10, GAME_WIDTH, GAME_HEIGHT - GROUND_Y + 10);
-
-    // Saha içi
-    ctx.fillStyle = PALETTE.courtIn;
-    ctx.fillRect(WALL_PAD, GROUND_Y, GAME_WIDTH - WALL_PAD * 2, GAME_HEIGHT - GROUND_Y - 22);
-
-    // Zemin çizgisi (oyun düzlemi)
-    ctx.fillStyle = PALETTE.courtLine;
-    ctx.fillRect(WALL_PAD, GROUND_Y - 3, GAME_WIDTH - WALL_PAD * 2, 3);
-
-    // Dip çizgiler
-    ctx.fillRect(WALL_PAD, GROUND_Y, 3, GAME_HEIGHT - GROUND_Y - 22);
-    ctx.fillRect(GAME_WIDTH - WALL_PAD - 3, GROUND_Y, 3, GAME_HEIGHT - GROUND_Y - 22);
-
-    // Alt çizgi
-    ctx.fillRect(WALL_PAD, GAME_HEIGHT - 25, GAME_WIDTH - WALL_PAD * 2, 3);
-
-    // Hücum çizgileri (3 metre)
-    [NET.x - 120, NET.x + 120].forEach((x) => {
-      ctx.fillRect(x, GROUND_Y, 3, GAME_HEIGHT - GROUND_Y - 22);
-    });
-
-    // Orta çizgi
-    ctx.fillRect(NET.x - 1, GROUND_Y, 3, GAME_HEIGHT - GROUND_Y - 22);
   }
 
   drawShadow(x, y, radius) {
@@ -1318,7 +1293,29 @@ export default class Game {
     const glow =
       player.controlled && (this.sultanArmed || this.sultanCharge >= SULTAN.max);
 
-    drawSultan(this.ctx, player.data, {
+    const { ctx } = this;
+
+    // Squash & stretch: inişte ezilir, yükselirken uzar.
+    // Ölçekleme ayakların değdiği noktadan yapılır ki figür yere basılı kalsın.
+    let scaleX = 1;
+    let scaleY = 1;
+
+    if (player.squash > 0) {
+      const t = player.squash / 0.16;
+      scaleY = 1 - 0.24 * t;
+      scaleX = 1 + 0.2 * t;
+    } else if (!player.onGround) {
+      const rise = clamp(-player.vy / 700, 0, 1);
+      scaleY = 1 + 0.12 * rise;
+      scaleX = 1 - 0.09 * rise;
+    }
+
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    ctx.scale(scaleX, scaleY);
+    ctx.translate(-player.x, -player.y);
+
+    drawSultan(ctx, player.data, {
       x: player.x,
       y: player.y,
       scale: PLAYER.spriteScale,
@@ -1328,9 +1325,10 @@ export default class Game {
       glow,
     });
 
+    ctx.restore();
+
     // Kontrol edilen oyuncunun göstergesi
     if (player.controlled) {
-      const { ctx } = this;
       const top = player.y - 22 * PLAYER.spriteScale;
       const bounce = Math.sin(this.time * 6) * 3;
 
@@ -1348,40 +1346,6 @@ export default class Game {
       ctx.textBaseline = 'middle';
       ctx.fillText(upper(player.data.name), player.x, top - 34 + bounce);
     }
-  }
-
-  drawNet() {
-    const { ctx } = this;
-    const left = NET.x - NET.width / 2;
-
-    // Direk
-    ctx.fillStyle = PALETTE.netPost;
-    ctx.fillRect(left, NET.topY, NET.width, NET.height);
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.fillRect(left + NET.width - 3, NET.topY, 3, NET.height);
-
-    // File örgüsü — piksel blokları (çizgi yerine fillRect ki
-    // sahanın geri kalanıyla aynı piksel dilinde kalsın)
-    const meshTop = NET.topY;
-    const meshBottom = NET.topY + 78;
-    const meshLeft = left - 22;
-    const meshRight = left + NET.width + 22;
-    const meshStep = 9;
-
-    ctx.fillStyle = 'rgba(242, 242, 242, 0.85)';
-    for (let y = meshTop; y <= meshBottom; y += meshStep) {
-      ctx.fillRect(meshLeft, Math.round(y), meshRight - meshLeft, 2);
-    }
-    for (let x = meshLeft; x <= meshRight; x += meshStep) {
-      ctx.fillRect(Math.round(x), meshTop, 2, meshBottom - meshTop);
-    }
-
-    // Üst bant
-    ctx.fillStyle = PALETTE.courtLine;
-    ctx.fillRect(left - 24, NET.topY - 7, NET.width + 48, 8);
-    ctx.fillStyle = PALETTE.turkishRed;
-    ctx.fillRect(left - 24, NET.topY - 7, 10, 8);
-    ctx.fillRect(left + NET.width + 14, NET.topY - 7, 10, 8);
   }
 
   drawParticles() {
@@ -1405,8 +1369,9 @@ export default class Game {
     const { ctx } = this;
     const isHome = this.touch.side === 'home';
     const centerX = isHome ? GAME_WIDTH * 0.25 : GAME_WIDTH * 0.75;
-    // Tribünün altındaki boş bant — kalabalığın üstünde okunmuyordu
-    const y = 214;
+    // Panoların altındaki temiz bant. Panoya değmemeli, mesaj
+    // kutusunun da altında kalmalı.
+    const y = 292;
     const box = 14;
     const gap = 8;
     const totalW = RULES.maxTouches * box + (RULES.maxTouches - 1) * gap;
@@ -1483,14 +1448,14 @@ export default class Game {
     const boxX = GAME_WIDTH / 2 - boxW / 2;
 
     ctx.fillStyle = 'rgba(0,0,0,0.72)';
-    ctx.fillRect(boxX, 240, boxW, 44);
+    ctx.fillRect(boxX, 218, boxW, 44);
 
     ctx.strokeStyle = this.message.color;
     ctx.lineWidth = 3;
-    ctx.strokeRect(boxX, 240, boxW, 44);
+    ctx.strokeRect(boxX, 218, boxW, 44);
 
     ctx.fillStyle = this.message.color;
-    ctx.fillText(text, GAME_WIDTH / 2, 263);
+    ctx.fillText(text, GAME_WIDTH / 2, 241);
 
     ctx.globalAlpha = 1;
   }
