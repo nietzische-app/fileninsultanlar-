@@ -119,7 +119,12 @@ npm run dev      # http://localhost:5173
 npm run build    # production build → dist/
 npm run preview  # build çıktısını önizle
 npm run lint
+npm test         # Vitest — kurallar, balistik, storage, kadro
 ```
+
+## CI
+
+GitHub Actions (`.github/workflows/ci.yml`) her push/PR'da `lint` + `test` + `build` çalıştırır.
 
 ## Vercel'e Dağıtım
 
@@ -167,6 +172,9 @@ src/
 ├── game/
 │   ├── constants.js          Ölçüler, fizik, kurallar, palet, zorluk kademeleri
 │   ├── Game.js               Motor: döngü, fizik, çarpışma, skor, çizim
+│   ├── rules.js              Saf set/maç/üç-temas kuralları
+│   ├── ballistics.js         Saf smaç/pas balistiği
+│   ├── math.js               clamp yardımcısı
 │   ├── players.js            Kadro verisi, statlar, bonuslar, görünüm
 │   ├── ai.js                 Rakip ve takım arkadaşı yapay zekâsı
 │   ├── sprites.js            Piksel çizimleri (sultan, top, bayrak, kupa, rakamlar)
@@ -176,6 +184,10 @@ src/
     ├── text.js               Türkçe büyük harf yardımcısı
     └── storage.js            Mute / seçim / rekorlar / tutorial localStorage
 ```
+
+Saf motor mantığı (`rules.js`, `ballistics.js`) Vitest ile test edilir
+(`*.test.js`). `Game.js` bu modülleri çağırır; canvas/React sarmalayıcı
+kalır.
 
 ## Karakter Özelleştirme
 
