@@ -26,7 +26,12 @@ import {
   SULTAN,
   WALL_PAD,
 } from './constants.js';
-import { OPPONENT_TEMPLATE, getModifier, getPlayerById } from './players.js';
+import {
+  DEFAULT_PLAYER_ID,
+  OPPONENT_TEMPLATE,
+  getModifier,
+  getPlayerById,
+} from './players.js';
 import { pickChaser, sideBounds, updateAI } from './ai.js';
 import { drawBall, drawSultan } from './sprites.js';
 import { drawArena, drawFloor, drawNet } from './arena.js';
@@ -79,9 +84,9 @@ export default class Game {
     this.onState = options.onState ?? (() => {});
     this.onFinish = options.onFinish ?? (() => {});
 
-    this.homeIds = (options.homeIds ?? ['eda-erdem']).slice(0, this.perSide);
+    this.homeIds = (options.homeIds ?? [DEFAULT_PLAYER_ID]).slice(0, this.perSide);
     while (this.homeIds.length < this.perSide) {
-      this.homeIds.push('eda-erdem');
+      this.homeIds.push(DEFAULT_PLAYER_ID);
     }
 
     this.running = false;
@@ -192,7 +197,7 @@ export default class Game {
     const players = [];
 
     this.homeIds.forEach((id, index) => {
-      const data = getPlayerById(id) ?? getPlayerById('eda-erdem');
+      const data = getPlayerById(id) ?? getPlayerById(DEFAULT_PLAYER_ID);
       players.push(this.makePlayer(`home-${index}`, data, 'home', index === 0));
     });
 

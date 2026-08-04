@@ -1,7 +1,12 @@
 import { useMemo, useState } from 'react';
 import PixelAvatar from '../components/PixelAvatar.jsx';
 import StatBar from '../components/StatBar.jsx';
-import { ROSTER } from '../game/players.js';
+import {
+  DEFAULT_PLAYER_ID,
+  ROSTER,
+  formatBirthDate,
+  getAge,
+} from '../game/players.js';
 import { DIFFICULTY } from '../game/constants.js';
 import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
@@ -14,11 +19,21 @@ const MODES = [
 /**
  * Karakter seçim ekranı — mod, zorluk ve kadro seçimi.
  */
+/** Künye satırı — bilinmeyen değer '—' gösterilir. */
+function Fact({ label, value }) {
+  return (
+    <div>
+      <dt className="text-white/35">{label}</dt>
+      <dd className="mt-[2px] text-white/70">{value}</dd>
+    </div>
+  );
+}
+
 export default function CharacterSelect({ onBack, onStart }) {
   const [mode, setMode] = useState('1v1');
   const [difficulty, setDifficulty] = useState('normal');
-  const [selected, setSelected] = useState(['eda-erdem']);
-  const [focused, setFocused] = useState('eda-erdem');
+  const [selected, setSelected] = useState([DEFAULT_PLAYER_ID]);
+  const [focused, setFocused] = useState(DEFAULT_PLAYER_ID);
 
   const required = mode === '2v2' ? 2 : 1;
   const focusedPlayer = useMemo(
@@ -167,6 +182,9 @@ export default function CharacterSelect({ onBack, onStart }) {
               <span className="text-[7px] text-white/45">
                 #{player.number} · {player.position}
               </span>
+              {player.height && (
+                <span className="text-[7px] text-white/30">{player.height} cm</span>
+              )}
             </button>
           );
         })}
@@ -182,9 +200,26 @@ export default function CharacterSelect({ onBack, onStart }) {
         <div className="flex-1">
           <h3 className="text-sm text-white">{upper(focusedPlayer.name)}</h3>
           <p className="mt-1 text-[8px] text-white/50">
-            {focusedPlayer.position} · {focusedPlayer.height} CM
+            {focusedPlayer.position}
             {focusedPlayer.captain && ' · KAPTAN'}
           </p>
+
+          {/* Künye — kadro listesindeki gerçek bilgiler */}
+          <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-[7px] sm:grid-cols-4">
+            <Fact label="DOĞUM" value={formatBirthDate(focusedPlayer)} />
+            <Fact
+              label="YAŞ"
+              value={getAge(focusedPlayer) !== null ? `${getAge(focusedPlayer)}` : '—'}
+            />
+            <Fact
+              label="BOY"
+              value={focusedPlayer.height ? `${focusedPlayer.height} cm` : '—'}
+            />
+            <Fact
+              label="KİLO"
+              value={focusedPlayer.weight ? `${focusedPlayer.weight} kg` : '—'}
+            />
+          </dl>
 
           <div
             className="mt-3 border-l-4 py-1 pl-3"

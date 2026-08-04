@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import PixelAvatar from '../components/PixelAvatar.jsx';
-import { ROSTER } from '../game/players.js';
+import { ROSTER, SHOWCASE_IDS } from '../game/players.js';
 import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
 
@@ -17,7 +17,7 @@ export default function StartScreen({ onStart, muted, onToggleMute }) {
 
   // Öne çıkan üç sultan — giriş ekranı vitrini
   const showcase = useMemo(
-    () => ['eda-erdem', 'melissa-vargas', 'ebrar-karakurt'].map((id) => ROSTER.find((p) => p.id === id)),
+    () => SHOWCASE_IDS.map((id) => ROSTER.find((p) => p.id === id)).filter(Boolean),
     []
   );
 

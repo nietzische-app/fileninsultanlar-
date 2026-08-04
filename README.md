@@ -4,12 +4,15 @@ Türkiye Kadın Millî Voleybol Takımı'na, yani **Filenin Sultanları**'na say
 duruşu niteliğinde, tarayıcıda oynanan 8-bit piksel voleybol oyunu.
 
 Amaç basit: takımın sahada bıraktığı izi, retro bir arcade oyununa dönüştürmek.
-Eda Erdem'in bloğu, Melissa Vargas'ın smacı, Gizem Örge'nin kurtarışı — hepsi
+Zehra Güneş'in bloğu, Melissa Vargas'ın smacı, Gizem Örge'nin kurtarışı — hepsi
 kırmızı-beyaz bir sahada, Türk bayraklarıyla dolu bir tribünün önünde.
 
 > Hayran yapımı, ticari olmayan bir saygı projesidir; resmî bir ürün değildir.
-> Oyuncu istatistikleri oyun dengesi içindir, gerçek performans ölçüsü değildir.
-> Forma numaraları örnek değerlerdir (`src/game/players.js` içinden düzenlenebilir).
+>
+> Forma numarası, mevki, doğum tarihi, boy ve kilo gerçek kadro bilgisidir.
+> **Statlar ve bonuslar ise kurgusaldır** — mevki ve fiziksel özelliklerden
+> türetilmiş oyun dengesi değerleridir, gerçek sporcu performansının ölçüsü
+> değildir. Saç modeli ve aksesuarlar da stilize tercihlerdir.
 
 ## Oynanış
 
@@ -63,17 +66,34 @@ Bir maç ortalama 4–9 dakika sürer.
 
 ## Kadro
 
-Her sultanın kendi stat dağılımı, forma rengi ve oyunu değiştiren bir bonusu var:
+15 sultan; her birinin kendi statları ve oyunu değiştiren bir bonusu var.
+Künye bilgileri (doğum, boy, kilo) karakter seçim ekranında görünür.
 
-| # | Oyuncu | Mevki | Bonus |
-| --- | --- | --- | --- |
-| 4 | Eda Erdem (K) | Orta Oyuncu | **Kaptan Duruşu** — dengeli statlar, blokta %20 güç |
-| 99 | Melissa Vargas | Pasör Çaprazı | **Top Sallama** — smaç hızı %25 fazla |
-| 16 | Zehra Güneş | Orta Oyuncu | **Duvar** — %18 geniş erişim, yüksek kademe |
-| 10 | Ebrar Karakurt | Smaçör | **Enerji Patlaması** — Sultan barı %30 hızlı dolar |
-| 2 | Cansu Özbay | Pasör | **Hızlı Tempo** — en hızlı hareket, yüksek sıçrama |
-| 7 | Gizem Örge | Libero | **Kurtarış** — manşette %30 güç, üstün savunma |
-| 11 | Hande Baladın | Smaçör | **Çapraz Plase** — dengeli hücum, keskin açı |
+| # | Oyuncu | Mevki | Boy | Bonus |
+| --- | --- | --- | --- | --- |
+| 1 | Gizem Örge | Libero | 170 | **Kurtarış** — manşette %30 güç, üstün savunma |
+| 3 | Cansu Özbay | Pasör | 182 | **Hızlı Tempo** — en hızlı hareket, yüksek sıçrama |
+| 6 | Saliha Şahin | Smaçör | 186 | **Çift Yönlü** — hücum ve savunmada dengeli |
+| 7 | Hande Baladın | Smaçör | 190 | **Çapraz Plase** — keskin açı |
+| 8 | Sinead Jack-Kısal | Orta Oyuncu | 190 | **Tecrübeli Duvar** — blokta %22 güç |
+| 10 | Eylül Akarçeşme Yatgın | Libero | 173 | **Seri Refleks** — sahanın en hızlısı |
+| 12 | Elif Şahin | Pasör | 189 | **Uzun Pasör** — pasör hızı + orta oyuncu erişimi |
+| 13 | Dilay Özdemir | Pasör | — | **Sakin Dağıtım** — istikrarlı pas |
+| 15 | Deniz Uyanık | Orta Oyuncu | 195 | **Yüksek Kademe** — file üstünde erişim |
+| 16 | Berka Buse Özden | Orta Oyuncu | 187 | **Genç Enerji** — Sultan barı %20 hızlı dolar |
+| 18 | Zehra Güneş | Orta Oyuncu | 198 | **Duvar** — en geniş erişim, en sert blok |
+| 20 | Yaprak Erkek | Smaçör | 182 | **Hafif Ayak** — en çevik smaçör |
+| 22 | İlkin Aydın | Smaçör | 183 | **Servis Ateşi** — sert servis ve smaç |
+| 44 | Melissa Vargas | Pasör Çaprazı | 194 | **Top Sallama** — smaç hızı %25 fazla |
+| 91 | Defne Başyolcu | Smaçör | — | **Taze Kan** — çevik, bar hızlı dolar |
+
+Dilay Özdemir ve Defne Başyolcu için kadro listesinde doğum tarihi, boy ve
+kilo bilgisi yoktu; bu alanlar `null` ve arayüzde `—` olarak görünüyor.
+Statları mevki profilinden türetildi.
+
+Kadro verisinde kaptan işaretli değil (`captain: false`). Bir oyuncuyu kaptan
+yapmak için `players.js` içinde `captain: true` yeterli — sprite'a otomatik
+pazıbandı çizilir.
 
 ## Kurulum
 
@@ -151,24 +171,30 @@ Bir karakterin görünümü tamamen `src/game/players.js` içinden değiştirili
 
 ```js
 {
-  name: 'Ebrar Karakurt',
-  number: 10,                    // formaya piksel fontla basılır
+  name: 'İlkin Aydın',
+  number: 22,                    // formaya piksel fontla basılır
   captain: false,                // true ise kaptan pazıbandı çizilir
+  birthDate: '2000-01-05',       // bilinmiyorsa null → arayüzde '—'
+  height: 183,
+  weight: 67,
   colors: {
     primary: '#E30A17',          // forma gövdesi
-    secondary: '#00BFFF',        // yaka, yan şerit, numara rengi
+    secondary: '#FFFFFF',        // yaka, yan şerit, numara rengi
     skin: '#EFC7A6',
-    hair: '#5FC2E8',             // saç rengi
-    accent: '#5FC2E8',           // kaptan pazıbandı ve arayüz vurgusu
+    hair: '#1F1410',             // saç rengi
+    accent: '#FF7A18',           // kaptan pazıbandı ve arayüz vurgusu
   },
   appearance: {
     hairStyle: 'short',          // 'short'|'ponytail'|'bun'|'long'|'braid'
-    headband: '#FFFFFF',         // kafa bandı — null ise takmaz
-    wristband: '#00BFFF',        // bileklik — null ise takmaz
+    headband: '#FF7A18',         // kafa bandı — null ise takmaz
+    wristband: '#FF7A18',        // bileklik — null ise takmaz
     kneePads: '#1B1B2E',         // dizlik — null ise takmaz
   },
 }
 ```
+
+Liberolar (Gizem Örge, Eylül Akarçeşme Yatgın) kural gereği farklı renkte forma
+giyer; bu `LIBERO_KIT` sabitiyle verilir.
 
 Aksesuar alanlarında `null` "bu parçayı çizme" demektir; eksik bırakılan alanlar
 `DEFAULT_APPEARANCE` ile tamamlanır. Yeni bir saç modeli eklemek için
