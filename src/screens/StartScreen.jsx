@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import PixelAvatar from '../components/PixelAvatar.jsx';
+import MuteButton from '../components/MuteButton.jsx';
 import { ROSTER, SHOWCASE_IDS } from '../game/players.js';
 import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
@@ -36,7 +37,11 @@ export default function StartScreen({ onStart, muted, onToggleMute }) {
   };
 
   return (
-    <div className="flex min-h-full flex-col items-center justify-center gap-8 px-4 py-10">
+    <div className="relative flex min-h-full flex-col items-center justify-center gap-8 px-4 py-10">
+      <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+        <MuteButton muted={muted} onToggle={onToggleMute} />
+      </div>
+
       {/* Başlık */}
       <div className="text-center">
         <p className="mb-3 text-[9px] tracking-[0.35em] text-white/50">RETRO VOLLEYBALL</p>
@@ -67,8 +72,11 @@ export default function StartScreen({ onStart, muted, onToggleMute }) {
             className="flex flex-col items-center gap-2 animate-float"
             style={{ animationDelay: `${i * 0.35}s` }}
           >
-            <PixelAvatar player={player} scale={4} pose={i === 1 ? 'cheer' : 'idle'} />
+            <PixelAvatar player={player} scale={4} pose={i === 0 ? 'cheer' : 'idle'} />
             <span className="text-[7px] text-white/60">{upper(player.name)}</span>
+            {player.captain && (
+              <span className="text-[6px] text-retro-accent">★ KAPTAN</span>
+            )}
           </div>
         ))}
       </div>
@@ -78,36 +86,23 @@ export default function StartScreen({ onStart, muted, onToggleMute }) {
         <button type="button" className="retro-button px-10 py-4 text-sm" onClick={handleStart}>
           BAŞLA
         </button>
-        <p className="animate-blink text-[8px] text-white/50">DEVAM ETMEK İÇİN BAŞLA'YA BAS</p>
+        <p className="animate-blink text-[8px] text-white/50">DEVAM ETMEK İÇİN BAŞLA&apos;YA BAS</p>
       </div>
 
-      {/* Kontroller özeti + ses */}
-      <div className="flex flex-col items-center gap-4">
-        <div className="retro-panel px-4 py-3">
-          <p className="mb-2 text-center text-[8px] text-white/50">KONTROLLER</p>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-[7px] text-white/70 sm:grid-cols-3">
-            <span>← → / A D · HAREKET</span>
-            <span>↑ / W · ZIPLA</span>
-            <span>BOŞLUK / Z · VUR</span>
-            <span className="text-[#9BE7FF]">↓ / S · DALIŞ</span>
-            <span className="text-retro-accent">X · SULTAN GÜCÜ</span>
-          </div>
+      {/* Kontroller özeti */}
+      <div className="retro-panel px-4 py-3">
+        <p className="mb-2 text-center text-[8px] text-white/50">KONTROLLER</p>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-[7px] text-white/70 sm:grid-cols-3">
+          <span>← → / A D · HAREKET</span>
+          <span>↑ / W · ZIPLA</span>
+          <span>BOŞLUK / Z · VUR</span>
+          <span className="text-[#9BE7FF]">↓ / S · DALIŞ</span>
+          <span className="text-retro-accent">X · SULTAN GÜCÜ</span>
         </div>
-
-        <button
-          type="button"
-          className="retro-button-ghost px-4 py-2 text-[8px]"
-          onClick={() => {
-            Sfx.unlock();
-            onToggleMute();
-          }}
-        >
-          SES: {muted ? 'KAPALI' : 'AÇIK'}
-        </button>
       </div>
 
       <footer className="max-w-md text-center text-[7px] leading-relaxed text-white/30">
-        Türkiye Kadın Millî Voleybol Takımı'na saygıyla yapılmış, ticari olmayan
+        Türkiye Kadın Millî Voleybol Takımı&apos;na saygıyla yapılmış, ticari olmayan
         bir hayran projesidir.
       </footer>
     </div>

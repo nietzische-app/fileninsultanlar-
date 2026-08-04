@@ -72,6 +72,7 @@ export const POSITIONS = {
  * @property {number} number Forma numarası (sprite üzerine çizilir)
  * @property {string} position
  * @property {boolean} captain
+ * @property {boolean} [guest] Bonus kadro — Milletler Ligi'nde dinlenen / özel eklenti
  * @property {string|null} birthDate ISO 'YYYY-MM-DD' — bilinmiyorsa null
  * @property {number|null} height cm — bilinmiyorsa null
  * @property {number|null} weight kg — bilinmiyorsa null
@@ -112,7 +113,7 @@ export const ROSTER = [
     name: 'Gizem Örge',
     number: 1,
     position: POSITIONS.LIBERO,
-    captain: false,
+    captain: true,
     birthDate: '1993-04-26',
     height: 170,
     weight: 59,
@@ -309,10 +310,9 @@ export const ROSTER = [
     number: 13,
     position: POSITIONS.PASOR,
     captain: false,
-    // Kadro listesinde doğum tarihi, boy ve kilo bilgisi yok
-    birthDate: null,
-    height: null,
-    weight: null,
+    birthDate: '2005-08-15',
+    height: 187,
+    weight: 58,
     stats: { attack: 68, block: 72, serve: 78, defense: 82, speed: 88, stamina: 86 },
     colors: {
       ...KIT,
@@ -331,6 +331,35 @@ export const ROSTER = [
       description: 'İstikrarlı pas; manşette ve hızda dengeli.',
     },
     modifiers: { speed: 1.14, bumpPower: 1.08, spikePower: 0.9 },
+  },
+  {
+    id: 'eda-erdem',
+    name: 'Eda Erdem',
+    number: 14,
+    position: POSITIONS.ORTA,
+    captain: false,
+    guest: true,
+    birthDate: '1987-06-22',
+    height: 188,
+    weight: 73,
+    stats: { attack: 88, block: 97, serve: 84, defense: 82, speed: 74, stamina: 90 },
+    colors: {
+      ...KIT,
+      skin: '#E8B48C',
+      hair: '#2B1B14',
+      accent: '#FFD24A',
+    },
+    appearance: {
+      hairStyle: 'ponytail',
+      headband: '#FFFFFF',
+      wristband: '#FFD24A',
+      kneePads: '#1B1B2E',
+    },
+    bonus: {
+      name: 'Efsane Duvar',
+      description: 'Blokta %24 güç; tecrübeyle geniş file erişimi.',
+    },
+    modifiers: { blockPower: 1.24, reach: 1.14, jump: 1.04, speed: 0.94 },
   },
   {
     id: 'deniz-uyanik',
@@ -507,10 +536,9 @@ export const ROSTER = [
     number: 91,
     position: POSITIONS.SMACOR,
     captain: false,
-    // Kadro listesinde doğum tarihi, boy ve kilo bilgisi yok
-    birthDate: null,
-    height: null,
-    weight: null,
+    birthDate: '2006-08-09',
+    height: 192,
+    weight: 71,
     stats: { attack: 82, block: 76, serve: 80, defense: 80, speed: 86, stamina: 84 },
     colors: {
       ...KIT,
@@ -529,6 +557,35 @@ export const ROSTER = [
       description: 'Çevik ve hevesli; bar biraz daha hızlı dolar.',
     },
     modifiers: { speed: 1.1, spikePower: 1.04, charge: 1.12 },
+  },
+  {
+    id: 'ebrar-karakurt',
+    name: 'Ebrar Karakurt',
+    number: 99,
+    position: POSITIONS.PASOR_CAPRAZI,
+    captain: false,
+    guest: true,
+    birthDate: '2000-01-17',
+    height: 195,
+    weight: 72,
+    stats: { attack: 96, block: 80, serve: 90, defense: 72, speed: 80, stamina: 88 },
+    colors: {
+      ...KIT,
+      skin: '#E8B48C',
+      hair: '#1A1008',
+      accent: '#FF7A18',
+    },
+    appearance: {
+      hairStyle: 'braid',
+      headband: '#FF7A18',
+      wristband: '#FF7A18',
+      kneePads: '#1B1B2E',
+    },
+    bonus: {
+      name: 'Kara Kurt',
+      description: 'Sert smaç; Sultan Gücü barı %30 daha hızlı dolar.',
+    },
+    modifiers: { spikePower: 1.22, charge: 1.3, angle: 1.12, bumpPower: 0.95 },
   },
 ];
 
@@ -560,11 +617,21 @@ export const OPPONENT_TEMPLATE = {
   modifiers: {},
 };
 
-/** Oyunun varsayılan olarak seçili getirdiği sultan. */
-export const DEFAULT_PLAYER_ID = 'melissa-vargas';
+/** Oyunun varsayılan olarak seçili getirdiği sultan — kaptan. */
+export const DEFAULT_PLAYER_ID = 'gizem-orge';
 
 /** Giriş ekranındaki vitrin kadrosu. */
-export const SHOWCASE_IDS = ['zehra-gunes', 'melissa-vargas', 'gizem-orge'];
+export const SHOWCASE_IDS = ['gizem-orge', 'zehra-gunes', 'melissa-vargas'];
+
+/** Aktif turnuva kadrosu (bonus/dinlenen oyuncular hariç). */
+export function getActiveRoster() {
+  return ROSTER.filter((player) => !player.guest);
+}
+
+/** Bonus kadro — Milletler Ligi dinlenmesi vb. özel eklentiler. */
+export function getBonusRoster() {
+  return ROSTER.filter((player) => player.guest);
+}
 
 /**
  * Bir oyuncunun görünüm ayarlarını varsayılanlarla birleştirir.

@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react';
 import PixelAvatar from '../components/PixelAvatar.jsx';
 import StatBar from '../components/StatBar.jsx';
+import MuteButton from '../components/MuteButton.jsx';
 import {
   DEFAULT_PLAYER_ID,
-  ROSTER,
+  getActiveRoster,
+  getBonusRoster,
+  getPlayerById,
   formatBirthDate,
   getAge,
 } from '../game/players.js';
@@ -16,9 +19,6 @@ const MODES = [
   { id: '2v2', label: '2 vs 2', description: 'İki sultan sahada — biri sen, biri takım arkadaşın.' },
 ];
 
-/**
- * Karakter seçim ekranı — mod, zorluk ve kadro seçimi.
- */
 /** Künye satırı — bilinmeyen değer '—' gösterilir. */
 function Fact({ label, value }) {
   return (
@@ -29,16 +29,48 @@ function Fact({ label, value }) {
   );
 }
 
-export default function CharacterSelect({ onBack, onStart }) {
-  const [mode, setMode] = useState('1v1');
-  const [difficulty, setDifficulty] = useState('normal');
-  const [selected, setSelected] = useState([DEFAULT_PLAYER_ID]);
-  const [focused, setFocused] = useState(DEFAULT_PLAYER_ID);
+/**
+ * Son tercihten gelen id listesini geçerli kadroya ve moda göre kırpar.
+ * @param {string[]} ids
+ * @param {string} mode
+ */
+function sanitizeHomeIds(ids, mode) {
+  const required = mode === '2v2' ? 2 : 1;
+  const valid = (Array.isArray(ids) ? ids : [])
+    .filter((id) => Boolean(getPlayerById(id)))
+    .slice(0, required);
+  if (valid.length === 0) return [DEFAULT_PLAYER_ID];
+  return valid;
+}
+
+/**
+ * Karakter seçim ekranı — mod, zorluk ve kadro seçimi.
+ */
+export default function CharacterSelect({
+  onBack,
+  onStart,
+  muted,
+  onToggleMute,
+  initialMode = '1v1',
+  initialDifficulty = 'normal',
+  initialHomeIds,
+}) {
+  const [mode, setMode] = useState(initialMode === '2v2' ? '2v2' : '1v1');
+  const [difficulty, setDifficulty] = useState(
+    DIFFICULTY[initialDifficulty] ? initialDifficulty : 'normal'
+  );
+  const [selected, setSelected] = useState(() =>
+    sanitizeHomeIds(initialHomeIds, initialMode === '2v2' ? '2v2' : '1v1')
+  );
+  const [focused, setFocused] = useState(() => selected[0] ?? DEFAULT_PLAYER_ID);
+
+  const activeRoster = useMemo(() => getActiveRoster(), []);
+  const bonusRoster = useMemo(() => getBonusRoster(), []);
 
   const required = mode === '2v2' ? 2 : 1;
   const focusedPlayer = useMemo(
-    () => ROSTER.find((p) => p.id === focused) ?? ROSTER[0],
-    [focused]
+    () => getPlayerById(focused) ?? activeRoster[0],
+    [focused, activeRoster]
   );
 
   const handleModeChange = (nextMode) => {
@@ -86,9 +118,12 @@ export default function CharacterSelect({ onBack, onStart }) {
             {selected.length}/{required}
           </p>
         </div>
-        <button type="button" className="retro-button-ghost" onClick={onBack}>
-          ← GERİ
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <MuteButton muted={muted} onToggle={onToggleMute} />
+          <button type="button" className="retro-button-ghost" onClick={onBack}>
+            ← GERİ
+          </button>
+        </div>
       </div>
 
       {/* Mod ve zorluk */}
@@ -144,51 +179,35 @@ export default function CharacterSelect({ onBack, onStart }) {
         </fieldset>
       </div>
 
-      {/* Kadro ızgarası */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {ROSTER.map((player) => {
-          const isSelected = selected.includes(player.id);
-          const order = selected.indexOf(player.id) + 1;
+      {/* Aktif kadro */}
+      <RosterGrid
+        title="AKTİF KADRO"
+        players={activeRoster}
+        selected={selected}
+        focused={focused}
+        onSelect={togglePlayer}
+        onFocus={setFocused}
+      />
 
-          return (
-            <button
-              key={player.id}
-              type="button"
-              onClick={() => togglePlayer(player.id)}
-              onMouseEnter={() => setFocused(player.id)}
-              className={`relative flex flex-col items-center gap-2 border-4 px-2 py-3 transition ${
-                isSelected
-                  ? 'border-retro-accent bg-turkiye-red/25'
-                  : focused === player.id
-                    ? 'border-white/60 bg-retro-panel'
-                    : 'border-white/15 bg-retro-panel/60 hover:border-white/40'
-              }`}
-              style={{ boxShadow: isSelected ? '5px 5px 0 0 rgba(0,0,0,0.6)' : undefined }}
-            >
-              {isSelected && (
-                <span className="absolute -left-2 -top-2 flex h-6 w-6 items-center justify-center border-2 border-black bg-retro-accent text-[9px] text-black">
-                  {order}
-                </span>
-              )}
-              {player.captain && (
-                <span className="absolute right-1 top-1 text-[7px] text-retro-accent">
-                  ★ K
-                </span>
-              )}
-
-              <PixelAvatar player={player} scale={3} />
-
-              <span className="text-[8px] leading-tight">{upper(player.name)}</span>
-              <span className="text-[7px] text-white/45">
-                #{player.number} · {player.position}
-              </span>
-              {player.height && (
-                <span className="text-[7px] text-white/30">{player.height} cm</span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+      {/* Bonus kadro — Milletler Ligi dinlenmesi */}
+      {bonusRoster.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <div>
+            <p className="text-[8px] tracking-widest text-retro-accent">★ BONUS KADRO ★</p>
+            <p className="mt-1 text-[7px] text-white/40">
+              Milletler Ligi&apos;nde dinlenen sultanlar — özel seçilebilir eklenti
+            </p>
+          </div>
+          <RosterGrid
+            players={bonusRoster}
+            selected={selected}
+            focused={focused}
+            onSelect={togglePlayer}
+            onFocus={setFocused}
+            guest
+          />
+        </div>
+      )}
 
       {/* Odaklanılan oyuncunun kartı */}
       <div className="retro-panel flex flex-col gap-5 px-5 py-5 sm:flex-row sm:items-start">
@@ -202,6 +221,7 @@ export default function CharacterSelect({ onBack, onStart }) {
           <p className="mt-1 text-[8px] text-white/50">
             {focusedPlayer.position}
             {focusedPlayer.captain && ' · KAPTAN'}
+            {focusedPlayer.guest && ' · BONUS'}
           </p>
 
           {/* Künye — kadro listesindeki gerçek bilgiler */}
@@ -259,6 +279,63 @@ export default function CharacterSelect({ onBack, onStart }) {
             2v2 MODU İÇİN {required - selected.length} SULTAN DAHA SEÇ
           </p>
         )}
+      </div>
+    </div>
+  );
+}
+
+function RosterGrid({ title, players, selected, focused, onSelect, onFocus, guest = false }) {
+  return (
+    <div className="flex flex-col gap-3">
+      {title && <p className="text-[8px] tracking-widest text-white/45">{title}</p>}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {players.map((player) => {
+          const isSelected = selected.includes(player.id);
+          const order = selected.indexOf(player.id) + 1;
+
+          return (
+            <button
+              key={player.id}
+              type="button"
+              onClick={() => onSelect(player.id)}
+              onMouseEnter={() => onFocus(player.id)}
+              className={`relative flex flex-col items-center gap-2 border-4 px-2 py-3 transition ${
+                isSelected
+                  ? 'border-retro-accent bg-turkiye-red/25'
+                  : focused === player.id
+                    ? 'border-white/60 bg-retro-panel'
+                    : 'border-white/15 bg-retro-panel/60 hover:border-white/40'
+              }`}
+              style={{ boxShadow: isSelected ? '5px 5px 0 0 rgba(0,0,0,0.6)' : undefined }}
+            >
+              {isSelected && (
+                <span className="absolute -left-2 -top-2 flex h-6 w-6 items-center justify-center border-2 border-black bg-retro-accent text-[9px] text-black">
+                  {order}
+                </span>
+              )}
+              {player.captain && (
+                <span className="absolute right-1 top-1 text-[7px] text-retro-accent">
+                  ★ K
+                </span>
+              )}
+              {guest && !player.captain && (
+                <span className="absolute right-1 top-1 text-[6px] text-[#FFD24A]/80">
+                  BONUS
+                </span>
+              )}
+
+              <PixelAvatar player={player} scale={3} />
+
+              <span className="text-[8px] leading-tight">{upper(player.name)}</span>
+              <span className="text-[7px] text-white/45">
+                #{player.number} · {player.position}
+              </span>
+              {player.height && (
+                <span className="text-[7px] text-white/30">{player.height} cm</span>
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

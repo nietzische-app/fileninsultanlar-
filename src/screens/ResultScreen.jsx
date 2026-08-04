@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import PixelAvatar from '../components/PixelAvatar.jsx';
+import MuteButton from '../components/MuteButton.jsx';
 import { drawTrophy } from '../game/sprites.js';
 import { getPlayerById } from '../game/players.js';
 import { upper } from '../utils/text.js';
@@ -10,7 +11,7 @@ const CONFETTI_COLORS = ['#E30A17', '#FFFFFF', '#FFD24A', '#FF7A18', '#9BE7FF'];
  * Maç sonu ekranı — kupa, konfeti ve Filenin Sultanları'na
  * onurlandırma mesajı.
  */
-export default function ResultScreen({ result, onRematch, onHome }) {
+export default function ResultScreen({ result, onRematch, onHome, muted, onToggleMute }) {
   const won = result.winner === 'home';
 
   const squad = useMemo(
@@ -34,6 +35,10 @@ export default function ResultScreen({ result, onRematch, onHome }) {
 
   return (
     <div className="relative flex min-h-full flex-col items-center justify-center gap-7 overflow-hidden px-4 py-10">
+      <div className="absolute right-4 top-4 z-20 sm:right-6 sm:top-6">
+        <MuteButton muted={muted} onToggle={onToggleMute} />
+      </div>
+
       {/* Konfeti katmanı */}
       {won && (
         <div className="pointer-events-none absolute inset-0 z-0" aria-hidden="true">

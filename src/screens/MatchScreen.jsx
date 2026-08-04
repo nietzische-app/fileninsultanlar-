@@ -5,6 +5,7 @@ import { getPlayerById } from '../game/players.js';
 import Scoreboard from '../components/Scoreboard.jsx';
 import SultanBar from '../components/SultanBar.jsx';
 import TouchControls from '../components/TouchControls.jsx';
+import MuteButton from '../components/MuteButton.jsx';
 import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
 
@@ -25,7 +26,7 @@ const INITIAL_HUD = {
  * Maç ekranı — Canvas oyun alanı, skor tablosu, Sultan Gücü barı
  * ve mobil dokunmatik kontroller.
  */
-export default function MatchScreen({ config, onFinish, onQuit }) {
+export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleMute }) {
   const canvasRef = useRef(null);
   const gameRef = useRef(null);
   const onFinishRef = useRef(onFinish);
@@ -147,6 +148,7 @@ export default function MatchScreen({ config, onFinish, onQuit }) {
               <button type="button" className="retro-button" onClick={togglePause}>
                 DEVAM ET
               </button>
+              <MuteButton muted={muted} onToggle={onToggleMute} />
               <button type="button" className="retro-button-ghost" onClick={onQuit}>
                 MAÇTAN ÇIK
               </button>
@@ -172,7 +174,8 @@ export default function MatchScreen({ config, onFinish, onQuit }) {
           <span>{squad.map((p) => upper(p.name)).join(' + ')}</span>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
+          <MuteButton muted={muted} onToggle={onToggleMute} />
           <button type="button" className="retro-button-ghost px-4 py-2 text-[8px]" onClick={togglePause}>
             {paused ? 'DEVAM' : 'DURAKLAT'}
           </button>

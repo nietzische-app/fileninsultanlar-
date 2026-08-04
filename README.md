@@ -66,34 +66,39 @@ Bir maç ortalama 4–9 dakika sürer.
 
 ## Kadro
 
-15 sultan; her birinin kendi statları ve oyunu değiştiren bir bonusu var.
-Künye bilgileri (doğum, boy, kilo) karakter seçim ekranında görünür.
+15 aktif sultan + 2 bonus oyuncu; her birinin kendi statları ve oyunu
+değiştiren bir yetenek bonusu var. Künye bilgileri (doğum, boy, kilo)
+karakter seçim ekranında görünür.
+
+**Kaptan:** Gizem Örge (`captain: true` — sprite'ta pazıbandı).
 
 | # | Oyuncu | Mevki | Boy | Bonus |
 | --- | --- | --- | --- | --- |
-| 1 | Gizem Örge | Libero | 170 | **Kurtarış** — manşette %30 güç, üstün savunma |
+| 1 | Gizem Örge ★ | Libero | 170 | **Kurtarış** — manşette %30 güç, üstün savunma |
 | 3 | Cansu Özbay | Pasör | 182 | **Hızlı Tempo** — en hızlı hareket, yüksek sıçrama |
 | 6 | Saliha Şahin | Smaçör | 186 | **Çift Yönlü** — hücum ve savunmada dengeli |
 | 7 | Hande Baladın | Smaçör | 190 | **Çapraz Plase** — keskin açı |
 | 8 | Sinead Jack-Kısal | Orta Oyuncu | 190 | **Tecrübeli Duvar** — blokta %22 güç |
 | 10 | Eylül Akarçeşme Yatgın | Libero | 173 | **Seri Refleks** — sahanın en hızlısı |
 | 12 | Elif Şahin | Pasör | 189 | **Uzun Pasör** — pasör hızı + orta oyuncu erişimi |
-| 13 | Dilay Özdemir | Pasör | — | **Sakin Dağıtım** — istikrarlı pas |
+| 13 | Dilay Özdemir | Pasör | 187 | **Sakin Dağıtım** — istikrarlı pas |
 | 15 | Deniz Uyanık | Orta Oyuncu | 195 | **Yüksek Kademe** — file üstünde erişim |
 | 16 | Berka Buse Özden | Orta Oyuncu | 187 | **Genç Enerji** — Sultan barı %20 hızlı dolar |
 | 18 | Zehra Güneş | Orta Oyuncu | 198 | **Duvar** — en geniş erişim, en sert blok |
 | 20 | Yaprak Erkek | Smaçör | 182 | **Hafif Ayak** — en çevik smaçör |
 | 22 | İlkin Aydın | Smaçör | 183 | **Servis Ateşi** — sert servis ve smaç |
 | 44 | Melissa Vargas | Pasör Çaprazı | 194 | **Top Sallama** — smaç hızı %25 fazla |
-| 91 | Defne Başyolcu | Smaçör | — | **Taze Kan** — çevik, bar hızlı dolar |
+| 91 | Defne Başyolcu | Smaçör | 192 | **Taze Kan** — çevik, bar hızlı dolar |
 
-Dilay Özdemir ve Defne Başyolcu için kadro listesinde doğum tarihi, boy ve
-kilo bilgisi yoktu; bu alanlar `null` ve arayüzde `—` olarak görünüyor.
-Statları mevki profilinden türetildi.
+### Bonus kadro
 
-Kadro verisinde kaptan işaretli değil (`captain: false`). Bir oyuncuyu kaptan
-yapmak için `players.js` içinde `captain: true` yeterli — sprite'a otomatik
-pazıbandı çizilir.
+Milletler Ligi'nde dinlenen sultanlar — seçim ekranında ayrı bölümde,
+`guest: true` ile işaretli:
+
+| # | Oyuncu | Mevki | Boy | Bonus |
+| --- | --- | --- | --- | --- |
+| 14 | Eda Erdem | Orta Oyuncu | 188 | **Efsane Duvar** — blokta %24 güç |
+| 99 | Ebrar Karakurt | Pasör Çaprazı | 195 | **Kara Kurt** — sert smaç, bar %30 hızlı dolar |
 
 ## Kurulum
 
@@ -147,6 +152,7 @@ src/
 │   ├── Scoreboard.jsx        Türkiye vs Rakip, set takibi
 │   ├── SultanBar.jsx         Özel yetenek barı
 │   ├── StatBar.jsx           Piksel stat çubuğu
+│   ├── MuteButton.jsx        Ses aç/kapa (tüm ekranlar)
 │   └── TouchControls.jsx     Mobil kontroller
 ├── game/
 │   ├── constants.js          Ölçüler, fizik, kurallar, palet, zorluk kademeleri
@@ -157,7 +163,8 @@ src/
 │   ├── arena.js              Salon, tribün, zemin ve file çizimi
 │   └── audio.js              8-bit ses motoru
 └── utils/
-    └── text.js               Türkçe büyük harf yardımcısı
+    ├── text.js               Türkçe büyük harf yardımcısı
+    └── storage.js            Mute / son seçim localStorage
 ```
 
 ## Karakter Özelleştirme
@@ -174,6 +181,7 @@ Bir karakterin görünümü tamamen `src/game/players.js` içinden değiştirili
   name: 'İlkin Aydın',
   number: 22,                    // formaya piksel fontla basılır
   captain: false,                // true ise kaptan pazıbandı çizilir
+  guest: false,                  // true ise bonus kadro bölümünde listelenir
   birthDate: '2000-01-05',       // bilinmiyorsa null → arayüzde '—'
   height: 183,
   weight: 67,
