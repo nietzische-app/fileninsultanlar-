@@ -84,8 +84,48 @@ function registerServiceWorker() {
   if (!import.meta.env.PROD) return;
 
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      // SW opsiyonel — sessizce geç
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((reg) => {
+        // Yeni sürüm var mı, her açılışta sor
+        reg.update().catch(() => {});
+
+        /*
+         * Bekleyen bir worker varsa hemen devralsın.
+         *
+         * Varsayılan davranışta yeni service worker, sayfanın TÜM
+         * sekmeleri kapanana kadar "waiting" durumunda bekler. Kullanıcı
+         * açısından bu "yeniliyorum ama güncellenmiyor" demek — sekmeyi
+         * kapatmadığı sürece eski sürümde kalır.
+         */
+        const nudge = (worker) => {
+          if (worker) worker.postMessage('skip-waiting');
+        };
+
+        nudge(reg.waiting);
+        reg.addEventListener('updatefound', () => {
+          const installing = reg.installing;
+          if (!installing) return;
+          installing.addEventListener('statechange', () => {
+            if (installing.state === 'installed') nudge(reg.waiting);
+          });
+        });
+      })
+      .catch(() => {
+        // SW opsiyonel — sessizce geç
+      });
+
+    /*
+     * Yeni worker devraldığında sayfayı bir kez tazele ki HTML ve paket
+     * aynı sürümden gelsin. `controller` yokken (ilk kurulum) yenileme
+     * yapılmaz, yoksa her yeni ziyaretçi gereksiz bir reload yerdi.
+     */
+    let reloading = false;
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloading) return;
+      reloading = true;
+      window.location.reload();
     });
   });
 }

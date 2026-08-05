@@ -306,8 +306,15 @@ Saf motor mantığı (`rules.js`, `ballistics.js`, `effects.js`, `tournament.js`
 (`*.test.js`). `Game.js` bu modülleri çağırır; canvas/React sarmalayıcı
 kalır.
 
-Üretim build'inde hafif bir service worker (`public/sw.js`) kabuğu
-önbelleğe alır. PWA ikonları çalışma anında canvas'tan üretilir
+Üretim build'inde hafif bir service worker (`public/sw.js`) çevrimdışı
+kabuk sağlar. **HTML asla cache-first servis edilmez:** Vite içerik-hash'li
+paket ürettiği için eski HTML eski hash'i ister ve yeni bir dağıtımdan
+sonra o dosya sunucuda kalmaz — kullanıcı ya eski oyunu görür ya da
+yarım yüklenmiş bir sürümü. Bölüşüm şöyle: gezinme/HTML → ağ önce,
+`/assets/*` (hash'li, değişmez) → önbellek önce, diğerleri →
+önbelleği ver arkada tazele. Yeni worker `skipWaiting` ile hemen
+devralır ve sayfa bir kez tazelenir, yoksa güncelleme tüm sekmeler
+kapanana kadar beklerdi. PWA ikonları çalışma anında canvas'tan üretilir
 (`createAppIconDataUrl`) — repoda PNG yoktur.
 
 ## Karakter Özelleştirme
