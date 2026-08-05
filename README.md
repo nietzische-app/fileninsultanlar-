@@ -38,10 +38,15 @@ ortalanır, dokunmatik tuşlar da **sahanın köşelerine şeffaf olarak biner**
 Skor tablosu ve Sultan barı üstte saydam bir katmanda durur; duraklat /
 tam ekran / çık düğmeleri sağ üst köşededir.
 
-- **Yatay tutuş** en iyisi: saha ekranın tüm yüksekliğini kaplar, tuşlar
-  boş köşelerde kalır. Dikey tutuşta saha üstte, tuşlar başparmak
-  hizasında toplanır ve aradaki banda maç künyesi yazılır; ilk birkaç
-  saniye "cihazı yatay çevir" ipucu görünür.
+- **Yatay tutuş zorunludur.** Saha 9:5 oranında ve dikeyde ekranın ancak
+  üçte birine sığıyor. Dokunmatik cihazda dikey tutuşta tam ekran bir
+  "cihazı yatay çevir" kapısı çıkar, altındaki her şey erişilemez olur ve
+  maç ekranı motoru duraklatır. Yatay dönünce oyun kendiliğinden devam
+  etmez — duraklatma katmanı bekler, oyuncu hazır olduğunda başlatır.
+  Kapı yalnızca `pointer: coarse` cihazlarda açılır; masaüstünde
+  pencereyi dar ve uzun yapan kimse engellenmez.
+- Ana ekrana eklenen PWA kısayolu manifest üzerinden doğrudan **yatay**
+  açılır (`orientation: landscape`).
 - **Tam ekran** düğmesi Fullscreen API'yi kullanır ve destekleniyorsa
   yönü yataya kilitler. iOS Safari `Element.requestFullscreen`'i
   desteklemediği için düğme orada hiç gösterilmez — o cihazlarda ana
@@ -234,6 +239,7 @@ src/
 │   ├── SultanBar.jsx         Özel yetenek barı
 │   ├── StatBar.jsx           Piksel stat çubuğu
 │   ├── MuteButton.jsx        Ses aç/kapa (tüm ekranlar)
+│   ├── RotateGate.jsx        Dikey tutuşta oyunu kapatan yatay uyarısı
 │   ├── TouchControls.jsx     Mobil kontroller (sahaya binen şeffaf varyant)
 │   └── ErrorBoundary.jsx     Yakalanmamış hata ekranı
 ├── game/
@@ -254,7 +260,7 @@ src/
 │   └── audio.js              8-bit ses motoru
 ├── hooks/
 │   ├── useFullscreen.js      Tam ekran durumu + geçiş
-│   └── useViewport.js        Ölçü ve yön (dikey/yatay) takibi
+│   └── useViewport.js        Ölçü, yön ve dokunmatik cihaz tespiti
 └── utils/
     ├── text.js               Türkçe büyük harf yardımcısı
     ├── fullscreen.js         Fullscreen API sarmalayıcı (webkit/iOS farkları)

@@ -46,20 +46,9 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
   const [hud, setHud] = useState(INITIAL_HUD);
   const [paused, setPaused] = useState(false);
   const [quitConfirm, setQuitConfirm] = useState(false);
-  const [rotateHintSeen, setRotateHintSeen] = useState(false);
 
   const fullscreen = useFullscreen(stageRef);
-  const { isMobile, portrait } = useViewport();
-
-  // İpucu yalnızca dikey tutuşta ve bir kez; kullanıcı kapatınca
-  // ya da süre dolunca maç boyunca geri gelmez
-  const showRotateHint = !rotateHintSeen;
-
-  useEffect(() => {
-    if (rotateHintSeen || !isMobile || !portrait) return undefined;
-    const timer = setTimeout(() => setRotateHintSeen(true), 5000);
-    return () => clearTimeout(timer);
-  }, [rotateHintSeen, isMobile, portrait]);
+  const { isMobile, portrait, coarse } = useViewport();
 
   // --- Motorun kurulumu ---
   useEffect(() => {
@@ -124,6 +113,19 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
     if (!game.running) game.start();
     setPaused(false);
   }, []);
+
+  /*
+   * Dikey tutuşta maçı dondur.
+   *
+   * Yatay kapısı ekranı kaplıyor ama motor arkada koşmaya devam
+   * ediyordu: kullanıcı telefonu çevirene kadar rakip sayı üstüne sayı
+   * alıyordu. Yatay dönünce kendiliğinden devam ETMEZ — duraklatma
+   * katmanı açık kalır ki oyuncu hazır olduğunda kendisi başlatsın.
+   */
+  useEffect(() => {
+    if (!(portrait && coarse)) return;
+    pauseGame();
+  }, [portrait, coarse, pauseGame]);
 
   // --- Sekme arka plana geçince duraklat ---
   useEffect(() => {
@@ -342,23 +344,6 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
           )}
         </div>
 
-        {/*
-          Yatay çevirme ipucu. Sahanın üstüne değil, altındaki boş banda
-          konur — oyunun görüşünü kapatan bir ipucu ipucu olmaktan çıkıp
-          engel oluyor. Birkaç saniyede kendi kendine kaybolur.
-        */}
-        {isMobile && portrait && !controlsLocked && showRotateHint && (
-          <button
-            type="button"
-            onClick={() => setRotateHintSeen(true)}
-            className="absolute inset-x-6 bottom-[16.5rem] z-30 border-2 border-retro-accent/60 bg-black/70 px-3 py-2 text-center text-[8px] leading-relaxed text-white/80 md:hidden"
-          >
-            ↻ CİHAZI YATAY ÇEVİR
-            <span className="mt-1 block text-[7px] text-white/40">
-              SAHA TÜM EKRANI KAPLAR
-            </span>
-          </button>
-        )}
 
         {/* Duraklatma katmanı */}
         {paused && !quitConfirm && (

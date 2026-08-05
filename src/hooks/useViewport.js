@@ -5,7 +5,7 @@ const MOBILE_MAX = 768;
 
 function read() {
   if (typeof window === 'undefined') {
-    return { width: 0, height: 0, isMobile: false, portrait: false };
+    return { width: 0, height: 0, isMobile: false, portrait: false, coarse: false };
   }
   const width = window.innerWidth;
   const height = window.innerHeight;
@@ -14,6 +14,14 @@ function read() {
     height,
     isMobile: width < MOBILE_MAX,
     portrait: height >= width,
+    /**
+     * Dokunmatik (kaba işaretçi) cihaz mı?
+     *
+     * Yatay zorunluluğu yalnızca burada uygulanır: masaüstünde
+     * pencereyi dar ve uzun yapan birinin önüne "telefonu çevir"
+     * ekranı çıkarmak saçma olurdu.
+     */
+    coarse: window.matchMedia?.('(pointer: coarse)').matches ?? false,
   };
 }
 

@@ -54,7 +54,9 @@ function installIcons() {
         background_color: '#0b0b12',
         theme_color: '#E30A17',
         lang: 'tr',
-        orientation: 'any',
+        // Saha 9:5 — dikeyde oynanmıyor. Ana ekrana eklenen kısayol
+        // doğrudan yatay açılsın; tarayıcıda ise RotateGate devreye girer.
+        orientation: 'landscape',
         categories: ['games', 'sports'],
         icons: [
           { src: icon192, sizes: '192x192', type: 'image/png', purpose: 'any' },

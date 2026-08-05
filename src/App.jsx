@@ -5,6 +5,8 @@ import CharacterSelect from './screens/CharacterSelect.jsx';
 import TournamentScreen from './screens/TournamentScreen.jsx';
 import MatchScreen from './screens/MatchScreen.jsx';
 import ResultScreen from './screens/ResultScreen.jsx';
+import RotateGate from './components/RotateGate.jsx';
+import useViewport from './hooks/useViewport.js';
 import Sfx from './game/audio.js';
 import {
   advanceTournament,
@@ -49,6 +51,10 @@ export default function App() {
   const [savedTournament, setSavedTournament] = useState(() => loadTournament());
   /** Tutorial menüden mi açıldı (geri → start), yoksa ilk akış mı (→ select). */
   const [tutorialFromMenu, setTutorialFromMenu] = useState(false);
+
+  // Dokunmatik cihazda dikey tutuş oyunu tamamen kapatır
+  const { portrait, coarse } = useViewport();
+  const blockedByOrientation = portrait && coarse;
 
   // İlk yüklemede ses motoruna mute tercihini uygula
   useEffect(() => {
@@ -287,6 +293,12 @@ export default function App() {
 
   return (
     <div className="min-h-full">
+      {/*
+        Yatay kapısı en üstte dursun: altındaki ekranlar mount kalır
+        (maç motoru durumunu kaybetmez) ama tamamen kapanır.
+      */}
+      {blockedByOrientation && <RotateGate />}
+
       {screen === 'start' && (
         <StartScreen
           onStart={handleStart}

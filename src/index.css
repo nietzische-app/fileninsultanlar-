@@ -280,6 +280,25 @@
   animation-iteration-count: infinite;
 }
 
+/* Yatay çevirme uyarısındaki telefon — dikeyden yataya yatıp döner */
+@keyframes rotate-hint {
+  0%,
+  22% {
+    transform: rotate(0deg);
+  }
+  45%,
+  78% {
+    transform: rotate(-90deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+.animate-rotate-hint {
+  animation: rotate-hint 2.8s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-blink,
   .animate-float,
@@ -287,5 +306,12 @@
   .animate-shine,
   .confetti-piece {
     animation: none;
+  }
+
+  /* Yön bilgisi hareketle taşındığı için tamamen durdurmak yerine
+     tek karede yatık bırakılır */
+  .animate-rotate-hint {
+    animation: none;
+    transform: rotate(-90deg);
   }
 }
