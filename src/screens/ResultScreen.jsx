@@ -5,6 +5,7 @@ import { drawTrophy } from '../game/sprites.js';
 import { getPlayerById } from '../game/players.js';
 import { FORMATS } from '../game/constants.js';
 import { survivalRank } from '../game/survival.js';
+import { getAchievement } from '../game/achievements.js';
 import { TOURNAMENT_ROUNDS, tournamentSummary } from '../game/tournament.js';
 import { upper } from '../utils/text.js';
 
@@ -23,6 +24,8 @@ export default function ResultScreen({
   onToggleMute,
   /** Turnuva kapanışında bracket durumu — kupa/elenme özeti için. */
   tournamentState = null,
+  /** Bu maçta açılan rozet id'leri. */
+  freshAchievements = [],
 }) {
   const survival = result.campaign === 'survival' ? result.survival : null;
   const tournament = useMemo(
@@ -201,6 +204,17 @@ export default function ResultScreen({
               highlight={brokenRecords?.longestRally}
             />
           </div>
+
+          {/* Beceri satırı — kombo / tam vuruş / plase */}
+          <div className="mt-4 grid grid-cols-3 gap-3 border-t-2 border-white/15 pt-4 text-center">
+            <Stat
+              label="EN İYİ KOMBO"
+              value={result.stats.bestCombo ?? 0}
+              highlight={brokenRecords?.bestCombo}
+            />
+            <Stat label="TAM VURUŞ" value={result.stats.perfects ?? 0} />
+            <Stat label="PLASE" value={result.stats.tips ?? 0} />
+          </div>
         </div>
 
         {/* Turnuva yolu özeti */}
@@ -245,6 +259,31 @@ export default function ResultScreen({
                   {label}
                 </span>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Bu maçta açılan rozetler */}
+        {freshAchievements.length > 0 && (
+          <div className="w-full border-2 border-[#9BE7FF]/70 bg-[#9BE7FF]/10 px-4 py-3 text-center">
+            <p className="text-[8px] tracking-widest text-[#9BE7FF]">
+              ★ YENİ ROZET ★
+            </p>
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              {freshAchievements.map((id) => {
+                const badge = getAchievement(id);
+                if (!badge) return null;
+                return (
+                  <span
+                    key={id}
+                    className="flex items-center gap-2 border border-[#9BE7FF]/50 px-2 py-1 text-[7px] text-[#9BE7FF]"
+                    title={badge.description}
+                  >
+                    <span aria-hidden="true">{badge.icon}</span>
+                    {badge.label}
+                  </span>
+                );
+              })}
             </div>
           </div>
         )}

@@ -3,6 +3,8 @@ import PixelAvatar from '../components/PixelAvatar.jsx';
 import MuteButton from '../components/MuteButton.jsx';
 import { ROSTER, SHOWCASE_IDS } from '../game/players.js';
 import { GAME_MODES } from '../game/modes.js';
+import AchievementGrid from '../components/AchievementGrid.jsx';
+import { ACHIEVEMENTS } from '../game/achievements.js';
 import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
 
@@ -22,6 +24,7 @@ export default function StartScreen({
   records,
   resumeTournament = null,
   onResumeTournament,
+  achievements = [],
 }) {
   const [messageIndex, setMessageIndex] = useState(0);
   const hasRecords = (records?.matchesPlayed ?? 0) > 0;
@@ -89,6 +92,16 @@ export default function StartScreen({
           </p>
         )}
       </div>
+
+      {/* Rozetler — bir tanesi bile açıldıysa göster */}
+      {achievements.length > 0 && (
+        <div className="retro-panel w-full max-w-xl px-5 py-4">
+          <p className="mb-3 text-center text-[8px] tracking-widest text-retro-accent">
+            ★ ROZETLER · {achievements.length}/{ACHIEVEMENTS.length} ★
+          </p>
+          <AchievementGrid unlocked={achievements} />
+        </div>
+      )}
 
       {/* Vitrin */}
       <div className="flex items-end justify-center gap-5 sm:gap-10">
@@ -166,7 +179,7 @@ export default function StartScreen({
           <span>← → / A D · HAREKET</span>
           <span>↑ / W · ZIPLA</span>
           <span>BOŞLUK / Z · VUR</span>
-          <span className="text-[#9BE7FF]">↓ / S · DALIŞ</span>
+          <span className="text-[#9BE7FF]">↓ / S · DALIŞ (HAVADA PLASE)</span>
           <span className="text-retro-accent">X · SULTAN GÜCÜ</span>
         </div>
       </div>

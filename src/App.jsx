@@ -15,15 +15,18 @@ import {
 } from './game/tournament.js';
 import {
   clearTournament,
+  loadAchievements,
   loadPrefs,
   loadRecords,
   loadTournament,
   recordMatchResult,
   recordSurvivalResult,
   recordTournamentResult,
+  saveAchievements,
   savePrefs,
   saveTournament,
 } from './utils/storage.js';
+import { evaluateAchievements, newlyUnlocked } from './game/achievements.js';
 
 /**
  * Ekran akışı:
@@ -49,6 +52,9 @@ export default function App() {
   const [prefs, setPrefs] = useState(initialPrefs);
   const [records, setRecords] = useState(() => loadRecords());
   const [savedTournament, setSavedTournament] = useState(() => loadTournament());
+  const [achievements, setAchievements] = useState(() => loadAchievements());
+  /** Bu maçta açılan rozetler — sonuç ekranında gösterilir. */
+  const [freshAchievements, setFreshAchievements] = useState([]);
   /** Tutorial menüden mi açıldı (geri → start), yoksa ilk akış mı (→ select). */
   const [tutorialFromMenu, setTutorialFromMenu] = useState(false);
 
@@ -174,6 +180,22 @@ export default function App() {
     []
   );
 
+  /**
+   * Rozetleri güncel rekorlara göre yeniden değerlendirir ve bu maçta
+   * açılanları saklar. Üç mod da aynı kapıdan geçer.
+   */
+  const syncAchievements = useCallback(
+    (nextRecords, matchResult) => {
+      const earned = evaluateAchievements(nextRecords, matchResult);
+      setAchievements((prev) => {
+        setFreshAchievements(newlyUnlocked(prev, earned));
+        // Bir kez açılan rozet geri kapanmaz: kayıt her zaman birleşimdir
+        return saveAchievements([...prev, ...earned]);
+      });
+    },
+    []
+  );
+
   const handleFinish = useCallback(
     (matchResult) => {
       // --- Hayatta kalma: koşu bitti ---
@@ -181,6 +203,7 @@ export default function App() {
         const { records: nextRecords, broken } = recordSurvivalResult(matchResult);
         setRecords(nextRecords);
         setBrokenRecords(broken);
+        syncAchievements(nextRecords, matchResult);
         setResult(matchResult);
         setFinishedTournament(null);
         setScreen('result');
@@ -200,6 +223,7 @@ export default function App() {
           setSavedTournament(nextState);
           setRecords(matchRecords);
           setBrokenRecords(matchBroken);
+          syncAchievements(matchRecords, matchResult);
           setResult(matchResult);
           setScreen('bracket');
           return;
@@ -212,6 +236,7 @@ export default function App() {
         setSavedTournament(null);
         setRecords(nextRecords);
         setBrokenRecords({ ...matchBroken, ...tourBroken });
+        syncAchievements(nextRecords, matchResult);
         setResult(matchResult);
         setFinishedTournament(nextState);
         setScreen('result');
@@ -229,11 +254,12 @@ export default function App() {
       const { records: nextRecords, broken } = recordMatchResult(matchResult);
       setRecords(nextRecords);
       setBrokenRecords(broken);
+      syncAchievements(nextRecords, matchResult);
       setResult(matchResult);
       setFinishedTournament(null);
       setScreen('result');
     },
-    [tournament]
+    [tournament, syncAchievements]
   );
 
   const handleRematch = useCallback(() => {
@@ -308,6 +334,7 @@ export default function App() {
           records={records}
           resumeTournament={savedTournament}
           onResumeTournament={resumeSavedTournament}
+          achievements={achievements}
         />
       )}
 
@@ -363,6 +390,7 @@ export default function App() {
           result={result}
           brokenRecords={brokenRecords}
           tournamentState={finishedTournament}
+          freshAchievements={freshAchievements}
           onRematch={handleRematch}
           onHome={goHome}
           muted={muted}

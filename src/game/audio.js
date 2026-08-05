@@ -156,6 +156,31 @@ class SfxEngine {
     this.crowd({ intensity: 0.45, duration: 0.28, delay: 0.02 });
   }
 
+  /** Plase — yumuşak, kısa bir "tık". */
+  tip() {
+    this.tone({ freq: 880, endFreq: 760, duration: 0.06, type: 'sine', gain: 0.4 });
+    this.tone({ freq: 1320, duration: 0.04, type: 'triangle', gain: 0.22, delay: 0.03 });
+  }
+
+  /** Tam vuruş — zamanlamayı ödüllendiren parlak çınlama. */
+  perfect() {
+    this.tone({ freq: 1046, duration: 0.05, type: 'square', gain: 0.35 });
+    this.tone({ freq: 1568, duration: 0.09, type: 'square', gain: 0.3, delay: 0.04 });
+  }
+
+  /**
+   * Kombo kademesi — sayı büyüdükçe motif tizleşir.
+   * @param {number} count
+   */
+  combo(count = 3) {
+    const step = Math.min(6, Math.floor(count / 3));
+    const base = 523 * 1.12 ** step;
+    this.tone({ freq: base, duration: 0.07, type: 'square', gain: 0.4 });
+    this.tone({ freq: base * 1.25, duration: 0.08, type: 'square', gain: 0.38, delay: 0.06 });
+    this.tone({ freq: base * 1.5, duration: 0.12, type: 'square', gain: 0.36, delay: 0.12 });
+    this.crowd({ intensity: 0.4 + step * 0.08, duration: 0.35, delay: 0.05 });
+  }
+
   /** File teması. */
   net() {
     this.tone({ freq: 180, endFreq: 140, duration: 0.1, type: 'triangle', gain: 0.4 });

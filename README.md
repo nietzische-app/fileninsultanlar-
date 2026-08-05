@@ -26,7 +26,7 @@ Nordik Buz, Balkan Ateşi, Pasifik Dalga.
 | --- | --- |
 | `←` `→` veya `A` `D` | Hareket |
 | `↑` veya `W` | Zıpla |
-| `↓` veya `S` | **Dalış** — yere düşmek üzere olan topa uzan |
+| `↓` veya `S` | **Dalış** — yere düşmek üzere olan topa uzan (havadayken **plase**) |
 | `Boşluk` veya `Z` | Vur (manşet / smaç / blok) |
 | `X` | **Sultan Gücü** — alevli smaç |
 | `ESC` veya `P` | Duraklat |
@@ -66,6 +66,31 @@ Gerçek voleybol gibi çalışır ve oyunun bel kemiği budur:
 Bir taraf topu karşıya göndermeden **en fazla 3 kez** dokunabilir; dördüncüsü
 faul, rakibe sayı. Duvar skorbordlarının altındaki üç nokta kaç hakkın
 kaldığını gösterir.
+
+### Tam Vuruş ve Kombo
+
+Vuruş tuşuna **topa değmeden hemen önce** basarsan (0.17 sn'lik pencere)
+temas **tam vuruş** olur: %14 daha sert vuruş, fazladan bar dolumu ve
+kombo +1. Tuşu basılı tutan oyuncu bu pencereyi asla yakalayamaz — eklenen
+asıl şey bu, çünkü önceden "tuşa bas ve bırakma" her zaman en iyi
+stratejiydi ve ustalaşacak bir zamanlama yoktu.
+
+Komboyu büyüten üç hamle var: tam vuruş, blok ve dalış kurtarışı. Kombo
+**her sayıda sıfırlanır** (kazansan da kaybetsen de), yani "bu rallide kaç
+iyi temas zincirledim" sorusunun cevabıdır. Kademeler: 3 SÜPER · 6
+MÜKEMMEL · 10 SULTAN SERİSİ · 15 DURDURULAMAZ.
+
+Kombo asıl olarak **Sultan barını** hızlandırır; hücum gücüne katkısı
+bilerek çok daha zayıf tutuldu (en fazla %16). İkisi aynı hızda büyüseydi
+kombo yapan oyuncu geri dönülemez biçimde öne geçerdi.
+
+### Plase
+
+Havadayken `↓` (mobilde **DAL**) ile smaç yerine plase yaparsın: top
+filenin hemen ötesine yumuşak düşer. Blok zıpladıysa bedava sayı;
+savunma file dibinde bekliyorsa kolay lokma olursun — yani risk/ödül
+seçimi. Rakip yapay zekâsı da plase yapar: savunman fileden uzaktaysa
+file dibinin boş olduğunu görür.
 
 ### Dalış kurtarışı
 
@@ -133,8 +158,14 @@ Profesyonel → Millî Oyuncu → Sultan → Efsane.
 
 Maç sonuçları tarayıcıda saklanır (galibiyet, seri, en uzun ralli, smaç/blok/
 kurtarış zirveleri, kazanılan kupa, en ileri turnuva turu, en yüksek hayatta
-kalma puanı ve dalgası). Ana menüdeki **Gurur Tablosu** bu rekorları gösterir;
-maç sonunda kırılan rekorlar yıldızla işaretlenir.
+kalma puanı ve dalgası, en iyi kombo, toplam tam vuruş). Ana menüdeki
+**Gurur Tablosu** bu rekorları gösterir; maç sonunda kırılan rekorlar
+yıldızla işaretlenir.
+
+**Rozetler:** 12 uzun vadeli hedef (ilk zafer, duvar, kupa, ritim, kurnaz
+plase, zamanlama ustası...). Ana menüde ızgara olarak durur — kilitli
+olanların adı ve koşulu gizlenmez, hedefi göstermek rozetin işi. Maç
+sonunda yeni açılanlar ayrıca duyurulur.
 
 Hayatta kalma koşusu galibiyet/mağlubiyet tablosuna işlemez — koşu her zaman
 yenilgiyle biter, onu kayıp saymak galibiyet serisini anlamsızca sıfırlardı.
@@ -240,12 +271,15 @@ src/
 │   ├── StatBar.jsx           Piksel stat çubuğu
 │   ├── MuteButton.jsx        Ses aç/kapa (tüm ekranlar)
 │   ├── RotateGate.jsx        Dikey tutuşta oyunu kapatan yatay uyarısı
+│   ├── AchievementGrid.jsx   Rozet ızgarası (açık/kilitli)
 │   ├── TouchControls.jsx     Mobil kontroller (sahaya binen şeffaf varyant)
 │   └── ErrorBoundary.jsx     Yakalanmamış hata ekranı
 ├── game/
 │   ├── constants.js          Ölçüler, fizik, kurallar, palet, zorluk kademeleri
 │   ├── Game.js               Motor: döngü, fizik, çarpışma, skor, çizim
 │   ├── rules.js              Saf set/maç/üç-temas kuralları
+│   ├── combo.js              Kombo kademeleri, çarpanlar, tam vuruş penceresi
+│   ├── achievements.js       Rozet tanımları ve değerlendirme
 │   ├── modes.js              Oyun modu tanımları (hızlı maç / turnuva / hayatta kalma)
 │   ├── tournament.js         Kupa yolu turları ve saf durum makinesi
 │   ├── survival.js           Dalga hesabı, zorluk rampası, rütbeler
@@ -268,7 +302,7 @@ src/
 ```
 
 Saf motor mantığı (`rules.js`, `ballistics.js`, `effects.js`, `tournament.js`,
-`survival.js`) ve `storage.js` Vitest ile test edilir
+`survival.js`, `combo.js`) ve `storage.js` Vitest ile test edilir
 (`*.test.js`). `Game.js` bu modülleri çağırır; canvas/React sarmalayıcı
 kalır.
 

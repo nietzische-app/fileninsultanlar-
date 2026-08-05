@@ -14,6 +14,9 @@ import {
   DIFFICULTY,
   DIVE,
   FORMATS,
+  HITSTOP,
+  PERFECT,
+  TIP,
   GAME_HEIGHT,
   GAME_WIDTH,
   GROUND_Y,
@@ -45,12 +48,20 @@ import {
   pickRandomOpponent,
 } from './opponents.js';
 import { pickChaser, sideBounds, updateAI } from './ai.js';
+import {
+  comboChargeMultiplier,
+  comboPowerMultiplier,
+  comboTierAt,
+  currentComboTier,
+  isPerfectTiming,
+} from './combo.js';
 import { drawBall, drawSultan } from './sprites.js';
 import { drawArena, drawFloor, drawNet } from './arena.js';
 import {
   clearsNet as shotClearsNet,
   computeAttackVelocity,
   computeSetVelocity,
+  computeTipVelocity,
 } from './ballistics.js';
 import { clamp } from './math.js';
 import {
@@ -190,6 +201,14 @@ export default class Game {
     this.lives = SURVIVAL.lives;
     this.wave = 1;
 
+    /** Kombo: üst üste tam vuruş / blok / kurtarış. Sayı kaybında sıfırlanır. */
+    this.combo = 0;
+    this.bestCombo = 0;
+    /** Son tam vuruşun ekranda kalan süresi (HUD parlaması). */
+    this.perfectFlash = 0;
+    /** Simülasyonu kısa süre donduran vuruş etkisi. */
+    this.hitStop = 0;
+
     this.phase = PHASE.READY;
     this.phaseTimer = this.rules.readyPause;
     this.message = null;
@@ -207,6 +226,11 @@ export default class Game {
     this.stats = { spikes: 0, blocks: 0, saves: 0, longestRally: 0, rallyTouches: 0 };
     /** Hayatta kalmada bir koşuda ulaşılan en yüksek dalga. */
     this.stats.bestWave = 1;
+    this.stats.bestCombo = 0;
+    this.stats.perfects = 0;
+    this.stats.tips = 0;
+    /** Plase ile doğrudan kazanılan sayılar (rozetler için). */
+    this.stats.tipPoints = 0;
 
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleKeyUp = this.handleKeyUp.bind(this);
@@ -305,6 +329,13 @@ export default class Game {
       hitRadius: PLAYER.hitRadius * getModifier(data, 'reach'),
       hitOffsetY: PLAYER.hitOffsetY,
       input: { left: false, right: false, up: false, action: false, dive: false },
+      /**
+       * Vuruş tuşunun basılma anı (motor zamanı) ve bir önceki karedeki
+       * hâli. Tam vuruş penceresi bu ana göre ölçülür; tuşu basılı
+       * tutmak pencereyi geçirir.
+       */
+      actionPressedAt: null,
+      actionWasDown: false,
       // Dalış durumu
       diveTimer: 0,
       recoverTimer: 0,
@@ -494,6 +525,20 @@ export default class Game {
     this.time += dt;
     this.shake = Math.max(0, this.shake - dt * 60);
     this.hype = Math.max(0, this.hype - dt * 0.9);
+    this.perfectFlash = Math.max(0, this.perfectFlash - dt);
+
+    /*
+     * Vuruş donması: fizik ve aşama sayaçları birkaç kare durur, ama
+     * parçacıklar ve sarsıntı akmaya devam eder — donan bir kare değil,
+     * ağırlaşan bir darbe izlenimi verir.
+     */
+    if (this.hitStop > 0) {
+      this.hitStop = Math.max(0, this.hitStop - dt);
+      this.updateParticles(dt);
+      this.updateRings(dt);
+      return;
+    }
+
     this.updateParticles(dt);
     this.updateRings(dt);
     this.updateBallTrail();
@@ -582,6 +627,15 @@ export default class Game {
         player.input.action = false;
         player.input.dive = false;
       }
+
+      // Vuruş tuşunun yükselen kenarı — tam vuruş penceresi buradan başlar
+      const down = player.input.action;
+      if (down && !player.actionWasDown) {
+        player.actionPressedAt = this.time;
+      } else if (!down) {
+        player.actionPressedAt = null;
+      }
+      player.actionWasDown = down;
 
       this.movePlayer(player, dt);
     });
@@ -884,15 +938,38 @@ export default class Game {
     // Dalış her zaman savunma temasıdır: topu kendi sahanda yükseğe
     // kaldırır, hücuma kalkma hakkını sana bırakır.
     const diving = player.diveTimer > 0 || player.recoverTimer > 0;
-    const type = resolveHitType({
+    let type = resolveHitType({
       diving,
       acting,
       airborne,
       controlled: attackReady,
     });
 
+    /*
+     * Plase: havada, hücuma kalkabilecek durumdayken `dive` tuşu.
+     * Smaç yerine filenin hemen ötesine yumuşak bırakış yapılır.
+     * Yerdeyken `dive` zaten dalış demek, o yüzden yalnızca havada.
+     */
+    const wantsTip = airborne && player.input.dive && !diving;
+    if (type === 'spike' && wantsTip) {
+      type = 'tip';
+    }
+
+    /*
+     * Tam vuruş: temas, tuşa basıldıktan sonraki dar pencerede mi?
+     * Yapay zekâ tuşu "an"ında bastığı için her vuruşu tam olurdu;
+     * onun isabeti zorluk kademesinden gelen bir olasılıkla verilir.
+     */
+    const attacking = type === 'spike' || type === 'hit' || type === 'tip';
+    let perfect = false;
+    if (attacking) {
+      perfect = player.controlled
+        ? isPerfectTiming(this.time, player.actionPressedAt)
+        : Math.random() < (this.difficultyFor(player).placement ?? 0) * 0.5;
+    }
+
     let power;
-    if (type === 'spike') {
+    if (type === 'spike' || type === 'tip') {
       power =
         PHYSICS.spikePower *
         getModifier(data, 'spikePower') *
@@ -923,6 +1000,12 @@ export default class Game {
       power *= this.opponentDifficulty.power;
     }
 
+    // Tam vuruş ve kombo ödülü — yalnızca hücum temaslarında
+    if (perfect) power *= PERFECT.power;
+    if (attacking && player.side === 'home') {
+      power *= comboPowerMultiplier(this.combo);
+    }
+
     let vx;
     let vy;
 
@@ -939,6 +1022,17 @@ export default class Game {
       vx = shot.vx;
       vy = shot.vy;
       this.stats.spikes += 1;
+    } else if (type === 'tip') {
+      // Plase: filenin hemen ötesine yumuşak, kavisli bırakış
+      const shot = computeTipVelocity({
+        ball,
+        toOpponent,
+        aim: player.controlled ? Math.random() : (player.aimSpread ?? 0.5),
+      });
+      vx = shot.vx;
+      vy = shot.vy;
+      this.stats.tips += 1;
+      this.lastTipSide = player.side;
     } else if (type === 'hit') {
       // Yerde + vuruş tuşu: kavisli, karşı sahaya gönderen vuruş
       const shot = computeAttackVelocity({
@@ -1003,9 +1097,15 @@ export default class Game {
     this.stats.rallyTouches += 1;
     this.stats.longestRally = Math.max(this.stats.longestRally, this.stats.rallyTouches);
 
-    // Sultan barı dolumu (yalnızca insan oyuncunun tarafı)
+    // Sultan barı dolumu ve kombo (yalnızca insan oyuncunun tarafı)
     if (player.side === 'home') {
-      const chargeMod = getModifier(this.getControlledPlayer()?.data ?? data, 'charge');
+      const chargeMod =
+        getModifier(this.getControlledPlayer()?.data ?? data, 'charge') *
+        comboChargeMultiplier(this.combo);
+
+      // Komboyu büyüten hamleler: tam vuruş, blok, dalış kurtarışı
+      const scoringMove = perfect || isBlock || type === 'dive';
+
       if (type === 'dive') {
         this.addSultanCharge(DIVE.chargeBonus * chargeMod);
         this.stats.saves += 1;
@@ -1015,14 +1115,27 @@ export default class Game {
         this.stats.blocks += 1;
         this.message = { text: 'BLOK!', timer: 0.7, color: PALETTE.gold };
       } else {
-        this.addSultanCharge(SULTAN.onRally * chargeMod);
+        this.addSultanCharge(
+          (type === 'tip' ? TIP.charge : SULTAN.onRally) * chargeMod
+        );
       }
+
+      if (perfect) {
+        this.addSultanCharge(PERFECT.charge * chargeMod);
+        this.stats.perfects += 1;
+        this.perfectFlash = PERFECT.flash;
+        this.spawnRing(ball.x, ball.y, PALETTE.gold, 62);
+        Sfx.perfect();
+      }
+
+      if (scoringMove) this.bumpCombo();
     }
 
     // Ses ve parçacık
     if (!sultanFired) {
       if (type === 'dive') Sfx.save();
       else if (isBlock) Sfx.block();
+      else if (type === 'tip') Sfx.tip();
       else if (type === 'spike') Sfx.spike();
       else if (type === 'hit') Sfx.hit();
       else Sfx.bump();
@@ -1038,6 +1151,49 @@ export default class Game {
       this.spawnBurst(ball.x, ball.y, 12, isBlock ? PALETTE.gold : '#FFFFFF');
       this.spawnRing(ball.x, ball.y, isBlock ? PALETTE.gold : '#FFFFFF', 54);
     }
+
+    // Vuruş donması — darbenin ağırlığını hissettirir
+    if (sultanFired) this.addHitStop(HITSTOP.sultan);
+    else if (isBlock) this.addHitStop(HITSTOP.block);
+    else if (type === 'spike') this.addHitStop(HITSTOP.spike);
+    if (perfect) this.addHitStop(HITSTOP.perfect);
+  }
+
+  /**
+   * Komboyu bir artırır ve kademe geçildiyse duyurur.
+   *
+   * Kombo ralli değil **sayı** boyunca yaşar: sayıyı kaybedene kadar
+   * biriken bir momentum ödülüdür.
+   */
+  bumpCombo() {
+    this.combo += 1;
+    this.bestCombo = Math.max(this.bestCombo, this.combo);
+    this.stats.bestCombo = this.bestCombo;
+
+    const tier = comboTierAt(this.combo);
+    if (tier) {
+      this.message = { text: tier.label, timer: 1, color: tier.color };
+      this.hype = Math.max(this.hype, 0.7);
+      Sfx.combo(this.combo);
+    }
+  }
+
+  /**
+   * Simülasyonu kısa süre dondurur (hit-stop).
+   * Birikmeyi engellemek için üst sınır uygulanır.
+   * @param {number} seconds
+   */
+  addHitStop(seconds) {
+    this.hitStop = Math.min(HITSTOP.max, this.hitStop + seconds);
+  }
+
+  /**
+   * Bir oyuncuyu süren zorluk kademesi.
+   * Rakip rampalı, kendi takım arkadaşın seçilen kademede kalır.
+   * @param {object} player
+   */
+  difficultyFor(player) {
+    return player.side === 'away' ? this.opponentDifficulty : this.difficulty;
   }
 
   /** @deprecated Geliştirme konsolu — ballistics.computeAttackVelocity */
@@ -1089,6 +1245,24 @@ export default class Game {
     this.phase = PHASE.POINT;
     this.phaseTimer = this.rules.servePause;
     this.shake = 10;
+    this.hitStop = 0;
+
+    /*
+     * Kombo her sayıda sıfırlanır — kazansan da kaybetsen de.
+     *
+     * Önce yalnızca sayı kaybında sıfırlanıyordu; ölçümde kombo 16–30'a
+     * çıkıyor, kademeler (en üstü 15) anlamsızlaşıyor ve bar sürekli
+     * dolduğu için "normal" kazanma oranı %57'den %86'ya fırlıyordu.
+     * Ralli başına sayınca kombo hem okunur hem kaybedilebilir oluyor:
+     * "bu rallide kaç iyi temas zincirledim".
+     */
+    this.combo = 0;
+
+    if (side === 'home' && this.lastTipSide === 'home' && this.ball.lastHitSide === 'home') {
+      // Plaseyle doğrudan kazanılan sayı (rozet takibi)
+      this.stats.tipPoints += 1;
+    }
+    this.lastTipSide = null;
 
     this.spawnDust(this.ball.x, GROUND_Y, 16);
     this.hype = 1;
@@ -1403,6 +1577,7 @@ export default class Game {
       this.running ? 1 : 0,
       this.lives,
       this.wave,
+      this.combo,
     ].join('|');
 
     if (!force && signature === this.lastSignature) return;
@@ -1421,6 +1596,8 @@ export default class Game {
       streak: { ...this.streak },
       pointsPerSet: this.rules.pointsPerSet,
       formatId: this.format.id,
+      combo: this.combo,
+      comboTier: currentComboTier(this.combo),
       campaign: this.campaign,
       roundLabel: this.roundLabel,
       roundNumber: this.roundNumber,

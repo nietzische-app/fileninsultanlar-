@@ -27,6 +27,8 @@ const INITIAL_HUD = {
   campaign: 'match',
   roundLabel: null,
   survival: null,
+  combo: 0,
+  comboTier: null,
   opponentName: 'RAKİP',
   opponentAccent: '#9BB0FF',
 };
@@ -321,6 +323,29 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
           aria-label="Filenin Sultanları voleybol sahası"
         />
 
+        {/*
+          Kombo göstergesi — sahanın sol üstünde, tuşlardan uzakta.
+          Yalnızca kombo varken görünür; sıfırdayken yer kaplamaz.
+        */}
+        {hud.combo > 1 && (
+          <div
+            key={hud.combo}
+            className="animate-combo-pop pointer-events-none absolute left-2 top-16 z-20 border-2 px-2 py-1 text-center sm:left-4 sm:top-20"
+            style={{
+              borderColor: hud.comboTier?.color ?? '#FFFFFF',
+              color: hud.comboTier?.color ?? '#FFFFFF',
+              backgroundColor: 'rgba(8, 8, 16, 0.55)',
+            }}
+          >
+            <span className="block text-[13px] leading-none sm:text-lg">
+              ×{hud.combo}
+            </span>
+            <span className="mt-1 block text-[6px] leading-none opacity-70">
+              {hud.comboTier?.label ?? 'KOMBO'}
+            </span>
+          </div>
+        )}
+
         {/* Mobil: kontroller sahanın köşelerinde, şeffaf */}
         <TouchControls
           onInput={handleTouchInput}
@@ -459,7 +484,7 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
       </div>
 
       <p className="hidden text-center text-[7px] leading-relaxed text-white/35 md:block">
-        ← → HAREKET · ↑ ZIPLA · ↓ DALIŞ · BOŞLUK VUR · X SULTAN GÜCÜ · ESC DURAKLAT
+        ← → HAREKET · ↑ ZIPLA · ↓ DALIŞ (HAVADA PLASE) · BOŞLUK VUR (TAM ZAMANINDA BAS!) · X SULTAN GÜCÜ · ESC DURAKLAT
       </p>
     </div>
   );

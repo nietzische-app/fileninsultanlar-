@@ -1,11 +1,31 @@
 import { describe, expect, it } from 'vitest';
-import { GAME_WIDTH, GROUND_Y, NET, PHYSICS, WALL_PAD } from './constants.js';
+import { GAME_WIDTH, GROUND_Y, NET, PHYSICS, TIP, WALL_PAD } from './constants.js';
 import {
   clearsNet,
   computeAttackVelocity,
   computeSetVelocity,
+  computeTipVelocity,
 } from './ballistics.js';
 import { clamp } from './math.js';
+
+const SAMPLE_PLAYER = { modifiers: {} };
+
+/** Topu ileri simüle edip yere değdiği noktayı verir. */
+function simulate(ball, shot, step = 1 / 240) {
+  let { x, y } = ball;
+  let { vx, vy } = shot;
+
+  for (let i = 0; i < 240 * 4; i += 1) {
+    vy += PHYSICS.ballGravity * step;
+    x += vx * step;
+    y += vy * step;
+    if (x - ball.radius <= WALL_PAD || x + ball.radius >= GAME_WIDTH - WALL_PAD) {
+      vx = -vx * PHYSICS.wallRestitution;
+    }
+    if (vy > 0 && y >= GROUND_Y - ball.radius) return { x, t: i * step };
+  }
+  return { x, t: Infinity };
+}
 
 describe('clamp', () => {
   it('aralığa sıkıştırır', () => {
@@ -113,5 +133,47 @@ describe('computeAttackVelocity', () => {
     });
 
     expect(far.vx).toBeGreaterThan(near.vx);
+  });
+});
+
+describe('plase (dink)', () => {
+  const ball = { x: 430, y: 250, radius: PHYSICS.ballRadius };
+
+  it('topu rakip sahaya, file dibine gönderir', () => {
+    const shot = computeTipVelocity({ ball, toOpponent: 1, aim: 0 });
+    const land = simulate(ball, shot);
+    expect(land.x).toBeGreaterThan(NET.x);
+    expect(land.x - NET.x).toBeLessThan(TIP.maxDepth + 60);
+  });
+
+  it('her iki yöne de çalışır', () => {
+    const left = simulate(
+      { ...ball, x: 470 },
+      computeTipVelocity({ ball: { ...ball, x: 470 }, toOpponent: -1, aim: 0.5 })
+    );
+    expect(left.x).toBeLessThan(NET.x);
+  });
+
+  it('fileyi geçer', () => {
+    const shot = computeTipVelocity({ ball, toOpponent: 1, aim: 0.3 });
+    expect(clearsNet(ball, shot, TIP.flight * 1.6)).toBe(true);
+  });
+
+  it('smaçtan belirgin biçimde yavaştır', () => {
+    const tip = computeTipVelocity({ ball, toOpponent: 1, aim: 0.5 });
+    const spike = computeAttackVelocity({
+      ball,
+      player: { controlled: false, aimSpread: 0.5, vx: 0, data: SAMPLE_PLAYER },
+      power: PHYSICS.spikePower,
+      toOpponent: 1,
+      nx: 0.2,
+    });
+    expect(Math.hypot(tip.vx, tip.vy)).toBeLessThan(Math.hypot(spike.vx, spike.vy));
+  });
+
+  it('nişan büyüdükçe daha derine düşer', () => {
+    const shallow = simulate(ball, computeTipVelocity({ ball, toOpponent: 1, aim: 0 }));
+    const deep = simulate(ball, computeTipVelocity({ ball, toOpponent: 1, aim: 1 }));
+    expect(deep.x).toBeGreaterThan(shallow.x);
   });
 });

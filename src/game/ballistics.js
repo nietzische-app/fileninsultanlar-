@@ -3,7 +3,7 @@
  * Game.js ince sarmalayıcılarla çağırır.
  */
 
-import { attackRange, GROUND_Y, NET, PHYSICS } from './constants.js';
+import { attackRange, GROUND_Y, NET, PHYSICS, TIP } from './constants.js';
 import { getModifier } from './players.js';
 import { clamp } from './math.js';
 
@@ -40,6 +40,44 @@ export function computeSetVelocity(ball, toOpponent, rand = Math.random) {
     vx: (targetX - ball.x) / t,
     vy: (targetY - ball.y - 0.5 * PHYSICS.ballGravity * t * t) / t,
   };
+}
+
+/**
+ * Plase (dink) hızı — filenin hemen ötesine yumuşak bırakış.
+ *
+ * Hedef bilerek file dibine yakın tutulur: plasenin işi savunmayı geride
+ * yakalamak. `computeAttackVelocity` ile yapılamazdı, çünkü o güce göre
+ * uçuş süresi seçip topu dip çizgiye taşımaya çalışıyor.
+ *
+ * @param {object} opts
+ * @param {{ x:number, y:number, radius:number }} opts.ball
+ * @param {1|-1} opts.toOpponent
+ * @param {number} [opts.aim] 0–1: file dibi → biraz daha derin
+ */
+export function computeTipVelocity({ ball, toOpponent, aim = 0.5 }) {
+  const depth = TIP.minDepth + (TIP.maxDepth - TIP.minDepth) * clamp(aim, 0, 1);
+  const targetX = NET.x + toOpponent * depth;
+  const targetY = GROUND_Y - ball.radius;
+  const t = TIP.flight;
+
+  const solve = (flight) => ({
+    vx: (targetX - ball.x) / flight,
+    vy: (targetY - ball.y - 0.5 * PHYSICS.ballGravity * flight * flight) / flight,
+  });
+
+  let shot = solve(t);
+
+  // Fileye takılıyorsa daha yüksek bir kavis dene: takılan plase
+  // "yumuşak hamle" değil, bedava sayı hediyesi olurdu.
+  let flight = t;
+  let tries = 0;
+  while (!clearsNet(ball, shot, flight) && tries < 3) {
+    flight *= 1.18;
+    shot = solve(flight);
+    tries += 1;
+  }
+
+  return shot;
 }
 
 /**

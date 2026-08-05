@@ -163,6 +163,84 @@ export const FORMATS = {
   },
 };
 
+/**
+ * Tam Vuruş — zamanlama ödülü.
+ *
+ * Vuruş tuşunu basılı tutmak her zaman en iyi strateji olduğu için
+ * oyunda ustalaşılacak bir zamanlama yoktu: tuşu bas, bırakma, her topa
+ * vur. Artık temas, tuşa **basıldığı andan** itibaren `window` saniye
+ * içinde gerçekleşirse "tam vuruş" sayılır. Tuşu basılı tutan oyuncu
+ * bunu asla yakalayamaz — düzeltilen asıl şey bu.
+ */
+export const PERFECT = {
+  /** Basıştan sonra tam vuruş sayılan süre (sn). */
+  window: 0.17,
+  /** Tam vuruşun güç çarpanı. */
+  power: 1.14,
+  /** Tam vuruşta Sultan barına eklenen fazladan dolum. */
+  charge: 7,
+  /** Ekranda kalan "TAM VURUŞ" yazısının süresi (sn). */
+  flash: 0.55,
+};
+
+/**
+ * Kombo — üst üste iyi oynanan hamleler.
+ *
+ * Tam vuruş, blok ve dalış kurtarışı komboyu büyütür; sayı kaybedince
+ * sıfırlanır. Ralli boyunca değil sayı boyunca yaşar, yani momentum
+ * ödülüdür.
+ */
+export const COMBO = {
+  /** Kombo çarpanının Sultan dolumuna etkisi (kombo başına). */
+  chargeStep: 0.09,
+  /** Çarpanın tavanı — bar anında dolmasın. */
+  maxChargeMultiplier: 2.2,
+  /** Hücum gücüne kombo katkısı (kombo başına) ve tavanı. */
+  powerStep: 0.012,
+  maxPowerMultiplier: 1.16,
+  /** Kademeler: `at` komboya ulaşınca `label` duyurulur. */
+  tiers: [
+    { at: 3, label: 'SÜPER!', color: '#9BE7FF' },
+    { at: 6, label: 'MÜKEMMEL!', color: '#FFD24A' },
+    { at: 10, label: 'SULTAN SERİSİ!', color: '#FF7A18' },
+    { at: 15, label: 'DURDURULAMAZ!', color: '#E30A17' },
+  ],
+};
+
+/**
+ * Plase (dink) — file üstünden yumuşak bırakış.
+ *
+ * Havada `dive` tuşuyla yapılır. Smaç tek hücum seçeneğiyken oyun
+ * tahmin edilebilirdi: rakip hep dip çizgiyi savunuyordu. Plase, blok
+ * zıpladığında bedava sayı; savunma geride durduğunda ise kolay lokma —
+ * yani risk/ödül seçimi getiriyor.
+ */
+export const TIP = {
+  /** Hedefin fileye uzaklık aralığı (px). */
+  minDepth: 55,
+  maxDepth: 165,
+  /** Uçuş süresi — yavaş ve kavisli. */
+  flight: 0.72,
+  /** Sultan barı dolumu (smaçtan az, manşetten çok). */
+  charge: 8,
+};
+
+/**
+ * Vuruş donması (hit-stop).
+ *
+ * Sert temaslarda simülasyon birkaç kare durur. Fizik değişmez, yalnızca
+ * darbenin ağırlığı hissedilir — arcade oyunlarının en ucuz "tokluk"
+ * hilesi.
+ */
+export const HITSTOP = {
+  spike: 0.055,
+  block: 0.07,
+  perfect: 0.045,
+  sultan: 0.1,
+  /** Üst sınır — birikip oyunu dondurmasın. */
+  max: 0.12,
+};
+
 /** Sultan Gücü barı. */
 export const SULTAN = {
   max: 100,

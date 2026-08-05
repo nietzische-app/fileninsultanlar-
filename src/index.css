@@ -280,6 +280,23 @@
   animation-iteration-count: infinite;
 }
 
+/* Kombo sayacı her artışta bir kez zıplar (key değişimiyle tetiklenir) */
+@keyframes combo-pop {
+  0% {
+    transform: scale(1.5);
+  }
+  60% {
+    transform: scale(0.94);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-combo-pop {
+  animation: combo-pop 260ms steps(4, end);
+}
+
 /* Yatay çevirme uyarısındaki telefon — dikeyden yataya yatıp döner */
 @keyframes rotate-hint {
   0%,
@@ -304,6 +321,7 @@
   .animate-float,
   .animate-pulse-gold,
   .animate-shine,
+  .animate-combo-pop,
   .confetti-piece {
     animation: none;
   }

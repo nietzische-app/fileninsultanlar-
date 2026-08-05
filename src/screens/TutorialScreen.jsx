@@ -15,13 +15,23 @@ const STEPS = [
     accent: '#9BE7FF',
   },
   {
+    title: 'TAM VURUŞ VE KOMBO',
+    body: 'Vuruş tuşuna topa değmeden HEMEN önce bas — tuşu basılı tutarsan olmaz. Zamanı tutturursan TAM VURUŞ: daha sert vuruş ve daha hızlı dolan bar. Tam vuruş, blok ve kurtarış komboyu büyütür; kombo sayı bitince sıfırlanır.',
+    accent: '#FFD24A',
+  },
+  {
+    title: 'PLASE',
+    body: 'Havadayken ↓ / S (mobilde DAL) ile smaç yerine plase yaparsın: top filenin hemen ötesine yumuşak düşer. Blok zıpladıysa bedava sayı; savunma file dibinde bekliyorsa kolay lokma olursun.',
+    accent: '#9BE7FF',
+  },
+  {
     title: 'SULTAN GÜCÜ',
     body: 'Sayı, blok ve ralli barı doldurur. Dolduğunda X ile ateşle: bir sonraki vuruş alevli ve daha hızlı olur, rakip tepkisi yavaşlar.',
     accent: '#FFD24A',
   },
   {
     title: 'KONTROLLER',
-    body: '← → / A D hareket · ↑ / W zıpla · ↓ / S dalış · Boşluk / Z vur · X Sultan Gücü · ESC / P duraklat. Mobilde altta dokunmatik butonlar çıkar.',
+    body: '← → / A D hareket · ↑ / W zıpla · ↓ / S dalış (havada plase) · Boşluk / Z vur · X Sultan Gücü · ESC / P duraklat. Mobilde tuşlar sahanın köşelerinde çıkar; oyun yatay tutuş ister.',
     accent: '#FFFFFF',
   },
 ];

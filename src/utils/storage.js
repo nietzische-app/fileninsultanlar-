@@ -6,6 +6,7 @@
 const PREFS_KEY = 'filenin-sultanlari-prefs';
 const RECORDS_KEY = 'filenin-sultanlari-records';
 const TOURNAMENT_KEY = 'filenin-sultanlari-tournament';
+const ACHIEVEMENTS_KEY = 'filenin-sultanlari-achievements';
 
 /** @typedef {{ muted: boolean, mode: string, difficulty: string, format: string, opponentId: string, homeIds: string[], tutorialSeen: boolean }} Prefs */
 
@@ -54,6 +55,10 @@ export const DEFAULT_RECORDS = {
   bestTournamentRound: 0,
   bestSurvivalPoints: 0,
   bestSurvivalWave: 0,
+  bestCombo: 0,
+  /** Tam vuruş ve plase sayıları birikimlidir — rozetler için. */
+  totalPerfects: 0,
+  tipPoints: 0,
 };
 
 /**
@@ -125,6 +130,9 @@ export function loadRecords() {
       bestTournamentRound: num(parsed.bestTournamentRound),
       bestSurvivalPoints: num(parsed.bestSurvivalPoints),
       bestSurvivalWave: num(parsed.bestSurvivalWave),
+      bestCombo: num(parsed.bestCombo),
+      totalPerfects: num(parsed.totalPerfects),
+      tipPoints: num(parsed.tipPoints),
     };
   } catch {
     return { ...DEFAULT_RECORDS };
@@ -182,6 +190,7 @@ export function recordMatchResult(result) {
     bestWinStreak: practice
       ? prev.bestWinStreak
       : Math.max(prev.bestWinStreak, nextStreak),
+    ...skillTotals(prev, stats),
   };
 
   const broken = {
@@ -191,10 +200,28 @@ export function recordMatchResult(result) {
     mostSaves: saves > prev.mostSaves && saves > 0,
     bestWinStreak: !practice && won && nextStreak > prev.bestWinStreak,
     firstWin: !practice && won && prev.wins === 0,
+    bestCombo: num(stats.bestCombo) > prev.bestCombo && num(stats.bestCombo) > 0,
   };
 
   saveRecords(next);
   return { records: next, broken };
+}
+
+/**
+ * Beceri sayaçları — zirve (kombo) ve birikimli (tam vuruş, plase).
+ *
+ * Üç modda da aynı işlediği için tek yerde durur: hayatta kalma koşusu
+ * galibiyet tablosuna yazmaz ama komboyu ve tam vuruşu elbette sayar.
+ *
+ * @param {Records} prev
+ * @param {object} stats
+ */
+function skillTotals(prev, stats = {}) {
+  return {
+    bestCombo: Math.max(prev.bestCombo, num(stats.bestCombo)),
+    totalPerfects: prev.totalPerfects + num(stats.perfects),
+    tipPoints: prev.tipPoints + num(stats.tipPoints),
+  };
 }
 
 /**
@@ -227,6 +254,7 @@ export function recordSurvivalResult(result) {
     mostSaves: Math.max(prev.mostSaves, saves),
     bestSurvivalPoints: Math.max(prev.bestSurvivalPoints, points),
     bestSurvivalWave: Math.max(prev.bestSurvivalWave, wave),
+    ...skillTotals(prev, stats),
   };
 
   const broken = {
@@ -236,6 +264,7 @@ export function recordSurvivalResult(result) {
     mostSaves: saves > prev.mostSaves && saves > 0,
     bestSurvivalPoints: points > prev.bestSurvivalPoints && points > 0,
     bestSurvivalWave: wave > prev.bestSurvivalWave && wave > 0,
+    bestCombo: num(stats.bestCombo) > prev.bestCombo && num(stats.bestCombo) > 0,
   };
 
   saveRecords(next);
@@ -312,6 +341,36 @@ export function loadTournament() {
   } catch {
     return null;
   }
+}
+
+/**
+ * Açılmış rozetleri okur.
+ * @returns {string[]}
+ */
+export function loadAchievements() {
+  try {
+    const raw = localStorage.getItem(ACHIEVEMENTS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Rozet listesini kaydeder.
+ * @param {string[]} ids
+ * @returns {string[]}
+ */
+export function saveAchievements(ids) {
+  const list = Array.from(new Set(ids ?? []));
+  try {
+    localStorage.setItem(ACHIEVEMENTS_KEY, JSON.stringify(list));
+  } catch {
+    // ignore
+  }
+  return list;
 }
 
 /** Saklanan turnuvayı siler. */

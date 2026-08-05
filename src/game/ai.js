@@ -153,6 +153,19 @@ export function updateAI(player, ball, opts, dt) {
     const dist = Math.hypot(ball.x - player.x, ball.y - (player.y - player.hitOffsetY));
     if (dist < reach) {
       input.action = true;
+
+      /*
+       * Havadayken bazen smaç yerine plase. İnsana verilip yapay zekâya
+       * verilmeseydi hücum dengesi tek taraflı bozulurdu: oyuncu her
+       * blokta plaseye kaçarken rakip hep dip çizgiye smaç atardı.
+       *
+       * Karar bilinçli: rakip savunması file dibini boş bıraktıysa
+       * plase mantıklı, dipte kimse yoksa smaç. `placement` becerisi
+       * arttıkça bu ayrımı daha sık doğru yapar.
+       */
+      if (!player.onGround && shouldTip(player, foes, difficulty)) {
+        input.dive = true;
+      }
     }
 
     // Koşarak yetişemeyeceği topa dal.
@@ -235,6 +248,33 @@ export function chooseAim(player, foes, difficulty) {
   // Beceri arttıkça bilinçli nişan ağır basar
   const skill = difficulty.placement ?? 0.5;
   return clamp(best * skill + random * (1 - skill), 0.07, 0.95);
+}
+
+/**
+ * Havadaki AI smaç yerine plase mi yapmalı?
+ *
+ * Ölçüt basit ve okunur: rakip savunması fileden uzaktaysa file dibi
+ * boştur, plase oraya düşer. Beceri düştükçe karar rastgeleleşir, yani
+ * "kolay" rakip bazen boşuna plase yapar — bu kasıtlı.
+ *
+ * @param {object} player
+ * @param {object[]} foes
+ * @param {object} difficulty
+ */
+export function shouldTip(player, foes, difficulty) {
+  if (foes.length === 0) return false;
+
+  // Rakip sahanın file dibine en yakın savunmacısı nerede?
+  const nearestDepth = Math.min(
+    ...foes.map((foe) => Math.abs(foe.x - NET.x))
+  );
+
+  const skill = difficulty.placement ?? 0.4;
+  // Savunma file dibinden uzaksa plase kazançlı
+  const gapIsOpen = nearestDepth > 150;
+  const chance = gapIsOpen ? 0.15 + skill * 0.4 : 0.04;
+
+  return Math.random() < chance;
 }
 
 /**
