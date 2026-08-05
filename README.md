@@ -31,7 +31,23 @@ Nordik Buz, Balkan Ateşi, Pasifik Dalga.
 | `X` | **Sultan Gücü** — alevli smaç |
 | `ESC` veya `P` | Duraklat |
 
-Mobilde ekranın altında dokunmatik butonlar çıkar.
+### Mobil
+
+Maç ekranı mobilde viewport'un tamamını kaplar: saha oranını koruyarak
+ortalanır, dokunmatik tuşlar da **sahanın köşelerine şeffaf olarak biner**.
+Skor tablosu ve Sultan barı üstte saydam bir katmanda durur; duraklat /
+tam ekran / çık düğmeleri sağ üst köşededir.
+
+- **Yatay tutuş** en iyisi: saha ekranın tüm yüksekliğini kaplar, tuşlar
+  boş köşelerde kalır. Dikey tutuşta saha üstte, tuşlar başparmak
+  hizasında toplanır ve aradaki banda maç künyesi yazılır; ilk birkaç
+  saniye "cihazı yatay çevir" ipucu görünür.
+- **Tam ekran** düğmesi Fullscreen API'yi kullanır ve destekleniyorsa
+  yönü yataya kilitler. iOS Safari `Element.requestFullscreen`'i
+  desteklemediği için düğme orada hiç gösterilmez — o cihazlarda ana
+  ekrana eklenen PWA kısayolu aynı işi görür.
+- Tuşlar `pointer capture` ile çoklu dokunuşu destekler (ör. sağa git +
+  zıpla aynı anda).
 
 ### Oyunun ritmi
 
@@ -218,7 +234,7 @@ src/
 │   ├── SultanBar.jsx         Özel yetenek barı
 │   ├── StatBar.jsx           Piksel stat çubuğu
 │   ├── MuteButton.jsx        Ses aç/kapa (tüm ekranlar)
-│   ├── TouchControls.jsx     Mobil kontroller
+│   ├── TouchControls.jsx     Mobil kontroller (sahaya binen şeffaf varyant)
 │   └── ErrorBoundary.jsx     Yakalanmamış hata ekranı
 ├── game/
 │   ├── constants.js          Ölçüler, fizik, kurallar, palet, zorluk kademeleri
@@ -236,8 +252,12 @@ src/
 │   ├── sprites.js            Piksel çizimleri (sultan, top, bayrak, kupa, rakamlar)
 │   ├── arena.js              Salon, tribün, zemin ve file çizimi
 │   └── audio.js              8-bit ses motoru
+├── hooks/
+│   ├── useFullscreen.js      Tam ekran durumu + geçiş
+│   └── useViewport.js        Ölçü ve yön (dikey/yatay) takibi
 └── utils/
     ├── text.js               Türkçe büyük harf yardımcısı
+    ├── fullscreen.js         Fullscreen API sarmalayıcı (webkit/iOS farkları)
     └── storage.js            Mute / seçim / rekorlar / turnuva kaydı localStorage
 ```
 

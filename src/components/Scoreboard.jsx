@@ -16,6 +16,8 @@ export default function Scoreboard({
   survival = null,
   /** Turnuva turu adı — set numarasının üstünde küçük etiket. */
   roundLabel = null,
+  /** Sahnenin üstüne binen saydam varyant (mobil tam ekran). */
+  overlay = false,
 }) {
   const accentClass = awayAccent.startsWith('text-') || awayAccent.startsWith('#')
     ? awayAccent.startsWith('#')
@@ -26,7 +28,7 @@ export default function Scoreboard({
 
   return (
     <div
-      className={`retro-panel w-full max-w-[900px] ${
+      className={`${overlay ? 'retro-panel-overlay' : 'retro-panel'} w-full max-w-[900px] ${
         compact ? 'px-2 py-2 sm:px-5 sm:py-3' : 'px-3 py-3 sm:px-5'
       }`}
     >
