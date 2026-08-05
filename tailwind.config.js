@@ -4,26 +4,32 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Türk bayrağı ve saha paleti
+        // Türk bayrağı
         turkiye: {
           red: '#E30A17',
+          dark: '#A00810',
           white: '#FFFFFF',
         },
-        // Game.js içindeki PALETTE ile aynı tutulmalı
+        // Saha paleti — src/game/constants.js içindeki PALETTE ile aynı
         court: {
-          in: '#8E1018', // saha içi
-          out: '#5C070D', // serbest bölge
-          line: '#FFFFFF', // çizgiler
-          net: '#F5F5F5', // file
+          in: '#8E1018',
+          out: '#5C070D',
+          line: '#FFFFFF',
+          net: '#F2F2F2',
         },
         retro: {
           bg: '#0b0b12',
           panel: '#16162a',
-          accent: '#FFD700',
+          panelLight: '#1d1d38',
+          accent: '#FFD24A',
+          away: '#2B3A8F',
         },
       },
       fontFamily: {
-        pixel: ['"Press Start 2P"', 'monospace'],
+        pixel: ['"Press Start 2P"', 'ui-monospace', 'monospace'],
+      },
+      screens: {
+        xs: '420px',
       },
     },
   },

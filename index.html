@@ -2,12 +2,20 @@
 <html lang="tr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1"
+    />
     <meta
       name="description"
       content="Filenin Sultanları'na adanmış retro piksel voleybol oyunu. HTML5 Canvas ile geliştirildi."
     />
     <meta name="theme-color" content="#E30A17" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Sultanlar" />
+    <link rel="manifest" href="/manifest.webmanifest" />
 
     <title>Filenin Sultanları — Retro Voleybol</title>
 
@@ -19,7 +27,10 @@
       rel="stylesheet"
     />
 
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <!--
+      Favicon çalışma anında canvas'tan üretilir (src/main.jsx).
+      Projede hiçbir görsel dosyası tutulmuyor.
+    -->
   </head>
   <body class="bg-[#0b0b12]">
     <!-- React uygulaması buraya mount olur -->

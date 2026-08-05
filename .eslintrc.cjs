@@ -11,10 +11,20 @@ module.exports = {
   parserOptions: { ecmaVersion: 'latest', sourceType: 'module' },
   settings: { react: { version: '18.3' } },
   plugins: ['react-refresh'],
+  overrides: [
+    {
+      files: ['**/*.test.{js,jsx}'],
+      env: { node: true },
+    },
+  ],
   rules: {
-    'react-refresh/only-export-components': [
-      'warn',
-      { allowConstantExport: true },
-    ],
+    'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+
+    // Proje PropTypes kullanmıyor — tipler JSDoc ile belgeleniyor
+    'react/prop-types': 'off',
+
+    // Türkçe metinlerde kesme işareti çok sık geçiyor
+    // ("Sultanları'na"), JSX içinde kaçırmak okunabilirliği düşürür
+    'react/no-unescaped-entities': 'off',
   },
 };

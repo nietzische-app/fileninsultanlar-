@@ -1,123 +1,402 @@
-import { useEffect, useRef, useState } from 'react';
-import Game, { GAME_WIDTH, GAME_HEIGHT } from './game/Game.js';
-import { ROSTER, STARTING_SIX } from './game/players.js';
+import { useCallback, useEffect, useState } from 'react';
+import StartScreen from './screens/StartScreen.jsx';
+import TutorialScreen from './screens/TutorialScreen.jsx';
+import CharacterSelect from './screens/CharacterSelect.jsx';
+import TournamentScreen from './screens/TournamentScreen.jsx';
+import MatchScreen from './screens/MatchScreen.jsx';
+import ResultScreen from './screens/ResultScreen.jsx';
+import RotateGate from './components/RotateGate.jsx';
+import useViewport from './hooks/useViewport.js';
+import Sfx from './game/audio.js';
+import {
+  advanceTournament,
+  createTournament,
+  roundMatchConfig,
+} from './game/tournament.js';
+import {
+  clearTournament,
+  loadAchievements,
+  loadPrefs,
+  loadRecords,
+  loadTournament,
+  recordMatchResult,
+  recordSurvivalResult,
+  recordTournamentResult,
+  saveAchievements,
+  savePrefs,
+  saveTournament,
+} from './utils/storage.js';
+import { evaluateAchievements, newlyUnlocked } from './game/achievements.js';
 
 /**
- * Filenin Sultanları — ana uygulama bileşeni.
+ * Ekran akışı:
  *
- * Canvas'ı DOM'a basar, Game motorunu mount sırasında başlatır,
- * unmount sırasında döngüyü durdurur. Skor/durum bilgisi motordan
- * `onStateChange` callback'i ile React state'ine akar.
+ *   start → tutorial? → select ─┬─ (hızlı maç)   → match → result
+ *     ↑                         ├─ (turnuva)     → bracket ⇄ match → result
+ *     └─────────────────────────┴─ (hayatta kalma) → match → result
+ *
+ * Turnuvada her tur maçından sonra bracket ekranına dönülür; turnuva
+ * kupa ya da elenmeyle kapandığında sonuç ekranına geçilir.
  */
 export default function App() {
-  const canvasRef = useRef(null);
-  const gameRef = useRef(null);
+  const initialPrefs = loadPrefs();
+  const [screen, setScreen] = useState('start');
+  const [campaign, setCampaign] = useState('match');
+  const [matchConfig, setMatchConfig] = useState(null);
+  const [tournament, setTournament] = useState(null);
+  /** Sonuç ekranında gösterilecek kapanmış turnuva (bracket özeti). */
+  const [finishedTournament, setFinishedTournament] = useState(null);
+  const [result, setResult] = useState(null);
+  const [brokenRecords, setBrokenRecords] = useState(null);
+  const [muted, setMuted] = useState(initialPrefs.muted);
+  const [prefs, setPrefs] = useState(initialPrefs);
+  const [records, setRecords] = useState(() => loadRecords());
+  const [savedTournament, setSavedTournament] = useState(() => loadTournament());
+  const [achievements, setAchievements] = useState(() => loadAchievements());
+  /** Bu maçta açılan rozetler — sonuç ekranında gösterilir. */
+  const [freshAchievements, setFreshAchievements] = useState([]);
+  /** Tutorial menüden mi açıldı (geri → start), yoksa ilk akış mı (→ select). */
+  const [tutorialFromMenu, setTutorialFromMenu] = useState(false);
 
-  const [hud, setHud] = useState({
-    score: { home: 0, away: 0 },
-    set: 1,
-    running: false,
-    activePlayer: STARTING_SIX[0],
-  });
+  // Dokunmatik cihazda dikey tutuş oyunu tamamen kapatır
+  const { portrait, coarse } = useViewport();
+  const blockedByOrientation = portrait && coarse;
 
+  // İlk yüklemede ses motoruna mute tercihini uygula
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return undefined;
-
-    const game = new Game(canvas, {
-      onStateChange: (state) => setHud((prev) => ({ ...prev, ...state })),
-    });
-
-    gameRef.current = game;
-    game.start();
-
-    return () => {
-      game.destroy();
-      gameRef.current = null;
-    };
+    Sfx.setMuted(initialPrefs.muted);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- yalnızca mount
   }, []);
 
-  const handleToggle = () => {
-    const game = gameRef.current;
-    if (!game) return;
-    if (game.running) {
-      game.stop();
-    } else {
-      game.start();
-    }
-    setHud((prev) => ({ ...prev, running: game.running }));
-  };
+  const toggleMute = useCallback(() => {
+    setMuted((prev) => {
+      const next = !prev;
+      Sfx.setMuted(next);
+      setPrefs(savePrefs({ muted: next }));
+      return next;
+    });
+  }, []);
 
-  const handleReset = () => {
-    gameRef.current?.reset();
-  };
+  const goSelect = useCallback(() => {
+    setScreen('select');
+  }, []);
+
+  const handleStart = useCallback(
+    (modeId = 'match') => {
+      setCampaign(modeId);
+      if (!prefs.tutorialSeen) {
+        setTutorialFromMenu(false);
+        setScreen('tutorial');
+        return;
+      }
+      goSelect();
+    },
+    [prefs.tutorialSeen, goSelect]
+  );
+
+  const openTutorial = useCallback(() => {
+    Sfx.select();
+    setTutorialFromMenu(true);
+    setScreen('tutorial');
+  }, []);
+
+  const finishTutorial = useCallback(() => {
+    const next = savePrefs({ tutorialSeen: true });
+    setPrefs(next);
+    if (tutorialFromMenu) {
+      setScreen('start');
+      return;
+    }
+    goSelect();
+  }, [tutorialFromMenu, goSelect]);
+
+  const goHome = useCallback(() => {
+    Sfx.select();
+    setScreen('start');
+  }, []);
+
+  // --- Turnuva ---
+
+  /** Bracket'teki sıradaki turu sahaya taşır. */
+  const playTournamentRound = useCallback((state) => {
+    const config = roundMatchConfig(state);
+    if (!config) return;
+
+    setMatchConfig({ ...config, startedAt: Date.now() });
+    setResult(null);
+    setBrokenRecords(null);
+    setScreen('match');
+  }, []);
+
+  const abandonTournament = useCallback(() => {
+    clearTournament();
+    setTournament(null);
+    setSavedTournament(null);
+  }, []);
+
+  const resumeSavedTournament = useCallback(() => {
+    if (!savedTournament) return;
+    setCampaign('tournament');
+    setTournament(savedTournament);
+    setScreen('bracket');
+  }, [savedTournament]);
+
+  // --- Maç başlatma ---
+
+  const startMatch = useCallback(
+    (config) => {
+      const mode = config.campaign ?? 'match';
+      setCampaign(mode);
+
+      const nextPrefs = savePrefs({
+        mode: config.mode,
+        difficulty: config.difficulty,
+        ...(mode === 'match'
+          ? {
+              format: config.format,
+              opponentId: config.opponentId ?? 'random',
+            }
+          : {}),
+        homeIds: config.homeIds,
+      });
+      setPrefs(nextPrefs);
+      setResult(null);
+      setBrokenRecords(null);
+      setFinishedTournament(null);
+
+      if (mode === 'tournament') {
+        const state = createTournament(config);
+        saveTournament(state);
+        setTournament(state);
+        setSavedTournament(state);
+        setScreen('bracket');
+        return;
+      }
+
+      // Yeni nesne referansı → MatchScreen motoru sıfırdan kurar
+      setMatchConfig({ ...config, campaign: mode, startedAt: Date.now() });
+      setScreen('match');
+    },
+    []
+  );
+
+  /**
+   * Rozetleri güncel rekorlara göre yeniden değerlendirir ve bu maçta
+   * açılanları saklar. Üç mod da aynı kapıdan geçer.
+   */
+  const syncAchievements = useCallback(
+    (nextRecords, matchResult) => {
+      const earned = evaluateAchievements(nextRecords, matchResult);
+      setAchievements((prev) => {
+        setFreshAchievements(newlyUnlocked(prev, earned));
+        // Bir kez açılan rozet geri kapanmaz: kayıt her zaman birleşimdir
+        return saveAchievements([...prev, ...earned]);
+      });
+    },
+    []
+  );
+
+  const handleFinish = useCallback(
+    (matchResult) => {
+      // --- Hayatta kalma: koşu bitti ---
+      if (matchResult.campaign === 'survival') {
+        const { records: nextRecords, broken } = recordSurvivalResult(matchResult);
+        setRecords(nextRecords);
+        setBrokenRecords(broken);
+        syncAchievements(nextRecords, matchResult);
+        setResult(matchResult);
+        setFinishedTournament(null);
+        setScreen('result');
+        return;
+      }
+
+      // --- Turnuva turu ---
+      if (matchResult.campaign === 'tournament' && tournament) {
+        // Tur maçı gerçek bir maçtır: galibiyet/seri tablosuna işler
+        const { records: matchRecords, broken: matchBroken } =
+          recordMatchResult(matchResult);
+        const nextState = advanceTournament(tournament, matchResult);
+        setTournament(nextState);
+
+        if (nextState.status === 'active') {
+          saveTournament(nextState);
+          setSavedTournament(nextState);
+          setRecords(matchRecords);
+          setBrokenRecords(matchBroken);
+          syncAchievements(matchRecords, matchResult);
+          setResult(matchResult);
+          setScreen('bracket');
+          return;
+        }
+
+        // Kupa ya da elenme — turnuva kapandı
+        const { records: nextRecords, broken: tourBroken } =
+          recordTournamentResult(nextState);
+        clearTournament();
+        setSavedTournament(null);
+        setRecords(nextRecords);
+        setBrokenRecords({ ...matchBroken, ...tourBroken });
+        syncAchievements(nextRecords, matchResult);
+        setResult(matchResult);
+        setFinishedTournament(nextState);
+        setScreen('result');
+        return;
+      }
+
+      // --- Tek maç ---
+      // Rematch aynı rakiple devam etsin (rastgele seçilmiş olsa bile)
+      setMatchConfig((prev) =>
+        prev && matchResult?.opponent?.id
+          ? { ...prev, opponentId: matchResult.opponent.id, opponentRandom: false }
+          : prev
+      );
+
+      const { records: nextRecords, broken } = recordMatchResult(matchResult);
+      setRecords(nextRecords);
+      setBrokenRecords(broken);
+      syncAchievements(nextRecords, matchResult);
+      setResult(matchResult);
+      setFinishedTournament(null);
+      setScreen('result');
+    },
+    [tournament, syncAchievements]
+  );
+
+  const handleRematch = useCallback(() => {
+    if (!matchConfig) {
+      setScreen('select');
+      return;
+    }
+    Sfx.confirm();
+
+    // Turnuva sonrası "tekrar" = aynı kadroyla yeni kupa yolu
+    if (campaign === 'tournament') {
+      const state = createTournament({
+        mode: matchConfig.mode,
+        difficulty: matchConfig.difficulty ?? prefs.difficulty,
+        homeIds: matchConfig.homeIds,
+      });
+      saveTournament(state);
+      setTournament(state);
+      setSavedTournament(state);
+      setFinishedTournament(null);
+      setResult(null);
+      setBrokenRecords(null);
+      setScreen('bracket');
+      return;
+    }
+
+    setMatchConfig((prev) => ({
+      ...prev,
+      startedAt: Date.now(),
+      // Hızlı maçta rakip kilitlenir; hayatta kalmada rakip dalgaya
+      // bağlı olduğu için son dalganın takımını taşımanın anlamı yok
+      ...(campaign === 'survival'
+        ? {}
+        : {
+            opponentId: prev.opponentId ?? result?.opponent?.id,
+            opponentRandom: false,
+          }),
+    }));
+    setResult(null);
+    setBrokenRecords(null);
+    setScreen('match');
+  }, [matchConfig, result, campaign, prefs.difficulty]);
+
+  /** Maçtan çıkış — kampanyada koşu/turnuva iptal olur. */
+  const handleQuitMatch = useCallback(() => {
+    if (campaign === 'tournament') {
+      abandonTournament();
+      setScreen('start');
+      return;
+    }
+    if (campaign === 'survival') {
+      setScreen('start');
+      return;
+    }
+    setScreen('select');
+  }, [campaign, abandonTournament]);
 
   return (
-    <div className="min-h-full flex flex-col items-center gap-6 px-4 py-8">
-      <header className="text-center space-y-3">
-        <h1 className="text-turkiye-red text-2xl md:text-3xl drop-shadow-[3px_3px_0_rgba(255,255,255,0.9)]">
-          FİLENİN SULTANLARI
-        </h1>
-        <p className="text-[10px] md:text-xs text-white/70 leading-relaxed">
-          Retro Voleybol · Milli Takımımıza Saygıyla
-        </p>
-      </header>
+    <div className="min-h-full">
+      {/*
+        Yatay kapısı en üstte dursun: altındaki ekranlar mount kalır
+        (maç motoru durumunu kaybetmez) ama tamamen kapanır.
+      */}
+      {blockedByOrientation && <RotateGate />}
 
-      {/* Skor tablosu */}
-      <div className="retro-panel flex items-center gap-6 px-6 py-4 text-xs">
-        <span className="text-turkiye-red">TÜRKİYE</span>
-        <span className="text-retro-accent text-lg">
-          {hud.score.home} - {hud.score.away}
-        </span>
-        <span className="text-white/70">RAKİP</span>
-        <span className="text-[10px] text-white/50">SET {hud.set}</span>
-      </div>
-
-      {/* Oyun alanı — Game.js bu canvas üzerine çizer */}
-      <div
-        id="game-container"
-        className="retro-panel p-2 w-full max-w-[960px]"
-      >
-        <canvas
-          ref={canvasRef}
-          width={GAME_WIDTH}
-          height={GAME_HEIGHT}
-          className="pixelated block w-full h-auto bg-court-out"
-          aria-label="Filenin Sultanları voleybol sahası"
+      {screen === 'start' && (
+        <StartScreen
+          onStart={handleStart}
+          onTutorial={openTutorial}
+          muted={muted}
+          onToggleMute={toggleMute}
+          records={records}
+          resumeTournament={savedTournament}
+          onResumeTournament={resumeSavedTournament}
+          achievements={achievements}
         />
-      </div>
+      )}
 
-      {/* Kontroller */}
-      <div className="flex flex-wrap justify-center gap-4">
-        <button type="button" className="retro-button" onClick={handleToggle}>
-          {hud.running ? 'DURAKLAT' : 'BAŞLAT'}
-        </button>
-        <button type="button" className="retro-button" onClick={handleReset}>
-          YENİDEN
-        </button>
-      </div>
+      {screen === 'tutorial' && (
+        <TutorialScreen
+          onDone={finishTutorial}
+          onBack={tutorialFromMenu ? goHome : undefined}
+          muted={muted}
+          onToggleMute={toggleMute}
+        />
+      )}
 
-      <p className="text-[9px] text-white/50 text-center leading-relaxed max-w-md">
-        ← → HAREKET · BOŞLUK ZIPLA / SMAÇ
-      </p>
+      {screen === 'select' && (
+        <CharacterSelect
+          onBack={goHome}
+          onStart={startMatch}
+          muted={muted}
+          onToggleMute={toggleMute}
+          campaign={campaign}
+          initialMode={prefs.mode}
+          initialDifficulty={prefs.difficulty}
+          initialFormat={prefs.format}
+          initialOpponentId={prefs.opponentId}
+          initialHomeIds={prefs.homeIds}
+        />
+      )}
 
-      {/* Kadro şeridi */}
-      <section className="w-full max-w-[960px]">
-        <h2 className="text-[10px] text-white/70 mb-3">KADRO</h2>
-        <ul className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {ROSTER.map((player) => (
-            <li
-              key={player.id}
-              className="retro-panel px-3 py-3 text-[8px] leading-relaxed"
-              style={{ borderColor: player.colors.primary }}
-            >
-              <div className="text-retro-accent">#{player.number}</div>
-              <div className="mt-1">{player.name.toUpperCase()}</div>
-              <div className="mt-1 text-white/50">{player.position}</div>
-            </li>
-          ))}
-        </ul>
-      </section>
+      {screen === 'bracket' && tournament && (
+        <TournamentScreen
+          state={tournament}
+          onPlay={() => playTournamentRound(tournament)}
+          onQuit={() => {
+            abandonTournament();
+            setScreen('start');
+          }}
+          muted={muted}
+          onToggleMute={toggleMute}
+        />
+      )}
+
+      {screen === 'match' && matchConfig && (
+        <MatchScreen
+          config={matchConfig}
+          onFinish={handleFinish}
+          onQuit={handleQuitMatch}
+          muted={muted}
+          onToggleMute={toggleMute}
+        />
+      )}
+
+      {screen === 'result' && result && (
+        <ResultScreen
+          result={result}
+          brokenRecords={brokenRecords}
+          tournamentState={finishedTournament}
+          freshAchievements={freshAchievements}
+          onRematch={handleRematch}
+          onHome={goHome}
+          muted={muted}
+          onToggleMute={toggleMute}
+        />
+      )}
     </div>
   );
 }
