@@ -16,7 +16,7 @@ kırmızı-beyaz bir sahada, Türk bayraklarıyla dolu bir tribünün önünde.
 
 ## Oynanış
 
-**Oyun modları:** Hızlı Maç / Turnuva / Hayatta Kalma
+**Oyun modları:** Hızlı Maç / Turnuva / Co-Op / Karşılıklı / Hayatta Kalma
 **Diziliş:** 1v1 ve 2v2 · **Format:** Klasik / Tek Set / Antrenman · **Zorluk:** Kolay / Normal / Zor
 
 Beş kurgusal rakip takım seçilebilir (veya rastgele): Atlas Fırtınası, Adriyatik,
@@ -145,6 +145,26 @@ yapay zekâsının tepkisi yavaşlar. Ebrar Karakurt'un barı %30 daha hızlı d
 | **Antrenman** | Tek set 7 sayı — kısa tempo |
 
 Bir klasik maç ortalama 4–9 dakika sürer.
+
+### İki kişilik oyun — Co-Op ve Karşılıklı
+
+Tek klavyede iki kişi oynanır:
+
+| | 1. Oyuncu | 2. Oyuncu |
+| --- | --- | --- |
+| Hareket | `W` `A` `S` `D` | ok tuşları |
+| Vur | `Boşluk` / `Z` | `Enter` |
+| Sultan Gücü | `X` | — |
+
+- **Co-Op** — iki sultan aynı takımda, karşılarında yapay zekâ. 2v2
+  zorunludur (iki insan aynı sahada olmalı).
+- **Karşılıklı (VS)** — 1. oyuncu Türkiye'yi, 2. oyuncu rakip takımı
+  sürer. **Sultan Gücü yalnızca Türkiye'nindir**; iki oyuncu aynı barı
+  paylaşsaydı kimin doldurduğu belirsiz olurdu.
+
+Tek kişilik oyunda hem `WASD` hem ok tuşları aynı oyuncuyu sürer —
+hangisine alışkınsan. İki kişilik modlarda dokunmatik tuşlar gizlenir:
+tek telefonda iki kişi oynayamaz, göstermek yanıltıcı olurdu.
 
 ### Turnuva — Kupa Yolu
 

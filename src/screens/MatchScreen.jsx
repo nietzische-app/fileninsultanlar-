@@ -65,6 +65,7 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
       opponentId: config.opponentId,
       // Kampanya alanları — hızlı maçta undefined kalır
       campaign: config.campaign,
+      playMode: config.playMode,
       rules: config.rules,
       difficultyRamp: config.difficultyRamp,
       roundLabel: config.roundLabel,
@@ -231,6 +232,12 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
 
   const squad = config.homeIds.map((id) => getPlayerById(id)).filter(Boolean);
   const controlsLocked = paused || quitConfirm;
+  /*
+   * Tek telefonda iki kişi oynayamaz; Co-Op/VS klavyeye özgüdür.
+   * Dokunmatik tuşları göstermek 2. oyuncunun kontrolü yokmuş gibi
+   * yanıltıcı olurdu.
+   */
+  const twoPlayer = config.playMode === 'coop' || config.playMode === 'vs';
 
   // Ham id değil etiket: upper('classic') Türkçe eşlemede "CLASSİC" veriyordu
   const matchLabel =
@@ -356,12 +363,14 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
         )}
 
         {/* Mobil: kontroller sahanın köşelerinde, şeffaf */}
-        <TouchControls
-          onInput={handleTouchInput}
-          sultanReady={hud.sultanReady}
-          disabled={controlsLocked}
-          overlay
-        />
+        {!twoPlayer && (
+          <TouchControls
+            onInput={handleTouchInput}
+            sultanReady={hud.sultanReady}
+            disabled={controlsLocked}
+            overlay
+          />
+        )}
 
         {/* Dikey ekranda saha ile tuşlar arasındaki bandı künye doldurur */}
         <div className="pointer-events-none absolute inset-x-0 bottom-[12.5rem] z-10 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-3 text-center text-[7px] text-white/40 md:hidden landscape:hidden">
@@ -493,7 +502,9 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
       </div>
 
       <p className="hidden text-center text-[7px] leading-relaxed text-white/35 md:block">
-        ← → HAREKET · ↑ ZIPLA · ↓ DALIŞ (HAVADA PLASE) · BOŞLUK VUR (TAM ZAMANINDA BAS!) · X SULTAN GÜCÜ · ESC DURAKLAT
+        {twoPlayer
+          ? '1. OYUNCU: W A S D · BOŞLUK VUR · X SULTAN   ·   2. OYUNCU: ← → ↑ ↓ · ENTER VUR   ·   ESC DURAKLAT'
+          : '← → HAREKET · ↑ ZIPLA · ↓ DALIŞ (HAVADA PLASE) · BOŞLUK VUR (TAM ZAMANINDA BAS!) · X SULTAN GÜCÜ · ESC DURAKLAT'}
       </p>
     </div>
   );
