@@ -16,7 +16,7 @@ kırmızı-beyaz bir sahada, Türk bayraklarıyla dolu bir tribünün önünde.
 
 ## Oynanış
 
-**Oyun modları:** Hızlı Maç / Turnuva / Hayatta Kalma
+**Oyun modları:** Hızlı Maç / Turnuva / Co-Op / Karşılıklı / Hayatta Kalma
 **Diziliş:** 1v1 ve 2v2 · **Format:** Klasik / Tek Set / Antrenman · **Zorluk:** Kolay / Normal / Zor
 
 Beş kurgusal rakip takım seçilebilir (veya rastgele): Atlas Fırtınası, Adriyatik,
@@ -27,7 +27,7 @@ Nordik Buz, Balkan Ateşi, Pasifik Dalga.
 | `←` `→` veya `A` `D` | Hareket |
 | `↑` veya `W` | Zıpla |
 | `↓` veya `S` | **Dalış** — yere düşmek üzere olan topa uzan (havadayken **plase**) |
-| `Boşluk` veya `Z` | Vur (manşet / smaç / blok) |
+| `Boşluk` veya `Z` | Vur (manşet / smaç / blok) · **servis**: 1. basış güç, 2. basış nişan |
 | `X` | **Sultan Gücü** — alevli smaç |
 | `ESC` veya `P` | Duraklat |
 
@@ -53,6 +53,22 @@ tam ekran / çık düğmeleri sağ üst köşededir.
   ekrana eklenen PWA kısayolu aynı işi görür.
 - Tuşlar `pointer capture` ile çoklu dokunuşu destekler (ör. sağa git +
   zıpla aynı anda).
+
+### Servis
+
+Her ralli servisle başlar. Servis atan dip çizgiye geçer, top elinde
+bekler ve yanında iki aşamalı bir gösterge salınır:
+
+1. **Güç** — birinci basış gücü kilitler. Beyaz çizgi en verimli noktadır;
+   yüksek güç topu düz ve hızlı, düşük güç yüksek kavisli gönderir.
+2. **Nişan** — ikinci basış derinliği kilitler ve servisi atar. Sol uç
+   file dibi, sağ uç dip çizgi.
+
+Dört saniye içinde iki aşamayı tamamlamazsan servis olduğu güçle
+kendiliğinden atılır — oyun asla beklemede kalmaz.
+
+Servis hızı bilerek ölçülü tutuldu: amaç ralliyi başlatmak, ralliyi tek
+başına kazanmak değil.
 
 ### Oyunun ritmi
 
@@ -103,6 +119,17 @@ Bedeli var: kaymadan sonra oyuncu kısa süre yerde kalır ve yönlendirilemez.
 Iskalanan dalış yarım saniyeyi kaybettirir, o yüzden son çare olarak
 kullanılmalı — koşarak yetişebiliyorsan koş. Rakip yapay zekâsı da dalar.
 
+### Ses
+
+Her şey osilatör ve filtrelenmiş gürültüyle anlık üretilir; tek bir ses
+dosyası yok. Motor katmanlı: master altında ayrı **efekt** ve **tribün**
+bus'ları var, böylece kalabalık efektleri bastırmıyor.
+
+Maç boyunca hafif bir **tribün yatağı** çalar ve ralli/coşkuyla şişer —
+salonun dolu olduğunu tek bir efekt çalmadan hissettirir. Duraklatınca ve
+maçtan çıkınca susar. Aynı sesin mekanik tekrarını kırmak için vuruşlara
+küçük bir pitch sapması uygulanır.
+
 ### Sultan Gücü
 
 Sayı aldıkça, blok yaptıkça ve fileyi geçen her vuruşta bar dolar. Dolduğunda
@@ -118,6 +145,26 @@ yapay zekâsının tepkisi yavaşlar. Ebrar Karakurt'un barı %30 daha hızlı d
 | **Antrenman** | Tek set 7 sayı — kısa tempo |
 
 Bir klasik maç ortalama 4–9 dakika sürer.
+
+### İki kişilik oyun — Co-Op ve Karşılıklı
+
+Tek klavyede iki kişi oynanır:
+
+| | 1. Oyuncu | 2. Oyuncu |
+| --- | --- | --- |
+| Hareket | `W` `A` `S` `D` | ok tuşları |
+| Vur | `Boşluk` / `Z` | `Enter` |
+| Sultan Gücü | `X` | — |
+
+- **Co-Op** — iki sultan aynı takımda, karşılarında yapay zekâ. 2v2
+  zorunludur (iki insan aynı sahada olmalı).
+- **Karşılıklı (VS)** — 1. oyuncu Türkiye'yi, 2. oyuncu rakip takımı
+  sürer. **Sultan Gücü yalnızca Türkiye'nindir**; iki oyuncu aynı barı
+  paylaşsaydı kimin doldurduğu belirsiz olurdu.
+
+Tek kişilik oyunda hem `WASD` hem ok tuşları aynı oyuncuyu sürer —
+hangisine alışkınsan. İki kişilik modlarda dokunmatik tuşlar gizlenir:
+tek telefonda iki kişi oynayamaz, göstermek yanıltıcı olurdu.
 
 ### Turnuva — Kupa Yolu
 
@@ -247,7 +294,7 @@ Ortam değişkeni, backend ya da veritabanı yok; tamamen statik bir SPA.
 | Stil | Tailwind CSS 3 |
 | Oyun | HTML5 Canvas 2D + `requestAnimationFrame` |
 | Grafik | %100 kod — PNG/JPG/SVG yok, `drawImage` yok |
-| Ses | Web Audio API (osilatörle üretilen 8-bit efektler, dosya yok) |
+| Ses | Web Audio API — katmanlı motor (master → sfx/tribün bus), dosya yok |
 | Font | Arayüzde Press Start 2P; forma numaraları kendi piksel fontumuz |
 
 ## Dosya Yapısı
@@ -279,6 +326,7 @@ src/
 │   ├── Game.js               Motor: döngü, fizik, çarpışma, skor, çizim
 │   ├── rules.js              Saf set/maç/üç-temas kuralları
 │   ├── combo.js              Kombo kademeleri, çarpanlar, tam vuruş penceresi
+│   ├── serve.js              Servis metresi, güç/nişan ve balistiği
 │   ├── achievements.js       Rozet tanımları ve değerlendirme
 │   ├── modes.js              Oyun modu tanımları (hızlı maç / turnuva / hayatta kalma)
 │   ├── tournament.js         Kupa yolu turları ve saf durum makinesi

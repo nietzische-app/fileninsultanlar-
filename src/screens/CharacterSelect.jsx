@@ -58,13 +58,16 @@ export default function CharacterSelect({
   muted,
   onToggleMute,
   campaign = 'match',
+  playMode = 'solo',
+  modeId = 'match',
   initialMode = '1v1',
   initialDifficulty = 'normal',
   initialFormat = 'classic',
   initialOpponentId = 'random',
   initialHomeIds,
 }) {
-  const gameMode = getGameMode(campaign);
+  const gameMode = getGameMode(modeId);
+  const twoPlayer = playMode === 'coop' || playMode === 'vs';
   // Turnuvada rakip ve format turlara bağlı, hayatta kalmada dalgalara —
   // ikisi de oyuncunun seçeceği şey değil.
   const picksMatchup = gameMode.pickOpponent;
@@ -88,7 +91,11 @@ export default function CharacterSelect({
   const activeRoster = useMemo(() => getActiveRoster(), []);
   const bonusRoster = useMemo(() => getBonusRoster(), []);
 
-  const required = mode === '2v2' ? 2 : 1;
+  /*
+   * Co-Op iki sultanı aynı takımda oynatır → 2v2 zorunlu.
+   * VS'te 2. oyuncu rakip takımı sürer, ev sahibi kadro tek kişiliktir.
+   */
+  const required = playMode === 'coop' ? 2 : mode === '2v2' ? 2 : 1;
   const focusedPlayer = useMemo(
     () => getPlayerById(focused) ?? activeRoster[0],
     [focused, activeRoster]
@@ -123,13 +130,14 @@ export default function CharacterSelect({
 
     if (!picksMatchup) {
       // Kampanya modlarında format/rakip yapılandırması çağırana ait
-      onStart({ campaign, mode, difficulty, homeIds: selected });
+      onStart({ campaign, playMode, mode, difficulty, homeIds: selected });
       return;
     }
 
     onStart({
       campaign,
-      mode,
+      playMode,
+      mode: playMode === 'coop' ? '2v2' : playMode === 'vs' ? '1v1' : mode,
       difficulty,
       format,
       // random ise undefined — Game rastgele seçer; bitişte id kilitlenir
@@ -151,7 +159,12 @@ export default function CharacterSelect({
             {!picksMatchup && (
               <span className="text-retro-accent">{gameMode.label} · </span>
             )}
-            {required === 2 ? 'İKİ SULTAN · 1. SEN, 2. AI' : 'BİR SULTAN SEÇ'} ·{' '}
+            {required === 2
+              ? playMode === 'coop'
+                ? 'İKİ SULTAN · 1. VE 2. OYUNCU'
+                : 'İKİ SULTAN · 1. SEN, 2. AI'
+              : 'BİR SULTAN SEÇ'}{' '}
+            ·{' '}
             {selected.length}/{required}
           </p>
         </div>
@@ -165,18 +178,39 @@ export default function CharacterSelect({
 
       {/* Ayarlar — kompakt chip satırları */}
       <div className="retro-panel flex flex-col gap-3 px-3 py-3 sm:gap-4 sm:px-4 sm:py-4">
-        <ChipRow label="MOD">
-          {MODES.map((item) => (
-            <Chip
-              key={item.id}
-              active={mode === item.id}
-              onClick={() => handleModeChange(item.id)}
-              title={item.description}
-            >
-              {item.label}
-            </Chip>
-          ))}
-        </ChipRow>
+        {twoPlayer ? (
+          <div className="border-l-4 border-retro-accent/70 py-1 pl-3">
+            <p className="text-[8px] text-retro-accent">
+              {gameMode.label} · {playMode === 'coop' ? '2 vs 2' : '1 vs 1'}
+            </p>
+            <div className="mt-2 grid gap-1 text-[7px] leading-relaxed text-white/60 sm:grid-cols-2">
+              <span>
+                <b className="text-white/80">1. OYUNCU</b> — W A S D · BOŞLUK vur · X Sultan
+              </span>
+              <span>
+                <b className="text-white/80">2. OYUNCU</b> — ok tuşları · ENTER vur
+              </span>
+            </div>
+            <p className="mt-2 text-[7px] leading-relaxed text-white/45">
+              {playMode === 'coop'
+                ? 'İki sultan aynı takımda; rakip yapay zekâ.'
+                : '2. oyuncu rakip takımı sürer. Sultan Gücü yalnızca Türkiye\'nindir.'}
+            </p>
+          </div>
+        ) : (
+          <ChipRow label="MOD">
+            {MODES.map((item) => (
+              <Chip
+                key={item.id}
+                active={mode === item.id}
+                onClick={() => handleModeChange(item.id)}
+                title={item.description}
+              >
+                {item.label}
+              </Chip>
+            ))}
+          </ChipRow>
+        )}
 
         <ChipRow label="ZORLUK">
           {Object.entries(DIFFICULTY).map(([key, value]) => (
@@ -348,11 +382,14 @@ export default function CharacterSelect({
               ? 'KUPA YOLUNA ÇIK'
               : campaign === 'survival'
                 ? 'SAHAYA ÇIK'
-                : 'MAÇA BAŞLA'}
+                : twoPlayer
+                  ? 'İKİ KİŞİ BAŞLA'
+                  : 'MAÇA BAŞLA'}
           </button>
           {!canStart && (
             <p className="text-[7px] text-white/45 sm:text-[8px]">
-              2v2 İÇİN {required - selected.length} SULTAN DAHA
+              {playMode === 'coop' ? 'CO-OP' : '2v2'} İÇİN{' '}
+              {required - selected.length} SULTAN DAHA
             </p>
           )}
         </div>

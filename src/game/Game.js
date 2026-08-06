@@ -49,6 +49,15 @@ import {
 } from './opponents.js';
 import { pickChaser, sideBounds, updateAI } from './ai.js';
 import {
+  SERVE,
+  advanceServeMeter,
+  aiServeChoice,
+  aiServeDelay,
+  computeServeVelocity,
+  meterToAim,
+  meterToPower,
+} from './serve.js';
+import {
   comboChargeMultiplier,
   comboPowerMultiplier,
   comboTierAt,
@@ -88,18 +97,20 @@ import {
 import Sfx from './audio.js';
 import { upper } from '../utils/text.js';
 
-/** Klavye tuşu → mantıksal girdi eşlemesi. */
-const KEY_MAP = {
-  ArrowLeft: 'left',
+/**
+ * Klavye eşlemeleri.
+ *
+ * Tek kişilik oyunda her iki set de aynı oyuncuyu sürer (WASD ya da ok
+ * tuşları, hangisi alışkınsa). Co-Op / VS'te ikinci set ikinci oyuncuya
+ * gider — tek klavyede iki kişi oynayabilsin diye.
+ */
+const P1_KEYS = {
   a: 'left',
   A: 'left',
-  ArrowRight: 'right',
   d: 'right',
   D: 'right',
-  ArrowUp: 'up',
   w: 'up',
   W: 'up',
-  ArrowDown: 'dive',
   s: 'dive',
   S: 'dive',
   ' ': 'action',
@@ -108,6 +119,29 @@ const KEY_MAP = {
   x: 'sultan',
   X: 'sultan',
 };
+
+const P2_KEYS = {
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
+  ArrowUp: 'up',
+  ArrowDown: 'dive',
+  Enter: 'action',
+  Control: 'sultan',
+  Shift: 'sultan',
+};
+
+/** Boş bir girdi durumu. */
+function createInputState() {
+  return {
+    left: false,
+    right: false,
+    up: false,
+    down: false,
+    action: false,
+    dive: false,
+    sultan: false,
+  };
+}
 
 export default class Game {
   /**
@@ -125,7 +159,13 @@ export default class Game {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
 
-    this.mode = options.mode === '2v2' ? '2v2' : '1v1';
+    this.playMode = ['solo', 'coop', 'vs'].includes(options.playMode)
+      ? options.playMode
+      : 'solo';
+
+    // Co-Op iki sultanı aynı takımda oynatır, yani 2v2 zorunludur
+    const requested = options.mode === '2v2' ? '2v2' : '1v1';
+    this.mode = this.playMode === 'coop' ? '2v2' : requested;
     this.perSide = this.mode === '2v2' ? 2 : 1;
     /** 'match' | 'tournament' | 'survival' */
     this.campaign = options.campaign ?? 'match';
@@ -169,17 +209,29 @@ export default class Game {
     this.lastTime = 0;
     this.time = 0;
 
-    /** İnsan oyuncunun girdileri (klavye + dokunmatik ortak). */
-    this.input = {
-      left: false,
-      right: false,
-      up: false,
-      down: false,
-      action: false,
-      dive: false,
-      sultan: false,
-    };
-    this.sultanKeyLatch = false;
+    /**
+     * İnsan girdileri, oyuncu yuvası başına.
+     * `this.input` p1'in takma adıdır: tek kişilik akıştaki tüm mevcut
+     * kod (dokunmatik, servis, tam vuruş) değişmeden çalışsın diye.
+     */
+    this.inputs = { p1: createInputState(), p2: createInputState() };
+    this.input = this.inputs.p1;
+    this.sultanKeyLatch = { p1: false, p2: false };
+
+    /**
+     * Vuruş tuşuna basış sayacı.
+     *
+     * Girdi her karede yoklanıyordu; iki kare arasına sıkışan hızlı bir
+     * basış (bas–bırak < 16 ms) hiç görülmeden kayboluyordu. Tam vuruş
+     * mekaniği oyuncuyu tam da böyle hızlı tıklamaya ittiği için bu
+     * "tuşa bastım ama vurmadı" hissi veriyordu. Sayaç, basışın hangi
+     * kareye denk geldiğinden bağımsız olarak bir kez işlenmesini
+     * garanti eder.
+     */
+    this.actionPresses = { p1: 0, p2: 0 };
+    this.lastActionPresses = { p1: 0, p2: 0 };
+    /** Bu karede hangi yuvalarda yeni basış görüldü. */
+    this.actionEdge = { p1: false, p2: false };
 
     // Maç durumu
     this.score = { home: 0, away: 0 };
@@ -200,6 +252,14 @@ export default class Game {
     // Hayatta kalma durumu — diğer modlarda kullanılmaz
     this.lives = SURVIVAL.lives;
     this.wave = 1;
+
+    /**
+     * Servis durumu — yalnızca PHASE.SERVE sırasında dolu.
+     * @type {null | {stage:'power'|'aim', meter:number, dir:1|-1,
+     *   power:number, aim:number, serverId:string, aiTimer:number,
+     *   actionLatch:boolean}}
+     */
+    this.serve = null;
 
     /** Kombo: üst üste tam vuruş / blok / kurtarış. Sayı kaybında sıfırlanır. */
     this.combo = 0;
@@ -278,6 +338,9 @@ export default class Game {
     // Duraklatınca basılı kalan tuş/dokunuş devam etmesin
     this.clearInput();
 
+    // Duraklatınca tribün de sussun
+    Sfx.hushAtmosphere();
+
     // Duraklatınca son kare ekranda kalsın
     this.render();
     this.emitState(true);
@@ -286,6 +349,7 @@ export default class Game {
   destroy() {
     this.stop();
     this.clearInput();
+    Sfx.hushAtmosphere();
     this.particles.length = 0;
     this.rings.length = 0;
     this.ballTrail.length = 0;
@@ -298,25 +362,40 @@ export default class Game {
   createPlayers() {
     const players = [];
 
+    /*
+     * Yuva dağıtımı:
+     *   solo → yalnızca ilk sultan insan (p1)
+     *   coop → iki sultan da insan (p1 + p2), aynı takım
+     *   vs   → p1 Türkiye'de, p2 rakip takımda
+     */
     this.homeIds.forEach((id, index) => {
       const data = getPlayerById(id) ?? getPlayerById(DEFAULT_PLAYER_ID);
-      players.push(this.makePlayer(`home-${index}`, data, 'home', index === 0));
+      let slot = null;
+      if (index === 0) slot = 'p1';
+      else if (this.playMode === 'coop' && index === 1) slot = 'p2';
+
+      players.push(
+        this.makePlayer(`home-${index}`, data, 'home', Boolean(slot), slot)
+      );
     });
 
     const awayRoster = buildAwayPlayers(this.opponent, this.perSide);
     awayRoster.forEach((data, i) => {
-      players.push(this.makePlayer(`away-${i}`, data, 'away', false));
+      const slot = this.playMode === 'vs' && i === 0 ? 'p2' : null;
+      players.push(this.makePlayer(`away-${i}`, data, 'away', Boolean(slot), slot));
     });
 
     return players;
   }
 
-  makePlayer(id, data, side, controlled) {
+  makePlayer(id, data, side, controlled, controlSlot = null) {
     return {
       id,
       data,
       side,
       controlled,
+      /** Hangi insan oyuncunun sürdüğü ('p1' | 'p2' | null). */
+      controlSlot,
       x: 0,
       y: GROUND_Y,
       vx: 0,
@@ -406,72 +485,106 @@ export default class Game {
   }
 
   /** İnsan oyuncunun kontrol ettiği sultan. */
+  /**
+   * 1. oyuncunun sultanı. HUD, Sultan barı ve istatistikler buna bakar.
+   * Co-Op/VS'te 2. oyuncunun kendi oyuncusu ayrıca `controlSlot` ile
+   * bulunur.
+   */
   getControlledPlayer() {
-    return this.players.find((p) => p.controlled);
+    return (
+      this.players.find((p) => p.controlled && p.controlSlot === 'p1') ??
+      this.players.find((p) => p.controlled) ??
+      null
+    );
   }
 
   // ===================================================================
   // Girdi
   // ===================================================================
 
+  /**
+   * Basılan tuş hangi oyuncuya ait?
+   * Tek kişilik oyunda iki set de p1'i sürer.
+   */
+  resolveKeyBinding(key) {
+    if (key in P1_KEYS) return { slot: 'p1', action: P1_KEYS[key] };
+    if (key in P2_KEYS) {
+      return { slot: this.playMode === 'solo' ? 'p1' : 'p2', action: P2_KEYS[key] };
+    }
+    return null;
+  }
+
   handleKeyDown(event) {
-    const action = KEY_MAP[event.key];
-    if (!action) return;
+    const binding = this.resolveKeyBinding(event.key);
+    if (!binding) return;
     event.preventDefault();
+
+    const { slot, action } = binding;
 
     if (action === 'sultan') {
       // Tek basışta bir kez tetiklensin (tuş basılı tutulunca tekrarlamasın)
-      if (!this.sultanKeyLatch) {
-        this.sultanKeyLatch = true;
-        this.activateSultan();
+      if (!this.sultanKeyLatch[slot]) {
+        this.sultanKeyLatch[slot] = true;
+        this.activateSultan(slot);
       }
       return;
     }
 
-    this.input[action] = true;
+    if (action === 'action' && !this.inputs[slot].action) {
+      this.actionPresses[slot] += 1;
+    }
+    this.inputs[slot][action] = true;
   }
 
   handleKeyUp(event) {
-    const action = KEY_MAP[event.key];
-    if (!action) return;
+    const binding = this.resolveKeyBinding(event.key);
+    if (!binding) return;
     event.preventDefault();
 
+    const { slot, action } = binding;
+
     if (action === 'sultan') {
-      this.sultanKeyLatch = false;
+      this.sultanKeyLatch[slot] = false;
       return;
     }
 
-    this.input[action] = false;
+    this.inputs[slot][action] = false;
   }
 
   /**
-   * Dokunmatik butonlar için dışarıdan girdi ayarlar.
+   * Dokunmatik butonlar — her zaman 1. oyuncu.
+   * Tek telefonda iki kişi oynayamayacağı için Co-Op/VS klavyeye özgüdür.
    * @param {'left'|'right'|'up'|'action'|'dive'|'sultan'} name
    * @param {boolean} pressed
    */
   setInput(name, pressed) {
     if (name === 'sultan') {
-      if (pressed) this.activateSultan();
+      if (pressed) this.activateSultan('p1');
       return;
     }
-    if (name in this.input) {
-      this.input[name] = pressed;
+    if (name in this.inputs.p1) {
+      if (name === 'action' && pressed && !this.inputs.p1.action) {
+        this.actionPresses.p1 += 1;
+      }
+      this.inputs.p1[name] = pressed;
     }
   }
 
-  /**
-   * Tüm insan girdilerini sıfırlar.
-   * Duraklatma / sekme değişimi / pencere blur sonrası yapışmayı önler.
-   */
+  /** Tüm insan girdilerini sıfırlar. */
   clearInput() {
-    this.input.left = false;
-    this.input.right = false;
-    this.input.up = false;
-    this.input.down = false;
-    this.input.action = false;
-    this.input.dive = false;
-    this.input.sultan = false;
-    this.sultanKeyLatch = false;
+    ['p1', 'p2'].forEach((slot) => {
+      const input = this.inputs[slot];
+      input.left = false;
+      input.right = false;
+      input.up = false;
+      input.down = false;
+      input.action = false;
+      input.dive = false;
+      input.sultan = false;
+      this.sultanKeyLatch[slot] = false;
+      // Duraklatma/odak kaybı sonrası eski basış tetiklenmesin
+      this.lastActionPresses[slot] = this.actionPresses[slot];
+    });
 
     this.players?.forEach((player) => {
       if (!player.controlled) return;
@@ -483,13 +596,19 @@ export default class Game {
     });
   }
 
-  /** Pencere odağını kaybedince basılı tuşlar takılı kalmasın. */
   handleWindowBlur() {
     this.clearInput();
   }
 
-  /** Sultan Gücü'nü kurar — bir sonraki temasta alevli top. */
-  activateSultan() {
+  /**
+   * Sultan Gücü'nü kurar — bir sonraki temasta alevli top.
+   *
+   * Bar Türkiye takımına ait; VS modunda rakibi oynatan 2. oyuncu onu
+   * ateşleyemez, yoksa iki oyuncu aynı barı paylaşırdı.
+   * @param {'p1'|'p2'} [slot]
+   */
+  activateSultan(slot = 'p1') {
+    if (this.playMode === 'vs' && slot === 'p2') return;
     if (this.sultanCharge < SULTAN.max || this.sultanArmed) return;
     if (this.phase !== PHASE.RALLY) return;
 
@@ -522,6 +641,12 @@ export default class Game {
   }
 
   update(dt) {
+    // Bu karede yeni vuruş basışı geldi mi (kare arasına sıkışsa bile)
+    ['p1', 'p2'].forEach((slot) => {
+      this.actionEdge[slot] = this.actionPresses[slot] !== this.lastActionPresses[slot];
+      this.lastActionPresses[slot] = this.actionPresses[slot];
+    });
+
     this.time += dt;
     this.shake = Math.max(0, this.shake - dt * 60);
     this.hype = Math.max(0, this.hype - dt * 0.9);
@@ -548,10 +673,13 @@ export default class Game {
         this.updatePlayers(dt, false);
         this.phaseTimer -= dt;
         if (this.phaseTimer <= 0) {
-          this.phase = PHASE.RALLY;
           this.message = null;
-          Sfx.whistle();
+          this.beginServe();
         }
+        break;
+
+      case PHASE.SERVE:
+        this.updateServe(dt);
         break;
 
       case PHASE.RALLY:
@@ -578,6 +706,8 @@ export default class Game {
         this.updatePlayers(dt, false);
         break;
     }
+
+    this.updateAtmosphere();
   }
 
   // ===================================================================
@@ -599,12 +729,19 @@ export default class Game {
 
     this.players.forEach((player) => {
       if (player.controlled) {
-        // İnsan girdisi doğrudan aktarılır
-        player.input.left = active && this.input.left;
-        player.input.right = active && this.input.right;
-        player.input.up = active && this.input.up;
-        player.input.action = active && this.input.action;
-        player.input.dive = active && this.input.dive;
+        // İnsan girdisi doğrudan aktarılır — her oyuncu kendi yuvasından
+        const slot = player.controlSlot ?? 'p1';
+        const pad = this.inputs[slot] ?? this.inputs.p1;
+        player.input.left = active && pad.left;
+        player.input.right = active && pad.right;
+        player.input.up = active && pad.up;
+        /*
+         * Kare arasına sıkışan basış da bir kare boyunca "basılı"
+         * sayılır: yoksa hızlı tıklayan oyuncunun vuruşu hiç
+         * gerçekleşmiyor, tuş çalışmamış gibi hissediliyordu.
+         */
+        player.input.action = active && (pad.action || this.actionEdge[slot]);
+        player.input.dive = active && pad.dive;
         player.aiSpeedScale = 1;
       } else if (active) {
         const isAway = player.side === 'away';
@@ -1159,6 +1296,224 @@ export default class Game {
     if (perfect) this.addHitStop(HITSTOP.perfect);
   }
 
+  // ===================================================================
+  // Servis
+  // ===================================================================
+
+  /** Servis atacak oyuncu. */
+  getServer() {
+    return this.players.find((p) => p.side === this.servingSide) ?? null;
+  }
+
+  /** Servis atanı dip çizgiye çeker. */
+  placeServer(servingSide) {
+    const server = this.players.find((p) => p.side === servingSide);
+    if (!server) return;
+
+    const ratio = servingSide === 'home' ? SERVE.backLineHome : SERVE.backLineAway;
+    server.x = GAME_WIDTH * ratio;
+    server.y = GROUND_Y;
+    server.vx = 0;
+    server.vy = 0;
+    server.onGround = true;
+    server.facing = servingSide === 'home' ? 1 : -1;
+    server.pose = 'idle';
+  }
+
+  /** Servis atanın elinde bekleyen top. */
+  createHeldBall(side) {
+    const server = this.players.find((p) => p.side === side) ?? null;
+    const x =
+      server?.x ??
+      GAME_WIDTH * (side === 'home' ? SERVE.backLineHome : SERVE.backLineAway);
+
+    return {
+      ...this.createBall(side),
+      x,
+      y: GROUND_Y - SERVE.holdHeight,
+      vx: 0,
+      vy: 0,
+      held: true,
+    };
+  }
+
+  /**
+   * Servis aşamasını başlatır.
+   *
+   * Ralliler önce topun havada belirip düşmesiyle başlıyordu — maçın en
+   * kontrollü anı olan servis oyunda hiç yoktu. Artık iki aşamalı bir
+   * gösterge var: önce güç, sonra nişan.
+   */
+  beginServe() {
+    this.phase = PHASE.SERVE;
+    this.placeServer(this.servingSide);
+    this.ball = this.createHeldBall(this.servingSide);
+    this.ballTrail.length = 0;
+    this.touch = { side: null, count: 0 };
+
+    const server = this.getServer();
+    const human = Boolean(server?.controlled);
+
+    this.serve = {
+      stage: 'power',
+      meter: 0.15,
+      dir: 1,
+      power: 0,
+      aim: 0,
+      serverId: server?.id ?? '',
+      aiTimer: human ? 0 : aiServeDelay(this.difficultyFor(server ?? {}).serveSkill ?? 0.5),
+      actionLatch: false,
+      /** İnsan servisinde otomatik atış sayacı. */
+      elapsed: 0,
+    };
+
+    this.message = { text: 'SERVİS', timer: 1, color: PALETTE.gold };
+    Sfx.whistle();
+    this.emitState(true);
+  }
+
+  updateServe(dt) {
+    const serve = this.serve;
+    if (!serve) {
+      this.phase = PHASE.RALLY;
+      return;
+    }
+
+    // Servis sırasında kimse koşamaz; yalnızca duruş güncellenir
+    this.updatePlayers(dt, false);
+
+    const server = this.players.find((p) => p.id === serve.serverId) ?? this.getServer();
+    if (server) {
+      const ratio = this.servingSide === 'home' ? SERVE.backLineHome : SERVE.backLineAway;
+      server.x = GAME_WIDTH * ratio;
+      server.y = GROUND_Y;
+      server.vx = 0;
+      server.vy = 0;
+      server.onGround = true;
+      server.pose = 'idle';
+
+      // Top elde bekler
+      this.ball.x = server.x + server.facing * 10;
+      this.ball.y = GROUND_Y - SERVE.holdHeight;
+      this.ball.vx = 0;
+      this.ball.vy = 0;
+      this.ball.held = true;
+    }
+
+    const speed = serve.stage === 'power' ? SERVE.meterSpeed : SERVE.aimMeterSpeed;
+    const next = advanceServeMeter(serve.meter, serve.dir, speed, dt);
+    serve.meter = next.meter;
+    serve.dir = next.dir;
+
+    if (server?.controlled) {
+      /*
+       * Basışın yükselen kenarı: tuşu basılı tutmak iki aşamayı da
+       * geçmesin. Kenar sayaçtan okunur, böylece iki kare arasına
+       * sıkışan hızlı basış da kaybolmaz.
+       */
+      const slot = server.controlSlot ?? 'p1';
+      if (this.actionEdge[slot]) {
+        this.handleServePress();
+      }
+      serve.actionLatch = (this.inputs[slot] ?? this.inputs.p1).action;
+
+      /*
+       * Kaçış kapısı. İkinci aşama yeni bir basış beklediği için tuşunu
+       * bırakmayan (ya da hiç basmayan) oyuncu servis aşamasında
+       * sonsuza kadar kilitli kalıyordu. Süre dolunca servis olduğu
+       * güçle atılır — oyun asla durmaz.
+       */
+      serve.elapsed += dt;
+      if (this.serve && serve.elapsed >= SERVE.autoAfter) {
+        if (serve.stage === 'power') serve.power = meterToPower(serve.meter);
+        serve.aim = meterToAim(serve.meter);
+        this.launchServe();
+      }
+    } else {
+      serve.aiTimer -= dt;
+      if (serve.aiTimer <= 0) {
+        const choice = aiServeChoice(
+          this.difficultyFor(server ?? {}).serveSkill ?? 0.5
+        );
+        serve.power = choice.power;
+        serve.aim = choice.aim;
+        this.launchServe();
+      }
+    }
+
+    this.emitState();
+  }
+
+  /** Oyuncunun vuruş tuşuna basması: önce gücü, sonra nişanı kilitler. */
+  handleServePress() {
+    const serve = this.serve;
+    if (!serve) return;
+
+    if (serve.stage === 'power') {
+      serve.power = meterToPower(serve.meter);
+      serve.stage = 'aim';
+      serve.meter = 0.5;
+      serve.dir = 1;
+      Sfx.select();
+      this.message = { text: 'NİŞAN', timer: 0.8, color: '#9BE7FF' };
+      this.emitState(true);
+      return;
+    }
+
+    serve.aim = meterToAim(serve.meter);
+    this.launchServe();
+  }
+
+  /** Servisi atar ve ralliyi başlatır. */
+  launchServe() {
+    const serve = this.serve;
+    const server =
+      this.players.find((p) => p.id === serve?.serverId) ?? this.getServer();
+
+    if (!serve || !server) {
+      this.serve = null;
+      this.phase = PHASE.RALLY;
+      return;
+    }
+
+    const toOpponent = this.servingSide === 'home' ? 1 : -1;
+    const shot = computeServeVelocity({
+      power: serve.power || meterToPower(0.7),
+      aim: serve.aim || 0,
+      toOpponent,
+      serveStat: server.data?.stats?.serve ?? 70,
+    });
+
+    this.ball.held = false;
+    this.ball.vx = shot.vx;
+    this.ball.vy = shot.vy;
+    this.ball.lastHitBy = server.id;
+    this.ball.lastHitSide = server.side;
+
+    // Servis ilk temastır: üç temas sayacı buradan başlar
+    this.touch = { side: server.side, count: 1 };
+    this.stats.rallyTouches = 1;
+
+    /*
+     * Servis atan kendi topuna anında tekrar vuramaz.
+     *
+     * Top el yüksekliğinde ve oyuncunun temas dairesinin tam içinde
+     * doğuyor; bekleme konmayınca ralli başlar başlamaz sunucu bir
+     * sonraki karede kendi servisine ikinci kez vuruyor, top saçma bir
+     * yöne gidiyordu. Ölçümde birinci karede tekrar temas görüldü.
+     */
+    server.hitCooldown = SERVE.recontactLock;
+
+    this.spawnDust(server.x, GROUND_Y, 8);
+    this.spawnRing(this.ball.x, this.ball.y, PALETTE.gold, 36);
+    Sfx.hit();
+
+    this.serve = null;
+    this.phase = PHASE.RALLY;
+    this.message = null;
+    this.emitState(true);
+  }
+
   /**
    * Komboyu bir artırır ve kademe geçildiyse duyurur.
    *
@@ -1341,13 +1696,15 @@ export default class Game {
       };
 
       if (winner === 'home') Sfx.setWon();
+      else Sfx.setLost();
       this.emitState(true);
       return;
     }
 
-    this.phase = PHASE.RALLY;
+    // Yeni sayı servisle başlar
     this.message = null;
     this.resetRally(this.servingSide);
+    this.beginServe();
   }
 
   /** Set bitti — maç bitti mi, yoksa yeni set mi? */
@@ -1396,6 +1753,7 @@ export default class Game {
       setHistory: [...this.setHistory],
       stats: { ...this.stats },
       mode: this.mode,
+      playMode: this.playMode,
       format: this.format.id,
       homeIds: [...this.homeIds],
       difficulty: this.difficulty.label,
@@ -1433,9 +1791,10 @@ export default class Game {
       return;
     }
 
-    this.phase = PHASE.RALLY;
+    // Yeni sayı servisle başlar
     this.message = null;
     this.resetRally(this.servingSide);
+    this.beginServe();
   }
 
   /**
@@ -1554,6 +1913,26 @@ export default class Game {
     }
   }
 
+  /**
+   * Tribün yatağı — ralli ve coşkuyla şişer.
+   *
+   * Sürekli çalan hafif bir uğultu, salonun dolu olduğunu tek bir efekt
+   * çalmadan hissettiriyor; sayı sonrası coşku onu geçici olarak
+   * yükseltiyor.
+   */
+  updateAtmosphere() {
+    let level = this.hype * 0.55;
+
+    if (this.phase === PHASE.RALLY) level = Math.max(level, 0.22 + this.hype * 0.45);
+    else if (this.phase === PHASE.SERVE) level = Math.max(level, 0.18);
+    else if (this.phase === PHASE.POINT) level = Math.max(level, 0.35);
+    else if (this.phase === PHASE.READY) level = Math.max(level, 0.12);
+    else if (this.phase === PHASE.MATCH_END) level = this.hype * 0.4;
+    else level = Math.max(level, 0.08);
+
+    Sfx.setAtmosphere(level);
+  }
+
   // ===================================================================
   // React'e durum bildirimi
   // ===================================================================
@@ -1599,6 +1978,7 @@ export default class Game {
       combo: this.combo,
       comboTier: currentComboTier(this.combo),
       campaign: this.campaign,
+      playMode: this.playMode,
       roundLabel: this.roundLabel,
       roundNumber: this.roundNumber,
       roundCount: this.roundCount,
@@ -1657,10 +2037,56 @@ export default class Game {
     drawBall(ctx, this.ball, this.ball.flaming > 0);
     this.drawRings();
     this.drawParticles();
+    this.drawServeMeter();
 
     ctx.restore();
 
     this.drawMessages();
+  }
+
+  /**
+   * Servis göstergesi — servis atanın yanında dikey bar.
+   *
+   * İki aşama tek barla anlatılır: güç aşamasında kırmızı ve üzerinde
+   * "tatlı nokta" çizgisi, nişan aşamasında mavi. Sahanın ortasına değil
+   * oyuncunun yanına konur ki gözün topu bıraktığı yerde kalsın.
+   */
+  drawServeMeter() {
+    if (this.phase !== PHASE.SERVE || !this.serve) return;
+
+    const { ctx, serve } = this;
+    const server =
+      this.players.find((p) => p.id === serve.serverId) ?? this.getServer();
+    if (!server) return;
+
+    const barW = 14;
+    const barH = 70;
+    const x = server.x + (server.side === 'home' ? 28 : -28 - barW);
+    const y = server.y - 110;
+    const aiming = serve.stage === 'aim';
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+    ctx.fillRect(x - 2, y - 2, barW + 4, barH + 4);
+    ctx.strokeStyle = aiming ? '#9BE7FF' : PALETTE.gold;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x - 2, y - 2, barW + 4, barH + 4);
+
+    const fillH = Math.max(2, serve.meter * barH);
+    ctx.fillStyle = aiming ? '#9BE7FF' : PALETTE.turkishRed;
+    ctx.fillRect(x, y + barH - fillH, barW, fillH);
+
+    // Güç aşamasında en verimli noktayı göster
+    if (!aiming) {
+      const sweetY = y + barH - SERVE.sweetSpot * barH;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(x - 3, sweetY - 1, barW + 6, 2);
+    }
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '7px "Press Start 2P", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(aiming ? 'NİŞAN' : 'GÜÇ', server.x, y - 10);
+    ctx.textAlign = 'left';
   }
 
   ballShadowScale() {

@@ -27,6 +27,7 @@ import {
   saveTournament,
 } from './utils/storage.js';
 import { evaluateAchievements, newlyUnlocked } from './game/achievements.js';
+import { getGameMode } from './game/modes.js';
 
 /**
  * Ekran akışı:
@@ -42,6 +43,10 @@ export default function App() {
   const initialPrefs = loadPrefs();
   const [screen, setScreen] = useState('start');
   const [campaign, setCampaign] = useState('match');
+  /** 'solo' | 'coop' | 'vs' — tek klavyede kaç kişi. */
+  const [playMode, setPlayMode] = useState('solo');
+  /** Seçilen menü modunun id'si (coop/versus ayrımı için). */
+  const [modeId, setModeId] = useState('match');
   const [matchConfig, setMatchConfig] = useState(null);
   const [tournament, setTournament] = useState(null);
   /** Sonuç ekranında gösterilecek kapanmış turnuva (bracket özeti). */
@@ -83,7 +88,11 @@ export default function App() {
 
   const handleStart = useCallback(
     (modeId = 'match') => {
-      setCampaign(modeId);
+      // Mod id'si kampanya ile oyuncu sayısını birlikte taşır
+      const mode = getGameMode(modeId);
+      setCampaign(mode.campaign);
+      setPlayMode(mode.playMode ?? 'solo');
+      setModeId(mode.id);
       if (!prefs.tutorialSeen) {
         setTutorialFromMenu(false);
         setScreen('tutorial');
@@ -147,6 +156,7 @@ export default function App() {
     (config) => {
       const mode = config.campaign ?? 'match';
       setCampaign(mode);
+      if (config.playMode) setPlayMode(config.playMode);
 
       const nextPrefs = savePrefs({
         mode: config.mode,
@@ -174,7 +184,12 @@ export default function App() {
       }
 
       // Yeni nesne referansı → MatchScreen motoru sıfırdan kurar
-      setMatchConfig({ ...config, campaign: mode, startedAt: Date.now() });
+      setMatchConfig({
+        ...config,
+        campaign: mode,
+        playMode: config.playMode ?? 'solo',
+        startedAt: Date.now(),
+      });
       setScreen('match');
     },
     []
@@ -354,6 +369,8 @@ export default function App() {
           muted={muted}
           onToggleMute={toggleMute}
           campaign={campaign}
+          playMode={playMode}
+          modeId={modeId}
           initialMode={prefs.mode}
           initialDifficulty={prefs.difficulty}
           initialFormat={prefs.format}

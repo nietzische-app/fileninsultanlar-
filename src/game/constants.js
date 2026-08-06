@@ -292,6 +292,7 @@ export const PALETTE = {
 
 /**
  * Zorluk kademeleri — karakter seçim ekranından ayarlanır.
+
  *
  * `error`, yapay zekânın tahmini düşüş noktasına eklediği sapmadır ve
  * asıl zorluk kolu budur: temas dairesinin yarıçapı ~53px olduğu için
@@ -301,9 +302,10 @@ export const DIFFICULTY = {
   // placement: vuruşu rakibin boş bıraktığı alana yerleştirme becerisi
   //            (0 = tamamen rastgele, 1 = her zaman en uzak boşluğa)
   // diveSkill: yetişemeyeceği topa dalma olasılığı
-  kolay: { label: 'KOLAY', speed: 0.68, reaction: 0.4, error: 130, power: 0.85, placement: 0.12, diveSkill: 0.12 },
-  normal: { label: 'NORMAL', speed: 0.82, reaction: 0.29, error: 98, power: 0.97, placement: 0.4, diveSkill: 0.48 },
-  zor: { label: 'ZOR', speed: 0.94, reaction: 0.2, error: 82, power: 1.06, placement: 0.62, diveSkill: 0.6 },
+  // serveSkill: servis gücü ve nişan tutarlılığı
+  kolay: { label: 'KOLAY', speed: 0.68, reaction: 0.4, error: 130, power: 0.85, placement: 0.12, diveSkill: 0.12, serveSkill: 0.25 },
+  normal: { label: 'NORMAL', speed: 0.82, reaction: 0.29, error: 98, power: 0.97, placement: 0.4, diveSkill: 0.48, serveSkill: 0.55 },
+  zor: { label: 'ZOR', speed: 0.94, reaction: 0.2, error: 82, power: 1.06, placement: 0.62, diveSkill: 0.6, serveSkill: 0.88 },
 };
 
 /**
@@ -398,6 +400,7 @@ export function xToSpread(x, toOpponent) {
 /** Oyun akış aşamaları. */
 export const PHASE = {
   READY: 'ready', // set başı geri sayım
+  SERVE: 'serve', // servis gücü / nişan
   RALLY: 'rally', // top oyunda
   POINT: 'point', // sayı oldu, kısa donma
   SET_END: 'setEnd',
