@@ -27,7 +27,7 @@ Nordik Buz, Balkan Ateşi, Pasifik Dalga.
 | `←` `→` veya `A` `D` | Hareket |
 | `↑` veya `W` | Zıpla |
 | `↓` veya `S` | **Dalış** — yere düşmek üzere olan topa uzan (havadayken **plase**) |
-| `Boşluk` veya `Z` | Vur (manşet / smaç / blok) |
+| `Boşluk` veya `Z` | Vur (manşet / smaç / blok) · **servis**: 1. basış güç, 2. basış nişan |
 | `X` | **Sultan Gücü** — alevli smaç |
 | `ESC` veya `P` | Duraklat |
 
@@ -53,6 +53,22 @@ tam ekran / çık düğmeleri sağ üst köşededir.
   ekrana eklenen PWA kısayolu aynı işi görür.
 - Tuşlar `pointer capture` ile çoklu dokunuşu destekler (ör. sağa git +
   zıpla aynı anda).
+
+### Servis
+
+Her ralli servisle başlar. Servis atan dip çizgiye geçer, top elinde
+bekler ve yanında iki aşamalı bir gösterge salınır:
+
+1. **Güç** — birinci basış gücü kilitler. Beyaz çizgi en verimli noktadır;
+   yüksek güç topu düz ve hızlı, düşük güç yüksek kavisli gönderir.
+2. **Nişan** — ikinci basış derinliği kilitler ve servisi atar. Sol uç
+   file dibi, sağ uç dip çizgi.
+
+Dört saniye içinde iki aşamayı tamamlamazsan servis olduğu güçle
+kendiliğinden atılır — oyun asla beklemede kalmaz.
+
+Servis hızı bilerek ölçülü tutuldu: amaç ralliyi başlatmak, ralliyi tek
+başına kazanmak değil.
 
 ### Oyunun ritmi
 
@@ -279,6 +295,7 @@ src/
 │   ├── Game.js               Motor: döngü, fizik, çarpışma, skor, çizim
 │   ├── rules.js              Saf set/maç/üç-temas kuralları
 │   ├── combo.js              Kombo kademeleri, çarpanlar, tam vuruş penceresi
+│   ├── serve.js              Servis metresi, güç/nişan ve balistiği
 │   ├── achievements.js       Rozet tanımları ve değerlendirme
 │   ├── modes.js              Oyun modu tanımları (hızlı maç / turnuva / hayatta kalma)
 │   ├── tournament.js         Kupa yolu turları ve saf durum makinesi

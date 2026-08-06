@@ -49,6 +49,15 @@ import {
 } from './opponents.js';
 import { pickChaser, sideBounds, updateAI } from './ai.js';
 import {
+  SERVE,
+  advanceServeMeter,
+  aiServeChoice,
+  aiServeDelay,
+  computeServeVelocity,
+  meterToAim,
+  meterToPower,
+} from './serve.js';
+import {
   comboChargeMultiplier,
   comboPowerMultiplier,
   comboTierAt,
@@ -181,6 +190,21 @@ export default class Game {
     };
     this.sultanKeyLatch = false;
 
+    /**
+     * Vuruş tuşuna basış sayacı.
+     *
+     * Girdi her karede yoklanıyordu; iki kare arasına sıkışan hızlı bir
+     * basış (bas–bırak < 16 ms) hiç görülmeden kayboluyordu. Tam vuruş
+     * mekaniği oyuncuyu tam da böyle hızlı tıklamaya ittiği için bu
+     * "tuşa bastım ama vurmadı" hissi veriyordu. Sayaç, basışın hangi
+     * kareye denk geldiğinden bağımsız olarak bir kez işlenmesini
+     * garanti eder.
+     */
+    this.actionPresses = 0;
+    this.lastActionPresses = 0;
+    /** Bu karede yeni bir basış görüldü mü. */
+    this.actionEdge = false;
+
     // Maç durumu
     this.score = { home: 0, away: 0 };
     this.sets = { home: 0, away: 0 };
@@ -200,6 +224,14 @@ export default class Game {
     // Hayatta kalma durumu — diğer modlarda kullanılmaz
     this.lives = SURVIVAL.lives;
     this.wave = 1;
+
+    /**
+     * Servis durumu — yalnızca PHASE.SERVE sırasında dolu.
+     * @type {null | {stage:'power'|'aim', meter:number, dir:1|-1,
+     *   power:number, aim:number, serverId:string, aiTimer:number,
+     *   actionLatch:boolean}}
+     */
+    this.serve = null;
 
     /** Kombo: üst üste tam vuruş / blok / kurtarış. Sayı kaybında sıfırlanır. */
     this.combo = 0;
@@ -428,6 +460,7 @@ export default class Game {
       return;
     }
 
+    if (action === 'action' && !this.input.action) this.actionPresses += 1;
     this.input[action] = true;
   }
 
@@ -455,6 +488,7 @@ export default class Game {
       return;
     }
     if (name in this.input) {
+      if (name === 'action' && pressed && !this.input.action) this.actionPresses += 1;
       this.input[name] = pressed;
     }
   }
@@ -472,6 +506,8 @@ export default class Game {
     this.input.dive = false;
     this.input.sultan = false;
     this.sultanKeyLatch = false;
+    // Duraklatma/odak kaybı sonrası eski basış tetiklenmesin
+    this.lastActionPresses = this.actionPresses;
 
     this.players?.forEach((player) => {
       if (!player.controlled) return;
@@ -522,6 +558,10 @@ export default class Game {
   }
 
   update(dt) {
+    // Bu karede yeni bir vuruş basışı geldi mi (kare arasına sıkışsa bile)
+    this.actionEdge = this.actionPresses !== this.lastActionPresses;
+    this.lastActionPresses = this.actionPresses;
+
     this.time += dt;
     this.shake = Math.max(0, this.shake - dt * 60);
     this.hype = Math.max(0, this.hype - dt * 0.9);
@@ -548,10 +588,13 @@ export default class Game {
         this.updatePlayers(dt, false);
         this.phaseTimer -= dt;
         if (this.phaseTimer <= 0) {
-          this.phase = PHASE.RALLY;
           this.message = null;
-          Sfx.whistle();
+          this.beginServe();
         }
+        break;
+
+      case PHASE.SERVE:
+        this.updateServe(dt);
         break;
 
       case PHASE.RALLY:
@@ -603,7 +646,12 @@ export default class Game {
         player.input.left = active && this.input.left;
         player.input.right = active && this.input.right;
         player.input.up = active && this.input.up;
-        player.input.action = active && this.input.action;
+        /*
+         * Kare arasına sıkışan basış da bir kare boyunca "basılı"
+         * sayılır: yoksa hızlı tıklayan oyuncunun vuruşu hiç
+         * gerçekleşmiyor, tuş çalışmamış gibi hissediliyordu.
+         */
+        player.input.action = active && (this.input.action || this.actionEdge);
         player.input.dive = active && this.input.dive;
         player.aiSpeedScale = 1;
       } else if (active) {
@@ -1159,6 +1207,223 @@ export default class Game {
     if (perfect) this.addHitStop(HITSTOP.perfect);
   }
 
+  // ===================================================================
+  // Servis
+  // ===================================================================
+
+  /** Servis atacak oyuncu. */
+  getServer() {
+    return this.players.find((p) => p.side === this.servingSide) ?? null;
+  }
+
+  /** Servis atanı dip çizgiye çeker. */
+  placeServer(servingSide) {
+    const server = this.players.find((p) => p.side === servingSide);
+    if (!server) return;
+
+    const ratio = servingSide === 'home' ? SERVE.backLineHome : SERVE.backLineAway;
+    server.x = GAME_WIDTH * ratio;
+    server.y = GROUND_Y;
+    server.vx = 0;
+    server.vy = 0;
+    server.onGround = true;
+    server.facing = servingSide === 'home' ? 1 : -1;
+    server.pose = 'idle';
+  }
+
+  /** Servis atanın elinde bekleyen top. */
+  createHeldBall(side) {
+    const server = this.players.find((p) => p.side === side) ?? null;
+    const x =
+      server?.x ??
+      GAME_WIDTH * (side === 'home' ? SERVE.backLineHome : SERVE.backLineAway);
+
+    return {
+      ...this.createBall(side),
+      x,
+      y: GROUND_Y - SERVE.holdHeight,
+      vx: 0,
+      vy: 0,
+      held: true,
+    };
+  }
+
+  /**
+   * Servis aşamasını başlatır.
+   *
+   * Ralliler önce topun havada belirip düşmesiyle başlıyordu — maçın en
+   * kontrollü anı olan servis oyunda hiç yoktu. Artık iki aşamalı bir
+   * gösterge var: önce güç, sonra nişan.
+   */
+  beginServe() {
+    this.phase = PHASE.SERVE;
+    this.placeServer(this.servingSide);
+    this.ball = this.createHeldBall(this.servingSide);
+    this.ballTrail.length = 0;
+    this.touch = { side: null, count: 0 };
+
+    const server = this.getServer();
+    const human = Boolean(server?.controlled);
+
+    this.serve = {
+      stage: 'power',
+      meter: 0.15,
+      dir: 1,
+      power: 0,
+      aim: 0,
+      serverId: server?.id ?? '',
+      aiTimer: human ? 0 : aiServeDelay(this.difficultyFor(server ?? {}).serveSkill ?? 0.5),
+      actionLatch: false,
+      /** İnsan servisinde otomatik atış sayacı. */
+      elapsed: 0,
+    };
+
+    this.message = { text: 'SERVİS', timer: 1, color: PALETTE.gold };
+    Sfx.whistle();
+    this.emitState(true);
+  }
+
+  updateServe(dt) {
+    const serve = this.serve;
+    if (!serve) {
+      this.phase = PHASE.RALLY;
+      return;
+    }
+
+    // Servis sırasında kimse koşamaz; yalnızca duruş güncellenir
+    this.updatePlayers(dt, false);
+
+    const server = this.players.find((p) => p.id === serve.serverId) ?? this.getServer();
+    if (server) {
+      const ratio = this.servingSide === 'home' ? SERVE.backLineHome : SERVE.backLineAway;
+      server.x = GAME_WIDTH * ratio;
+      server.y = GROUND_Y;
+      server.vx = 0;
+      server.vy = 0;
+      server.onGround = true;
+      server.pose = 'idle';
+
+      // Top elde bekler
+      this.ball.x = server.x + server.facing * 10;
+      this.ball.y = GROUND_Y - SERVE.holdHeight;
+      this.ball.vx = 0;
+      this.ball.vy = 0;
+      this.ball.held = true;
+    }
+
+    const speed = serve.stage === 'power' ? SERVE.meterSpeed : SERVE.aimMeterSpeed;
+    const next = advanceServeMeter(serve.meter, serve.dir, speed, dt);
+    serve.meter = next.meter;
+    serve.dir = next.dir;
+
+    if (server?.controlled) {
+      /*
+       * Basışın yükselen kenarı: tuşu basılı tutmak iki aşamayı da
+       * geçmesin. Kenar sayaçtan okunur, böylece iki kare arasına
+       * sıkışan hızlı basış da kaybolmaz.
+       */
+      if (this.actionEdge) {
+        this.handleServePress();
+      }
+      serve.actionLatch = this.input.action;
+
+      /*
+       * Kaçış kapısı. İkinci aşama yeni bir basış beklediği için tuşunu
+       * bırakmayan (ya da hiç basmayan) oyuncu servis aşamasında
+       * sonsuza kadar kilitli kalıyordu. Süre dolunca servis olduğu
+       * güçle atılır — oyun asla durmaz.
+       */
+      serve.elapsed += dt;
+      if (this.serve && serve.elapsed >= SERVE.autoAfter) {
+        if (serve.stage === 'power') serve.power = meterToPower(serve.meter);
+        serve.aim = meterToAim(serve.meter);
+        this.launchServe();
+      }
+    } else {
+      serve.aiTimer -= dt;
+      if (serve.aiTimer <= 0) {
+        const choice = aiServeChoice(
+          this.difficultyFor(server ?? {}).serveSkill ?? 0.5
+        );
+        serve.power = choice.power;
+        serve.aim = choice.aim;
+        this.launchServe();
+      }
+    }
+
+    this.emitState();
+  }
+
+  /** Oyuncunun vuruş tuşuna basması: önce gücü, sonra nişanı kilitler. */
+  handleServePress() {
+    const serve = this.serve;
+    if (!serve) return;
+
+    if (serve.stage === 'power') {
+      serve.power = meterToPower(serve.meter);
+      serve.stage = 'aim';
+      serve.meter = 0.5;
+      serve.dir = 1;
+      Sfx.select();
+      this.message = { text: 'NİŞAN', timer: 0.8, color: '#9BE7FF' };
+      this.emitState(true);
+      return;
+    }
+
+    serve.aim = meterToAim(serve.meter);
+    this.launchServe();
+  }
+
+  /** Servisi atar ve ralliyi başlatır. */
+  launchServe() {
+    const serve = this.serve;
+    const server =
+      this.players.find((p) => p.id === serve?.serverId) ?? this.getServer();
+
+    if (!serve || !server) {
+      this.serve = null;
+      this.phase = PHASE.RALLY;
+      return;
+    }
+
+    const toOpponent = this.servingSide === 'home' ? 1 : -1;
+    const shot = computeServeVelocity({
+      power: serve.power || meterToPower(0.7),
+      aim: serve.aim || 0,
+      toOpponent,
+      serveStat: server.data?.stats?.serve ?? 70,
+    });
+
+    this.ball.held = false;
+    this.ball.vx = shot.vx;
+    this.ball.vy = shot.vy;
+    this.ball.lastHitBy = server.id;
+    this.ball.lastHitSide = server.side;
+
+    // Servis ilk temastır: üç temas sayacı buradan başlar
+    this.touch = { side: server.side, count: 1 };
+    this.stats.rallyTouches = 1;
+
+    /*
+     * Servis atan kendi topuna anında tekrar vuramaz.
+     *
+     * Top el yüksekliğinde ve oyuncunun temas dairesinin tam içinde
+     * doğuyor; bekleme konmayınca ralli başlar başlamaz sunucu bir
+     * sonraki karede kendi servisine ikinci kez vuruyor, top saçma bir
+     * yöne gidiyordu. Ölçümde birinci karede tekrar temas görüldü.
+     */
+    server.hitCooldown = SERVE.recontactLock;
+
+    this.spawnDust(server.x, GROUND_Y, 8);
+    this.spawnRing(this.ball.x, this.ball.y, PALETTE.gold, 36);
+    Sfx.hit();
+
+    this.serve = null;
+    this.phase = PHASE.RALLY;
+    this.message = null;
+    this.emitState(true);
+  }
+
   /**
    * Komboyu bir artırır ve kademe geçildiyse duyurur.
    *
@@ -1345,9 +1610,10 @@ export default class Game {
       return;
     }
 
-    this.phase = PHASE.RALLY;
+    // Yeni sayı servisle başlar
     this.message = null;
     this.resetRally(this.servingSide);
+    this.beginServe();
   }
 
   /** Set bitti — maç bitti mi, yoksa yeni set mi? */
@@ -1433,9 +1699,10 @@ export default class Game {
       return;
     }
 
-    this.phase = PHASE.RALLY;
+    // Yeni sayı servisle başlar
     this.message = null;
     this.resetRally(this.servingSide);
+    this.beginServe();
   }
 
   /**
@@ -1657,10 +1924,56 @@ export default class Game {
     drawBall(ctx, this.ball, this.ball.flaming > 0);
     this.drawRings();
     this.drawParticles();
+    this.drawServeMeter();
 
     ctx.restore();
 
     this.drawMessages();
+  }
+
+  /**
+   * Servis göstergesi — servis atanın yanında dikey bar.
+   *
+   * İki aşama tek barla anlatılır: güç aşamasında kırmızı ve üzerinde
+   * "tatlı nokta" çizgisi, nişan aşamasında mavi. Sahanın ortasına değil
+   * oyuncunun yanına konur ki gözün topu bıraktığı yerde kalsın.
+   */
+  drawServeMeter() {
+    if (this.phase !== PHASE.SERVE || !this.serve) return;
+
+    const { ctx, serve } = this;
+    const server =
+      this.players.find((p) => p.id === serve.serverId) ?? this.getServer();
+    if (!server) return;
+
+    const barW = 14;
+    const barH = 70;
+    const x = server.x + (server.side === 'home' ? 28 : -28 - barW);
+    const y = server.y - 110;
+    const aiming = serve.stage === 'aim';
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+    ctx.fillRect(x - 2, y - 2, barW + 4, barH + 4);
+    ctx.strokeStyle = aiming ? '#9BE7FF' : PALETTE.gold;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x - 2, y - 2, barW + 4, barH + 4);
+
+    const fillH = Math.max(2, serve.meter * barH);
+    ctx.fillStyle = aiming ? '#9BE7FF' : PALETTE.turkishRed;
+    ctx.fillRect(x, y + barH - fillH, barW, fillH);
+
+    // Güç aşamasında en verimli noktayı göster
+    if (!aiming) {
+      const sweetY = y + barH - SERVE.sweetSpot * barH;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(x - 3, sweetY - 1, barW + 6, 2);
+    }
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '7px "Press Start 2P", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(aiming ? 'NİŞAN' : 'GÜÇ', server.x, y - 10);
+    ctx.textAlign = 'left';
   }
 
   ballShadowScale() {
