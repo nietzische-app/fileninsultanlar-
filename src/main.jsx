@@ -83,6 +83,18 @@ function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
   if (!import.meta.env.PROD) return;
 
+  /*
+   * Service worker yalnızca kendi alan adımızın kökünde anlamlı.
+   *
+   * Oyun portalları oyunu bir alt klasörde ve çoğu zaman iframe içinde
+   * barındırıyor. Orada '/sw.js' yanlış adres (404) ve kapsam kökü
+   * olmadığı için kayıt zaten reddedilir; iframe içinde çevrimdışı
+   * kabuk da kimseye faydası olmayan bir şey. Sessizce atlıyoruz.
+   */
+  const atRoot = window.location.pathname === '/' || window.location.pathname === '/index.html';
+  const embedded = window.self !== window.top;
+  if (!atRoot || embedded) return;
+
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sw.js')

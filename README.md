@@ -274,6 +274,33 @@ npm test         # Vitest — kurallar, balistik, storage, kadro
 
 GitHub Actions (`.github/workflows/ci.yml`) her push/PR'da `lint` + `test` + `build` çalıştırır.
 
+## Oyun portallarına dağıtım
+
+```bash
+npm run build:portal   # → filenin-sultanlari-portal.zip (~104 KB)
+```
+
+Portallar (Oyunskor, Y8, CrazyGames vb.) oyunu ya ZIP olarak alıp kendi
+sunucularında bir **alt klasörde** barındırır, ya da bir URL'yi **iframe**
+içine gömer. İkisi de kök dizin varsaymaz; bu yüzden `vite.config.js`
+içinde `base: './'` kullanılıyor.
+
+Ölçümle bulunan ve düzeltilen üç engel:
+
+| Engel | Belirti | Çözüm |
+|---|---|---|
+| Mutlak varlık yolları | Alt klasörde sayfa **bomboş** (JS+CSS 404) | `base: './'` |
+| Google Fonts bağımlılığı | Font engellenirse tüm retro görünüm çöker | Font yerelde (7 KB) |
+| Service worker | Alt klasörde `/sw.js` 404, iframe'de anlamsız | Kök değilse/gömülüyse kaydolmaz |
+
+`build:portal` betiği ayrıca portalda işe yaramayanları ayıklar (kaynak
+haritaları 850 KB, service worker, PWA manifesti) ve pakette mutlak yol
+kalmadığını doğrular — kalırsa build hata verip durur.
+
+**Not:** İki kişilik modlar klavye gerektirir; mobil portallarda tek
+kişilik modlar oynanır. Tam ekran düğmesi iframe içinde ancak portal
+`allow="fullscreen"` verdiyse çalışır.
+
 ## Vercel'e Dağıtım
 
 Repo'yu Vercel'e bağlaman yeterli — `vercel.json` ayarları içeriyor. Elle
