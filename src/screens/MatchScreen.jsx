@@ -77,15 +77,21 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
     gameRef.current = game;
     game.start();
 
-    // Geliştirme kolaylığı: konsoldan motora eriş (production build'de yok)
+    // Geliştirme kolaylığı: konsoldan motora ve ses motoruna eriş
+    // (production build'de yok). Ses motoru da açılır çünkü Web Audio
+    // hataları sessizce yutuluyor ve dışarıdan doğrulanamıyor.
     if (import.meta.env.DEV) {
       window.__game = game;
+      window.__sfx = Sfx;
     }
 
     return () => {
       game.destroy();
       gameRef.current = null;
-      if (import.meta.env.DEV) delete window.__game;
+      if (import.meta.env.DEV) {
+        delete window.__game;
+        delete window.__sfx;
+      }
     };
   }, [config]);
 
@@ -104,7 +110,10 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
   const pauseGame = useCallback(() => {
     const game = gameRef.current;
     if (!game || game.finished) return;
-    if (game.running) game.stop();
+    if (game.running) {
+      game.stop();
+      Sfx.pause();
+    }
     setPaused(true);
   }, []);
 

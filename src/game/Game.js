@@ -310,6 +310,9 @@ export default class Game {
     // Duraklatınca basılı kalan tuş/dokunuş devam etmesin
     this.clearInput();
 
+    // Duraklatınca tribün de sussun
+    Sfx.hushAtmosphere();
+
     // Duraklatınca son kare ekranda kalsın
     this.render();
     this.emitState(true);
@@ -318,6 +321,7 @@ export default class Game {
   destroy() {
     this.stop();
     this.clearInput();
+    Sfx.hushAtmosphere();
     this.particles.length = 0;
     this.rings.length = 0;
     this.ballTrail.length = 0;
@@ -621,6 +625,8 @@ export default class Game {
         this.updatePlayers(dt, false);
         break;
     }
+
+    this.updateAtmosphere();
   }
 
   // ===================================================================
@@ -1606,6 +1612,7 @@ export default class Game {
       };
 
       if (winner === 'home') Sfx.setWon();
+      else Sfx.setLost();
       this.emitState(true);
       return;
     }
@@ -1819,6 +1826,26 @@ export default class Game {
       this.message.timer -= dt;
       if (this.message.timer <= 0) this.message = null;
     }
+  }
+
+  /**
+   * Tribün yatağı — ralli ve coşkuyla şişer.
+   *
+   * Sürekli çalan hafif bir uğultu, salonun dolu olduğunu tek bir efekt
+   * çalmadan hissettiriyor; sayı sonrası coşku onu geçici olarak
+   * yükseltiyor.
+   */
+  updateAtmosphere() {
+    let level = this.hype * 0.55;
+
+    if (this.phase === PHASE.RALLY) level = Math.max(level, 0.22 + this.hype * 0.45);
+    else if (this.phase === PHASE.SERVE) level = Math.max(level, 0.18);
+    else if (this.phase === PHASE.POINT) level = Math.max(level, 0.35);
+    else if (this.phase === PHASE.READY) level = Math.max(level, 0.12);
+    else if (this.phase === PHASE.MATCH_END) level = this.hype * 0.4;
+    else level = Math.max(level, 0.08);
+
+    Sfx.setAtmosphere(level);
   }
 
   // ===================================================================

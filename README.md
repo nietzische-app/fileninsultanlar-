@@ -119,6 +119,17 @@ Bedeli var: kaymadan sonra oyuncu kısa süre yerde kalır ve yönlendirilemez.
 Iskalanan dalış yarım saniyeyi kaybettirir, o yüzden son çare olarak
 kullanılmalı — koşarak yetişebiliyorsan koş. Rakip yapay zekâsı da dalar.
 
+### Ses
+
+Her şey osilatör ve filtrelenmiş gürültüyle anlık üretilir; tek bir ses
+dosyası yok. Motor katmanlı: master altında ayrı **efekt** ve **tribün**
+bus'ları var, böylece kalabalık efektleri bastırmıyor.
+
+Maç boyunca hafif bir **tribün yatağı** çalar ve ralli/coşkuyla şişer —
+salonun dolu olduğunu tek bir efekt çalmadan hissettirir. Duraklatınca ve
+maçtan çıkınca susar. Aynı sesin mekanik tekrarını kırmak için vuruşlara
+küçük bir pitch sapması uygulanır.
+
 ### Sultan Gücü
 
 Sayı aldıkça, blok yaptıkça ve fileyi geçen her vuruşta bar dolar. Dolduğunda
@@ -263,7 +274,7 @@ Ortam değişkeni, backend ya da veritabanı yok; tamamen statik bir SPA.
 | Stil | Tailwind CSS 3 |
 | Oyun | HTML5 Canvas 2D + `requestAnimationFrame` |
 | Grafik | %100 kod — PNG/JPG/SVG yok, `drawImage` yok |
-| Ses | Web Audio API (osilatörle üretilen 8-bit efektler, dosya yok) |
+| Ses | Web Audio API — katmanlı motor (master → sfx/tribün bus), dosya yok |
 | Font | Arayüzde Press Start 2P; forma numaraları kendi piksel fontumuz |
 
 ## Dosya Yapısı
