@@ -7,7 +7,8 @@ module.exports = {
     'plugin:react/jsx-runtime',
     'plugin:react-hooks/recommended',
   ],
-  ignorePatterns: ['dist', '.eslintrc.cjs'],
+  // `portal` build çıktısıdır (minified paket) — dist gibi taranmamalı
+  ignorePatterns: ['dist', 'portal', '.eslintrc.cjs'],
   parserOptions: { ecmaVersion: 'latest', sourceType: 'module' },
   settings: { react: { version: '18.3' } },
   plugins: ['react-refresh'],
@@ -15,6 +16,11 @@ module.exports = {
     {
       files: ['**/*.test.{js,jsx}'],
       env: { node: true },
+    },
+    {
+      // Dağıtım betikleri Node'da çalışır, tarayıcıda değil
+      files: ['scripts/**/*.mjs'],
+      env: { node: true, browser: false },
     },
   ],
   rules: {

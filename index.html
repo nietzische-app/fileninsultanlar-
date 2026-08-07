@@ -15,17 +15,27 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Sultanlar" />
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="manifest" href="manifest.webmanifest" />
 
     <title>Filenin Sultanları — Retro Voleybol</title>
 
-    <!-- Retro piksel font: Press Start 2P -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
-      rel="stylesheet"
-    />
+    <!--
+      Retro piksel font — kendi sunucumuzdan.
+
+      Google Fonts'tan çekilirken oyunun tüm görünümü harici bir isteğe
+      bağlıydı: portal CSP'si engellerse ya da ağ yoksa yazı tipi
+      Times New Roman'a düşüp retro havayı tamamen bozuyordu. Dosya
+      7 KB, gömmenin bedeli yok.
+    -->
+    <style>
+      @font-face {
+        font-family: 'Press Start 2P';
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url('./fonts/press-start-2p.woff2') format('woff2');
+      }
+    </style>
 
     <!--
       Favicon çalışma anında canvas'tan üretilir (src/main.jsx).
@@ -41,6 +51,6 @@
       Bu oyunu oynamak için JavaScript'i etkinleştirmeniz gerekiyor.
     </noscript>
 
-    <script type="module" src="/src/main.jsx"></script>
+    <script type="module" src="./src/main.jsx"></script>
   </body>
 </html>

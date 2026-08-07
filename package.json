@@ -11,7 +11,8 @@
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "test": "vitest run",
     "test:watch": "vitest",
-    "vercel-build": "vite build"
+    "vercel-build": "vite build",
+    "build:portal": "node scripts/build-portal.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

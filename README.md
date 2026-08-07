@@ -50,7 +50,9 @@ tam ekran / çık düğmeleri sağ üst köşededir.
 - **Tam ekran** düğmesi Fullscreen API'yi kullanır ve destekleniyorsa
   yönü yataya kilitler. iOS Safari `Element.requestFullscreen`'i
   desteklemediği için düğme orada hiç gösterilmez — o cihazlarda ana
-  ekrana eklenen PWA kısayolu aynı işi görür.
+  ekrana eklenen PWA kısayolu aynı işi görür. Aynı denetim izne de bakar
+  (`document.fullscreenEnabled`): oyun `allow="fullscreen"` verilmemiş bir
+  iframe'e gömüldüyse düğme gizlenir, çünkü çağrı sessizce reddedilirdi.
 - Tuşlar `pointer capture` ile çoklu dokunuşu destekler (ör. sağa git +
   zıpla aynı anda).
 
@@ -273,6 +275,40 @@ npm test         # Vitest — kurallar, balistik, storage, kadro
 ## CI
 
 GitHub Actions (`.github/workflows/ci.yml`) her push/PR'da `lint` + `test` + `build` çalıştırır.
+
+## Oyun portallarına dağıtım
+
+```bash
+npm run build:portal   # → filenin-sultanlari-portal.zip (~104 KB)
+```
+
+Portallar (Oyunskor, Y8, CrazyGames vb.) oyunu ya ZIP olarak alıp kendi
+sunucularında bir **alt klasörde** barındırır, ya da bir URL'yi **iframe**
+içine gömer. İkisi de kök dizin varsaymaz; bu yüzden `vite.config.js`
+içinde `base: './'` kullanılıyor.
+
+Ölçümle bulunan ve düzeltilen beş engel:
+
+| Engel | Belirti | Çözüm |
+|---|---|---|
+| Mutlak varlık yolları | Alt klasörde sayfa **bomboş** (JS+CSS 404) | `base: './'` |
+| Google Fonts bağımlılığı | Font engellenirse tüm retro görünüm çöker | Font yerelde (7 KB) |
+| Service worker | Alt klasörde `/sw.js` 404, iframe'de anlamsız | Kök değilse/gömülüyse kaydolmaz |
+| Tam ekran izni | Portal `allow="fullscreen"` vermezse düğme basınca **hiçbir şey olmuyor** | `document.fullscreenEnabled` denetlenir, izin yoksa düğme gizlenir |
+| Klavye odağı | Oyuncu portal sayfasına tıklayınca tuşlar ölür ama maç **arka planda sayı kaybettirmeye devam eder** | Odak kaybında maç otomatik duraklar |
+
+Son ikisi iframe'e özgü. `requestFullscreen` gömülü sayfada da tanımlıdır,
+ama izin verilmediğinde çağrı sessizce reddedilir — ölçümde `allow` yokken
+`fullscreenEnabled: false`, varken `true` çıktı; düğme artık buna bakıyor.
+Odak kaybında ise mevcut duraklatma katmanı gösteriliyor, "DEVAM ET"e
+basmak hem oyunu hem klavye odağını geri getiriyor.
+
+`build:portal` betiği ayrıca portalda işe yaramayanları ayıklar (kaynak
+haritaları 850 KB, service worker, PWA manifesti) ve pakette mutlak yol
+kalmadığını doğrular — kalırsa build hata verip durur.
+
+**Not:** İki kişilik modlar klavye gerektirir; mobil portallarda tek
+kişilik modlar oynanır.
 
 ## Vercel'e Dağıtım
 

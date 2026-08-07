@@ -151,6 +151,29 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [pauseGame]);
 
+  /*
+   * Klavye odağı kaybolunca duraklat.
+   *
+   * Oyun portalları oyunu iframe'e gömüyor. Oyuncu portal sayfasının bir
+   * yerine tıkladığında iframe odağı kaybediyor: tuşlar artık oyuna
+   * ulaşmıyor ama motor koşmaya devam ediyordu — yani oyuncu hiçbir şey
+   * yapamazken sayı kaybediyor ve sebebini anlamıyordu. Ölçümde
+   * doğrulandı. Duraklatma katmanı hem durumu açıklıyor hem de
+   * "DEVAM ET"e basmak odağı geri veriyor.
+   *
+   * Gömülü olmayan dağıtımda da işe yarar: başka bir pencereye tıklamak
+   * `blur` üretir ama `visibilitychange` üretmez.
+   */
+  useEffect(() => {
+    const handleBlur = () => {
+      const game = gameRef.current;
+      if (game && !game.finished && game.running) pauseGame();
+    };
+
+    window.addEventListener('blur', handleBlur);
+    return () => window.removeEventListener('blur', handleBlur);
+  }, [pauseGame]);
+
   const requestQuit = useCallback(() => {
     Sfx.unlock();
     Sfx.select();
