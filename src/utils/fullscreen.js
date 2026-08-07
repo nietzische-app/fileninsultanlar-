@@ -11,12 +11,30 @@
 /** @returns {boolean} */
 export function isFullscreenSupported() {
   if (typeof document === 'undefined') return false;
+
   const el = document.documentElement;
-  return Boolean(
+  const hasMethod = Boolean(
     el.requestFullscreen ||
       el.webkitRequestFullscreen ||
       el.msRequestFullscreen
   );
+  if (!hasMethod) return false;
+
+  /*
+   * Metodun var olması yetmez, izin de gerekir.
+   *
+   * Oyun portalları oyunu iframe'e gömüyor; `allow="fullscreen"`
+   * verilmediğinde `requestFullscreen` yerinde duruyor ama
+   * `fullscreenEnabled` false oluyor ve çağrı sessizce reddediliyor.
+   * Ölçümde tam da bu görüldü: düğme görünüyor, basınca hiçbir şey
+   * olmuyordu. Artık izin yoksa düğme hiç gösterilmiyor.
+   */
+  const enabled =
+    document.fullscreenEnabled ??
+    document.webkitFullscreenEnabled ??
+    true;
+
+  return Boolean(enabled);
 }
 
 /** @returns {Element | null} */
