@@ -28,7 +28,6 @@ import {
   RULES,
   SULTAN,
   SURVIVAL,
-  WALL_PAD,
   scaleDifficulty,
 } from './constants.js';
 import {
@@ -48,6 +47,7 @@ import {
   pickRandomOpponent,
 } from './opponents.js';
 import { pickChaser, sideBounds, updateAI } from './ai.js';
+import { stepBall } from './ballstep.js';
 import {
   SERVE,
   advanceServeMeter,
@@ -56,6 +56,7 @@ import {
   computeServeVelocity,
   meterToAim,
   meterToPower,
+  safeAimRange,
 } from './serve.js';
 import {
   comboChargeMultiplier,
@@ -441,6 +442,10 @@ export default class Game {
       flaming: 0,
       lastHitBy: null,
       lastHitSide: null,
+      /** Servis atıldı ve henüz kimse dokunmadı — aut kuralı bunda işler. */
+      serveUntouched: false,
+      /** Dokunulmamış servis dip çizgiyi aştı (duvardan geri sekse de kalır). */
+      serveOut: false,
     };
   }
 
@@ -918,11 +923,12 @@ export default class Game {
       return;
     }
 
-    ball.vy += PHYSICS.ballGravity * dt;
-    ball.vx *= PHYSICS.ballAirDrag;
-
-    ball.x += ball.vx * dt;
-    ball.y += ball.vy * dt;
+    /*
+     * Serbest uçuş fiziği `ballstep.js`'te — servis göstergesi de aynı
+     * fonksiyonu çağırıyor. Ayrı ayrı yazıldıklarında ayrışmışlardı:
+     * bardaki yeşil bölge ile gerçek sonuç yalnızca %79 uyuşuyordu.
+     */
+    const event = stepBall(ball, dt);
     ball.rotation += ball.vx * dt * 0.03;
 
     // Alev izi
@@ -930,63 +936,46 @@ export default class Game {
       this.spawnFlame(ball.x, ball.y);
     }
 
-    // Yan duvarlar
-    if (ball.x - ball.radius <= WALL_PAD) {
-      ball.x = WALL_PAD + ball.radius;
-      ball.vx = Math.abs(ball.vx) * PHYSICS.wallRestitution;
-    } else if (ball.x + ball.radius >= GAME_WIDTH - WALL_PAD) {
-      ball.x = GAME_WIDTH - WALL_PAD - ball.radius;
-      ball.vx = -Math.abs(ball.vx) * PHYSICS.wallRestitution;
-    }
+    if (event.net) Sfx.net();
 
-    // Tavan
-    if (ball.y - ball.radius <= 0) {
-      ball.y = ball.radius;
-      ball.vy = Math.abs(ball.vy) * 0.5;
+    /*
+     * Dokunulmamış servis dip çizgiyi aştı mı?
+     *
+     * Sahada ralli için aut yok — yan duvarlar topu geri sektiriyor, o
+     * yüzden "uzun" bir vuruşun bedeli olmuyor. Bu kural yalnızca
+     * kimsenin dokunmadığı servise işler ve servis barının üst ucuna
+     * gerçek bir risk veriyor: sertçe vurup derine nişan alırsan top
+     * dışarı çıkar. Duvardan geri sekip içeri düşmesin diye çizgiyi
+     * geçtiği an mandallanır.
+     */
+    if (ball.serveUntouched && !ball.serveOut) {
+      const outX =
+        ball.lastHitSide === 'home'
+          ? GAME_WIDTH * SERVE.outLine
+          : GAME_WIDTH * (1 - SERVE.outLine);
+      if (ball.lastHitSide === 'home' ? ball.x > outX : ball.x < outX) {
+        ball.serveOut = true;
+      }
     }
-
-    this.resolveNet();
 
     // Zemin → sayı
     if (ball.y + ball.radius >= GROUND_Y) {
       ball.y = GROUND_Y - ball.radius;
       const landedSide = ball.x < NET.x ? 'home' : 'away';
+      const receiver = ball.lastHitSide === 'home' ? 'away' : 'home';
+
+      if (ball.serveUntouched && ball.serveOut) {
+        this.awardPoint(receiver, landedSide, 'AUT!');
+        return;
+      }
+      if (ball.serveUntouched && landedSide === ball.lastHitSide) {
+        // Fileyi aşamadan kendi sahasına düştü
+        this.awardPoint(receiver, landedSide, 'FİLEDE!');
+        return;
+      }
+
       this.awardPoint(landedSide === 'home' ? 'away' : 'home', landedSide);
     }
-  }
-
-  /** File çarpışması — yan yüzey ve üst bant. */
-  resolveNet() {
-    const ball = this.ball;
-    const netLeft = NET.x - NET.width / 2;
-    const netRight = NET.x + NET.width / 2;
-
-    const withinColumn =
-      ball.x + ball.radius > netLeft && ball.x - ball.radius < netRight;
-
-    if (!withinColumn) return;
-
-    // Üst bandın üstünden geçiyor
-    if (ball.y + ball.radius < NET.topY) return;
-
-    // Bandın hemen üstüne düşerse hafifçe seker
-    if (ball.vy > 0 && ball.y < NET.topY && ball.y + ball.radius >= NET.topY) {
-      ball.y = NET.topY - ball.radius;
-      ball.vy = -Math.abs(ball.vy) * 0.45;
-      ball.vx *= 1.1;
-      Sfx.net();
-      return;
-    }
-
-    // Yan yüzeye çarptı
-    if (ball.x < NET.x) {
-      ball.x = netLeft - ball.radius;
-      ball.vx = -Math.abs(ball.vx) * PHYSICS.netRestitution;
-    } else {
-      ball.x = netRight + ball.radius;
-      ball.vx = Math.abs(ball.vx) * PHYSICS.netRestitution;
-    }
-    Sfx.net();
   }
 
   /** Top–oyuncu temasları. */
@@ -1230,6 +1219,13 @@ export default class Game {
     ball.lastHitBy = player.id;
     ball.lastHitSide = player.side;
 
+    /*
+     * Birisi dokunduysa servis artık "dokunulmamış" değil: aut kuralı
+     * düşer. Voleybolun gerçek kuralı da bu — karşılamaya kalkıp
+     * dokunduysan top oyundadır, dışarı gidecek olsa bile.
+     */
+    ball.serveUntouched = false;
+
     player.hitCooldown = PHYSICS.hitCooldown;
     this.stats.rallyTouches += 1;
     this.stats.longestRally = Math.max(this.stats.longestRally, this.stats.rallyTouches);
@@ -1433,7 +1429,9 @@ export default class Game {
       serve.aiTimer -= dt;
       if (serve.aiTimer <= 0) {
         const choice = aiServeChoice(
-          this.difficultyFor(server ?? {}).serveSkill ?? 0.5
+          this.difficultyFor(server ?? {}).serveSkill ?? 0.5,
+          this.servingSide === 'home' ? 1 : -1,
+          server?.data?.stats?.serve ?? 70
         );
         serve.power = choice.power;
         serve.aim = choice.aim;
@@ -1454,8 +1452,30 @@ export default class Game {
       serve.stage = 'aim';
       serve.meter = 0.5;
       serve.dir = 1;
+
+      /*
+       * Kilitlenen güç için sahada kalan nişan aralığı bir kez hesaplanır
+       * ve barda yeşil bölge olarak çizilir.
+       *
+       * Bu olmadan barın cezası şansa dönerdi: oyuncu gücü kilitliyor ama
+       * o gücün hangi nişanlarla sahada kaldığını göremiyor. Artık
+       * görüyor — düşük güç derin nişan ister, yüksek güç kısa. Her karede
+       * yeniden hesaplanmaz, aramanın maliyeti var.
+       */
+      const server =
+        this.players.find((p) => p.id === serve.serverId) ?? this.getServer();
+      serve.safeAim = safeAimRange({
+        power: serve.power,
+        toOpponent: this.servingSide === 'home' ? 1 : -1,
+        serveStat: server?.data?.stats?.serve ?? 70,
+      });
+
       Sfx.select();
-      this.message = { text: 'NİŞAN', timer: 0.8, color: '#9BE7FF' };
+      this.message = {
+        text: serve.safeAim ? 'NİŞAN' : 'GÜÇ YETMEDİ!',
+        timer: 0.8,
+        color: serve.safeAim ? '#9BE7FF' : PALETTE.turkishRed,
+      };
       this.emitState(true);
       return;
     }
@@ -1489,6 +1509,8 @@ export default class Game {
     this.ball.vy = shot.vy;
     this.ball.lastHitBy = server.id;
     this.ball.lastHitSide = server.side;
+    this.ball.serveUntouched = true;
+    this.ball.serveOut = false;
 
     // Servis ilk temastır: üç temas sayacı buradan başlar
     this.touch = { side: server.side, count: 1 };
@@ -2071,8 +2093,30 @@ export default class Game {
     ctx.lineWidth = 2;
     ctx.strokeRect(x - 2, y - 2, barW + 4, barH + 4);
 
+    /*
+     * Nişan aşamasında sahada kalan aralık yeşil zemin olarak çizilir.
+     *
+     * Barın artık gerçek bir cezası var (fileye takılma / aut); nereye
+     * basmanın güvenli olduğu görünmeseydi bu ceza şans olurdu. Yeşil
+     * bant gücün sonucunu okunur kılıyor: sert vurduysan bant kısalır ve
+     * aşağı iner, yumuşak vurduysan yukarı çıkar.
+     */
+    if (aiming && serve.safeAim) {
+      const sMin = y + barH - serve.safeAim.max * barH;
+      const sMax = y + barH - serve.safeAim.min * barH;
+      ctx.fillStyle = 'rgba(90, 220, 120, 0.45)';
+      ctx.fillRect(x, sMin, barW, Math.max(2, sMax - sMin));
+    }
+
     const fillH = Math.max(2, serve.meter * barH);
-    ctx.fillStyle = aiming ? '#9BE7FF' : PALETTE.turkishRed;
+    const inSafe =
+      aiming &&
+      serve.safeAim &&
+      serve.meter >= serve.safeAim.min &&
+      serve.meter <= serve.safeAim.max;
+    ctx.fillStyle = aiming
+      ? (inSafe ? '#5ADC78' : '#9BE7FF')
+      : PALETTE.turkishRed;
     ctx.fillRect(x, y + barH - fillH, barW, fillH);
 
     // Güç aşamasında en verimli noktayı göster

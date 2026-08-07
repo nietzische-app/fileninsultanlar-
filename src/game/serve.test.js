@@ -5,9 +5,11 @@ import {
   computeServeVelocity,
   meterToAim,
   meterToPower,
+  safeAimRange,
+  serveOutcome,
   SERVE,
 } from './serve.js';
-import { GAME_WIDTH, GROUND_Y, NET, PHYSICS, WALL_PAD } from './constants.js';
+import { GAME_WIDTH, NET } from './constants.js';
 
 describe('serve', () => {
   it('metre salınımı yön değiştirir', () => {
@@ -19,10 +21,15 @@ describe('serve', () => {
     expect(down.dir).toBe(1);
   });
 
-  it('güç sweet spot üretir', () => {
-    expect(meterToPower(0.78)).toBeGreaterThan(meterToPower(0.1));
-    expect(meterToPower(0.78)).toBeGreaterThanOrEqual(SERVE.minPower);
-    expect(meterToPower(1)).toBeLessThanOrEqual(SERVE.maxPower);
+  /*
+   * Eskiden burada `Math.max(minPower, …)` vardı: metre 0'da bile güç
+   * 0.35 çıkıyor, barın alt yarısı tek bir değere eziliyordu.
+   */
+  it('güç metreyi doğrusal izler — barın her yeri farklı', () => {
+    expect(meterToPower(0)).toBe(0);
+    expect(meterToPower(1)).toBe(1);
+    expect(meterToPower(0.3)).toBeLessThan(meterToPower(0.6));
+    expect(meterToPower(0.6)).toBeLessThan(meterToPower(0.9));
   });
 
   it('nişan -1..1 aralığında', () => {
@@ -32,79 +39,139 @@ describe('serve', () => {
   });
 
   it('servis vektörü rakibe gider', () => {
-    const home = computeServeVelocity({ power: 0.8, aim: 0, toOpponent: 1 });
+    const home = computeServeVelocity({ power: 0.6, aim: 0, toOpponent: 1 });
     expect(home.vx).toBeGreaterThan(0);
     expect(home.vy).toBeLessThan(0);
-    const away = computeServeVelocity({ power: 0.8, aim: 0, toOpponent: -1 });
+    const away = computeServeVelocity({ power: 0.6, aim: 0, toOpponent: -1 });
     expect(away.vx).toBeLessThan(0);
   });
 
-  it('AI seçimi zorlukla iyileşir', () => {
-    const easy = aiServeChoice(0.1);
-    const hard = aiServeChoice(0.95);
-    expect(hard.power).toBeGreaterThan(easy.power);
+  it('güç servisi hızlandırır', () => {
+    const soft = computeServeVelocity({ power: 0.2, aim: 0, toOpponent: 1, serveStat: 80 });
+    const hard = computeServeVelocity({ power: 1, aim: 0, toOpponent: 1, serveStat: 80 });
+    expect(Math.abs(hard.vx)).toBeGreaterThan(Math.abs(soft.vx));
   });
 });
 
-describe('servis file aşımı', () => {
-  const homeX = GAME_WIDTH * SERVE.backLineHome;
-  const awayX = GAME_WIDTH * SERVE.backLineAway;
+/*
+ * Barın bir bedeli olmalı.
+ *
+ * İlk sürümde `computeServeVelocity` fileyi aşan en kısa uçuşu arayıp
+ * gücü onun üstüne bindiriyordu; az güç = uzun uçuş = yüksek kavis, yani
+ * fileyi daha da rahat aşıyordu. Metre nerede yakalanırsa yakalansın
+ * servis geçiyordu ve oyuncunun bildirdiği şey buydu. Aşağıdaki testler
+ * o garantinin geri gelmediğini bekçiler.
+ */
+describe('servis barının bedeli', () => {
+  it('çok zayıf servis fileye takılır', () => {
+    const results = [0, 0.05, 0.1].map((power) =>
+      serveOutcome({ power, aim: 0, toOpponent: 1, serveStat: 70 })
+    );
+    results.forEach((r) => expect(r).toBe('net'));
+  });
 
-  /** Servisi ileri simüle eder. */
-  function fly(power, aim, fromX, toOpponent) {
-    let x = fromX;
-    let y = GROUND_Y - SERVE.holdHeight;
-    const shot = computeServeVelocity({ power, aim, toOpponent, serveStat: 80 });
-    let { vx, vy } = shot;
-    const step = 1 / 240;
-    let netY = null;
+  it('çok sert + derin servis auta çıkar', () => {
+    expect(
+      serveOutcome({ power: 1, aim: 1, toOpponent: 1, serveStat: 70 })
+    ).toBe('out');
+  });
 
-    for (let i = 0; i < 240 * 5; i += 1) {
-      const prevX = x;
-      vy += PHYSICS.ballGravity * step;
-      x += vx * step;
-      y += vy * step;
-      const crossed =
-        (prevX < NET.x && x >= NET.x) || (prevX > NET.x && x <= NET.x);
-      if (netY === null && crossed) netY = y;
-      if (vy > 0 && y >= GROUND_Y - PHYSICS.ballRadius) break;
-    }
-    return { landX: x, netY };
-  }
+  it('barın orta bandı sahada kalır', () => {
+    expect(
+      serveOutcome({ power: SERVE.sweetSpot, aim: 0, toOpponent: 1, serveStat: 70 })
+    ).toBe('in');
+  });
 
-  /*
-   * Aktarılan ilk sürümde HİÇBİR güç fileyi aşamıyordu: azami güçte bile
-   * top file hizasında 47 piksel aşağıdaydı, düşük güçlerde kendi
-   * sahasına düşüyordu. Bu yüzden her servis sayı kaybıydı.
-   */
-  it('her güç ve nişanda fileyi aşar ve rakip sahaya iner', () => {
-    [0.36, 0.5, 0.7, 0.85, 1].forEach((power) => {
-      [-1, -0.5, 0, 0.5, 1].forEach((aim) => {
-        const r = fly(power, aim, homeX, 1);
-        expect(r.netY).not.toBeNull();
-        expect(r.netY).toBeLessThan(NET.topY - 8);
-        expect(r.landX).toBeGreaterThan(NET.x);
-        expect(r.landX).toBeLessThan(GAME_WIDTH - WALL_PAD);
-      });
+  it('güç arttıkça güvenli nişan aralığı sığlaşır', () => {
+    const soft = safeAimRange({ power: 0.35, toOpponent: 1, serveStat: 70 });
+    const hard = safeAimRange({ power: 0.9, toOpponent: 1, serveStat: 70 });
+    expect(soft).not.toBeNull();
+    expect(hard).not.toBeNull();
+    // Yumuşak servis derine nişan alabilir, sert servis kısaya zorunlu
+    expect(soft.max).toBeGreaterThan(hard.max);
+  });
+
+  it('güvenli aralık gerçekten güvenli', () => {
+    [0.3, 0.45, 0.62, 0.8, 0.95].forEach((power) => {
+      const safe = safeAimRange({ power, toOpponent: 1, serveStat: 70 });
+      if (!safe) return;
+      for (let m = safe.min; m <= safe.max + 1e-9; m += 0.02) {
+        expect(
+          serveOutcome({ power, aim: meterToAim(m), toOpponent: 1, serveStat: 70 })
+        ).toBe('in');
+      }
     });
   });
 
+  it('metrenin her yeri aynı sonucu vermez', () => {
+    const seen = new Set();
+    for (let m = 0; m <= 1.0001; m += 0.05) {
+      seen.add(serveOutcome({ power: m, aim: 0.6, toOpponent: 1, serveStat: 70 }));
+    }
+    expect(seen.size).toBeGreaterThanOrEqual(3); // net, in, out
+  });
+
   it('away tarafı simetrik çalışır', () => {
-    const r = fly(0.8, 0, awayX, -1);
-    expect(r.netY).toBeLessThan(NET.topY - 8);
-    expect(r.landX).toBeLessThan(NET.x);
-    expect(r.landX).toBeGreaterThan(WALL_PAD);
+    expect(
+      serveOutcome({ power: SERVE.sweetSpot, aim: 0, toOpponent: -1, serveStat: 70 })
+    ).toBe('in');
+    expect(serveOutcome({ power: 0.05, aim: 0, toOpponent: -1 })).toBe('net');
   });
 
   it('nişan derinliği belirler', () => {
-    const near = fly(0.8, -1, homeX, 1);
-    const deep = fly(0.8, 1, homeX, 1);
-    expect(deep.landX).toBeGreaterThan(near.landX);
+    const shallow = computeServeVelocity({ power: 0.5, aim: -1, toOpponent: 1 });
+    const deep = computeServeVelocity({ power: 0.5, aim: 1, toOpponent: 1 });
+    expect(Math.abs(deep.vx)).toBeGreaterThan(Math.abs(shallow.vx));
   });
 
-  it('güç uçuş süresini kısaltır — sert servis daha hızlı gelir', () => {
-    const soft = computeServeVelocity({ power: 0.36, aim: 0, toOpponent: 1, serveStat: 80 });
-    const hard = computeServeVelocity({ power: 1, aim: 0, toOpponent: 1, serveStat: 80 });
-    expect(Math.abs(hard.vx)).toBeGreaterThan(Math.abs(soft.vx));
+  it('aut çizgisi sahanın içinde', () => {
+    const outX = GAME_WIDTH * SERVE.outLine;
+    expect(outX).toBeGreaterThan(NET.x);
+    expect(outX).toBeLessThan(GAME_WIDTH);
+  });
+});
+
+describe('AI servisi', () => {
+  /** Verilen beceride n servisin sonuç dağılımı. */
+  function tally(skill, n = 3000) {
+    const out = { in: 0, net: 0, out: 0 };
+    for (let i = 0; i < n; i += 1) {
+      const c = aiServeChoice(skill, 1, 70);
+      out[serveOutcome({ ...c, toOpponent: 1, serveStat: 70 })] += 1;
+    }
+    return out;
+  }
+
+  it('beceri arttıkça ortalama güç artar', () => {
+    const avg = (skill) => {
+      let sum = 0;
+      for (let i = 0; i < 500; i += 1) sum += aiServeChoice(skill, 1, 70).power;
+      return sum / 500;
+    };
+    expect(avg(0.95)).toBeGreaterThan(avg(0.1));
+  });
+
+  /*
+   * Güvenli aralığı hesaplayıp içine nişan alan AI hiç faul yapmıyordu —
+   * ölçümde normal ve zor için tam %0. Oyuncu barı ıskaladığında sayı
+   * veriyorsa rakip de vermeli.
+   */
+  it('zayıf AI faul yapar', () => {
+    const t = tally(0.25);
+    // Ölçülen oran ~%5 (file üstü bandı bazı kasıtlı fauleri kurtarıyor)
+    expect(t.net + t.out).toBeGreaterThan(3000 * 0.03);
+  });
+
+  it('güçlü AI bile ara sıra faul yapar', () => {
+    const t = tally(0.9);
+    const faults = t.net + t.out;
+    expect(faults).toBeGreaterThan(0);
+    expect(faults).toBeLessThan(3000 * 0.15);
+  });
+
+  it('faul oranı beceriyle düşer', () => {
+    const weak = tally(0.2);
+    const strong = tally(0.9);
+    expect(weak.net + weak.out).toBeGreaterThan(strong.net + strong.out);
   });
 });
