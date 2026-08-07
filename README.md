@@ -61,16 +61,43 @@ tam ekran / çık düğmeleri sağ üst köşededir.
 Her ralli servisle başlar. Servis atan dip çizgiye geçer, top elinde
 bekler ve yanında iki aşamalı bir gösterge salınır:
 
-1. **Güç** — birinci basış gücü kilitler. Beyaz çizgi en verimli noktadır;
+1. **Güç** — birinci basış gücü kilitler. Beyaz çizgi önerilen noktadır;
    yüksek güç topu düz ve hızlı, düşük güç yüksek kavisli gönderir.
 2. **Nişan** — ikinci basış derinliği kilitler ve servisi atar. Sol uç
-   file dibi, sağ uç dip çizgi.
+   file dibi, sağ uç dip çizgi. Barın **yeşil bölgesi** kilitlediğin güçle
+   sahada kalan aralıktır.
 
 Dört saniye içinde iki aşamayı tamamlamazsan servis olduğu güçle
 kendiliğinden atılır — oyun asla beklemede kalmaz.
 
-Servis hızı bilerek ölçülü tutuldu: amaç ralliyi başlatmak, ralliyi tek
-başına kazanmak değil.
+#### Barın bir bedeli var
+
+Servis fizikle çözülür, garantiyle değil. Nişan bir hedef derinlik seçer,
+o derinliğe düşen atış bulunur, güç ise o atışın hızını **ölçekler**:
+
+| Güç | Sonuç |
+|---|---|
+| Çok düşük | Top fileye takılır → **FİLEDE!**, sayı rakibe |
+| Orta bant | Hedefe düşer |
+| Çok yüksek + derin nişan | Dip çizgiyi aşar → **AUT!**, sayı rakibe |
+
+Bu yüzden güç ile nişan birlikte düşünülür: sert vurduysan kısaya nişan
+almalısın, yumuşak vurduysan derine. Metre rastgele yakalanırsa servis
+%63 oranında sahada kalıyor; önerilen noktayı tutturup yeşil bandın
+içinden atınca faul yok.
+
+Aut kuralı yalnızca **kimsenin dokunmadığı** servise işler — voleybolun
+gerçek kuralı da bu: rakip karşılamaya kalkıp dokunduysa top oyundadır.
+
+İlk sürümde bar tamamen süstü: kod önce fileyi aşan en kısa uçuşu arayıp
+gücü onun üstüne bindiriyordu, yani daha az güç daha yüksek kavis demekti
+ve top fileyi *daha da* rahat aşıyordu. Metre nerede yakalanırsa
+yakalansın servis geçiyordu.
+
+Göstergedeki yeşil bant ile gerçek sonuç aynı fizikten okunur
+(`ballstep.js`) — 209 servislik ızgarada tahmin ile motor **%100**
+uyuşuyor. Ayrı yazıldıklarında %79'a düşmüştü: motorda file üstü bandına
+değen top yukarı sekip oyunda kalabiliyor, tahmin ise onu faul sayıyordu.
 
 ### Oyunun ritmi
 
@@ -362,7 +389,8 @@ src/
 │   ├── Game.js               Motor: döngü, fizik, çarpışma, skor, çizim
 │   ├── rules.js              Saf set/maç/üç-temas kuralları
 │   ├── combo.js              Kombo kademeleri, çarpanlar, tam vuruş penceresi
-│   ├── serve.js              Servis metresi, güç/nişan ve balistiği
+│   ├── serve.js              Servis metresi, güç/nişan, sonuç tahmini
+│   ├── ballstep.js           Topun serbest uçuşu — motor ve tahmin ortak
 │   ├── achievements.js       Rozet tanımları ve değerlendirme
 │   ├── modes.js              Oyun modu tanımları (hızlı maç / turnuva / hayatta kalma)
 │   ├── tournament.js         Kupa yolu turları ve saf durum makinesi
