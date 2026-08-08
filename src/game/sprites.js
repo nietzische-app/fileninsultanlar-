@@ -137,7 +137,78 @@ function blockPainter(ctx, originX, originY, u) {
 }
 
 /**
- * Saç modelini çizer. Kafa 4–10, saç tepesi 0.8–3 birimleri arasında.
+ * Üst üste duran, genişlikleri farklı blokları TEK bir siluet gibi çizer.
+ *
+ * Blokları tek tek `px` ile basmak işe yaramıyor: her blok kendi dış
+ * hattını ve kendi ışık/gölge şeridini alıyor, gövde çizgili bir yığına
+ * dönüşüyor. Burada önce bütün dış hatlar, sonra bütün dolgular basılır
+ * — iç kenarlar komşu dolgunun altında kalır — ve hacim şeridi yığının
+ * tamamına yalnızca bir kez uygulanır.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} originX Izgara sol üst köşesi
+ * @param {number} originY
+ * @param {number} u Birim boyutu
+ * @param {Array<{y:number, h:number, w:number, color:string}>} bands
+ * @param {{ shade?: boolean, centerX?: number }} [opts]
+ */
+function drawTaperedStack(ctx, originX, originY, u, bands, opts = {}) {
+  const { shade = true, centerX = SPRITE_UNITS_W / 2 } = opts;
+
+  const box = (b) => [
+    Math.round(originX + (centerX - b.w / 2) * u),
+    Math.round(originY + b.y * u),
+    Math.round(b.w * u),
+    Math.round(b.h * u),
+  ];
+
+  ctx.fillStyle = PALETTE.outline;
+  bands.forEach((b) => {
+    const [x, y, w, h] = box(b);
+    ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
+  });
+
+  bands.forEach((b) => {
+    const [x, y, w, h] = box(b);
+    ctx.fillStyle = b.color;
+    ctx.fillRect(x, y, w, h);
+  });
+
+  if (!shade) return;
+
+  const strip = Math.max(1, Math.round(u * 0.36));
+  const [fx, fy, fw] = box(bands[0]);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.13)';
+  ctx.fillRect(fx, fy, fw, strip);
+
+  const [lx, ly, lw, lh] = box(bands[bands.length - 1]);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.20)';
+  ctx.fillRect(lx, ly + lh - strip, lw, strip);
+}
+
+/**
+ * Gövde silueti: omuz → göğüs → bel → kalça.
+ *
+ * Figürün "erkek gibi" okunmasının asıl sebebi buranın tek parça, 8
+ * birim genişliğinde düz bir dikdörtgen olmasıydı — omuz, bel ve kalça
+ * aynı genişlikteydi. Bel içeri girip kalça omuzdan biraz genişleyince
+ * siluet bu çözünürlükte bile kadın figürü olarak okunuyor.
+ *
+ * Omuzun kalçadan DAR olması bilinçli: oran tersine döndüğünde figür
+ * yeniden erkekleşiyor.
+ */
+const TORSO_BANDS = [
+  { y: 8.0, h: 1.3, w: 7.1 },
+  { y: 9.3, h: 2.2, w: 6.8 },
+  { y: 11.5, h: 1.4, w: 6.0 },
+  { y: 12.9, h: 1.4, w: 7.4 },
+];
+
+/** Gövdenin en geniş noktası — kolların nereye yaslanacağını belirler. */
+const TORSO_MAX_W = Math.max(...TORSO_BANDS.map((b) => b.w));
+
+/**
+ * Saç modelini çizer. Kafa 4.2–9.8, saç tepesi 0.7–2.9 birimleri arasında.
  *
  * Desteklenen stiller:
  *   short | short-spiky | short-fade | ponytail | high-ponytail |
@@ -150,109 +221,206 @@ function blockPainter(ctx, originX, originY, u) {
  * @param {number} facing
  */
 function drawHair(px, style, hair, facing) {
-  // Her modelde ortak: tepe ve yan çerçeve
-  px(3.4, 0.8, 7.2, 2.2, hair);
-  px(3.2, 1.6, 1.2, 4.4, hair, false);
-  px(9.6, 1.6, 1.2, 4.4, hair, false);
+  const HAIR_L = 3.6;
+  const HAIR_R = 10.4;
+  const OVERLAP = 1.0;
 
-  const back = facing > 0 ? 2.0 : 9.9;
-  const front = facing > 0 ? 9.9 : 2.0;
+  /**
+   * Arkaya dökülen tutam — bakışın TERSİ yönde, saç kenarına yaslanır.
+   *
+   * Eskiden bunlar sabit x sayılarıydı; tutam genişliği ya da bakış
+   * yönü değişince tutam ya kafadan kopuyor ya da yüzü kapatıyordu.
+   * Ölçekte bakınca uzun saç iki yana sarkan perde gibi duruyordu.
+   * Kenara yaslamak iki yönde de simetrik sonuç veriyor.
+   */
+  const back = (gy, gw, gh, outline = true) =>
+    px(
+      facing > 0 ? HAIR_L - gw + OVERLAP : HAIR_R - OVERLAP,
+      gy,
+      gw,
+      gh,
+      hair,
+      outline
+    );
+
+  /** Omzun önüne düşen tutam — bakış yönünde. */
+  const front = (gy, gw, gh, outline = false) =>
+    px(
+      facing > 0 ? HAIR_R - OVERLAP : HAIR_L - gw + OVERLAP,
+      gy,
+      gw,
+      gh,
+      hair,
+      outline
+    );
+
+  /*
+   * 1) TEPE PARÇALARI (topuz, dikenler) — ortak saç tepesinden ÖNCE.
+   *
+   * Sonra çizildiklerinde kendi dış hatlarını ve alt gölge şeritlerini
+   * de getiriyorlar; ölçekte topuz saçtan kopmuş, havada duran ayrı bir
+   * kutu gibi görünüyordu. Önce çizilince ortak tepe onların alt
+   * kenarını kapatıyor ve parçalar tek siluete bağlanıyor.
+   *
+   * `crown` tepe parçasının yatay aralığı — ortak tepenin dış hattı
+   * tam onun içinden geçtiği için o aralık sonradan kapatılır.
+   */
+  let crown = null;
 
   switch (style) {
-    case 'short':
-      px(3.4, 5.4, 1.4, 1.2, hair, false);
-      px(9.2, 5.4, 1.4, 1.2, hair, false);
-      break;
-
     case 'short-spiky':
       // Dik kısa uçlar (Ebrar)
-      px(4.2, -0.2, 1.2, 1.4, hair);
-      px(6.0, -0.6, 1.4, 1.6, hair);
-      px(7.8, -0.2, 1.2, 1.4, hair);
-      px(3.4, 5.2, 1.3, 1.0, hair, false);
-      px(9.3, 5.2, 1.3, 1.0, hair, false);
+      px(4.3, 0.1, 1.3, 1.3, hair);
+      px(6.1, -0.3, 1.5, 1.7, hair);
+      px(8.1, 0.1, 1.3, 1.3, hair);
+      crown = [4.3, 5.1];
       break;
 
     case 'short-fade':
-      // Yandan kısa + üstte küçük örgüler (Melissa)
-      px(3.0, 2.0, 1.0, 3.2, hair, false);
-      px(10.0, 2.0, 1.0, 3.2, hair, false);
-      px(5.2, -0.4, 1.4, 1.8, hair);
-      px(7.0, -0.6, 1.4, 2.0, hair);
-      px(back + 0.3, 2.8, 1.4, 2.6, hair);
-      px(back + 0.1, 5.2, 1.6, 1.8, hair);
+      // Üstte küçük örgüler (Melissa)
+      px(5.4, -0.2, 1.2, 1.7, hair);
+      px(7.0, -0.4, 1.2, 1.9, hair);
+      crown = [5.4, 2.8];
       break;
 
     case 'bun':
-      px(5.6, -0.9, 2.8, 2.2, hair);
-      px(6.2, -1.4, 1.6, 0.9, hair, false);
+      px(5.6, -0.7, 2.8, 2.1, hair);
+      px(6.3, -1.2, 1.4, 0.9, hair, false);
+      crown = [5.6, 2.8];
       break;
 
     case 'sleek-bun':
       // Yatık sıkı topuz — daha alçak ve düz
-      px(4.0, 1.2, 6.0, 1.0, hair, false);
-      px(5.8, -0.5, 2.4, 1.8, hair);
-      px(6.2, -0.9, 1.6, 0.7, hair, false);
+      px(5.9, -0.4, 2.2, 1.8, hair);
+      px(6.3, -0.8, 1.4, 0.7, hair, false);
+      crown = [5.9, 2.2];
       break;
 
     case 'high-bun':
-      // Yüksek / büyük topuz (Elif, Dilay)
-      px(5.2, -1.6, 3.6, 2.8, hair);
-      px(5.8, -2.2, 2.4, 1.2, hair, false);
-      px(6.4, -0.2, 1.2, 1.0, hair, false);
+      // Yüksek topuz (Elif, Dilay)
+      px(5.2, -1.3, 3.6, 2.7, hair);
+      px(5.8, -1.9, 2.4, 1.0, hair, false);
+      crown = [5.2, 3.6];
       break;
 
     case 'braided-bun':
-      // Örgülü topuz
-      px(5.6, -1.0, 2.8, 2.4, hair);
-      px(back + 0.2, 2.6, 1.5, 2.0, hair);
-      px(back, 4.4, 1.8, 1.6, hair);
-      break;
-
-    case 'long':
-      px(back, 2.4, 2.2, 10.2, hair);
-      px(front, 2.6, 1.6, 6.8, hair, false);
-      break;
-
-    case 'curly-long':
-      // Hacimli kıvırcık — omuzlara dökülen boblar
-      px(back - 0.2, 2.2, 2.6, 3.0, hair);
-      px(back - 0.4, 4.8, 2.8, 2.6, hair);
-      px(back - 0.2, 7.2, 2.6, 2.8, hair);
-      px(front, 2.8, 1.8, 2.4, hair, false);
-      px(front - 0.2, 5.0, 2.0, 2.2, hair, false);
+      px(5.7, -0.9, 2.6, 2.3, hair);
+      crown = [5.7, 2.6];
       break;
 
     case 'half-up':
-      // Yarı bağlı + uzun dökülen (Zehra)
-      px(5.4, -0.8, 3.2, 2.0, hair);
-      px(back, 2.4, 2.2, 10.4, hair);
-      px(front, 3.0, 1.5, 7.6, hair, false);
+      // Yarı bağlı (Zehra)
+      px(5.5, -0.7, 3.0, 1.9, hair);
+      crown = [5.5, 3.0];
       break;
 
     case 'high-ponytail':
-      px(5.8, -0.6, 2.4, 1.6, hair);
-      px(back + 0.1, 1.6, 1.7, 6.2, hair);
-      px(back - 0.1, 7.4, 2.1, 2.0, hair, false);
+      px(5.9, -0.5, 2.2, 1.6, hair);
+      crown = [5.9, 2.2];
       break;
 
     case 'half-ponytail':
-      px(5.8, -0.3, 2.2, 1.4, hair);
-      px(back + 0.3, 2.8, 1.4, 3.6, hair);
-      px(front, 3.2, 1.4, 4.2, hair, false);
+      px(5.9, -0.2, 2.0, 1.4, hair);
+      crown = [5.9, 2.0];
+      break;
+
+    default:
+      break;
+  }
+
+  /*
+   * 2) ORTAK TEPE VE YAN ÇERÇEVE.
+   *
+   * Yanlar kafadan (4.4–9.6) bilerek taşar. Saç yüzden dar kaldığında
+   * figür kepli gibi duruyordu; yüzü çerçeveleyen saç hem modeli önden
+   * okunur kılıyor hem de siluete katkı veriyor.
+   */
+  px(3.7, 0.8, 6.6, 2.2, hair);
+  px(3.6, 1.6, 1.15, 3.9, hair, false);
+  px(9.25, 1.6, 1.15, 3.9, hair, false);
+
+  // Ortak tepenin dış hattı tepe parçasının içinden geçiyor; yalnızca
+  // o aralıkta konturusuz saç basıp dikişi kapat.
+  if (crown) px(crown[0] + 0.15, 0.7, crown[1] - 0.3, 0.85, hair, false);
+
+  /* 3) SIRTA VE OMZA DÖKÜLEN TUTAMLAR. */
+  switch (style) {
+    case 'short':
+      px(3.5, 5.2, 1.35, 1.2, hair, false);
+      px(9.15, 5.2, 1.35, 1.2, hair, false);
+      break;
+
+    case 'short-spiky':
+      px(3.5, 5.0, 1.25, 1.0, hair, false);
+      px(9.25, 5.0, 1.25, 1.0, hair, false);
+      break;
+
+    case 'short-fade':
+      // Yandan kısa
+      px(3.35, 2.0, 0.9, 3.2, hair, false);
+      px(9.75, 2.0, 0.9, 3.2, hair, false);
+      back(2.8, 1.4, 2.6);
+      back(5.0, 1.5, 1.8, false);
+      break;
+
+    case 'sleek-bun':
+      px(4.2, 1.2, 5.6, 1.0, hair, false);
+      break;
+
+    case 'braided-bun':
+      back(2.8, 1.5, 2.0);
+      back(4.6, 1.7, 1.6);
+      break;
+
+    case 'long':
+      // İki parça: aşağı doğru incelir. Tek kalın blok kolu tamamen
+      // kapatıp tahta gibi duruyordu.
+      back(2.6, 1.8, 5.6);
+      back(7.8, 1.45, 4.2, false);
+      front(2.8, 1.2, 5.0);
+      break;
+
+    case 'curly-long':
+      // Hacimli kıvırcık — boblar birbirine biner ki aralarında
+      // dış hat izi kalmasın.
+      back(2.4, 2.0, 3.2);
+      back(4.6, 2.2, 3.0);
+      back(6.8, 1.9, 3.0);
+      front(2.9, 1.3, 2.6);
+      front(4.8, 1.4, 2.4);
+      break;
+
+    case 'half-up':
+      back(2.6, 1.8, 5.8);
+      back(8.0, 1.45, 4.4, false);
+      front(3.0, 1.2, 5.4);
+      break;
+
+    case 'high-ponytail':
+      back(1.7, 1.5, 5.8);
+      back(7.3, 1.8, 1.9, false);
+      break;
+
+    case 'half-ponytail':
+      back(2.8, 1.3, 3.4);
+      front(3.2, 1.2, 4.0);
       break;
 
     case 'braid':
-      px(back + 0.2, 2.4, 1.7, 2.4, hair);
-      px(back, 4.6, 2.1, 2.1, hair);
-      px(back + 0.2, 6.5, 1.7, 2.1, hair);
-      px(back + 0.4, 8.4, 1.3, 1.7, hair);
+      back(2.5, 1.5, 2.3);
+      back(4.6, 1.8, 2.0);
+      back(6.4, 1.5, 2.0);
+      back(8.2, 1.2, 1.6);
+      break;
+
+    case 'bun':
+    case 'high-bun':
       break;
 
     case 'ponytail':
     default:
-      px(back + 0.2, 2.6, 1.5, 4.6, hair);
-      px(back, 6.8, 1.9, 1.7, hair, false);
+      back(2.7, 1.4, 4.4);
+      back(6.9, 1.7, 1.6, false);
       break;
   }
 }
@@ -267,27 +435,27 @@ function drawHair(px, style, hair, facing) {
 function drawExtras(px, look, facing, skin) {
   // Kolye — boyun altı ince halka
   if (look.necklace) {
-    px(5.4, 7.3, 3.2, 0.55, look.necklace, false);
-    px(6.4, 7.7, 1.2, 0.5, look.necklace, false);
+    px(5.6, 8.5, 2.8, 0.45, look.necklace, false);
+    px(6.4, 8.8, 1.2, 0.4, look.necklace, false);
   }
 
   // Küpe — kulak hizası
   if (look.earring) {
-    const earX = facing > 0 ? 9.8 : 3.4;
-    px(earX, 4.6, 0.7, 0.9, look.earring, false);
+    const earX = facing > 0 ? 9.3 : 4.0;
+    px(earX, 4.7, 0.7, 0.9, look.earring, false);
   }
 
   // Kol dövmeleri — koyu piksel lekeleri
   if (look.tattoos) {
     const ink = '#2A1810';
     if (facing > 0) {
-      px(10.6, 10.2, 1.4, 0.55, ink, false);
-      px(10.8, 11.2, 1.0, 0.45, ink, false);
-      px(1.7, 10.6, 1.2, 0.5, ink, false);
+      px(10.6, 10.2, 1.3, 0.5, ink, false);
+      px(10.75, 11.2, 0.95, 0.42, ink, false);
+      px(2.1, 10.6, 1.1, 0.45, ink, false);
     } else {
-      px(1.8, 10.2, 1.4, 0.55, ink, false);
-      px(2.0, 11.2, 1.0, 0.45, ink, false);
-      px(10.8, 10.6, 1.2, 0.5, ink, false);
+      px(2.1, 10.2, 1.3, 0.5, ink, false);
+      px(2.25, 11.2, 0.95, 0.42, ink, false);
+      px(10.6, 10.6, 1.1, 0.45, ink, false);
     }
     // skin üstüne çok koyu olmasın diye ince tutuyoruz
     void skin;
@@ -350,21 +518,27 @@ export function drawSultan(ctx, data, opts) {
   // --- Bacaklar (koşu fazına göre açılır) ---
   const stride = pose === 'run' ? Math.sin(frame * Math.PI * 2) * 1.1 : 0;
   const legSpread = pose === 'jump' || pose === 'spike' ? 1.2 : 0;
-  const legL = 4 - legSpread + stride;
-  const legR = 8 + legSpread - stride;
+  /*
+   * Duruş bilerek daraltıldı ve bacaklar inceltildi: iki yana açılmış
+   * kalın bacaklar siluetin alt yarısına ağırlık verip figürü
+   * erkekleştiren ikinci etkendi.
+   */
+  const legW = 1.85;
+  const legL = 4.45 - legSpread + stride;
+  const legR = 7.7 + legSpread - stride;
 
-  px(legL, 16, 2, 4.4, skin);
-  px(legR, 16, 2, 4.4, skin);
+  px(legL, 16.1, legW, 4.4, skin);
+  px(legR, 16.1, legW, 4.4, skin);
 
   // Dizlikler (aksesuar — null ise çizilmez)
-  px(legL - 0.25, 17.4, 2.5, 1.3, look.kneePads, false);
-  px(legR - 0.25, 17.4, 2.5, 1.3, look.kneePads, false);
+  px(legL - 0.25, 17.5, legW + 0.5, 1.25, look.kneePads, false);
+  px(legR - 0.25, 17.5, legW + 0.5, 1.25, look.kneePads, false);
 
   // Çoraplar ve ayakkabılar
-  px(legL - 0.1, 20, 2.2, 1, '#FFFFFF', false);
-  px(legR - 0.1, 20, 2.2, 1, '#FFFFFF', false);
-  px(legL - 0.5, 20.9, 3, 1.2, '#F5F5F5');
-  px(legR - 0.5, 20.9, 3, 1.2, '#F5F5F5');
+  px(legL - 0.1, 20.1, legW + 0.2, 0.95, '#FFFFFF', false);
+  px(legR - 0.1, 20.1, legW + 0.2, 0.95, '#FFFFFF', false);
+  px(legL - 0.5, 20.9, legW + 1.0, 1.2, '#F5F5F5');
+  px(legR - 0.5, 20.9, legW + 1.0, 1.2, '#F5F5F5');
 
   // --- Kollar (poza göre) ---
   // Her kol gövdenin üst kenarına (y=8) kadar uzatılır, yoksa
@@ -373,36 +547,43 @@ export function drawSultan(ctx, data, opts) {
   let wristL = null;
   let wristR = null;
 
+  // Kollar inceltildi (2.1 → 1.7) ve gövdenin en geniş noktasına
+  // yaslandı; daralan gövdeyle birlikte hesaplanıyor ki taper
+  // değiştiğinde kollar havada kalmasın.
+  const armW = 1.7;
+  const armL = SPRITE_UNITS_W / 2 - TORSO_MAX_W / 2 - armW + 0.15;
+  const armR = SPRITE_UNITS_W / 2 + TORSO_MAX_W / 2 - 0.15;
+
   if (pose === 'jump' || pose === 'spike') {
     const hitArmY = pose === 'spike' ? 1.4 : 3.2;
     const hitArmH = pose === 'spike' ? 7.2 : 5.6;
-    const hitX = facing > 0 ? 10.4 : 1.5;
-    const offX = facing > 0 ? 1.5 : 10.4;
+    const hitX = facing > 0 ? armR : armL;
+    const offX = facing > 0 ? armL : armR;
 
-    px(hitX, hitArmY, 2.1, hitArmH, skin);
-    px(offX, 4.4, 2.1, 5.4, skin);
+    px(hitX, hitArmY, armW, hitArmH, skin);
+    px(offX, 4.4, armW, 5.4, skin);
 
-    wristL = [hitX - 0.2, hitArmY + 0.5, 2.5, 1.1];
-    wristR = [offX - 0.2, 4.9, 2.5, 1.1];
+    wristL = [hitX - 0.2, hitArmY + 0.5, armW + 0.4, 1.05];
+    wristR = [offX - 0.2, 4.9, armW + 0.4, 1.05];
   } else if (pose === 'bump') {
-    const armX = facing > 0 ? 9.5 : 2.4;
-    px(armX, 10.4, 3.6, 2.2, skin);
-    px(facing > 0 ? 12.2 : 0.2, 11.4, 1.7, 1.8, skin);
+    const armX = facing > 0 ? 9.2 : 3.0;
+    px(armX, 10.4, 3.6, 2.1, skin);
+    px(facing > 0 ? 11.9 : 0.4, 11.4, 1.7, 1.75, skin);
 
-    wristL = [facing > 0 ? 11.6 : 1.2, 10.6, 1.2, 1.9];
+    wristL = [facing > 0 ? 11.3 : 1.5, 10.6, 1.2, 1.85];
     wristR = null;
   } else if (pose === 'cheer') {
-    px(1.8, 2.4, 2.1, 6.4, skin);
-    px(10.1, 2.4, 2.1, 6.4, skin);
+    px(armL + 0.3, 2.4, armW, 6.4, skin);
+    px(armR - 0.3, 2.4, armW, 6.4, skin);
 
-    wristL = [1.6, 3, 2.5, 1.1];
-    wristR = [9.9, 3, 2.5, 1.1];
+    wristL = [armL + 0.1, 3, armW + 0.4, 1.05];
+    wristR = [armR - 0.5, 3, armW + 0.4, 1.05];
   } else {
-    px(1.5, 9, 2.1, 5.5, skin);
-    px(10.4, 9, 2.1, 5.5, skin);
+    px(armL, 8.9, armW, 5.4, skin);
+    px(armR, 8.9, armW, 5.4, skin);
 
-    wristL = [1.3, 13, 2.5, 1.1];
-    wristR = [10.2, 13, 2.5, 1.1];
+    wristL = [armL - 0.2, 13, armW + 0.4, 1.05];
+    wristR = [armR - 0.2, 13, armW + 0.4, 1.05];
   }
 
   // Bileklikler (aksesuar)
@@ -412,33 +593,67 @@ export function drawSultan(ctx, data, opts) {
   }
 
   // --- Forma (gövde) ---
-  px(3, 8, 8, 6.4, primary);
+  // Omuz bandı ikincil renkte; yaka/omuz şeridi etkisini o veriyor.
+  drawTaperedStack(
+    ctx,
+    originX,
+    originY,
+    u,
+    TORSO_BANDS.map((b, i) => ({ ...b, color: i === 0 ? secondary : primary }))
+  );
 
-  // Yaka ve omuz şeridi
-  px(3, 8, 8, 1, secondary, false);
-  px(3, 8, 0.9, 6.4, secondary, false);
-  px(10.1, 8, 0.9, 6.4, secondary, false);
+  // Yan şeritler bant bant çizilir ki daralan gövdeyi takip etsinler;
+  // tek dikey şerit belde gövdenin dışında kalırdı.
+  const mid = SPRITE_UNITS_W / 2;
+  TORSO_BANDS.slice(1).forEach((b) => {
+    px(mid - b.w / 2, b.y, 0.5, b.h, secondary, false);
+    px(mid + b.w / 2 - 0.5, b.y, 0.5, b.h, secondary, false);
+  });
+
+  // Etek ucu şeridi
+  const hem = TORSO_BANDS[TORSO_BANDS.length - 1];
+  px(mid - hem.w / 2, hem.y + hem.h - 0.5, hem.w, 0.5, secondary, false);
 
   // Kaptan pazıbandı — sadece kaptanda
   if (data.captain) {
-    px(facing > 0 ? 1.4 : 10.5, 9.4, 2.3, 1.3, accent, false);
+    px(facing > 0 ? armL - 0.2 : armR - 0.2, 9.4, armW + 0.4, 1.25, accent, false);
   }
 
   // --- Şort ---
-  px(3.2, 14, 7.6, 2.4, '#1B1B2E');
+  px(3.3, 14.1, 7.4, 2.3, '#1B1B2E');
 
-  // --- Boyun ---
-  px(6, 7, 2, 1.4, skin, false);
+  // --- Boyun ve yaka ---
+  // Boyun gövdeden SONRA çizilir; formanın içine sarkan ikinci blok
+  // yuvarlak yaka etkisi veriyor.
+  px(6.05, 6.7, 1.9, 1.7, skin);
+  px(5.75, 7.9, 2.5, 0.65, skin, false);
 
-  // --- Baş ---
-  px(4, 2.4, 6, 5, skin);
+  // --- Baş (çeneye doğru daralır) ---
+  // Düz 6×5 blok kafa figürün erkek okunmasına katkı veriyordu;
+  // çene bandı yüzü sivriltiyor.
+  drawTaperedStack(ctx, originX, originY, u, [
+    { y: 2.3, h: 4.0, w: 5.2, color: skin },
+    { y: 6.3, h: 0.8, w: 4.2, color: skin },
+  ]);
 
-  // Gözler
-  const eyeSize = Math.max(1, Math.round(u * 0.85));
-  const eyeY = Math.round(originY + 4.4 * u);
+  // Gözler ve kirpikler
+  const eyeSize = Math.max(1, Math.round(u * 0.8));
+  const eyeY = Math.round(originY + 4.3 * u);
+  const eyeAX = Math.round(originX + (facing > 0 ? 6.6 : 5.25) * u);
+  const eyeBX = Math.round(originX + (facing > 0 ? 8.15 : 6.8) * u);
+
   ctx.fillStyle = PALETTE.outline;
-  ctx.fillRect(Math.round(originX + (facing > 0 ? 6.4 : 4.9) * u), eyeY, eyeSize, eyeSize);
-  ctx.fillRect(Math.round(originX + (facing > 0 ? 8.3 : 6.8) * u), eyeY, eyeSize, eyeSize);
+  ctx.fillRect(eyeAX, eyeY, eyeSize, eyeSize);
+  ctx.fillRect(eyeBX, eyeY, eyeSize, eyeSize);
+
+  // Kirpik: gözün üstünde, bakış yönüne doğru uzayan ince çizgi.
+  // Bu çözünürlükte tek piksel sıra bile yüzü belirgin biçimde
+  // yumuşatıyor.
+  const lashH = Math.max(1, Math.round(u * 0.24));
+  const lashW = Math.max(1, Math.round(eyeSize * 1.15));
+  const lashShift = Math.round(u * 0.18) * (facing > 0 ? 1 : -1);
+  ctx.fillRect(eyeAX + lashShift, eyeY - lashH, lashW, lashH);
+  ctx.fillRect(eyeBX + lashShift, eyeY - lashH, lashW, lashH);
 
   // --- Saç ---
   // Her model baştan SONRA çizilir. Daha önce uzun saç ve örgü
@@ -447,7 +662,7 @@ export function drawSultan(ctx, data, opts) {
   drawHair(px, look.hairStyle, hair, facing);
 
   // --- Kafa bandı (aksesuar) ---
-  px(3.3, 2.4, 7.4, 0.9, look.headband, false);
+  px(3.6, 2.3, 6.8, 0.85, look.headband, false);
 
   // Kolye / küpe / dövme
   drawExtras(px, look, facing, skin);
@@ -458,12 +673,14 @@ export function drawSultan(ctx, data, opts) {
   // her pikselin etrafındaki çerçeve rakamı yutuyor — okunurluk
   // formanın rengiyle kontrasttan gelir.
   if (showNumber) {
-    const dot = Math.max(1, Math.round(u * 0.62));
+    // Rakam göğüs bandına taşındı: bel artık 5.9 birim ve iki haneli
+    // numaralar orada kenarlara değiyordu.
+    const dot = Math.max(1, Math.round(u * 0.56));
     drawPixelNumber(
       ctx,
       data.number,
-      originX + 7 * u,
-      originY + 11.4 * u,
+      originX + mid * u,
+      originY + 10.4 * u,
       dot,
       secondary === primary ? '#FFFFFF' : secondary
     );
