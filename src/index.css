@@ -144,11 +144,12 @@
     z-index: 40;
     display: block;
     width: 100vw;
-    max-width: none;
+    max-width: none !important;
     height: 100vh;
     height: 100dvh;
     margin: 0;
-    padding: 0;
+    padding: 0 !important;
+    gap: 0;
     overflow: hidden;
     overscroll-behavior: none;
     background: #000;
@@ -169,10 +170,16 @@
     height: 100%;
   }
 
-  /* Canvas oranını koruyarak sahneye sığdır (object-fit: contain) */
+  /*
+   * Canvas oranını koruyarak sahneye sığdır (object-fit: contain).
+   * `w-full` ile birlikte kullanılmamalı — aksi halde genişlik %100
+   * kalıp yükseklik max-height'e sıkışır, üst/alt siyah bant büyür.
+   * Yatay telefonda kısa kenar (yükseklik) dolar; yanlarda letterbox kalır.
+   */
   .stage-canvas {
-    width: auto;
-    height: auto;
+    display: block;
+    width: min(100vw, calc(100dvh * 9 / 5));
+    height: min(100dvh, calc(100vw * 5 / 9));
     max-width: 100%;
     max-height: 100%;
     aspect-ratio: 9 / 5;

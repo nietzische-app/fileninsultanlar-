@@ -275,9 +275,11 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
     <div
       ref={stageRef}
       data-touch-layout={isTouchUi ? 'true' : 'false'}
-      className={`match-screen mx-auto flex min-h-full w-full max-w-[960px] flex-col items-center gap-3 px-2 py-3 sm:gap-4 sm:px-3 sm:py-5 ${
-        isTouchUi ? 'match-screen--touch' : ''
-      }`}
+      className={
+        isTouchUi
+          ? 'match-screen match-screen--touch'
+          : 'match-screen mx-auto flex min-h-full w-full max-w-[960px] flex-col items-center gap-3 px-2 py-3 sm:gap-4 sm:px-3 sm:py-5'
+      }
     >
       {/*
         Üst HUD. Dokunmatikte skor tablosu, Sultan barı ve hızlı düğmeler
@@ -367,9 +369,11 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
           ref={canvasRef}
           width={GAME_WIDTH}
           height={GAME_HEIGHT}
-          className={`pixelated block h-auto max-h-full w-full ${
-            isTouchUi ? 'stage-canvas' : ''
-          }`}
+          className={
+            isTouchUi
+              ? 'pixelated stage-canvas'
+              : 'pixelated block h-auto max-h-full w-full'
+          }
           style={{ aspectRatio: `${GAME_WIDTH} / ${GAME_HEIGHT}` }}
           aria-label="Filenin Sultanları voleybol sahası"
         />
