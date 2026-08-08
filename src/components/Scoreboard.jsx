@@ -29,7 +29,7 @@ export default function Scoreboard({
   return (
     <div
       className={`${overlay ? 'retro-panel-overlay hud-compact' : 'retro-panel'} w-full ${
-        overlay ? 'max-w-[22rem] flex-1' : 'max-w-[900px]'
+        overlay ? 'max-w-[min(100%,20rem)]' : 'max-w-[900px]'
       } ${
         overlay
           ? 'px-1.5 py-1'

@@ -292,7 +292,7 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
             : ''
         }`}
       >
-        <div className="flex w-full items-start gap-1">
+        <div className={`flex w-full items-start gap-1 ${isTouchUi ? 'justify-between' : ''}`}>
           <Scoreboard
             score={hud.score}
             sets={hud.sets}
@@ -309,7 +309,7 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
 
           {/* Duraklat / tam ekran / çık — yalnızca dokunmatik */}
           {isTouchUi && (
-            <div className="pointer-events-auto flex shrink-0 gap-1 pr-[env(safe-area-inset-right)]">
+            <div className="pointer-events-auto ml-auto flex shrink-0 gap-1 pr-[env(safe-area-inset-right)]">
               {fullscreen.supported && (
                 <button
                   type="button"
