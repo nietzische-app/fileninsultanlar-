@@ -28,11 +28,17 @@ export default function Scoreboard({
 
   return (
     <div
-      className={`${overlay ? 'retro-panel-overlay' : 'retro-panel'} w-full max-w-[900px] ${
-        compact ? 'px-2 py-2 sm:px-5 sm:py-3' : 'px-3 py-3 sm:px-5'
+      className={`${overlay ? 'retro-panel-overlay hud-compact' : 'retro-panel'} w-full ${
+        overlay ? 'max-w-[22rem] flex-1' : 'max-w-[900px]'
+      } ${
+        overlay
+          ? 'px-1.5 py-1'
+          : compact
+            ? 'px-2 py-2 sm:px-5 sm:py-3'
+            : 'px-3 py-3 sm:px-5'
       }`}
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className={`flex items-center justify-between ${overlay ? 'gap-1' : 'gap-2'}`}>
         <TeamBlock
           name="TÜRKİYE"
           flag
@@ -42,25 +48,32 @@ export default function Scoreboard({
           accent="text-turkiye-red"
           align="left"
           compact={compact}
+          overlay={overlay}
         />
 
         {survival ? (
-          <div className="flex shrink-0 flex-col items-center gap-1">
-            <span className="text-[8px] text-white/50">
+          <div className={`flex shrink-0 flex-col items-center ${overlay ? 'gap-0.5' : 'gap-1'}`}>
+            <span className={`${overlay ? 'text-[6px]' : 'text-[8px]'} text-white/50`}>
               {survival.wave}. DALGA
             </span>
             <Hearts lives={survival.lives} maxLives={survival.maxLives} />
-            <span className="text-[7px] text-white/35">CAN</span>
+            {!overlay && <span className="text-[7px] text-white/35">CAN</span>}
           </div>
         ) : (
-          <div className="flex shrink-0 flex-col items-center gap-1">
-            <span className="text-[8px] text-white/50">
+          <div className={`flex shrink-0 flex-col items-center ${overlay ? 'gap-0.5' : 'gap-1'}`}>
+            <span className={`${overlay ? 'text-[6px]' : 'text-[8px]'} text-white/50`}>
               {roundLabel ?? `SET ${setNumber}`}
             </span>
-            <span className="text-[9px] text-retro-accent sm:text-[11px]">
+            <span
+              className={`${
+                overlay ? 'text-[8px]' : 'text-[9px] sm:text-[11px]'
+              } text-retro-accent`}
+            >
               {sets.home} — {sets.away}
             </span>
-            <span className="text-[7px] text-white/35">{pointsPerSet} SAYI</span>
+            {!overlay && (
+              <span className="text-[7px] text-white/35">{pointsPerSet} SAYI</span>
+            )}
           </div>
         )}
 
@@ -73,6 +86,7 @@ export default function Scoreboard({
           accentStyle={accentStyle}
           align="right"
           compact={compact}
+          overlay={overlay}
         />
       </div>
 
@@ -134,36 +148,45 @@ function TeamBlock({
   align,
   flag = false,
   compact = false,
+  overlay = false,
   subLabel,
 }) {
   const isLeft = align === 'left';
 
   return (
     <div
-      className={`flex min-w-0 flex-1 items-center gap-1.5 sm:gap-3 ${
-        isLeft ? 'justify-start' : 'flex-row-reverse justify-start'
-      }`}
+      className={`flex min-w-0 flex-1 items-center ${
+        overlay ? 'gap-1' : 'gap-1.5 sm:gap-3'
+      } ${isLeft ? 'justify-start' : 'flex-row-reverse justify-start'}`}
     >
       {flag && !compact && <MiniFlag />}
-      {flag && compact && (
+      {flag && compact && !overlay && (
         <span className="hidden sm:inline-flex">
           <MiniFlag />
         </span>
       )}
       <div className={`flex min-w-0 flex-col ${isLeft ? 'items-start' : 'items-end'}`}>
         <span
-          className={`truncate text-[7px] sm:text-[10px] ${accent ?? ''}`}
+          className={`truncate ${
+            overlay ? 'text-[6px]' : 'text-[7px] sm:text-[10px]'
+          } ${accent ?? ''}`}
           style={accentStyle}
         >
           {name}
         </span>
-        <span className="text-[7px] text-white/40 sm:text-[8px]">
-          {subLabel ?? `${sets} SET`}
-        </span>
+        {!overlay && (
+          <span className="text-[7px] text-white/40 sm:text-[8px]">
+            {subLabel ?? `${sets} SET`}
+          </span>
+        )}
       </div>
       <span
         className={`ml-auto text-shadow-pixel text-white ${
-          compact ? 'text-lg sm:text-3xl' : 'text-xl sm:text-3xl'
+          overlay
+            ? 'text-base'
+            : compact
+              ? 'text-lg sm:text-3xl'
+              : 'text-xl sm:text-3xl'
         }`}
       >
         {points}

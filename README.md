@@ -33,18 +33,28 @@ Nordik Buz, Balkan Ateşi, Pasifik Dalga.
 
 ### Mobil
 
-Maç ekranı mobilde viewport'un tamamını kaplar: saha oranını koruyarak
-ortalanır, dokunmatik tuşlar da **sahanın köşelerine şeffaf olarak biner**.
-Skor tablosu ve Sultan barı üstte saydam bir katmanda durur; duraklat /
-tam ekran / çık düğmeleri sağ üst köşededir.
+Maç ekranı dokunmatik cihazlarda viewport'un tamamını kaplar (`100dvh` /
+`100vw`, canvas `object-fit: contain` / 9:5). Masaüstü alt kontrol şeridi
+(ses, duraklat, klavye ipuçları) gizlenir; skor ve Sultan barı üstte
+kompakt saydam HUD olarak kalır.
+
+Şeffaf ekran-içi kontroller:
+- **Sol:** yön okları (◀ ▶) + dalış
+- **Sağ:** dairesel **A** (vur / servis / smaç) ve **B** (zıpla); Sultan
+  hazırken küçük **S** tuşu
+
+Dokunmatik UI kararı yalnızca `max-width: 768` ile değil,
+`pointer: coarse` / `any-pointer: coarse` ile de verilir — böylece yatay
+tutulan telefonlarda (genişlik çoğu zaman 768px üstü) kontroller kaybolmaz
+ve siyah masaüstü bar sahayı sıkıştırmaz.
 
 - **Yatay tutuş zorunludur.** Saha 9:5 oranında ve dikeyde ekranın ancak
   üçte birine sığıyor. Dokunmatik cihazda dikey tutuşta tam ekran bir
-  "cihazı yatay çevir" kapısı çıkar, altındaki her şey erişilemez olur ve
-  maç ekranı motoru duraklatır. Yatay dönünce oyun kendiliğinden devam
-  etmez — duraklatma katmanı bekler, oyuncu hazır olduğunda başlatır.
-  Kapı yalnızca `pointer: coarse` cihazlarda açılır; masaüstünde
-  pencereyi dar ve uzun yapan kimse engellenmez.
+  "lütfen cihazınızı yatay çevirin" kapısı çıkar, altındaki her şey
+  erişilemez olur ve maç ekranı motoru duraklatır. Yatay dönünce oyun
+  kendiliğinden devam etmez — duraklatma katmanı bekler, oyuncu hazır
+  olduğunda başlatır. Kapı yalnızca `pointer: coarse` cihazlarda açılır;
+  masaüstünde pencereyi dar ve uzun yapan kimse engellenmez.
 - Ana ekrana eklenen PWA kısayolu manifest üzerinden doğrudan **yatay**
   açılır (`orientation: landscape`).
 - **Tam ekran** düğmesi Fullscreen API'yi kullanır ve destekleniyorsa

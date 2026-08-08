@@ -93,7 +93,7 @@
 
   /* Dokunmatik kontrol butonu */
   .touch-button {
-    @apply flex select-none items-center justify-center border-4 border-white/80 bg-retro-panel/90 text-white;
+    @apply flex select-none flex-col items-center justify-center border-4 border-white/80 bg-retro-panel/90 text-white;
     box-shadow: 4px 4px 0 0 rgba(0, 0, 0, 0.6);
     touch-action: none;
     -webkit-user-select: none;
@@ -109,17 +109,11 @@
   }
 
   /*
-   * Sahnenin üstüne binen şeffaf varyant.
-   *
-   * Tuşlar oyun alanının altında ayrı bir şeritte durduğunda mobilde
-   * saha ~40dvh'ye sıkışıyordu. Artık kontroller sahnenin köşelerine
-   * biniyor; okunur kalmaları için saydamlık yerine ince bir bulanıklık
-   * ve koyu zemin kullanılıyor (saha kırmızı, düz saydamlıkta tuş
-   * kayboluyor).
+   * Sahnenin üstüne binen şeffaf varyant (HUD hızlı düğmeleri).
    */
   .touch-button-overlay {
     @apply border-white/35 text-white/80;
-    background: rgba(8, 8, 16, 0.3);
+    background: rgba(8, 8, 16, 0.35);
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
     box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.35);
@@ -140,22 +134,141 @@
   }
 
   /*
-   * Mobil sahne: maç ekranı viewport'u kaplar, canvas ortalanır ve
-   * kontroller onun köşelerine biner. `100dvh` adres çubuğu gizlenince
-   * de doğru yüksekliği verir.
+   * Dokunmatik maç düzeni: viewport'u kaplar, masaüstü siyah kontrol
+   * şeridi yoktur. Yatay telefonlar 768px'ten geniş olsa bile
+   * `isTouchUi` / [data-ui=touch] ile buraya düşer.
    */
-  .match-stage {
-    height: 100dvh;
+  .match-screen--touch {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: block;
     width: 100vw;
+    max-width: none;
+    height: 100vh;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+    background: #000;
   }
 
-  /* Canvas oranını koruyarak sahneye sığdır (letterbox) */
+  /*
+   * Sahne kutusu: tam ekran, canvas ortada letterbox.
+   */
+  .match-stage {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    max-width: none;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Canvas oranını koruyarak sahneye sığdır (object-fit: contain) */
   .stage-canvas {
-    max-width: 100%;
-    max-height: 100%;
     width: auto;
     height: auto;
+    max-width: 100%;
+    max-height: 100%;
     aspect-ratio: 9 / 5;
+    object-fit: contain;
+  }
+
+  /*
+   * Şeffaf D-pad yön tuşları — köşede minimalist oklar.
+   */
+  .touch-pad-btn {
+    width: 3.25rem;
+    height: 3.25rem;
+    border-radius: 0.25rem;
+    border: 2px solid rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 1.25rem;
+    line-height: 1;
+    box-shadow: none;
+    opacity: 0.55;
+  }
+
+  .touch-pad-btn-wide {
+    width: 7rem;
+    height: 2.35rem;
+    font-size: 1rem;
+  }
+
+  .touch-pad-btn:active,
+  .touch-pad-btn[data-pressed='true'] {
+    background: rgba(227, 10, 23, 0.55);
+    border-color: rgba(255, 255, 255, 0.85);
+    color: #fff;
+    opacity: 1;
+    transform: none;
+    box-shadow: none;
+  }
+
+  /*
+   * Konsol tarzı A / B dairesel butonlar — opacity ~0.45, retro kenarlık.
+   */
+  .touch-circle {
+    width: 4.25rem;
+    height: 4.25rem;
+    border-radius: 9999px;
+    border: 3px solid rgba(255, 255, 255, 0.7);
+    background: rgba(255, 255, 255, 0.14);
+    color: rgba(255, 255, 255, 0.9);
+    box-shadow: none;
+    opacity: 0.48;
+    gap: 0.15rem;
+  }
+
+  .touch-circle-a {
+    width: 3.75rem;
+    height: 3.75rem;
+  }
+
+  .touch-circle-b {
+    width: 4.5rem;
+    height: 4.5rem;
+  }
+
+  .touch-circle-sultan {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-color: rgba(255, 210, 74, 0.85);
+    background: rgba(227, 10, 23, 0.45);
+    opacity: 0.75;
+    font-size: 0.7rem;
+  }
+
+  .touch-circle .touch-button-label {
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .touch-circle .touch-button-caption {
+    font-size: 6px;
+    letter-spacing: 0.04em;
+    opacity: 0.75;
+    line-height: 1;
+  }
+
+  .touch-circle:active,
+  .touch-circle[data-pressed='true'] {
+    background: rgba(227, 10, 23, 0.75);
+    border-color: #fff;
+    color: #fff;
+    opacity: 1;
+    transform: scale(0.94);
+    box-shadow: none;
+  }
+
+  .touch-overlay {
+    touch-action: none;
   }
 
   /*
@@ -164,10 +277,16 @@
    */
   .retro-panel-overlay {
     border: 2px solid rgba(255, 255, 255, 0.28);
-    background: rgba(8, 8, 16, 0.55);
+    background: rgba(8, 8, 16, 0.5);
     backdrop-filter: blur(3px);
     -webkit-backdrop-filter: blur(3px);
     box-shadow: none;
+  }
+
+  /* Dokunmatik HUD daha kompakt kalsın */
+  .retro-panel-overlay.hud-compact {
+    padding: 0.35rem 0.5rem;
+    max-width: min(100%, 22rem);
   }
 
   .touch-button:disabled {

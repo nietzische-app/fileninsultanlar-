@@ -24,12 +24,12 @@ export default function RotateGate() {
         {/* Büyük başlıklardaki `text-outline-red` bu punto da bulanık
             okunuyor; düz piksel gölgesi daha net. */}
         <h2 id="rotate-gate-title" className="text-shadow-pixel text-sm leading-relaxed text-turkiye-red">
-          CİHAZI YATAY ÇEVİR
+          LÜTFEN CİHAZINIZI YATAY ÇEVİRİN
         </h2>
         <p className="mt-4 text-[8px] leading-relaxed text-white/60">
           Filenin Sultanları yatay ekran için tasarlandı.
           <br />
-          Sahanın tamamını görmek için telefonunu yan çevir.
+          Tam ekran arcade deneyimi için telefonunu yan çevir.
         </p>
       </div>
 

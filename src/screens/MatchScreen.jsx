@@ -50,7 +50,7 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
   const [quitConfirm, setQuitConfirm] = useState(false);
 
   const fullscreen = useFullscreen(stageRef);
-  const { isMobile, portrait, coarse } = useViewport();
+  const { isTouchUi, portrait, coarse } = useViewport();
 
   // --- Motorun kurulumu ---
   useEffect(() => {
@@ -261,6 +261,7 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
    * yanıltıcı olurdu.
    */
   const twoPlayer = config.playMode === 'coop' || config.playMode === 'vs';
+  const showTouch = isTouchUi && !twoPlayer;
 
   // Ham id değil etiket: upper('classic') Türkçe eşlemede "CLASSİC" veriyordu
   const matchLabel =
@@ -273,14 +274,22 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
   return (
     <div
       ref={stageRef}
-      className="match-screen mx-auto flex min-h-full w-full max-w-[960px] flex-col items-center gap-3 px-2 py-3 max-md:fixed max-md:inset-0 max-md:z-40 max-md:block max-md:h-[100dvh] max-md:w-screen max-md:max-w-none max-md:overflow-hidden max-md:overscroll-none max-md:bg-black max-md:p-0 sm:gap-4 sm:px-3 sm:py-5"
+      data-touch-layout={isTouchUi ? 'true' : 'false'}
+      className={`match-screen mx-auto flex min-h-full w-full max-w-[960px] flex-col items-center gap-3 px-2 py-3 sm:gap-4 sm:px-3 sm:py-5 ${
+        isTouchUi ? 'match-screen--touch' : ''
+      }`}
     >
       {/*
-        Üst HUD. Mobilde skor tablosu, Sultan barı ve hızlı düğmeler tek
-        bir saydam katmanda sahnenin üstüne biner; masaüstünde eskisi
-        gibi akışta durur.
+        Üst HUD. Dokunmatikte skor tablosu, Sultan barı ve hızlı düğmeler
+        sahnenin üstüne biner; masaüstünde akışta durur.
       */}
-      <div className="w-full shrink-0 max-md:pointer-events-none max-md:absolute max-md:inset-x-0 max-md:top-0 max-md:z-20 max-md:flex max-md:flex-col max-md:gap-1 max-md:px-1 max-md:pt-[env(safe-area-inset-top)]">
+      <div
+        className={`w-full shrink-0 ${
+          isTouchUi
+            ? 'pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col gap-1 px-1 pt-[env(safe-area-inset-top)]'
+            : ''
+        }`}
+      >
         <div className="flex w-full items-start gap-1">
           <Scoreboard
             score={hud.score}
@@ -293,71 +302,74 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
             survival={hud.survival}
             roundLabel={hud.roundLabel}
             compact
-            overlay={isMobile}
+            overlay={isTouchUi}
           />
 
-          {/* Duraklat / tam ekran / çık — yalnızca mobil */}
-          <div className="pointer-events-auto flex shrink-0 gap-1 pr-[env(safe-area-inset-right)] md:hidden">
-            {fullscreen.supported && (
+          {/* Duraklat / tam ekran / çık — yalnızca dokunmatik */}
+          {isTouchUi && (
+            <div className="pointer-events-auto flex shrink-0 gap-1 pr-[env(safe-area-inset-right)]">
+              {fullscreen.supported && (
+                <button
+                  type="button"
+                  className="touch-button touch-button-overlay h-8 w-8 text-[10px]"
+                  onClick={fullscreen.toggle}
+                  aria-label={fullscreen.active ? 'Tam ekrandan çık' : 'Tam ekran'}
+                >
+                  {fullscreen.active ? '⤡' : '⛶'}
+                </button>
+              )}
               <button
                 type="button"
-                className="touch-button touch-button-overlay h-8 w-8 text-[10px]"
-                onClick={fullscreen.toggle}
-                aria-label={fullscreen.active ? 'Tam ekrandan çık' : 'Tam ekran'}
+                className="touch-button touch-button-overlay h-8 w-8 text-[9px]"
+                onClick={togglePause}
+                aria-label={paused ? 'Devam et' : 'Duraklat'}
               >
-                {fullscreen.active ? '⤡' : '⛶'}
+                {paused ? '▶' : 'II'}
               </button>
-            )}
-            <button
-              type="button"
-              className="touch-button touch-button-overlay h-8 w-8 text-[9px]"
-              onClick={togglePause}
-              aria-label={paused ? 'Devam et' : 'Duraklat'}
-            >
-              {paused ? '▶' : 'II'}
-            </button>
-            <button
-              type="button"
-              className="touch-button touch-button-overlay h-8 w-9 text-[7px]"
-              onClick={requestQuit}
-              aria-label="Maçtan çık"
-            >
-              ÇIK
-            </button>
-          </div>
+              <button
+                type="button"
+                className="touch-button touch-button-overlay h-8 w-9 text-[7px]"
+                onClick={requestQuit}
+                aria-label="Maçtan çık"
+              >
+                ÇIK
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Mobil: ince Sultan barı */}
-        <div className="pointer-events-auto md:hidden">
-          <SultanBar
-            charge={hud.sultanCharge}
-            ready={hud.sultanReady}
-            armed={hud.sultanArmed}
-            onActivate={handleSultan}
-            compact
-          />
-        </div>
+        {/* Dokunmatik: ince Sultan barı */}
+        {isTouchUi && (
+          <div className="pointer-events-auto">
+            <SultanBar
+              charge={hud.sultanCharge}
+              ready={hud.sultanReady}
+              armed={hud.sultanArmed}
+              onActivate={handleSultan}
+              compact
+            />
+          </div>
+        )}
       </div>
 
       {/*
-        Oyun alanı. Mobilde sahnenin tamamını kaplar ve canvas oranını
-        koruyarak ortalanır; kontroller bu kutunun köşelerine biner.
-        Önceden canvas 42dvh'ye sıkışıp tuşlar altında ayrı bir şeritte
-        duruyordu — saha avuç içi kadar kalıyordu.
+        Oyun alanı. Dokunmatikte viewport'u kaplar; canvas 9:5 oranını
+        koruyarak ortalanır (letterbox). Kontroller köşelere biner.
+        Genişlik-bazlı md kırılımı yatay telefonlarda masaüstü barını
+        açıyordu — artık isTouchUi / pointer:coarse ile karar verilir.
       */}
-      {/*
-        `portrait:pb-…` sahayı yukarı, HUD'ın hemen altına çeker. Saf
-        ortalamada 9:5 oranındaki canvas dikey ekranda ortada asılı
-        kalıyor, üstünde ve altında eşit iki siyah bant oluşuyordu;
-        alttaki bandı tek parça yapıp kontrollere ve maç künyesine
-        ayırmak hem daha derli toplu hem başparmak erişimine uygun.
-      */}
-      <div className="scanlines relative w-full max-w-[900px] shrink border-4 border-white/85 bg-black max-md:absolute max-md:inset-0 max-md:flex max-md:max-w-none max-md:items-center max-md:justify-center max-md:border-0 max-md:portrait:pb-[13.5rem]">
+      <div
+        className={`scanlines relative w-full max-w-[900px] shrink border-4 border-white/85 bg-black ${
+          isTouchUi ? 'match-stage' : ''
+        }`}
+      >
         <canvas
           ref={canvasRef}
           width={GAME_WIDTH}
           height={GAME_HEIGHT}
-          className="pixelated block h-auto max-h-full w-full max-md:stage-canvas max-md:w-auto"
+          className={`pixelated block h-auto max-h-full w-full ${
+            isTouchUi ? 'stage-canvas' : ''
+          }`}
           style={{ aspectRatio: `${GAME_WIDTH} / ${GAME_HEIGHT}` }}
           aria-label="Filenin Sultanları voleybol sahası"
         />
@@ -385,8 +397,8 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
           </div>
         )}
 
-        {/* Mobil: kontroller sahanın köşelerinde, şeffaf */}
-        {!twoPlayer && (
+        {/* Dokunmatik: şeffaf A/B + D-pad overlay */}
+        {showTouch && (
           <TouchControls
             onInput={handleTouchInput}
             sultanReady={hud.sultanReady}
@@ -395,26 +407,10 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
           />
         )}
 
-        {/* Dikey ekranda saha ile tuşlar arasındaki bandı künye doldurur */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-[12.5rem] z-10 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-3 text-center text-[7px] text-white/40 md:hidden landscape:hidden">
-          <span>{upper(config.mode)}</span>
-          <span className="text-white/15">|</span>
-          <span>{matchLabel}</span>
-          <span className="text-white/15">|</span>
-          <span>{squad.map((p) => upper(p.name)).join(' + ')}</span>
-          {hud.opponentName && (
-            <>
-              <span className="text-white/15">vs</span>
-              <span style={{ color: hud.opponentAccent }}>{hud.opponentName}</span>
-            </>
-          )}
-        </div>
-
-
         {/* Duraklatma katmanı */}
         {paused && !quitConfirm && (
           <div
-            className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-black/80 px-3"
+            className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-black/80 px-3"
             role="dialog"
             aria-modal="true"
             aria-label="Oyun duraklatıldı"
@@ -435,7 +431,7 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
         {/* Çıkış onayı */}
         {quitConfirm && (
           <div
-            className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-black/90 px-4"
+            className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-black/90 px-4"
             role="dialog"
             aria-modal="true"
             aria-labelledby="quit-confirm-title"
@@ -471,64 +467,68 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
         )}
       </div>
 
-      <div className="w-full shrink-0 max-md:hidden">
-        <SultanBar
-          charge={hud.sultanCharge}
-          ready={hud.sultanReady}
-          armed={hud.sultanArmed}
-          onActivate={handleSultan}
-        />
-      </div>
+      {/* Masaüstü Sultan barı + alt kontrol şeridi — dokunmatikte gizli */}
+      {!isTouchUi && (
+        <>
+          <div className="w-full shrink-0">
+            <SultanBar
+              charge={hud.sultanCharge}
+              ready={hud.sultanReady}
+              armed={hud.sultanArmed}
+              onActivate={handleSultan}
+            />
+          </div>
 
-      {/* Alt bilgi — masaüstü */}
-      <div className="flex w-full max-w-[900px] shrink-0 flex-wrap items-center justify-between gap-2 max-md:hidden">
-        <div className="hidden items-center gap-3 text-[7px] text-white/45 sm:flex">
-          <span>{upper(config.mode)}</span>
-          <span className="text-white/20">|</span>
-          <span>{matchLabel}</span>
-          <span className="text-white/20">|</span>
-          <span>{squad.map((p) => upper(p.name)).join(' + ')}</span>
-          {hud.opponentName && (
-            <>
-              <span className="text-white/20">vs</span>
-              <span style={{ color: hud.opponentAccent }}>{hud.opponentName}</span>
-            </>
-          )}
-        </div>
+          <div className="flex w-full max-w-[900px] shrink-0 flex-wrap items-center justify-between gap-2">
+            <div className="hidden items-center gap-3 text-[7px] text-white/45 sm:flex">
+              <span>{upper(config.mode)}</span>
+              <span className="text-white/20">|</span>
+              <span>{matchLabel}</span>
+              <span className="text-white/20">|</span>
+              <span>{squad.map((p) => upper(p.name)).join(' + ')}</span>
+              {hud.opponentName && (
+                <>
+                  <span className="text-white/20">vs</span>
+                  <span style={{ color: hud.opponentAccent }}>{hud.opponentName}</span>
+                </>
+              )}
+            </div>
 
-        <div className="flex w-full justify-end gap-2 sm:w-auto sm:gap-3">
-          <MuteButton muted={muted} onToggle={onToggleMute} />
-          {fullscreen.supported && (
-            <button
-              type="button"
-              className="retro-button-ghost px-4 py-2 text-[8px]"
-              onClick={fullscreen.toggle}
-            >
-              {fullscreen.active ? 'TAM EKRANDAN ÇIK' : 'TAM EKRAN'}
-            </button>
-          )}
-          <button
-            type="button"
-            className="retro-button-ghost px-4 py-2 text-[8px]"
-            onClick={togglePause}
-          >
-            {paused ? 'DEVAM' : 'DURAKLAT'}
-          </button>
-          <button
-            type="button"
-            className="retro-button-ghost px-4 py-2 text-[8px]"
-            onClick={requestQuit}
-          >
-            ÇIK
-          </button>
-        </div>
-      </div>
+            <div className="flex w-full justify-end gap-2 sm:w-auto sm:gap-3">
+              <MuteButton muted={muted} onToggle={onToggleMute} />
+              {fullscreen.supported && (
+                <button
+                  type="button"
+                  className="retro-button-ghost px-4 py-2 text-[8px]"
+                  onClick={fullscreen.toggle}
+                >
+                  {fullscreen.active ? 'TAM EKRANDAN ÇIK' : 'TAM EKRAN'}
+                </button>
+              )}
+              <button
+                type="button"
+                className="retro-button-ghost px-4 py-2 text-[8px]"
+                onClick={togglePause}
+              >
+                {paused ? 'DEVAM' : 'DURAKLAT'}
+              </button>
+              <button
+                type="button"
+                className="retro-button-ghost px-4 py-2 text-[8px]"
+                onClick={requestQuit}
+              >
+                ÇIK
+              </button>
+            </div>
+          </div>
 
-      <p className="hidden text-center text-[7px] leading-relaxed text-white/35 md:block">
-        {twoPlayer
-          ? '1. OYUNCU: W A S D · BOŞLUK VUR · X SULTAN   ·   2. OYUNCU: ← → ↑ ↓ · ENTER VUR   ·   ESC DURAKLAT'
-          : '← → HAREKET · ↑ ZIPLA · ↓ DALIŞ (HAVADA PLASE) · BOŞLUK VUR (TAM ZAMANINDA BAS!) · X SULTAN GÜCÜ · ESC DURAKLAT'}
-      </p>
+          <p className="text-center text-[7px] leading-relaxed text-white/35">
+            {twoPlayer
+              ? '1. OYUNCU: W A S D · BOŞLUK VUR · X SULTAN   ·   2. OYUNCU: ← → ↑ ↓ · ENTER VUR   ·   ESC DURAKLAT'
+              : '← → HAREKET · ↑ ZIPLA · ↓ DALIŞ (HAVADA PLASE) · BOŞLUK VUR (TAM ZAMANINDA BAS!) · X SULTAN GÜCÜ · ESC DURAKLAT'}
+          </p>
+        </>
+      )}
     </div>
   );
 }

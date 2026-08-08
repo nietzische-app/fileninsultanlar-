@@ -8,22 +8,26 @@ import { SULTAN } from '../game/constants.js';
  */
 export default function SultanBar({ charge, ready, armed, onActivate, compact = false }) {
   const percent = Math.min(100, (charge / SULTAN.max) * 100);
-  const segments = compact ? 12 : 20;
+  const segments = compact ? 10 : 20;
   const filled = Math.round((percent / 100) * segments);
 
   return (
-    <div className={`flex w-full max-w-[900px] items-center ${compact ? 'gap-2' : 'gap-3'}`}>
+    <div
+      className={`flex items-center ${
+        compact ? 'w-full max-w-[14rem] gap-1.5' : 'w-full max-w-[900px] gap-3'
+      }`}
+    >
       <span
         className={`shrink-0 uppercase ${
-          compact ? 'text-[7px]' : 'text-[8px]'
+          compact ? 'text-[6px]' : 'text-[8px]'
         } ${ready ? 'text-retro-accent' : 'text-white/50'}`}
       >
         {compact ? 'SULTAN' : 'Sultan Gücü'}
       </span>
 
       <div
-        className={`relative flex flex-1 gap-[2px] border-2 p-[3px] ${
-          compact ? 'h-4' : 'h-6'
+        className={`relative flex flex-1 gap-[2px] border-2 ${
+          compact ? 'h-2.5 p-[2px]' : 'h-6 p-[3px]'
         } ${ready ? 'border-retro-accent' : 'border-white/30'}`}
       >
         {Array.from({ length: segments }, (_, i) => (
