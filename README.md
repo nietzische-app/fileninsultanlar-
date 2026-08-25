@@ -150,9 +150,29 @@ kullanılmalı — koşarak yetişebiliyorsan koş. Rakip yapay zekâsı da dala
 
 ### Ses
 
-Her şey osilatör ve filtrelenmiş gürültüyle anlık üretilir; tek bir ses
-dosyası yok. Motor katmanlı: master altında ayrı **efekt** ve **tribün**
-bus'ları var, böylece kalabalık efektleri bastırmıyor.
+Efektlerin tamamı osilatör ve filtrelenmiş gürültüyle anlık üretilir; tek
+bir efekt dosyası yok. Motor katmanlı: master altında ayrı **efekt**,
+**tribün** ve **müzik** bus'ları var, böylece kalabalık efektleri
+bastırmıyor ve müzik ayrı kısılabiliyor.
+
+**Giriş müziği** bunun tek istisnası — `src/assets/giris-muzigi.mp3`,
+60 saniyelik döngü. Sağ üstteki kaydırıcı yalnızca müziğin seviyesini
+belirler (tercihte saklanır); sessize alma düğmesi ise her şeyi kapatır,
+müzik dahil, çünkü müzik de aynı master'a bağlı.
+
+Üç ayrıntı ölçümle çözüldü:
+
+- **Otomatik oynatma engeli.** Tarayıcı kullanıcı hareketi olmadan ses
+  açtırmıyor. Dosya indirmesi hareketi beklemez, ama çalma penceredeki
+  ilk tıklama veya tuşla başlar. Maçtan menüye dönüşte bağlam zaten
+  açık olduğu için müzik anında girer.
+- **Döngü boşluğu.** MP3 kodlayıcısı dosyanın başına ve sonuna sessizlik
+  ekliyor; ham tampon döngüye alındığında her turda duyulur bir boşluk
+  oluşuyordu. `musicLoopWindow` sessiz uçları bulup `loopStart`/`loopEnd`
+  değerlerini oraya çekiyor — bu dosyada 117 ms kırpılıyor.
+- **Yarış durumu.** İndirme ve çözme sürerken oyuncu menüden çıkabiliyor;
+  `musicWanted` bayrağı olmasa müzik maç başladıktan sonra çalmaya
+  başlıyordu.
 
 Maç boyunca hafif bir **tribün yatağı** çalar ve ralli/coşkuyla şişer —
 salonun dolu olduğunu tek bir efekt çalmadan hissettirir. Duraklatınca ve
@@ -357,7 +377,7 @@ Ortam değişkeni, backend ya da veritabanı yok; tamamen statik bir SPA.
 | Stil | Tailwind CSS 3 |
 | Oyun | HTML5 Canvas 2D + `requestAnimationFrame` |
 | Grafik | Oyunun tamamı %100 kod — `drawImage` yok. Tek istisna: giriş ekranı arka plan fotoğrafı |
-| Ses | Web Audio API — katmanlı motor (master → sfx/tribün bus), dosya yok |
+| Ses | Web Audio API — katmanlı motor (master → sfx/tribün/müzik bus). Efektler dosyasız üretilir; tek istisna giriş müziği |
 | Font | Arayüzde Press Start 2P; forma numaraları kendi piksel fontumuz |
 
 ## Dosya Yapısı
@@ -437,16 +457,25 @@ tribün, Türk bayrakları, kupa ve forma numaraları dahil her şey
 blok blok çizilir. Sekme simgesi bile çalışma anında canvas'tan üretilir
 (`createFaviconDataUrl`).
 
-Tek istisna `src/assets/takim-arkaplan.webp` — giriş ekranının arka planındaki
-millî takım fotoğrafı. Kaynak kare 2560×1706 / 816 KB'tı; koyu bir örtünün
-altında duracağı için 1200×800 WebP'ye indirildi (82 KB) ve portal paketi
-104 KB'tan 188 KB'a çıktı. Bu dosya oyun motoruna girmez, yalnızca
-`StartScreen`'de arka plan katmanı olarak kullanılır.
+İki istisna var, ikisi de yalnızca giriş ekranında ve oyun motoruna
+girmiyor:
 
-> **Telif notu:** Bu kare bir ajans/basın fotoğrafı görünümünde (VNL ve
-> Volleyball World markaları, sponsor logoları). Projeyi reklam gelirli
-> oyun portallarına dağıtmadan önce fotoğrafın kullanım hakkının
-> netleştirilmesi gerekir.
+| Dosya | Ne | Kaynak | Paketlenen |
+|---|---|---|---|
+| `src/assets/takim-arkaplan.webp` | Arka plan fotoğrafı | 2560×1706 JPEG, 816 KB | 1200×800 WebP, 82 KB |
+| `src/assets/giris-muzigi.mp3` | Giriş müziği (60 sn döngü) | 192 kbps MP3, 1.4 MB | 96 kbps MP3, 704 KB |
+
+Fotoğraf koyu bir örtünün altında durduğu için yüksek çözünürlük
+gereksizdi. Müzikte Opus 437 KB'a iniyordu ama iOS Safari'de
+`decodeAudioData` desteği güvenilmez olduğundan MP3'te kalındı. Portal
+paketi bu ikisiyle 104 KB'tan 888 KB'a çıktı.
+
+> **Telif notu:** Fotoğraf bir ajans/basın karesi görünümünde (VNL ve
+> Volleyball World markaları, sponsor logoları), müzik ise yayınlanmış
+> bir şarkı. İkisi de projenin kendi üretimi değil. Reklam gelirli oyun
+> portallarına dağıtmadan önce kullanım haklarının netleştirilmesi
+> gerekir; müzikte otomatik telif tespiti fotoğrafa göre çok daha
+> agresif işler.
 
 Bir karakterin görünümü tamamen `src/game/players.js` içinden değiştirilir:
 

@@ -75,6 +75,61 @@
     box-shadow: none;
   }
 
+  /*
+   * Retro ses kaydırıcısı.
+   *
+   * `appearance: none` olmadan tarayıcının kendi yuvarlak kaydırıcısı
+   * çiziliyor ve piksel arayüzün içinde yamalı duruyor. Webkit ve
+   * Gecko ayrı sözde-elemanlar kullandığı için kural iki kez yazılır;
+   * tek seferde ikisini birden hedeflemenin yolu yok.
+   */
+  .retro-range {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 10px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .retro-range:disabled {
+    cursor: not-allowed;
+  }
+
+  .retro-range::-webkit-slider-runnable-track {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.18);
+    border: 2px solid rgba(255, 255, 255, 0.45);
+  }
+
+  .retro-range::-moz-range-track {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.18);
+    border: 2px solid rgba(255, 255, 255, 0.45);
+  }
+
+  .retro-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 10px;
+    height: 14px;
+    margin-top: -6px;
+    background: #ffd24a;
+    border: 2px solid #0b0b12;
+  }
+
+  .retro-range::-moz-range-thumb {
+    width: 10px;
+    height: 14px;
+    border-radius: 0;
+    background: #ffd24a;
+    border: 2px solid #0b0b12;
+  }
+
+  .retro-range:focus-visible {
+    outline: 2px solid #ffd24a;
+    outline-offset: 3px;
+  }
+
   /* CRT tarama çizgileri — oyun alanının üstüne biner */
   .scanlines::after {
     content: '';

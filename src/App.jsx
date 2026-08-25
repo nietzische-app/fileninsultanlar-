@@ -54,6 +54,7 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [brokenRecords, setBrokenRecords] = useState(null);
   const [muted, setMuted] = useState(initialPrefs.muted);
+  const [musicVolume, setMusicVolume] = useState(initialPrefs.musicVolume);
   const [prefs, setPrefs] = useState(initialPrefs);
   const [records, setRecords] = useState(() => loadRecords());
   const [savedTournament, setSavedTournament] = useState(() => loadTournament());
@@ -67,9 +68,10 @@ export default function App() {
   const { portrait, coarse } = useViewport();
   const blockedByOrientation = portrait && coarse;
 
-  // İlk yüklemede ses motoruna mute tercihini uygula
+  // İlk yüklemede ses motoruna kayıtlı tercihleri uygula
   useEffect(() => {
     Sfx.setMuted(initialPrefs.muted);
+    Sfx.setMusicVolume(initialPrefs.musicVolume);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- yalnızca mount
   }, []);
 
@@ -80,6 +82,20 @@ export default function App() {
       setPrefs(savePrefs({ muted: next }));
       return next;
     });
+  }, []);
+
+  /**
+   * Müzik sesi.
+   *
+   * Ses motoruna hemen uygulanır (kaydırıcı sürüklenirken duyulsun),
+   * tercihe de yazılır. `savePrefs` her çağrıda localStorage'a yazıyor;
+   * kaydırıcının `step` değeri 5 olduğu için tek sürüklemede en fazla
+   * 20 yazma olur, ayrıca kısma gerekmiyor.
+   */
+  const changeMusicVolume = useCallback((value) => {
+    setMusicVolume(value);
+    Sfx.setMusicVolume(value);
+    setPrefs(savePrefs({ musicVolume: value }));
   }, []);
 
   const goSelect = useCallback(() => {
@@ -346,6 +362,8 @@ export default function App() {
           onTutorial={openTutorial}
           muted={muted}
           onToggleMute={toggleMute}
+          musicVolume={musicVolume}
+          onMusicVolume={changeMusicVolume}
           records={records}
           resumeTournament={savedTournament}
           onResumeTournament={resumeSavedTournament}

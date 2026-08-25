@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import teamBackdrop from '../assets/takim-arkaplan.webp';
+import menuMusic from '../assets/giris-muzigi.mp3';
 import PixelAvatar from '../components/PixelAvatar.jsx';
 import MuteButton from '../components/MuteButton.jsx';
+import MusicVolume from '../components/MusicVolume.jsx';
 import { ROSTER, SHOWCASE_IDS } from '../game/players.js';
 import { GAME_MODES } from '../game/modes.js';
 import AchievementGrid from '../components/AchievementGrid.jsx';
@@ -26,6 +28,8 @@ export default function StartScreen({
   resumeTournament = null,
   onResumeTournament,
   achievements = [],
+  musicVolume = 0.55,
+  onMusicVolume,
 }) {
   const [messageIndex, setMessageIndex] = useState(0);
   const hasRecords = (records?.matchesPlayed ?? 0) > 0;
@@ -45,6 +49,37 @@ export default function StartScreen({
     return () => clearInterval(timer);
   }, [hasRecords]);
 
+  /*
+   * Giriş müziği.
+   *
+   * Tarayıcı otomatik oynatmayı kullanıcı hareketi olmadan engelliyor,
+   * o yüzden iki yol var: bağlam zaten açıksa (maçtan menüye dönüş)
+   * doğrudan başlar; ilk ziyarette pencereye düşen ilk tıklama ya da
+   * tuş müziği açar. Dosya indirmesi hareketi beklemez — hareket
+   * geldiğinde çalmaya hazır olsun diye hemen başlar.
+   */
+  useEffect(() => {
+    Sfx.fetchMusic(menuMusic);
+    Sfx.startMusic(menuMusic);
+
+    const kick = () => {
+      Sfx.unlock();
+      Sfx.startMusic(menuMusic);
+    };
+    window.addEventListener('pointerdown', kick);
+    window.addEventListener('keydown', kick);
+
+    // MatchScreen'deki ile aynı kolaylık: Web Audio hataları sessizce
+    // yutulduğu için motoru dışarıdan görebilmek gerekiyor.
+    if (import.meta.env.DEV) window.__sfx = Sfx;
+
+    return () => {
+      window.removeEventListener('pointerdown', kick);
+      window.removeEventListener('keydown', kick);
+      Sfx.stopMusic();
+    };
+  }, []);
+
   const handleStart = (modeId) => {
     // Tarayıcı ses politikası: AudioContext ilk kullanıcı hareketinde açılır
     Sfx.unlock();
@@ -56,7 +91,8 @@ export default function StartScreen({
     <div className="relative isolate flex min-h-full flex-col items-center justify-center gap-6 px-4 py-8 sm:gap-8 sm:py-10">
       <TeamBackdrop />
 
-      <div className="absolute right-4 top-4 z-10 sm:right-6 sm:top-6">
+      <div className="absolute right-4 top-4 z-10 flex items-center gap-2 sm:right-6 sm:top-6">
+        <MusicVolume value={musicVolume} onChange={onMusicVolume} muted={muted} />
         <MuteButton muted={muted} onToggle={onToggleMute} />
       </div>
 

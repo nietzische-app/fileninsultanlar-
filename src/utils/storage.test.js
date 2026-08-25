@@ -59,6 +59,35 @@ describe('storage prefs', () => {
     );
     expect(loadPrefs().difficulty).toBe('zor');
   });
+
+  it('müzik sesini kaydeder', () => {
+    savePrefs({ musicVolume: 0.3 });
+    expect(loadPrefs().musicVolume).toBeCloseTo(0.3);
+  });
+
+  it('müzik sesi alanı olmayan eski kayıtta varsayılana döner', () => {
+    localStorage.setItem(
+      'filenin-sultanlari-prefs',
+      JSON.stringify({ muted: false, mode: '1v1', homeIds: ['gizem-orge'] })
+    );
+    expect(loadPrefs().musicVolume).toBe(DEFAULT_PREFS.musicVolume);
+  });
+
+  it('bozuk müzik sesi değerlerini toparlar', () => {
+    const cases = [
+      [2.5, 1],
+      [-1, 0],
+      ['yarım', DEFAULT_PREFS.musicVolume],
+      [null, DEFAULT_PREFS.musicVolume],
+    ];
+    cases.forEach(([given, expected]) => {
+      localStorage.setItem(
+        'filenin-sultanlari-prefs',
+        JSON.stringify({ musicVolume: given, homeIds: ['gizem-orge'] })
+      );
+      expect(loadPrefs().musicVolume).toBe(expected);
+    });
+  });
 });
 
 describe('storage records', () => {

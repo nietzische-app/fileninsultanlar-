@@ -1,9 +1,11 @@
 /**
- * 8-bit / chiptune ses motoru — harici dosya yok.
+ * 8-bit / chiptune ses motoru.
  *
- * Katmanlar: master → sfxBus / crowdBus
- * Efektler osilatör + filtrelenmiş gürültü ile anlık üretilir.
- * Maç sırasında hafif tribün yatağı (atmosphere) hype ile şişer.
+ * Katmanlar: master → sfxBus / crowdBus / musicBus
+ * Efektler osilatör + filtrelenmiş gürültü ile anlık üretilir; tek bir
+ * efekt dosyası yoktur. Tek istisna giriş ekranı müziği: o bir MP3
+ * dosyasıdır ve `musicBus` üzerinden aynı master'a bağlanır, böylece
+ * sessize alma düğmesi müziği de kapsar.
  *
  * Tarayıcı politikası: `Sfx.unlock()` ilk kullanıcı hareketinde.
  */
@@ -11,6 +13,10 @@
 const MASTER_GAIN = 0.24;
 const SFX_GAIN = 1;
 const CROWD_GAIN = 0.85;
+/** Müzik master'a girmeden önceki tavan — slider bunun üstünden çarpar. */
+const MUSIC_GAIN = 1.35;
+/** Döngü penceresi aranırken sessizlik sayılan genlik. */
+const SILENCE = 0.004;
 
 class SfxEngine {
   constructor() {
@@ -19,6 +25,20 @@ class SfxEngine {
     this.sfxBus = null;
     this.crowdBus = null;
     this.muted = false;
+
+    // --- Giriş müziği ---
+    this.musicBus = null;
+    this.musicVolume = 0.55;
+    /** @type {null | ArrayBuffer} indirilen ham dosya */
+    this.musicRaw = null;
+    /** @type {null | AudioBuffer} çözülmüş ses */
+    this.musicBuffer = null;
+    /** @type {null | { source: AudioBufferSourceNode, fade: GainNode }} */
+    this.musicVoice = null;
+    /** Ekran müziği istiyor mu — indirme/çözme sırasında ekrandan
+     *  çıkılırsa çalmaya başlamasın diye. */
+    this.musicWanted = false;
+    this.musicLoading = false;
 
     /** @type {null | { sources: AudioBufferSourceNode[], gain: GainNode }} */
     this.bed = null;
@@ -49,6 +69,10 @@ class SfxEngine {
     this.crowdBus.gain.value = CROWD_GAIN;
     this.crowdBus.connect(this.master);
 
+    this.musicBus = this.ctx.createGain();
+    this.musicBus.gain.value = MUSIC_GAIN * this.musicVolume;
+    this.musicBus.connect(this.master);
+
     this.ensureBed();
   }
 
@@ -58,6 +82,121 @@ class SfxEngine {
       this.master.gain.value = muted ? 0 : MASTER_GAIN;
     }
     this.applyBedLevel(this.bedLevel);
+  }
+
+  // ===================================================================
+  // Giriş müziği
+  // ===================================================================
+
+  /**
+   * Müzik ses seviyesi (0–1). Kullanıcı ayarı; tercihte saklanır.
+   *
+   * Bağlam henüz açılmamışsa değer yalnızca saklanır ve `unlock()`
+   * sırasında uygulanır — slider'ı ilk hareketten önce oynatan oyuncu
+   * ayarını kaybetmesin.
+   *
+   * @param {number} value
+   */
+  setMusicVolume(value) {
+    const v = Math.max(0, Math.min(1, Number(value) || 0));
+    this.musicVolume = v;
+    if (!this.musicBus || !this.ctx) return;
+    // Ani sıçrama slider sürüklenirken tıklama sesi çıkarıyor
+    const t = this.ctx.currentTime;
+    this.musicBus.gain.cancelScheduledValues(t);
+    this.musicBus.gain.setTargetAtTime(MUSIC_GAIN * v, t, 0.02);
+  }
+
+  /**
+   * Dosyayı indirir. Bağlam gerektirmez, o yüzden ilk kullanıcı
+   * hareketini beklemeden başlayabilir.
+   * @param {string} url
+   */
+  async fetchMusic(url) {
+    if (this.musicRaw || this.musicBuffer || this.musicLoading) return;
+    this.musicLoading = true;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(String(res.status));
+      this.musicRaw = await res.arrayBuffer();
+    } catch {
+      // Müzik indirilemezse oyun sessizce devam eder
+      this.musicRaw = null;
+    } finally {
+      this.musicLoading = false;
+    }
+  }
+
+  /**
+   * Müziği başlatır (döngülü).
+   *
+   * Tarayıcı otomatik oynatmayı engellediği için bağlam yoksa sessizce
+   * vazgeçer; çağıran ilk kullanıcı hareketinde tekrar dener.
+   *
+   * @param {string} url
+   * @returns {Promise<boolean>} çalmaya başladı mı
+   */
+  async startMusic(url) {
+    this.musicWanted = true;
+    if (!this.ctx || !this.musicBus) return false;
+    if (this.musicVoice) return true;
+
+    if (!this.musicBuffer) {
+      if (!this.musicRaw) await this.fetchMusic(url);
+      if (!this.musicRaw) return false;
+      try {
+        // decodeAudioData ArrayBuffer'ı tüketiyor; kopyasını ver ki
+        // ikinci deneme (ör. otomatik oynatma engeli) boşa düşmesin.
+        this.musicBuffer = await this.ctx.decodeAudioData(this.musicRaw.slice(0));
+      } catch {
+        return false;
+      }
+    }
+
+    // İndirme/çözme sürerken ekrandan çıkılmış olabilir
+    if (!this.musicWanted || this.musicVoice) return false;
+
+    const { start, end } = musicLoopWindow(this.musicBuffer);
+    const now = this.ctx.currentTime;
+
+    const source = this.ctx.createBufferSource();
+    source.buffer = this.musicBuffer;
+    source.loop = true;
+    source.loopStart = start;
+    source.loopEnd = end;
+
+    // Açılış sertliğini almak için kısa bir yükselme
+    const fade = this.ctx.createGain();
+    fade.gain.setValueAtTime(0.0001, now);
+    fade.gain.exponentialRampToValueAtTime(1, now + 0.9);
+
+    source.connect(fade);
+    fade.connect(this.musicBus);
+    source.start(now, start);
+
+    this.musicVoice = { source, fade };
+    return true;
+  }
+
+  /**
+   * Müziği söndürerek durdurur.
+   * @param {{ fade?: number }} [opts]
+   */
+  stopMusic({ fade = 0.45 } = {}) {
+    this.musicWanted = false;
+    const voice = this.musicVoice;
+    if (!voice || !this.ctx) return;
+    this.musicVoice = null;
+
+    const now = this.ctx.currentTime;
+    try {
+      voice.fade.gain.cancelScheduledValues(now);
+      voice.fade.gain.setValueAtTime(Math.max(0.0001, voice.fade.gain.value), now);
+      voice.fade.gain.exponentialRampToValueAtTime(0.0001, now + fade);
+      voice.source.stop(now + fade + 0.05);
+    } catch {
+      // Zaten durmuş olabilir
+    }
   }
 
   /** @returns {AudioNode} */
@@ -706,3 +845,36 @@ class SfxEngine {
 export const Sfx = new SfxEngine();
 
 export default Sfx;
+
+/**
+ * Döngü penceresi — baştaki ve sondaki sessizliği atar.
+ *
+ * MP3 kodlayıcısı dosyanın başına ve sonuna sessizlik ekliyor. Ham
+ * tamponu olduğu gibi döngüye aldığımızda her turda duyulur bir boşluk
+ * oluşuyordu; `loopStart`/`loopEnd` bu pencereye çekilince döngü
+ * dikişsiz hale geliyor.
+ *
+ * @param {AudioBuffer} buffer
+ * @returns {{ start: number, end: number }} saniye
+ */
+export function musicLoopWindow(buffer) {
+  const data = buffer.getChannelData(0);
+  const n = data.length;
+  const rate = buffer.sampleRate;
+
+  let start = 0;
+  while (start < n && Math.abs(data[start]) < SILENCE) start += 1;
+
+  let end = n - 1;
+  while (end > start && Math.abs(data[end]) < SILENCE) end -= 1;
+
+  // Tamamen sessiz dosyada pencere çökmesin
+  if (start >= end) return { start: 0, end: n / rate };
+
+  // Sıfır geçişini tam ortadan kesmek tık sesi veriyor; küçük pay bırak
+  const pad = Math.round(rate * 0.005);
+  return {
+    start: Math.max(0, start - pad) / rate,
+    end: Math.min(n - 1, end + pad) / rate,
+  };
+}

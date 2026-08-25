@@ -8,7 +8,7 @@ const RECORDS_KEY = 'filenin-sultanlari-records';
 const TOURNAMENT_KEY = 'filenin-sultanlari-tournament';
 const ACHIEVEMENTS_KEY = 'filenin-sultanlari-achievements';
 
-/** @typedef {{ muted: boolean, mode: string, difficulty: string, format: string, opponentId: string, homeIds: string[], tutorialSeen: boolean }} Prefs */
+/** @typedef {{ muted: boolean, musicVolume: number, mode: string, difficulty: string, format: string, opponentId: string, homeIds: string[], tutorialSeen: boolean }} Prefs */
 
 /**
  * @typedef {{
@@ -31,6 +31,8 @@ const ACHIEVEMENTS_KEY = 'filenin-sultanlari-achievements';
 /** @type {Prefs} */
 export const DEFAULT_PREFS = {
   muted: false,
+  /** Giriş müziği sesi (0–1). */
+  musicVolume: 0.55,
   mode: '1v1',
   difficulty: 'normal',
   format: 'classic',
@@ -76,6 +78,7 @@ export function loadPrefs() {
 
     return {
       muted: Boolean(parsed.muted),
+      musicVolume: clampVolume(parsed.musicVolume),
       mode: parsed.mode === '2v2' ? '2v2' : '1v1',
       difficulty: ['kolay', 'normal', 'zor', 'easy', 'hard'].includes(parsed.difficulty)
         ? ({ easy: 'kolay', hard: 'zor' }[parsed.difficulty] ?? parsed.difficulty)
@@ -90,6 +93,34 @@ export function loadPrefs() {
   } catch {
     return { ...DEFAULT_PREFS, homeIds: [...DEFAULT_PREFS.homeIds] };
   }
+}
+
+/**
+ * Ses seviyesini 0–1 aralığına çeker.
+ *
+ * Eski kayıtlarda alan hiç yok; `NaN`, `null` ya da elle kurcalanmış
+ * bir değer geldiğinde varsayılana dönmek sessizliğe ya da tavan sese
+ * takılmaktan iyi.
+ *
+ * @param {unknown} value
+ * @returns {number}
+ */
+function clampVolume(value) {
+  /*
+   * Doğrudan `Number(value)` yanlış sonuç veriyor: `Number(null)`,
+   * `Number('')` ve `Number(false)` sıfır döner, yani alanı bozuk olan
+   * bir kayıtta müzik varsayılana değil tamamen SESSİZE düşerdi.
+   * O yüzden önce tür süzülüyor.
+   */
+  const n =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim() !== ''
+        ? Number(value)
+        : NaN;
+
+  if (!Number.isFinite(n)) return DEFAULT_PREFS.musicVolume;
+  return Math.max(0, Math.min(1, n));
 }
 
 /**
