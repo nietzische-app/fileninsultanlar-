@@ -186,12 +186,28 @@
     @apply border-white/80 text-white;
   }
 
-  /* Maç ekranı — mobil kaydırma / bounce engeli */
-  .match-screen {
-    touch-action: manipulation;
+  /*
+   * Maç ekranı — mobil kaydırma / bounce / yakınlaştırma engeli.
+   *
+   * `manipulation` yetmiyordu: o yalnızca çift dokunuş yakınlaştırmasını
+   * kapatır, iki parmakla pinch'i AÇIK bırakır. Ölçümde viewport
+   * meta'sındaki `maximum-scale=1` devre dışı kaldığında saha iki
+   * parmakla 5 katına çıkıyordu — Chrome Android'in "Force enable zoom"
+   * erişilebilirlik ayarı tam olarak bunu yapıyor.
+   *
+   * `touch-action` MİRAS ALINMAZ; dokunuşun başladığı elemanın kendi
+   * değeri geçerlidir. O yüzden kapsayıcıya yazmak yetmez, sahne ve
+   * canvas ayrıca işaretlenir — parmak canvas'a düştüğünde tarayıcı
+   * yine serbest kalıyordu.
+   */
+  .match-screen,
+  .match-stage,
+  .match-stage canvas {
+    touch-action: none;
     overscroll-behavior: none;
     -webkit-user-select: none;
     user-select: none;
+    -webkit-touch-callout: none;
   }
 
   /*

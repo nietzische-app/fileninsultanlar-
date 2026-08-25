@@ -174,6 +174,35 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
     return () => window.removeEventListener('blur', handleBlur);
   }, [pauseGame]);
 
+  /*
+   * Çoklu dokunuşun sahayı yakınlaştırmasını engelle.
+   *
+   * CSS'teki `touch-action: none` normal koşulda yetiyor, bu son
+   * savunma hattı: Chrome Android'in "Force enable zoom" erişilebilirlik
+   * ayarı viewport meta'sındaki ölçek sınırını yok sayıyor ve iki
+   * parmakla oynayan oyuncu (ör. sol + zıpla) sahayı yakınlaştırıyordu.
+   *
+   * Yalnızca `touchmove` engelleniyor, `touchstart` değil: pinch hareket
+   * gerektirdiği için bu yeterli, üstelik tuşların pointer capture ile
+   * çalışan basma/bırakma akışına hiç dokunmuyor.
+   *
+   * Menülerde bu kısıt YOK — orada yazılar küçük ve yakınlaştırmak
+   * meşru bir ihtiyaç.
+   */
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return undefined;
+
+    const blockPinch = (event) => {
+      if (event.touches.length > 1) event.preventDefault();
+    };
+
+    // `passive: false` şart — varsayılan pasif dinleyicide
+    // preventDefault sessizce yok sayılıyor.
+    stage.addEventListener('touchmove', blockPinch, { passive: false });
+    return () => stage.removeEventListener('touchmove', blockPinch);
+  }, []);
+
   const requestQuit = useCallback(() => {
     Sfx.unlock();
     Sfx.select();
@@ -352,7 +381,7 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
         alttaki bandı tek parça yapıp kontrollere ve maç künyesine
         ayırmak hem daha derli toplu hem başparmak erişimine uygun.
       */}
-      <div className="scanlines relative w-full max-w-[900px] shrink border-4 border-white/85 bg-black max-md:absolute max-md:inset-0 max-md:flex max-md:max-w-none max-md:items-center max-md:justify-center max-md:border-0 max-md:portrait:pb-[13.5rem]">
+      <div className="match-stage scanlines relative w-full max-w-[900px] shrink border-4 border-white/85 bg-black max-md:absolute max-md:inset-0 max-md:flex max-md:max-w-none max-md:items-center max-md:justify-center max-md:border-0 max-md:portrait:pb-[13.5rem]">
         <canvas
           ref={canvasRef}
           width={GAME_WIDTH}
