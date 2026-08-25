@@ -356,7 +356,7 @@ Ortam değişkeni, backend ya da veritabanı yok; tamamen statik bir SPA.
 | UI / ekranlar | React 18 |
 | Stil | Tailwind CSS 3 |
 | Oyun | HTML5 Canvas 2D + `requestAnimationFrame` |
-| Grafik | %100 kod — PNG/JPG/SVG yok, `drawImage` yok |
+| Grafik | Oyunun tamamı %100 kod — `drawImage` yok. Tek istisna: giriş ekranı arka plan fotoğrafı |
 | Ses | Web Audio API — katmanlı motor (master → sfx/tribün bus), dosya yok |
 | Font | Arayüzde Press Start 2P; forma numaraları kendi piksel fontumuz |
 
@@ -431,10 +431,22 @@ kapanana kadar beklerdi. PWA ikonları çalışma anında canvas'tan üretilir
 
 ## Karakter Özelleştirme
 
-Projede **tek bir görsel dosyası yok**. Sultanlar, voleybol topu, file, tribün,
-Türk bayrakları, kupa ve forma numaraları dahil her şey `src/game/sprites.js`
-içinde Canvas 2D API'siyle (`ctx.fillRect`, `ctx.arc`) blok blok çizilir.
-Sekme simgesi bile çalışma anında canvas'tan üretilir (`createFaviconDataUrl`).
+**Oyunun içinde tek bir görsel dosyası yok.** Sultanlar, voleybol topu, file,
+tribün, Türk bayrakları, kupa ve forma numaraları dahil her şey
+`src/game/sprites.js` içinde Canvas 2D API'siyle (`ctx.fillRect`, `ctx.arc`)
+blok blok çizilir. Sekme simgesi bile çalışma anında canvas'tan üretilir
+(`createFaviconDataUrl`).
+
+Tek istisna `src/assets/takim-arkaplan.webp` — giriş ekranının arka planındaki
+millî takım fotoğrafı. Kaynak kare 2560×1706 / 816 KB'tı; koyu bir örtünün
+altında duracağı için 1200×800 WebP'ye indirildi (82 KB) ve portal paketi
+104 KB'tan 188 KB'a çıktı. Bu dosya oyun motoruna girmez, yalnızca
+`StartScreen`'de arka plan katmanı olarak kullanılır.
+
+> **Telif notu:** Bu kare bir ajans/basın fotoğrafı görünümünde (VNL ve
+> Volleyball World markaları, sponsor logoları). Projeyi reklam gelirli
+> oyun portallarına dağıtmadan önce fotoğrafın kullanım hakkının
+> netleştirilmesi gerekir.
 
 Bir karakterin görünümü tamamen `src/game/players.js` içinden değiştirilir:
 
