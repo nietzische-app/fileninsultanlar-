@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import teamBackdrop from '../assets/takim-arkaplan.webp';
 import PixelAvatar from '../components/PixelAvatar.jsx';
 import MuteButton from '../components/MuteButton.jsx';
 import { ROSTER, SHOWCASE_IDS } from '../game/players.js';
@@ -52,7 +53,9 @@ export default function StartScreen({
   };
 
   return (
-    <div className="relative flex min-h-full flex-col items-center justify-center gap-6 px-4 py-8 sm:gap-8 sm:py-10">
+    <div className="relative isolate flex min-h-full flex-col items-center justify-center gap-6 px-4 py-8 sm:gap-8 sm:py-10">
+      <TeamBackdrop />
+
       <div className="absolute right-4 top-4 z-10 sm:right-6 sm:top-6">
         <MuteButton muted={muted} onToggle={onToggleMute} />
       </div>
@@ -112,9 +115,9 @@ export default function StartScreen({
             style={{ animationDelay: `${i * 0.35}s` }}
           >
             <PixelAvatar player={player} scale={4} pose={i === 0 ? 'cheer' : 'idle'} />
-            <span className="text-[7px] text-white/60">{upper(player.name)}</span>
+            <span className="text-[7px] text-white/75 text-shadow-pixel">{upper(player.name)}</span>
             {player.captain && (
-              <span className="text-[6px] text-retro-accent">★ KAPTAN</span>
+              <span className="text-[6px] text-retro-accent text-shadow-pixel">★ KAPTAN</span>
             )}
           </div>
         ))}
@@ -142,10 +145,16 @@ export default function StartScreen({
             key={mode.id}
             type="button"
             onClick={() => handleStart(mode.id)}
-            className={`group flex w-full items-center gap-3 border-4 px-4 py-3 text-left transition ${
+            /*
+             * `backdrop-blur`: arka plan fotoğrafı düğmelerin altından
+             * geçiyor; bulanıklık olmadan kalabalık kare açıklama
+             * metnini yutuyordu. Opaklık yerine bulanıklık, fotoğrafın
+             * varlığını koruyup okunurluğu geri getiriyor.
+             */
+            className={`group flex w-full items-center gap-3 border-4 px-4 py-3 text-left backdrop-blur-[3px] transition ${
               i === 0
-                ? 'border-turkiye-red bg-turkiye-red/20 hover:bg-turkiye-red/30'
-                : 'border-white/20 bg-retro-panel/60 hover:border-white/55'
+                ? 'border-turkiye-red bg-turkiye-red/30 hover:bg-turkiye-red/40'
+                : 'border-white/20 bg-retro-panel/75 hover:border-white/55'
             }`}
           >
             <div className="min-w-0 flex-1">
@@ -188,6 +197,64 @@ export default function StartScreen({
         Türkiye Kadın Millî Voleybol Takımı&apos;na saygıyla yapılmış, ticari olmayan
         bir hayran projesidir.
       </footer>
+    </div>
+  );
+}
+
+/**
+ * Giriş ekranı arka planı — millî takım karesi.
+ *
+ * `fixed`, çünkü giriş ekranı dar ekranlarda kayıyor; `absolute` olsaydı
+ * fotoğraf içerikle birlikte kayar ve alt yarıda zemin boşalırdı. Üst
+ * kapsayıcıdaki `isolate` bir yığın bağlamı açtığı için `-z-10` katmanı
+ * içeriğin arkasına, ama sayfa zemininin önüne koyuyor.
+ *
+ * Örtü tek parça değil, üç katman: fotoğrafın kendi opaklığı, düz bir
+ * koyu perde ve dikey degrade. Degrade başlık ile altbilgi hizasında
+ * zemini tamamen kapatıyor — metin fotoğrafın kalabalık kısmının
+ * üstüne denk geldiğinde okunurluk oradan kayboluyordu.
+ */
+function TeamBackdrop() {
+  return (
+    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{
+          backgroundImage: `url(${teamBackdrop})`,
+          opacity: 0.62,
+          // Formaların kırmızısı koyu arayüzün altında sönükleşiyordu
+          filter: 'saturate(1.2) contrast(1.06)',
+        }}
+      />
+      <div className="absolute inset-0 bg-retro-bg/40" />
+      {/*
+        Degrade yalnızca uçlarda kapatır: başlık üstte, altbilgi altta
+        fotoğrafın kalabalık kısmına denk geliyordu ve okunmuyordu.
+        Orta bant açık kalır ki takım gerçekten görünsün.
+      */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            'linear-gradient(to bottom, #0b0b12 0%, rgba(11,11,18,0.5) 26%, rgba(11,11,18,0.5) 68%, #0b0b12 100%)',
+        }}
+      />
+      {/* Kırmızı ışıma — #root üzerindeki salon dokusuyla aynı dil */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(ellipse at 50% 40%, rgba(227, 10, 23, 0.16), transparent 64%)',
+        }}
+      />
+      {/* CRT tarama çizgileri fotoğrafı da piksel diline yaklaştırıyor */}
+      <div
+        className="absolute inset-0 opacity-60"
+        style={{
+          background:
+            'repeating-linear-gradient(0deg, rgba(0,0,0,0.32) 0px, rgba(0,0,0,0.32) 1px, transparent 1px, transparent 3px)',
+        }}
+      />
     </div>
   );
 }
