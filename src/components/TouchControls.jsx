@@ -27,6 +27,15 @@ export default function TouchControls({
 
   const buttonTone = overlay ? 'touch-button-overlay' : '';
 
+  /*
+   * Tuş boyutları `min(rem, vh)` ile yazılır.
+   *
+   * Sabit rem değerlerinde kısa ekranlarda tuşlar sahanın oynanan
+   * bandını yutuyordu: 375px yüksekliğinde iPhone SE'de oyuncu tamamen
+   * ▶ tuşunun arkasında kalıyordu. `min()` uzun ekranlarda eski boyutu
+   * korur, kısa ekranlarda küçültür.
+   */
+
   const dpad = (
     <div className="flex flex-col gap-2">
       <div className="flex gap-2">
@@ -35,14 +44,14 @@ export default function TouchControls({
           action="left"
           label="◀"
           disabled={disabled}
-          className={`h-[3.5rem] w-[3.5rem] text-2xl ${buttonTone}`}
+          className={`h-[min(3.5rem,13vh)] w-[min(3.5rem,13vh)] text-2xl ${buttonTone}`}
         />
         <HoldButton
           onInput={onInput}
           action="right"
           label="▶"
           disabled={disabled}
-          className={`h-[3.5rem] w-[3.5rem] text-2xl ${buttonTone}`}
+          className={`h-[min(3.5rem,13vh)] w-[min(3.5rem,13vh)] text-2xl ${buttonTone}`}
         />
       </div>
       <HoldButton
@@ -50,7 +59,7 @@ export default function TouchControls({
         action="dive"
         label="DAL"
         disabled={disabled}
-        className={`h-11 w-full min-w-[7.25rem] text-[9px] ${buttonTone}`}
+        className={`h-[min(2.75rem,9.5vh)] w-full min-w-[7.25rem] text-[9px] ${buttonTone}`}
       />
     </div>
   );
@@ -63,7 +72,7 @@ export default function TouchControls({
           action="sultan"
           label="SULTAN"
           disabled={disabled}
-          className={`h-11 w-[3.25rem] text-[7px] ${buttonTone} ${
+          className={`h-[min(2.75rem,9.5vh)] w-[3.25rem] text-[7px] ${buttonTone} ${
             sultanReady ? 'animate-pulse-gold border-retro-accent bg-turkiye-red' : ''
           }`}
         />
@@ -72,7 +81,7 @@ export default function TouchControls({
           action="action"
           label="VUR"
           disabled={disabled}
-          className={`h-[3.5rem] w-[3.25rem] text-[9px] ${buttonTone}`}
+          className={`h-[min(3.5rem,12.5vh)] w-[3.25rem] text-[9px] ${buttonTone}`}
         />
       </div>
       <HoldButton
@@ -80,7 +89,7 @@ export default function TouchControls({
         action="up"
         label="ZIPLA"
         disabled={disabled}
-        className={`h-[6.75rem] w-[4rem] text-[9px] ${buttonTone}`}
+        className={`h-[min(6.75rem,22vh)] w-[min(4rem,15vh)] text-[9px] ${buttonTone}`}
       />
     </div>
   );
@@ -88,7 +97,7 @@ export default function TouchControls({
   if (overlay) {
     return (
       <div
-        className={`pointer-events-none absolute inset-0 z-10 select-none md:hidden ${
+        className={`pointer-events-none absolute inset-0 z-10 select-none fine:hidden ${
           disabled ? 'opacity-40' : ''
         }`}
         aria-hidden={disabled || undefined}
@@ -106,7 +115,7 @@ export default function TouchControls({
 
   return (
     <div
-      className={`touch-controls flex w-full max-w-[900px] select-none items-end justify-between gap-3 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] md:hidden ${
+      className={`touch-controls flex w-full max-w-[900px] select-none items-end justify-between gap-3 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] fine:hidden ${
         disabled ? 'pointer-events-none opacity-40' : ''
       }`}
       aria-disabled={disabled || undefined}

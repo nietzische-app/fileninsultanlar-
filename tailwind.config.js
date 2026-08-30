@@ -30,6 +30,23 @@ export default {
       },
       screens: {
         xs: '420px',
+        /*
+         * Dokunmatik düzen GENİŞLİĞE değil, işaretçi türüne bağlanır.
+         *
+         * Önce `md` (768px) eşiği kullanılıyordu ve bu her modern
+         * telefonu dışarıda bırakıyordu: oyun yatay tutuş zorunlu,
+         * telefonlar yatayda 800–932 CSS px geliyor. Ölçümde iPhone SE
+         * (667px) dışında hiçbir cihazda dokunmatik tuşlar
+         * görünmüyordu.
+         */
+        touch: { raw: '(pointer: coarse)' },
+        fine: { raw: '(pointer: fine)' },
+        /*
+         * Kısa ekran. Yatay telefon GENİŞ ama KISA; `sm:` (640px)
+         * kuralları orada arayüzü büyütüyordu, yani tam ters etki.
+         * Skor tablosu 393px'lik bir ekranın %40'ını yiyordu.
+         */
+        short: { raw: '(max-height: 480px)' },
       },
     },
   },

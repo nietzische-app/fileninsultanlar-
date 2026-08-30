@@ -50,7 +50,7 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
   const [quitConfirm, setQuitConfirm] = useState(false);
 
   const fullscreen = useFullscreen(stageRef);
-  const { isMobile, portrait, coarse } = useViewport();
+  const { portrait, coarse } = useViewport();
 
   // --- Motorun kurulumu ---
   useEffect(() => {
@@ -302,14 +302,14 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
   return (
     <div
       ref={stageRef}
-      className="match-screen mx-auto flex min-h-full w-full max-w-[960px] flex-col items-center gap-3 px-2 py-3 max-md:fixed max-md:inset-0 max-md:z-40 max-md:block max-md:h-[100dvh] max-md:w-screen max-md:max-w-none max-md:overflow-hidden max-md:overscroll-none max-md:bg-black max-md:p-0 sm:gap-4 sm:px-3 sm:py-5"
+      className="match-screen mx-auto flex min-h-full w-full max-w-[960px] flex-col items-center gap-3 px-2 py-3 touch:fixed touch:inset-0 touch:z-40 touch:block touch:h-[100dvh] touch:w-screen touch:max-w-none touch:overflow-hidden touch:overscroll-none touch:bg-black touch:p-0 sm:gap-4 sm:px-3 sm:py-5"
     >
       {/*
         Üst HUD. Mobilde skor tablosu, Sultan barı ve hızlı düğmeler tek
         bir saydam katmanda sahnenin üstüne biner; masaüstünde eskisi
         gibi akışta durur.
       */}
-      <div className="w-full shrink-0 max-md:pointer-events-none max-md:absolute max-md:inset-x-0 max-md:top-0 max-md:z-20 max-md:flex max-md:flex-col max-md:gap-1 max-md:px-1 max-md:pt-[env(safe-area-inset-top)]">
+      <div className="w-full shrink-0 touch:pointer-events-none touch:absolute touch:inset-x-0 touch:top-0 touch:z-20 touch:flex touch:flex-col touch:gap-1 touch:px-1 touch:pt-[env(safe-area-inset-top)]">
         <div className="flex w-full items-start gap-1">
           <Scoreboard
             score={hud.score}
@@ -322,11 +322,11 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
             survival={hud.survival}
             roundLabel={hud.roundLabel}
             compact
-            overlay={isMobile}
+            overlay={coarse}
           />
 
           {/* Duraklat / tam ekran / çık — yalnızca mobil */}
-          <div className="pointer-events-auto flex shrink-0 gap-1 pr-[env(safe-area-inset-right)] md:hidden">
+          <div className="pointer-events-auto flex shrink-0 gap-1 pr-[env(safe-area-inset-right)] fine:hidden">
             {fullscreen.supported && (
               <button
                 type="button"
@@ -357,7 +357,7 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
         </div>
 
         {/* Mobil: ince Sultan barı */}
-        <div className="pointer-events-auto md:hidden">
+        <div className="pointer-events-auto fine:hidden">
           <SultanBar
             charge={hud.sultanCharge}
             ready={hud.sultanReady}
@@ -381,12 +381,12 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
         alttaki bandı tek parça yapıp kontrollere ve maç künyesine
         ayırmak hem daha derli toplu hem başparmak erişimine uygun.
       */}
-      <div className="match-stage scanlines relative w-full max-w-[900px] shrink border-4 border-white/85 bg-black max-md:absolute max-md:inset-0 max-md:flex max-md:max-w-none max-md:items-center max-md:justify-center max-md:border-0 max-md:portrait:pb-[13.5rem]">
+      <div className="match-stage scanlines relative w-full max-w-[900px] shrink border-4 border-white/85 bg-black touch:absolute touch:inset-0 touch:flex touch:max-w-none touch:items-center touch:justify-center touch:border-0 touch:portrait:pb-[13.5rem]">
         <canvas
           ref={canvasRef}
           width={GAME_WIDTH}
           height={GAME_HEIGHT}
-          className="pixelated block h-auto max-h-full w-full max-md:stage-canvas max-md:w-auto"
+          className="pixelated block h-auto max-h-full w-full touch:stage-canvas touch:w-auto"
           style={{ aspectRatio: `${GAME_WIDTH} / ${GAME_HEIGHT}` }}
           aria-label="Filenin Sultanları voleybol sahası"
         />
@@ -425,7 +425,7 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
         )}
 
         {/* Dikey ekranda saha ile tuşlar arasındaki bandı künye doldurur */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-[12.5rem] z-10 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-3 text-center text-[7px] text-white/40 md:hidden landscape:hidden">
+        <div className="pointer-events-none absolute inset-x-0 bottom-[12.5rem] z-10 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-3 text-center text-[7px] text-white/40 fine:hidden landscape:hidden">
           <span>{upper(config.mode)}</span>
           <span className="text-white/15">|</span>
           <span>{matchLabel}</span>
@@ -500,7 +500,7 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
         )}
       </div>
 
-      <div className="w-full shrink-0 max-md:hidden">
+      <div className="w-full shrink-0 touch:hidden">
         <SultanBar
           charge={hud.sultanCharge}
           ready={hud.sultanReady}
@@ -510,7 +510,7 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
       </div>
 
       {/* Alt bilgi — masaüstü */}
-      <div className="flex w-full max-w-[900px] shrink-0 flex-wrap items-center justify-between gap-2 max-md:hidden">
+      <div className="flex w-full max-w-[900px] shrink-0 flex-wrap items-center justify-between gap-2 touch:hidden">
         <div className="hidden items-center gap-3 text-[7px] text-white/45 sm:flex">
           <span>{upper(config.mode)}</span>
           <span className="text-white/20">|</span>
@@ -553,7 +553,7 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
         </div>
       </div>
 
-      <p className="hidden text-center text-[7px] leading-relaxed text-white/35 md:block">
+      <p className="hidden text-center text-[7px] leading-relaxed text-white/35 fine:block">
         {twoPlayer
           ? '1. OYUNCU: W A S D · BOŞLUK VUR · X SULTAN   ·   2. OYUNCU: ← → ↑ ↓ · ENTER VUR   ·   ESC DURAKLAT'
           : '← → HAREKET · ↑ ZIPLA · ↓ DALIŞ (HAVADA PLASE) · BOŞLUK VUR (TAM ZAMANINDA BAS!) · X SULTAN GÜCÜ · ESC DURAKLAT'}

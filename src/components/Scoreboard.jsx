@@ -29,7 +29,7 @@ export default function Scoreboard({
   return (
     <div
       className={`${overlay ? 'retro-panel-overlay' : 'retro-panel'} w-full max-w-[900px] ${
-        compact ? 'px-2 py-2 sm:px-5 sm:py-3' : 'px-3 py-3 sm:px-5'
+        compact ? 'px-2 py-2 sm:px-5 sm:py-3 short:px-2 short:py-1' : 'px-3 py-3 sm:px-5'
       }`}
     >
       <div className="flex items-center justify-between gap-2">
@@ -57,7 +57,7 @@ export default function Scoreboard({
             <span className="text-[8px] text-white/50">
               {roundLabel ?? `SET ${setNumber}`}
             </span>
-            <span className="text-[9px] text-retro-accent sm:text-[11px]">
+            <span className="text-[9px] text-retro-accent sm:text-[11px] short:text-[9px]">
               {sets.home} — {sets.away}
             </span>
             <span className="text-[7px] text-white/35">{pointsPerSet} SAYI</span>
@@ -152,18 +152,18 @@ function TeamBlock({
       )}
       <div className={`flex min-w-0 flex-col ${isLeft ? 'items-start' : 'items-end'}`}>
         <span
-          className={`truncate text-[7px] sm:text-[10px] ${accent ?? ''}`}
+          className={`truncate text-[7px] sm:text-[10px] short:text-[8px] ${accent ?? ''}`}
           style={accentStyle}
         >
           {name}
         </span>
-        <span className="text-[7px] text-white/40 sm:text-[8px]">
+        <span className="text-[7px] text-white/40 sm:text-[8px] short:text-[6px]">
           {subLabel ?? `${sets} SET`}
         </span>
       </div>
       <span
         className={`ml-auto text-shadow-pixel text-white ${
-          compact ? 'text-lg sm:text-3xl' : 'text-xl sm:text-3xl'
+          compact ? 'text-lg sm:text-3xl short:text-xl' : 'text-xl sm:text-3xl'
         }`}
       >
         {points}

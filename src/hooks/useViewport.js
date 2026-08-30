@@ -1,25 +1,28 @@
 import { useEffect, useState } from 'react';
 
-/** Tailwind'in `md` kırılımı — sınıf koşullarıyla aynı eşik olmalı. */
-const MOBILE_MAX = 768;
-
 function read() {
   if (typeof window === 'undefined') {
-    return { width: 0, height: 0, isMobile: false, portrait: false, coarse: false };
+    return { width: 0, height: 0, portrait: false, coarse: false };
   }
   const width = window.innerWidth;
   const height = window.innerHeight;
   return {
     width,
     height,
-    isMobile: width < MOBILE_MAX,
     portrait: height >= width,
     /**
      * Dokunmatik (kaba işaretçi) cihaz mı?
      *
-     * Yatay zorunluluğu yalnızca burada uygulanır: masaüstünde
-     * pencereyi dar ve uzun yapan birinin önüne "telefonu çevir"
-     * ekranı çıkarmak saçma olurdu.
+     * Mobil düzenin TEK ölçütü budur. Daha önce genişliğe bakan bir
+     * `isMobile` alanı vardı (768px altı) ve yanıltıcıydı: oyun yatay
+     * tutuş zorunlu olduğu için telefonlar yatayda 800–932 CSS px
+     * geliyor, yani hiçbiri "mobil" sayılmıyordu. Ölçümde iPhone SE
+     * dışında hiçbir cihazda dokunmatik tuşlar görünmüyordu. Alan
+     * tamamen kaldırıldı ki aynı hata tekrar kurulmasın.
+     *
+     * Yatay zorunluluğu da buradan uygulanır: masaüstünde pencereyi
+     * dar ve uzun yapan birinin önüne "telefonu çevir" ekranı
+     * çıkarmak saçma olurdu.
      */
     coarse: window.matchMedia?.('(pointer: coarse)').matches ?? false,
   };
