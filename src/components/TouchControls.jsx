@@ -20,6 +20,7 @@ export default function TouchControls({
   onInput,
   disabled = false,
   overlay = false,
+  strip = false,
   settings = { scale: 1, opacity: 0.85, swap: false },
   preview = false,
   dimWhenDisabled = true,
@@ -49,57 +50,87 @@ export default function TouchControls({
     opacity: dim ? undefined : (settings.opacity ?? 0.85),
   };
 
-  const dpad = (
+  const left = (
+    <HoldButton
+      onInput={onInput}
+      action="left"
+      label={<GameIcon name="ArrowLeft" size="45%" />}
+      srLabel="Sola git"
+      disabled={disabled}
+      className={`tb-dir ${buttonTone}`}
+    />
+  );
+  const right = (
+    <HoldButton
+      onInput={onInput}
+      action="right"
+      label={<GameIcon name="ArrowRight" size="45%" />}
+      srLabel="Sağa git"
+      disabled={disabled}
+      className={`tb-dir ${buttonTone}`}
+    />
+  );
+  /* Pakette aşağı ok yok; sağ oku çevirmek aynı şekli veriyor */
+  const dive = (
+    <HoldButton
+      onInput={onInput}
+      action="dive"
+      label={<GameIcon name="ArrowRight" rotate={90} className="tb-wide-icon" />}
+      srLabel="Dalış"
+      disabled={disabled}
+      className={`${strip ? 'tb-dive-row' : 'tb-wide'} ${buttonTone}`}
+    />
+  );
+  const hit = (
+    /* Pakette vuruş/smaç için uygun ikon yok; yazı en anlaşılırı */
+    <HoldButton
+      onInput={onInput}
+      action="action"
+      label={<span className="tb-label">VUR</span>}
+      srLabel="Vur"
+      disabled={disabled}
+      className={`tb-act ${buttonTone}`}
+    />
+  );
+  const jump = (
+    <HoldButton
+      onInput={onInput}
+      action="up"
+      label={<GameIcon name="ArrowRight" size="48%" rotate={-90} />}
+      srLabel="Zıpla"
+      disabled={disabled}
+      className={`tb-jump ${buttonTone}`}
+    />
+  );
+
+  /*
+   * Şerit düzeninde her grup TEK SIRA.
+   *
+   * Sahnenin köşelerine binen düzende yön tuşları dikey yığılıyordu
+   * (ok satırı + altında DAL hapı ≈ 125px). Şeritte bu yükseklik
+   * doğrudan sahadan çalınırdı; yan yana dizilince şeridin yüksekliği
+   * en uzun TEK tuşa (ZIPLA) iniyor.
+   */
+  const dpad = strip ? (
+    <div className="tb-gap flex items-center">
+      {left}
+      {right}
+      {dive}
+    </div>
+  ) : (
     <div className="flex flex-col items-stretch gap-2">
       <div className="tb-gap flex">
-        <HoldButton
-          onInput={onInput}
-          action="left"
-          label={<GameIcon name="ArrowLeft" size="45%" />}
-          srLabel="Sola git"
-          disabled={disabled}
-          className={`tb-dir ${buttonTone}`}
-        />
-        <HoldButton
-          onInput={onInput}
-          action="right"
-          label={<GameIcon name="ArrowRight" size="45%" />}
-          srLabel="Sağa git"
-          disabled={disabled}
-          className={`tb-dir ${buttonTone}`}
-        />
+        {left}
+        {right}
       </div>
-      {/* Pakette aşağı ok yok; sağ oku çevirmek aynı şekli veriyor */}
-      <HoldButton
-        onInput={onInput}
-        action="dive"
-        label={<GameIcon name="ArrowRight" rotate={90} className="tb-wide-icon" />}
-        srLabel="Dalış"
-        disabled={disabled}
-        className={`tb-wide ${buttonTone}`}
-      />
+      {dive}
     </div>
   );
 
   const actions = (
-    <div className="flex items-end gap-2">
-      {/* Pakette vuruş/smaç için uygun ikon yok; yazı en anlaşılırı */}
-      <HoldButton
-        onInput={onInput}
-        action="action"
-        label={<span className="tb-label">VUR</span>}
-        srLabel="Vur"
-        disabled={disabled}
-        className={`tb-act ${buttonTone}`}
-      />
-      <HoldButton
-        onInput={onInput}
-        action="up"
-        label={<GameIcon name="ArrowRight" size="48%" rotate={-90} />}
-        srLabel="Zıpla"
-        disabled={disabled}
-        className={`tb-jump ${buttonTone}`}
-      />
+    <div className={`flex gap-2 ${strip ? 'items-center' : 'items-end'}`}>
+      {hit}
+      {jump}
     </div>
   );
 
@@ -129,6 +160,26 @@ export default function TouchControls({
         <div className="pointer-events-auto absolute bottom-2 right-2 pb-[env(safe-area-inset-bottom)] pr-[env(safe-area-inset-right)]">
           {rightSide}
         </div>
+      </div>
+    );
+  }
+
+  if (strip) {
+    // `swap`: yön tuşları sağa, aksiyonlar sola — solaklar için
+    const stripLeft = settings.swap ? actions : dpad;
+    const stripRight = settings.swap ? dpad : actions;
+
+    return (
+      <div
+        className={`control-strip flex select-none items-center justify-between gap-3 ${
+          preview ? '' : 'fine:hidden'
+        } ${disabled ? 'pointer-events-none' : ''} ${dim ? 'opacity-40' : ''}`}
+        style={styleVars}
+        aria-disabled={disabled || undefined}
+        onPointerDown={unlock}
+      >
+        {stripLeft}
+        {stripRight}
       </div>
     );
   }

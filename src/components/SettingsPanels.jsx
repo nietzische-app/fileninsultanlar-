@@ -156,25 +156,39 @@ function ControlsPreview({ settings }) {
   return (
     <div className="mt-4">
       <p className="mb-2 text-[7px] tracking-widest text-white/40">ÖNİZLEME</p>
+      {/*
+        Kutu artık 9:5 değil, ŞERİDE göre boyutlanıyor.
+        Sabit oranda tuşlar gerçek boyutlarında kalıp kutunun altından
+        taşıyordu — ölçek %140'a çekildiğinde yarısı görünmüyordu.
+        `--touch-scale` burada da tanımlı olmalı, `--strip-h` onu okuyor.
+      */}
       <div
-        className="relative w-full overflow-hidden border-4 border-white/20 bg-[#5C070D]"
-        style={{ aspectRatio: '9 / 5' }}
+        className="controls-preview relative w-full overflow-hidden border-4 border-white/20 bg-[#5C070D]"
+        style={{
+          '--touch-scale': settings?.scale ?? 1,
+          height: 'calc(var(--strip-h) + 5rem)',
+        }}
       >
         <div className="absolute inset-x-0 bottom-0 h-1/3 bg-[#8E1018]" />
         <div className="absolute bottom-[16%] left-0 right-0 h-[2px] bg-white/50" />
         <div className="absolute bottom-1/3 left-1/2 h-1/3 w-[3px] -translate-x-1/2 bg-white/70" />
 
-        <div className="pointer-events-none absolute inset-0">
+        {/*
+          Tuşlar maçtaki gibi ALT ŞERİTTE. Önizleme "binen" düzeni
+          gösterirken oyun şerit düzenine geçmişti — önizlemenin işi
+          gerçeği göstermek, yoksa oyuncu kör ayar yapar.
+        */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0">
           <TouchControls
             onInput={() => {}}
-            overlay
+            strip
             preview
             settings={settings}
           />
         </div>
       </div>
       <p className="mt-2 text-[6px] leading-relaxed text-white/30">
-        {upper('Önizleme sahayla aynı orandadır (9:5)')}
+        {upper('Tuşlar maçtaki gerçek boyutlarındadır')}
       </p>
     </div>
   );

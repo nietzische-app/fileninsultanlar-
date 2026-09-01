@@ -381,18 +381,28 @@ export default function MatchScreen({
 
       {/*
         Oyun alanı. Mobilde sahnenin tamamını kaplar ve canvas oranını
-        koruyarak ortalanır; kontroller bu kutunun köşelerine biner.
-        Önceden canvas 42dvh'ye sıkışıp tuşlar altında ayrı bir şeritte
-        duruyordu — saha avuç içi kadar kalıyordu.
+        koruyarak sığdırılır.
+
+        Tuşlar artık sahanın KÖŞELERİNE BİNMİYOR, altındaki kontrol
+        şeridinde duruyor: binen düzende tuşlar karakterlerin üstünü
+        kapatıyordu (kısa ekranlarda ▶ tam oyuncunun önüne oturuyordu).
+
+        Şerit sahayı aşağı itmiyor, canvas'ın alt önlüğünü örtüyor —
+        zemin çizgisinin altında kalan, hiçbir karakterin bulunmadığı
+        bant. Ölçüler `.stage-canvas` ve `.control-strip` içinde.
+        Bu yüzden canvas ÜSTE hizalanır (`items-start`): ortalansaydı
+        önlük şeridin altına değil ortaya denk gelirdi.
       */}
-      {/*
-        `portrait:pb-…` sahayı yukarı, HUD'ın hemen altına çeker. Saf
-        ortalamada 9:5 oranındaki canvas dikey ekranda ortada asılı
-        kalıyor, üstünde ve altında eşit iki siyah bant oluşuyordu;
-        alttaki bandı tek parça yapıp kontrollere ve maç künyesine
-        ayırmak hem daha derli toplu hem başparmak erişimine uygun.
-      */}
-      <div className="match-stage scanlines relative w-full max-w-[900px] shrink border-4 border-white/85 bg-black touch:absolute touch:inset-0 touch:flex touch:max-w-none touch:items-center touch:justify-center touch:border-0 touch:portrait:pb-[13.5rem]">
+      <div
+        className="match-stage scanlines relative w-full max-w-[900px] shrink border-4 border-white/85 bg-black touch:absolute touch:inset-0 touch:flex touch:max-w-none touch:flex-col touch:items-center touch:justify-start touch:border-0"
+        /*
+         * Ölçek SAHNEDE de tanımlı olmalı: `--strip-h` ve canvas'ın üst
+         * sınırı buradan hesaplanıyor. Yalnızca tuş bileşenine
+         * verildiğinde şerit ölçek 1'de kalıp tuşlar %140'ta dışına
+         * taşıyordu (ölçümde VUR ve ZIPLA).
+         */
+        style={{ '--touch-scale': controls?.scale ?? 1 }}
+      >
         <canvas
           ref={canvasRef}
           width={GAME_WIDTH}
@@ -425,15 +435,22 @@ export default function MatchScreen({
           </div>
         )}
 
-        {/* Mobil: kontroller sahanın köşelerinde, şeffaf */}
+        {/*
+          Mobil: kontroller sahanın altındaki şeritte.
+          `absolute bottom-0` — şerit canvas'ın alt önlüğünün üstüne
+          oturur, canvas da `.stage-canvas` içindeki üst sınır sayesinde
+          zemin çizgisini şeridin üstünde bırakacak kadar büyür.
+        */}
         {!twoPlayer && (
-          <TouchControls
-            onInput={handleTouchInput}
-            disabled={controlsLocked}
-            dimWhenDisabled={!settingsOpen}
-            settings={controls}
-            overlay
-          />
+          <div className="absolute inset-x-0 bottom-0 z-10 fine:hidden">
+            <TouchControls
+              onInput={handleTouchInput}
+              disabled={controlsLocked}
+              dimWhenDisabled={!settingsOpen}
+              settings={controls}
+              strip
+            />
+          </div>
         )}
 
         {/* Dikey ekranda saha ile tuşlar arasındaki bandı künye doldurur */}
