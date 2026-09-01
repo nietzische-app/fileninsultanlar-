@@ -222,7 +222,20 @@ export function updateAI(player, ball, opts, dt) {
   // Zorluk hızı: motor bu çarpanı okuyup hareketi ölçekler
   player.aiSpeedScale = difficulty.speed * slowFactor;
 
-  // --- Topa temas kararı ---
+  /*
+   * --- Topa temas kararı ---
+   *
+   * Bu kapı bilerek GEVŞEK: file düzleminin 40px ötesindeki topa da
+   * hazırlanılır. Kuralı motor uyguluyor (`mayTouch`), burası yalnızca
+   * "hazırlan" sezgisi — erken tuşa basmanın bedeli yok, çünkü motor
+   * yasal olmayan temasa zaten izin vermiyor.
+   *
+   * Kapıyı `mayTouch` ile birebir sıkılaştırmayı denedim ve ölçüm
+   * reddetti: rakip file üstünde blok/hücum için hazırlanamıyor, topun
+   * düzlemi geçmesini bekleyip geç kalıyordu. Sayı payı (ev) zorda
+   * %43'ten %69'a fırladı, ralli teması 9.2'den 6.1'e düştü — yani
+   * rakip oyundan düştü.
+   */
   const onOwnSide =
     player.side === 'home' ? ball.x < NET.x + 40 : ball.x > NET.x - 40;
 

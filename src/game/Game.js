@@ -46,7 +46,7 @@ import {
 } from './opponents.js';
 import { pickChaser, sideBounds, updateAI } from './ai.js';
 import { stepBall } from './ballstep.js';
-import { contactRadius } from './reach.js';
+import { contactRadius, mayTouch } from './reach.js';
 import {
   SERVE,
   advanceServeMeter,
@@ -934,6 +934,8 @@ export default class Game {
 
     this.players.forEach((player) => {
       if (player.hitCooldown > 0) return;
+      // Filenin arkasından uzanıp rakip sahadaki topa vurulamaz
+      if (!mayTouch(player, ball)) return;
 
       const diving = player.diveTimer > 0 || player.recoverTimer > 0;
 
@@ -1975,7 +1977,16 @@ export default class Game {
     const barW = 14;
     const barH = 70;
     const x = server.x + (server.side === 'home' ? 28 : -28 - barW);
-    const y = server.y - 110;
+    /*
+     * Barın tepesi isim levhasının ALTINDA başlamalı.
+     *
+     * Önce -110 idi (tepe y=310) ve üç şey birden çakışıyordu: isim
+     * levhası y≈311'de barın soluna biniyordu ("GİZEM ÖRGE"nin sonu
+     * barın altında kalıyordu), "GÜÇ" yazısı y=300'de yan skorbordun
+     * (243-306) içine giriyordu. -100 ile bar 320'de başlıyor, isim
+     * 307-315 bandında serbest kalıyor.
+     */
+    const y = server.y - 100;
     const aiming = serve.stage === 'aim';
 
     ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
@@ -2017,10 +2028,15 @@ export default class Game {
       ctx.fillRect(x - 3, sweetY - 1, barW + 6, 2);
     }
 
+    /*
+     * Etiket barın ALTINDA ve BARIN üstünde ortalı — oyuncunun üstünde
+     * değil. Oyuncuya ortalandığında isim levhasıyla aynı sütunda
+     * kalıyor, barın üstüne konduğunda skorborda giriyordu.
+     */
     ctx.fillStyle = '#FFFFFF';
     ctx.font = '7px "Press Start 2P", monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(aiming ? 'NİŞAN' : 'GÜÇ', server.x, y - 10);
+    ctx.fillText(aiming ? 'NİŞAN' : 'GÜÇ', x + barW / 2, y + barH + 11);
     ctx.textAlign = 'left';
   }
 
@@ -2077,8 +2093,23 @@ export default class Game {
 
     ctx.restore();
 
-    // Kontrol edilen oyuncunun göstergesi
-    if (player.controlled) {
+    /*
+     * Kontrol edilen oyuncunun göstergesi.
+     *
+     * Servis atan oyuncuda GİZLENİR. Sebebi geometrik: servis noktası
+     * x=108 (ve 792), duvar skorbordu ise 64-160 arası — oyuncu tam
+     * onun altında duruyor. Üstüne elde bekleyen top y=311-337 bandında,
+     * yani isim levhasının (307-315) tam üstünde. Ölçümde "GİZEM ÖRGE"
+     * ortasından top geçiyordu, okunmuyordu.
+     *
+     * Servis anında levhanın işi zaten yok: topu tutan oyuncu kimse onu
+     * kullanıyorsun. 2v2'de sıradaki oyuncu servis atmıyorsa levhası
+     * duruyor.
+     */
+    const servingNow =
+      this.phase === PHASE.SERVE && this.serve?.serverId === player.id;
+
+    if (player.controlled && !servingNow) {
       const top = player.y - 22 * PLAYER.spriteScale;
       const bounce = Math.sin(this.time * 6) * 3;
 

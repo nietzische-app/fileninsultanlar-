@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { arrivalHeight, interceptPoint, predictLanding, shouldYield } from './ai.js';
-import { contactDistance, contactRadius, speedPenalty } from './reach.js';
-import { GROUND_Y, PHYSICS, PLAYER } from './constants.js';
+import { contactDistance, contactRadius, mayTouch, speedPenalty } from './reach.js';
+import { GROUND_Y, NET, PHYSICS, PLAYER } from './constants.js';
 
 /**
  * Bu testler üç somut hatayı bekçiliyor. Üçü de ölçümle bulundu ve üçü
@@ -155,5 +155,36 @@ describe('2v2 — takım arkadaşına yol verme', () => {
   it('oyuncunun kendisine yol vermez', () => {
     const p = player();
     expect(shouldYield(p, ball(), p)).toBe(false);
+  });
+});
+
+describe('file kuralı — arkadan vuruş yok', () => {
+  const homeAtNet = player({ side: 'home', x: 422 }); // kendi sahasının file kenarı
+  const awayAtNet = player({ side: 'away', x: 478 });
+
+  it('kendi sahasındaki topa dokunabilir', () => {
+    expect(mayTouch(homeAtNet, ball({ x: 400, y: GROUND_Y - 60 }))).toBe(true);
+    expect(mayTouch(awayAtNet, ball({ x: 500, y: GROUND_Y - 60 }))).toBe(true);
+  });
+
+  /*
+   * Asıl hata: oyuncu en fazla x=422'ye gelebiliyor, file merkezi 450,
+   * temas yarıçapı vuruş tuşuyla ~65px. Yani rakip sahaya ~37px uzanıp
+   * topa vurulabiliyordu.
+   */
+  it('rakip sahadaki alçak topa dokunamaz', () => {
+    expect(mayTouch(homeAtNet, ball({ x: 480, y: GROUND_Y - 60 }))).toBe(false);
+    expect(mayTouch(awayAtNet, ball({ x: 420, y: GROUND_Y - 60 }))).toBe(false);
+  });
+
+  it('file üstünde blok serbest kalır', () => {
+    const yuksek = ball({ x: 480, y: NET.topY - PHYSICS.ballRadius - 5 });
+    expect(mayTouch(homeAtNet, yuksek)).toBe(true);
+  });
+
+  it('file üstü istisnası topun TAMAMI yukarıdayken geçerli', () => {
+    // Topun altı file hizasının altındaysa blok sayılmaz
+    const yarim = ball({ x: 480, y: NET.topY + 2 });
+    expect(mayTouch(homeAtNet, yarim)).toBe(false);
   });
 });

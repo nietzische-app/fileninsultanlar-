@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef } from 'react';
 import Sfx from '../game/audio.js';
 import GameIcon from './GameIcon.jsx';
 
+/** Yön tuşundan bu kadar px aşağı kaydırınca dalış tetiklenir. */
+const DIVE_DRAG = 26;
+
 /**
  * Mobil cihazlar için ekran üstü kontroller.
  *
@@ -50,13 +53,25 @@ export default function TouchControls({
     opacity: dim ? undefined : (settings.opacity ?? 0.85),
   };
 
+  /*
+   * Yön tuşları dalışı da taşır: parmağını tuştan AŞAĞI kaydırırsan
+   * karakter o yöne dalar.
+   *
+   * Ayrı bir DAL tuşu vardı ve kullanılamıyordu — dalış yetişilemeyen
+   * topa son çare olarak yapılır, yani zaten koşarken. Başparmağı yön
+   * tuşundan kaldırıp DAL'a götürmek hem yönü hem zamanlamayı
+   * kaybettiriyordu. Kaydırma hareketinde yön zaten basılı kalıyor
+   * (`startDive` yönü input'tan okuyor) ve parmak hiç kopmuyor.
+   */
   const left = (
     <HoldButton
       onInput={onInput}
       action="left"
       label={<GameIcon name="ArrowLeft" size="45%" />}
       srLabel="Sola git"
+      hint="Aşağı kaydır: dalış"
       disabled={disabled}
+      dragDive
       className={`tb-dir ${buttonTone}`}
     />
   );
@@ -66,19 +81,10 @@ export default function TouchControls({
       action="right"
       label={<GameIcon name="ArrowRight" size="45%" />}
       srLabel="Sağa git"
+      hint="Aşağı kaydır: dalış"
       disabled={disabled}
+      dragDive
       className={`tb-dir ${buttonTone}`}
-    />
-  );
-  /* Pakette aşağı ok yok; sağ oku çevirmek aynı şekli veriyor */
-  const dive = (
-    <HoldButton
-      onInput={onInput}
-      action="dive"
-      label={<GameIcon name="ArrowRight" rotate={90} className="tb-wide-icon" />}
-      srLabel="Dalış"
-      disabled={disabled}
-      className={`${strip ? 'tb-dive-row' : 'tb-wide'} ${buttonTone}`}
     />
   );
   const hit = (
@@ -104,26 +110,13 @@ export default function TouchControls({
   );
 
   /*
-   * Şerit düzeninde her grup TEK SIRA.
-   *
-   * Sahnenin köşelerine binen düzende yön tuşları dikey yığılıyordu
-   * (ok satırı + altında DAL hapı ≈ 125px). Şeritte bu yükseklik
-   * doğrudan sahadan çalınırdı; yan yana dizilince şeridin yüksekliği
-   * en uzun TEK tuşa (ZIPLA) iniyor.
+   * DAL kalkınca yön grubu tek sıraya indi ve her düzende aynı: iki ok.
+   * Dalış artık bu okların üstündeki kaydırma hareketiyle yapılıyor.
    */
-  const dpad = strip ? (
+  const dpad = (
     <div className="tb-gap flex items-center">
       {left}
       {right}
-      {dive}
-    </div>
-  ) : (
-    <div className="flex flex-col items-stretch gap-2">
-      <div className="tb-gap flex">
-        {left}
-        {right}
-      </div>
-      {dive}
     </div>
   );
 
@@ -211,11 +204,24 @@ function HoldButton({
   action,
   label,
   srLabel,
+  hint,
   className = '',
   disabled = false,
+  dragDive = false,
 }) {
   const pressedRef = useRef(false);
   const buttonRef = useRef(null);
+  const originRef = useRef(null);
+  const divingRef = useRef(false);
+
+  /** Dalışı bırak (tuş bırakılırken ya da parmak yukarı dönerken). */
+  const endDive = useCallback(() => {
+    if (!divingRef.current) return;
+    divingRef.current = false;
+    onInput('dive', false);
+    const el = buttonRef.current;
+    if (el) el.dataset.diving = 'false';
+  }, [onInput]);
 
   const release = useCallback(
     (event) => {
@@ -233,9 +239,11 @@ function HoldButton({
         }
       }
       pressedRef.current = false;
+      originRef.current = null;
+      endDive();
       onInput(action, false);
     },
-    [action, onInput]
+    [action, onInput, endDive]
   );
 
   // Duraklatınca / unmount'ta basılı kalan dokunuşu bırak
@@ -269,19 +277,57 @@ function HoldButton({
       }
       event.currentTarget.dataset.pressed = 'true';
       pressedRef.current = true;
+      originRef.current = { x: event.clientX, y: event.clientY };
       onInput(action, true);
     },
     [action, onInput, disabled]
+  );
+
+  /*
+   * Aşağı kaydırma = dalış.
+   *
+   * Eşik yalnızca DİKEY mesafeye bakıyor; yatay yön zaten hangi tuşa
+   * basıldığından belli (`startDive` yönü input'tan okuyor) ve tuş
+   * kaydırma boyunca basılı kalıyor — yani hareket doğal olarak çapraz.
+   * Yatay bileşen de şart koşulsaydı tam dikey çeken parmak dalamazdı.
+   *
+   * Parmak yukarı dönerse dalış bırakılır: yanlışlıkla tetiklenen bir
+   * kaydırmadan geri dönülebilsin.
+   */
+  const move = useCallback(
+    (event) => {
+      if (!dragDive || !pressedRef.current || disabled) return;
+      const origin = originRef.current;
+      if (!origin) return;
+
+      const dy = event.clientY - origin.y;
+      if (!divingRef.current && dy >= DIVE_DRAG) {
+        divingRef.current = true;
+        event.currentTarget.dataset.diving = 'true';
+        onInput('dive', true);
+      } else if (divingRef.current && dy < DIVE_DRAG * 0.5) {
+        endDive();
+      }
+    },
+    [dragDive, disabled, onInput, endDive]
   );
 
   return (
     <button
       ref={buttonRef}
       type="button"
+      /*
+       * Erişilebilir isim KISA tutulur ("Sola git"); kaydırma ipucu
+       * ayrı `title`'a gider. İpucu ismin içine yazıldığında ekran
+       * okuyucu her basışta uzun cümleyi okuyor ve tuşun kimliği
+       * kayboluyordu.
+       */
       aria-label={srLabel ?? (typeof label === 'string' ? label : undefined)}
+      title={hint}
       disabled={disabled}
       className={`touch-button ${className}`}
       onPointerDown={press}
+      onPointerMove={dragDive ? move : undefined}
       onPointerUp={release}
       onPointerCancel={release}
       onLostPointerCapture={release}

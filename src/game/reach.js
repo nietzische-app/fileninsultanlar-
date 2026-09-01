@@ -21,7 +21,30 @@
  * değiştirmiş olur.
  */
 
-import { DIVE, PHYSICS, PLAYER } from './constants.js';
+import { DIVE, NET, PHYSICS, PLAYER } from './constants.js';
+
+/**
+ * Oyuncu bu topa dokunmaya YETKİLİ mi? (Menzil ayrı mesele.)
+ *
+ * Motorun temas testinde file diye bir kavram yoktu: yalnızca mesafeye
+ * bakılıyordu. Oyuncu kendi yarı sahasının file kenarına kadar
+ * gelebildiği için (home en fazla x=422, file merkezi 450) ve temas
+ * yarıçapı vuruş tuşuyla ~65px olduğu için, rakip sahaya ~37px uzanıp
+ * topa vurmak mümkündü. Filenin ARKASINDAN vuruş yani.
+ *
+ * Kural voleybolun kendi kuralı: top kendi sahandayken dokunabilirsin;
+ * karşı sahadayken dokunamazsın — TEK istisna filenin üstü, orası blok
+ * bölgesi ve motorun blok mekaniği (`isBlock`) zaten oraya bakıyor.
+ *
+ * @param {object} player
+ * @param {object} ball
+ */
+export function mayTouch(player, ball) {
+  // Topun tamamı file üstündeyse blok serbest
+  if (ball.y + ball.radius < NET.topY) return true;
+
+  return player.side === 'home' ? ball.x <= NET.x : ball.x >= NET.x;
+}
 
 /**
  * Hızlı topa temiz dokunmak zordur: temas alanı topun hızıyla daralır.

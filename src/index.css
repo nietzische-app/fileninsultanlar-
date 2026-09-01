@@ -168,27 +168,6 @@
   }
 
   /*
-   * DAL: yön tuşlarının altında, o satırın tamamını kaplayan hap.
-   * Daire olarak dar kalıyordu; genişletince başparmakla yakalaması
-   * kolaylaşıyor ve d-pad gibi okunuyor.
-   */
-  .tb-wide {
-    width: 100%;
-    height: calc(min(3.4rem, 12.8vh) * var(--touch-scale, 1));
-  }
-
-  /*
-   * DAL ikonu 90° çevrili, yani görünen YÜKSEKLİĞİ SVG'nin genişliğinden
-   * geliyor. Yüzde ölçü tuşun genişliğine bağlandığı için hap
-   * genişleyince ikon 41px'lik tuşta 50px'e çıkıp taşıyordu; ölçüyü
-   * tuşun yüksekliğiyle aynı formüle bağlıyoruz.
-   */
-  .tb-wide-icon {
-    width: calc(min(1.5rem, 5.6vh) * var(--touch-scale, 1));
-    height: auto;
-  }
-
-  /*
    * Yön tuşları arasındaki aralık. Bitişikken yanlış tuşa basılıyordu;
    * boşluk da tuşlarla birlikte ölçeklenmeli, sabit kalırsa %140'ta
    * yapışık, %70'te uçuk görünüyor.
@@ -219,13 +198,35 @@
   }
 
   /*
-   * Şerit düzenindeki DAL: hap, ama artık satırın tamamını değil kendi
-   * payını kaplıyor (yanında yön okları var). Yüksekliği yön tuşuyla
-   * aynı ki satır düz bir hat oluştursun.
+   * Yön tuşunun altındaki ince çentik: "buradan aşağı kaydır" ipucu.
+   *
+   * Dalış artık ayrı bir tuş değil, yön tuşundan aşağı kaydırma
+   * hareketi. Hiçbir işaret olmasaydı hareket keşfedilmezdi; tuşun alt
+   * kenarındaki bu küçük iz onu ima ediyor, üstelik yer kaplamıyor.
    */
-  .tb-dive-row {
-    width: calc(min(6.4rem, 23vh) * var(--touch-scale, 1));
-    height: calc(min(4.25rem, 15.5vh) * var(--touch-scale, 1));
+  .tb-dir {
+    position: relative;
+  }
+
+  .tb-dir::after {
+    content: '';
+    position: absolute;
+    bottom: calc(0.42rem * var(--touch-scale, 1));
+    left: 50%;
+    width: calc(0.95rem * var(--touch-scale, 1));
+    height: calc(0.16rem * var(--touch-scale, 1));
+    transform: translateX(-50%);
+    border-radius: 9999px;
+    background: currentColor;
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  /* Kaydırmayla dalışa geçildi: tuş altın halkaya döner */
+  .touch-button[data-diving='true'] {
+    --tb-edge: rgba(255, 210, 74, 0.95);
+    --tb-press: #FFB300;
+    --tb-press-top: #FFE08A;
   }
 
   /*
@@ -247,20 +248,22 @@
     padding-inline: max(0.5rem, env(safe-area-inset-left), env(safe-area-inset-right));
     padding-bottom: env(safe-area-inset-bottom);
     /*
-     * Zeminin devamı: üstte sahanın yakın çizgisi gibi ince bir beyaz
-     * hat, altında serbest bölgenin koyu kırmızısı gölgeye iniyor.
-     * Düz siyah da denebilirdi ama saha birden kesiliyormuş gibi
-     * duruyordu; bu şekilde parke devam ediyor izlenimi veriyor.
+     * Zeminin devamı: sahanın serbest bölge kırmızısından gölgeye
+     * iniyor. Düz siyah da denebilirdi ama saha birden kesiliyormuş
+     * gibi duruyordu; bu şekilde parke devam ediyor izlenimi veriyor.
+     *
+     * KENDİ beyaz üst çizgisi YOK — sınırı sahanın kendi dip çizgisi
+     * çiziyor ve şerit tam onun altından başlıyor. İkisi birden
+     * olduğunda iki paralel çizgi görünüyordu.
      */
     background:
       linear-gradient(
         180deg,
-        rgba(142, 16, 24, 0.92) 0%,
-        rgba(92, 7, 13, 0.96) 38%,
+        rgba(120, 12, 20, 0.96) 0%,
+        rgba(74, 6, 11, 0.98) 45%,
         #0b0b12 100%
       );
-    border-top: 2px solid rgba(255, 255, 255, 0.5);
-    box-shadow: inset 0 6px 14px rgba(0, 0, 0, 0.45);
+    box-shadow: inset 0 5px 12px rgba(0, 0, 0, 0.5);
   }
 
   /*
@@ -421,17 +424,22 @@
    * Canvas oranını koruyarak sahneye sığdır (letterbox).
    *
    * Üst sınır şeride göre hesaplanır ama şeridin yüksekliği DOĞRUDAN
-   * çıkarılmaz: canvas'ın alt önlüğü şeridin arkasına giriyor. Zemin
-   * çizgisi canvas'ın %84'ünde (420/500); paylı olarak 430/500 alıp
-   * şeridin üstünde birkaç piksel nefes bırakıyoruz — oyuncu gölgeleri
-   * tam zemin çizgisinde duruyor ve kırpılmamalı.
+   * çıkarılmaz: canvas'ın alt önlüğü şeridin arkasına giriyor.
+   *
+   * Oran tam olarak 500/420 — yani zemin çizgisi (canvas'ın %84'ü,
+   * oyuncuların bastığı beyaz dip çizgi) TAM şeridin üst kenarına
+   * oturuyor. Önce 430/500 kullanılmıştı ve arada birkaç piksellik
+   * kırmızı bir bant kalıyordu: sahanın kendi dip çizgisi, sonra ince
+   * bir parke şeridi, sonra şeridin kendi çizgisi — üst üste İKİ çizgi,
+   * garip duruyordu. Artık sahanın dip çizgisi ile şeridin başlangıcı
+   * aynı hat.
    *
    * Naif "şerit kadar küçült" yaklaşımında Pixel 5'te saha 707x393'ten
-   * 553x307'ye düşüyordu; bu haliyle 658x365'te kalıyor.
+   * 553x307'ye düşüyordu; bu haliyle 646x359'da kalıyor.
    */
   .stage-canvas {
     max-width: 100%;
-    max-height: min(100%, calc((100dvh - var(--strip-h)) * 500 / 430));
+    max-height: min(100%, calc((100dvh - var(--strip-h)) * 500 / 420));
     width: auto;
     height: auto;
     aspect-ratio: 9 / 5;

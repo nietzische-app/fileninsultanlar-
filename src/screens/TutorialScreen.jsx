@@ -11,7 +11,7 @@ const STEPS = [
   },
   {
     title: 'DALIŞ KURTARİŞİ',
-    body: 'Yetişemeyeceğin topa ↓ / S ile dal. Temas alanı alçalıp genişler; kurtarılan top yakına kalkar. Iskalanan dalış seni kısa süre yerde bırakır — son çare olarak kullan.',
+    body: 'Yetişemeyeceğin topa dal: klavyede ↓ / S, mobilde yön tuşundan parmağını AŞAĞI KAYDIR — karakter o yöne dalar. Temas alanı alçalıp genişler; kurtarılan top yakına kalkar. Iskalanan dalış seni kısa süre yerde bırakır, son çare olarak kullan.',
     accent: '#9BE7FF',
   },
   {
@@ -21,12 +21,12 @@ const STEPS = [
   },
   {
     title: 'PLASE',
-    body: 'Havadayken ↓ / S (mobilde DAL) ile smaç yerine plase yaparsın: top filenin hemen ötesine yumuşak düşer. Blok zıpladıysa bedava sayı; savunma file dibinde bekliyorsa kolay lokma olursun.',
+    body: 'Havadayken ↓ / S ile (mobilde yön tuşunu aşağı kaydırarak) smaç yerine plase yaparsın: top filenin hemen ötesine yumuşak düşer. Blok zıpladıysa bedava sayı; savunma file dibinde bekliyorsa kolay lokma olursun.',
     accent: '#9BE7FF',
   },
   {
     title: 'KONTROLLER',
-    body: '← → / A D hareket · ↑ / W zıpla · ↓ / S dalış (havada plase) · Boşluk / Z vur · ESC / P duraklat. Mobilde tuşlar sahanın köşelerinde çıkar; oyun yatay tutuş ister.',
+    body: '← → / A D hareket · ↑ / W zıpla · ↓ / S dalış (havada plase) · Boşluk / Z vur · ESC / P duraklat. Mobilde tuşlar sahanın altındaki şeritte çıkar; dalış için yön tuşundan aşağı kaydır. Oyun yatay tutuş ister.',
     accent: '#FFFFFF',
   },
 ];
