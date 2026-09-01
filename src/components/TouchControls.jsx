@@ -50,8 +50,8 @@ export default function TouchControls({
   };
 
   const dpad = (
-    <div className="flex flex-col items-center gap-2">
-      <div className="flex gap-2">
+    <div className="flex flex-col items-stretch gap-2">
+      <div className="tb-gap flex">
         <HoldButton
           onInput={onInput}
           action="left"
@@ -73,7 +73,7 @@ export default function TouchControls({
       <HoldButton
         onInput={onInput}
         action="dive"
-        label={<GameIcon name="ArrowRight" size="45%" rotate={90} />}
+        label={<GameIcon name="ArrowRight" rotate={90} className="tb-wide-icon" />}
         srLabel="Dalış"
         disabled={disabled}
         className={`tb-wide ${buttonTone}`}
@@ -87,10 +87,10 @@ export default function TouchControls({
       <HoldButton
         onInput={onInput}
         action="action"
-        label="VUR"
+        label={<span className="tb-label">VUR</span>}
         srLabel="Vur"
         disabled={disabled}
-        className={`tb-act text-[9px] ${buttonTone}`}
+        className={`tb-act ${buttonTone}`}
       />
       <HoldButton
         onInput={onInput}

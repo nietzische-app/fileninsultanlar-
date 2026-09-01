@@ -351,7 +351,7 @@ export default function MatchScreen({
             {fullscreen.supported && (
               <button
                 type="button"
-                className="touch-button touch-button-overlay h-8 w-8 text-[10px]"
+                className="touch-button touch-button-overlay h-9 w-9"
                 onClick={fullscreen.toggle}
                 aria-label={fullscreen.active ? 'Tam ekrandan çık' : 'Tam ekran'}
               >
@@ -360,7 +360,7 @@ export default function MatchScreen({
             )}
             <button
               type="button"
-              className="touch-button touch-button-overlay h-8 w-8 text-[9px]"
+              className="touch-button touch-button-overlay h-9 w-9"
               onClick={togglePause}
               aria-label={paused ? 'Devam et' : 'Duraklat'}
             >
@@ -368,7 +368,7 @@ export default function MatchScreen({
             </button>
             <button
               type="button"
-              className="touch-button touch-button-overlay h-8 w-9"
+              className="touch-button touch-button-overlay h-9 w-9"
               onClick={requestQuit}
               aria-label="Maçtan çık"
             >

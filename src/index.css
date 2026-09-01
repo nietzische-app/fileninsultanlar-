@@ -160,9 +160,44 @@
     height: calc(min(3.5rem, 13vh) * var(--touch-scale, 1));
   }
 
+  /*
+   * DAL: yön tuşlarının altında, o satırın tamamını kaplayan hap.
+   * Daire olarak dar kalıyordu; genişletince başparmakla yakalaması
+   * kolaylaşıyor ve d-pad gibi okunuyor.
+   */
   .tb-wide {
-    width: calc(min(3.5rem, 13vh) * var(--touch-scale, 1));
-    height: calc(min(3.5rem, 13vh) * var(--touch-scale, 1));
+    width: 100%;
+    height: calc(min(2.9rem, 11vh) * var(--touch-scale, 1));
+  }
+
+  /*
+   * DAL ikonu 90° çevrili, yani görünen YÜKSEKLİĞİ SVG'nin genişliğinden
+   * geliyor. Yüzde ölçü tuşun genişliğine bağlandığı için hap
+   * genişleyince ikon 41px'lik tuşta 50px'e çıkıp taşıyordu; ölçüyü
+   * tuşun yüksekliğiyle aynı formüle bağlıyoruz.
+   */
+  .tb-wide-icon {
+    width: calc(min(1.25rem, 4.7vh) * var(--touch-scale, 1));
+    height: auto;
+  }
+
+  /*
+   * Yön tuşları arasındaki aralık. Bitişikken yanlış tuşa basılıyordu;
+   * boşluk da tuşlarla birlikte ölçeklenmeli, sabit kalırsa %140'ta
+   * yapışık, %70'te uçuk görünüyor.
+   */
+  .tb-gap {
+    gap: calc(0.85rem * var(--touch-scale, 1));
+  }
+
+  /*
+   * Tuş üstündeki yazı (VUR). Sabit 9px hem küçük hem sönük kalıyordu;
+   * ölçekle büyür ama TUŞ büyümez — boyut `.tb-act` içinde ayrı.
+   */
+  .tb-label {
+    font-size: calc(0.82rem * var(--touch-scale, 1));
+    line-height: 1;
+    letter-spacing: 0.04em;
   }
 
 
