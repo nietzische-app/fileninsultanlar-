@@ -475,6 +475,11 @@ export default function App() {
       {screen === 'match' && matchConfig && (
         <MatchScreen
           controls={controls}
+          onControls={changeControls}
+          musicVolume={musicVolume}
+          onMusicVolume={changeMusicVolume}
+          sfxVolume={sfxVolume}
+          onSfxVolume={changeSfxVolume}
           config={matchConfig}
           onFinish={handleFinish}
           onQuit={handleQuitMatch}

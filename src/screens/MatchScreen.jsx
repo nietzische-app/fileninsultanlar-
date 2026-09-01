@@ -6,6 +6,7 @@ import Scoreboard from '../components/Scoreboard.jsx';
 import SultanBar from '../components/SultanBar.jsx';
 import TouchControls from '../components/TouchControls.jsx';
 import MuteButton from '../components/MuteButton.jsx';
+import { AudioSettings, ControlSettings } from '../components/SettingsPanels.jsx';
 import useFullscreen from '../hooks/useFullscreen.js';
 import useViewport from '../hooks/useViewport.js';
 import Sfx from '../game/audio.js';
@@ -44,6 +45,11 @@ export default function MatchScreen({
   muted,
   onToggleMute,
   controls,
+  onControls,
+  musicVolume,
+  onMusicVolume,
+  sfxVolume,
+  onSfxVolume,
 }) {
   const canvasRef = useRef(null);
   const gameRef = useRef(null);
@@ -55,6 +61,7 @@ export default function MatchScreen({
   const [hud, setHud] = useState(INITIAL_HUD);
   const [paused, setPaused] = useState(false);
   const [quitConfirm, setQuitConfirm] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const fullscreen = useFullscreen(stageRef);
   const { portrait, coarse } = useViewport();
@@ -239,12 +246,17 @@ export default function MatchScreen({
       setQuitConfirm(false);
       return;
     }
+    // Ayar katmanı açıkken üstteki duraklat düğmesi katmanı kapatır
+    if (settingsOpen) {
+      setSettingsOpen(false);
+      return;
+    }
     if (game.running) {
       pauseGame();
     } else {
       resumeGame();
     }
-  }, [pauseGame, resumeGame, quitConfirm]);
+  }, [pauseGame, resumeGame, quitConfirm, settingsOpen]);
 
   // --- Escape / P ile duraklat; onay açıkken iptal ---
   useEffect(() => {
@@ -252,6 +264,17 @@ export default function MatchScreen({
       if (event.key === 'Escape' && quitConfirm) {
         event.preventDefault();
         cancelQuit();
+        return;
+      }
+      /*
+       * Ayar katmanı açıkken ESC/P onu kapatır, oyunu başlatmaz.
+       * Yoksa katman havada kalırken maç arkada koşmaya başlıyordu.
+       */
+      if (settingsOpen) {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          setSettingsOpen(false);
+        }
         return;
       }
       if (event.key !== 'Escape' && event.key !== 'p' && event.key !== 'P') return;
@@ -269,7 +292,7 @@ export default function MatchScreen({
 
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [pauseGame, resumeGame, quitConfirm, cancelQuit]);
+  }, [pauseGame, resumeGame, quitConfirm, cancelQuit, settingsOpen]);
 
   // Onay diyaloğu açılınca iptal düğmesine odak
   useEffect(() => {
@@ -427,6 +450,7 @@ export default function MatchScreen({
             onInput={handleTouchInput}
             sultanReady={hud.sultanReady}
             disabled={controlsLocked}
+            dimWhenDisabled={!settingsOpen}
             settings={controls}
             overlay
           />
@@ -449,7 +473,7 @@ export default function MatchScreen({
 
 
         {/* Duraklatma katmanı */}
-        {paused && !quitConfirm && (
+        {paused && !quitConfirm && !settingsOpen && (
           <div
             className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-black/80 px-3"
             role="dialog"
@@ -461,10 +485,87 @@ export default function MatchScreen({
               <button type="button" className="retro-button" onClick={resumeGame}>
                 DEVAM ET
               </button>
+              <button
+                type="button"
+                className="retro-button-ghost"
+                onClick={() => {
+                  Sfx.select();
+                  setSettingsOpen(true);
+                }}
+              >
+                ⚙ AYARLAR
+              </button>
               <MuteButton muted={muted} onToggle={onToggleMute} />
               <button type="button" className="retro-button-ghost" onClick={requestQuit}>
                 MAÇTAN ÇIK
               </button>
+            </div>
+          </div>
+        )}
+
+        {/*
+          Maç içi ayarlar.
+
+          Üste yaslı ve yüksekliği sınırlı: alt köşelerdeki GERÇEK
+          dokunmatik tuşlar görünür kalsın diye. Ayarı yaparken tuşların
+          kendisi anında değişiyor, yani buraya ayrı bir önizleme
+          koymak gereksiz — ve tam ekran karartma koysaydık oyuncu
+          neyi ayarladığını göremezdi.
+        */}
+        {settingsOpen && (
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center px-3 pt-2"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Maç ayarları"
+          >
+            {/*
+              Kartın yüksekliği tuşların GERÇEK yüksekliğine bağlı.
+              Sabit bir oran (74dvh) yetmiyordu: ölçek %140'a çekilince
+              tuşlar büyüyüp yukarı taşıyor ve kart onların üstüne
+              biniyordu — ölçümde iPhone SE'de ▶ ve SULTAN kalıyordu.
+              Tuş yığını yaklaşık 22.5vh × ölçek; pay ekleyip çıkarıyoruz.
+            */}
+            <div
+              className="retro-panel pointer-events-auto w-full max-w-md overflow-y-auto px-4 py-3"
+              style={{
+                maxHeight: `max(9rem, calc(100dvh - ${24 * (controls?.scale ?? 1)}vh - 2.5rem))`,
+              }}
+            >
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-[9px] tracking-widest text-retro-accent">⚙ AYARLAR</p>
+                <button
+                  type="button"
+                  className="retro-button-ghost px-3 py-1.5 text-[8px]"
+                  onClick={() => {
+                    Sfx.select();
+                    setSettingsOpen(false);
+                  }}
+                >
+                  KAPAT
+                </button>
+              </div>
+
+              <p className="mb-3 text-[7px] leading-relaxed text-white/45">
+                Tuşlar aşağıda duruyor; ayarı çekerken değiştiklerini görürsün.
+              </p>
+              <ControlSettings
+                controls={controls}
+                onControls={onControls}
+                showPreview={false}
+              />
+
+              <div className="mt-5 border-t-2 border-white/10 pt-4">
+                <p className="mb-3 text-[8px] tracking-widest text-retro-accent">SES</p>
+                <AudioSettings
+                  muted={muted}
+                  onToggleMute={onToggleMute}
+                  musicVolume={musicVolume}
+                  onMusicVolume={onMusicVolume}
+                  sfxVolume={sfxVolume}
+                  onSfxVolume={onSfxVolume}
+                />
+              </div>
             </div>
           </div>
         )}

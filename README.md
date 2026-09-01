@@ -73,6 +73,17 @@ ikisi ayrışınca oyuncuya yalan söylerdi. Önizleme masaüstünde de
 görünür (`preview` bayrağı `fine:hidden` sınıfını atlar) ki ayar klavye
 başında da yapılabilsin.
 
+**Maç içinden de açılır:** duraklat → ⚙ AYARLAR. Orada önizleme yoktur,
+çünkü gerekmez — gerçek tuşlar zaten ekranda ve kaydırıcıyı çekerken
+anında değişirler. Katman üste yaslanır, yüksekliği tuşların gerçek
+boyutuna bağlıdır (`100dvh − 24vh × ölçek`): sabit bir oran yetmiyordu,
+ölçek %140'a çekilince tuşlar büyüyüp yukarı taşıyor ve katman
+onların üstüne biniyordu. Tuşlar bu sırada girdi almaz ama **sönmez**;
+sönük tuşa bakarak boyut ayarlamak kör ayar olurdu.
+
+Bölümlerin kendisi `src/components/SettingsPanels.jsx` içinde tek
+kaynakta durur — tam ekran Ayarlar da maç içi katman da onu kullanır.
+
 Sınırlar bilinçli: ölçek %70'in altında tuşlar basılamayacak kadar
 küçülüyor, %140'ın üstünde sahanın oynanan bandını yutuyor; saydamlık
 %35'in altında tuşlar görünmez oluyor.

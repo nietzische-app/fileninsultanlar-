@@ -22,6 +22,7 @@ export default function TouchControls({
   overlay = false,
   settings = { scale: 1, opacity: 0.85, swap: false },
   preview = false,
+  dimWhenDisabled = true,
 }) {
   const unlock = () => {
     if (!disabled) Sfx.unlock();
@@ -36,9 +37,16 @@ export default function TouchControls({
    * kısa ekranlarda tuşlar sahanın oynanan bandını yutuyordu (iPhone
    * SE'de oyuncu tamamen ▶ tuşunun arkasında kalıyordu).
    */
+  /*
+   * `dimWhenDisabled=false`: maç içi ayar katmanı açıkken tuşlar
+   * girdiyi almaz ama SÖNMEZ — oyuncu kaydırıcıyı çekerken gerçek
+   * tuşların değiştiğini görebilsin diye. Sönük tuşlara bakarak boyut
+   * ayarlamak kör ayar olurdu.
+   */
+  const dim = disabled && dimWhenDisabled;
   const styleVars = {
     '--touch-scale': settings.scale ?? 1,
-    opacity: disabled ? undefined : (settings.opacity ?? 0.85),
+    opacity: dim ? undefined : (settings.opacity ?? 0.85),
   };
 
   const dpad = (
@@ -114,7 +122,7 @@ export default function TouchControls({
          */
         className={`pointer-events-none absolute inset-0 z-10 select-none ${
           preview ? '' : 'fine:hidden'
-        } ${disabled ? 'opacity-40' : ''}`}
+        } ${dim ? 'opacity-40' : ''}`}
         style={styleVars}
         aria-hidden={disabled || undefined}
         onPointerDown={unlock}
@@ -132,8 +140,8 @@ export default function TouchControls({
   return (
     <div
       className={`touch-controls flex w-full max-w-[900px] select-none items-end justify-between gap-3 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] fine:hidden ${
-        disabled ? 'pointer-events-none opacity-40' : ''
-      }`}
+        disabled ? 'pointer-events-none' : ''
+      } ${dim ? 'opacity-40' : ''}`}
       style={styleVars}
       aria-disabled={disabled || undefined}
       onPointerDown={unlock}
