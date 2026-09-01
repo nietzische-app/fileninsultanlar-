@@ -88,6 +88,30 @@ Sınırlar bilinçli: ölçek %70'in altında tuşlar basılamayacak kadar
 küçülüyor, %140'ın üstünde sahanın oynanan bandını yutuyor; saydamlık
 %35'in altında tuşlar görünmez oluyor.
 
+#### Tuş görünümü
+
+Dokunmatik tuşlar Prinbles **"Silent"** GUI paketinin görsel dilini
+kullanır: koyu gövde, renkli kenar, yuvarlatılmış köşe ve ikonlar
+(ok, yıldız, duraklat, ev). Önceki düz piksel kareler kaba duruyordu.
+
+Paket **dosya olarak taşınmıyor** — ikonların path verisi
+`src/components/GameIcon.jsx` içine gömülü. Üç sebep:
+
+1. Paketin PNG'leri 376 KB, SVG'leri 816 KB; gömülü hâli 8 KB ve portal
+   paketini 888 → 894 KB'a çıkarıyor, yani neredeyse hiç.
+2. Tuş boyutu ayarlardan %70–%140 arası değişiyor; vektör her boyutta
+   keskin kalır, PNG kalmaz.
+3. Renk `currentColor` — paketin pembesi yerine oyunun kendi kırmızısını
+   alıyorlar, sonradan yapıştırılmış gibi durmuyorlar.
+
+Aşağı ve yukarı ok paket içinde yok; sağ ok döndürülerek kullanılıyor.
+Vuruş için uygun ikon olmadığından "VUR" yazısı kaldı.
+
+> **Kaynak ve lisans:** Prinbles — https://prinbles.github.io
+> Pakette açık bir lisans metni yok, README yalnızca siteye
+> yönlendiriyor. Ticari dağıtım (oyun portalları) öncesi kullanım
+> koşullarının doğrulanması gerekir.
+
 ### Servis
 
 Her ralli servisle başlar. Servis atan dip çizgiye geçer, top elinde
@@ -410,6 +434,7 @@ Ortam değişkeni, backend ya da veritabanı yok; tamamen statik bir SPA.
 | Oyun | HTML5 Canvas 2D + `requestAnimationFrame` |
 | Grafik | Oyunun tamamı %100 kod — `drawImage` yok. Tek istisna: giriş ekranı arka plan fotoğrafı |
 | Ses | Web Audio API — katmanlı motor (master → sfx/tribün/müzik bus). Efektler dosyasız üretilir; tek istisna giriş müziği |
+| Arayüz ikonları | Prinbles "Silent" GUI paketi — path verisi koda gömülü, dosya yok |
 | Font | Arayüzde Press Start 2P; forma numaraları kendi piksel fontumuz |
 
 ## Dosya Yapısı

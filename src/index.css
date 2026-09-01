@@ -180,20 +180,43 @@
     height: calc(min(6.75rem, 22vh) * var(--touch-scale, 1));
   }
 
-  /* Dokunmatik kontrol butonu */
+  /*
+   * Dokunmatik kontrol butonu.
+   *
+   * Görünüm Prinbles "Silent" GUI paketinden alındı: koyu gövde, renkli
+   * kenar, yuvarlatılmış köşe. Önceki düz piksel kare, tuş ikonlarıyla
+   * birlikte kaba duruyordu. Paketin oranı korunuyor (76px gövdede 6px
+   * yarıçap ≈ %8) ama ölçü `--touch-scale` ile birlikte büyüyüp
+   * küçülüyor — sabit yarıçap %70'te fazla yuvarlak, %140'ta fazla
+   * köşeli görünüyordu.
+   *
+   * Renk paketin pembesi değil oyunun kırmızısı; değişkenlerle
+   * veriliyor ki saydam varyant üstüne yazabilsin.
+   */
   .touch-button {
-    @apply flex select-none items-center justify-center border-4 border-white/80 bg-retro-panel/90 text-white;
-    box-shadow: 4px 4px 0 0 rgba(0, 0, 0, 0.6);
+    @apply flex select-none items-center justify-center;
+    border-radius: calc(0.7rem * var(--touch-scale, 1));
+    border: 3px solid var(--tb-edge, theme('colors.turkiye.red'));
+    background: var(--tb-fill, #2A2E37);
+    color: var(--tb-edge, theme('colors.turkiye.red'));
+    box-shadow: 0 calc(0.22rem * var(--touch-scale, 1)) 0 0 rgba(0, 0, 0, 0.45);
+    transition:
+      transform 90ms ease,
+      box-shadow 90ms ease,
+      background-color 90ms ease,
+      color 90ms ease;
     touch-action: none;
     -webkit-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
   }
 
+  /* Basılıyken renk tersine döner — koyu zeminde en okunur geri bildirim */
   .touch-button:active,
   .touch-button[data-pressed='true'] {
-    @apply bg-turkiye-red;
-    transform: translate(3px, 3px);
+    background: var(--tb-edge, theme('colors.turkiye.red'));
+    color: #FFFFFF;
+    transform: translateY(calc(0.22rem * var(--touch-scale, 1)));
     box-shadow: none;
   }
 
@@ -206,22 +229,25 @@
    * ve koyu zemin kullanılıyor (saha kırmızı, düz saydamlıkta tuş
    * kayboluyor).
    */
+  /*
+   * Sahnenin üstüne binen saydam varyant.
+   *
+   * Kenar rengi saf oyun kırmızısı değil biraz açığı: saha zemini zaten
+   * koyu kırmızı, aynı ton üstünde tuşun sınırı kayboluyordu.
+   * Bulanıklık 1px — 2px'te tuşun arkasındaki oyuncu seçilmiyordu.
+   */
   .touch-button-overlay {
-    @apply border-white/35 text-white/80;
-    /*
-     * Bulanıklık 2px'ten 1px'e indirildi: tuşlar sahanın oynanan
-     * bandına biniyor ve 2px'te arkasındaki oyuncu seçilmiyordu.
-     */
-    background: rgba(8, 8, 16, 0.3);
+    --tb-fill: rgba(14, 16, 24, 0.52);
+    --tb-edge: #FF4257;
     backdrop-filter: blur(1px);
     -webkit-backdrop-filter: blur(1px);
-    box-shadow: 3px 3px 0 0 rgba(0, 0, 0, 0.35);
+    box-shadow: 0 calc(0.18rem * var(--touch-scale, 1)) 0 0 rgba(0, 0, 0, 0.4);
   }
 
   .touch-button-overlay:active,
   .touch-button-overlay[data-pressed='true'] {
-    background: rgba(227, 10, 23, 0.85);
-    @apply border-white/80 text-white;
+    --tb-fill: #FF4257;
+    color: #FFFFFF;
   }
 
   /*

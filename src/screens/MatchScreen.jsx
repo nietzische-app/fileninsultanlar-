@@ -6,6 +6,7 @@ import Scoreboard from '../components/Scoreboard.jsx';
 import SultanBar from '../components/SultanBar.jsx';
 import TouchControls from '../components/TouchControls.jsx';
 import MuteButton from '../components/MuteButton.jsx';
+import GameIcon from '../components/GameIcon.jsx';
 import { AudioSettings, ControlSettings } from '../components/SettingsPanels.jsx';
 import useFullscreen from '../hooks/useFullscreen.js';
 import useViewport from '../hooks/useViewport.js';
@@ -373,15 +374,15 @@ export default function MatchScreen({
               onClick={togglePause}
               aria-label={paused ? 'Devam et' : 'Duraklat'}
             >
-              {paused ? '▶' : 'II'}
+              <GameIcon name={paused ? 'Play' : 'Pause'} size="45%" />
             </button>
             <button
               type="button"
-              className="touch-button touch-button-overlay h-8 w-9 text-[7px]"
+              className="touch-button touch-button-overlay h-8 w-9"
               onClick={requestQuit}
               aria-label="Maçtan çık"
             >
-              ÇIK
+              <GameIcon name="Home" size="42%" />
             </button>
           </div>
         </div>
