@@ -167,7 +167,6 @@ function ControlsPreview({ settings }) {
         <div className="pointer-events-none absolute inset-0">
           <TouchControls
             onInput={() => {}}
-            sultanReady={false}
             overlay
             preview
             settings={settings}

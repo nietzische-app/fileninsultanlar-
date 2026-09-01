@@ -25,13 +25,8 @@ const STEPS = [
     accent: '#9BE7FF',
   },
   {
-    title: 'SULTAN GÜCÜ',
-    body: 'Sayı, blok ve ralli barı doldurur. Dolduğunda X ile ateşle: bir sonraki vuruş alevli ve daha hızlı olur, rakip tepkisi yavaşlar.',
-    accent: '#FFD24A',
-  },
-  {
     title: 'KONTROLLER',
-    body: '← → / A D hareket · ↑ / W zıpla · ↓ / S dalış (havada plase) · Boşluk / Z vur · X Sultan Gücü · ESC / P duraklat. Mobilde tuşlar sahanın köşelerinde çıkar; oyun yatay tutuş ister.',
+    body: '← → / A D hareket · ↑ / W zıpla · ↓ / S dalış (havada plase) · Boşluk / Z vur · ESC / P duraklat. Mobilde tuşlar sahanın köşelerinde çıkar; oyun yatay tutuş ister.',
     accent: '#FFFFFF',
   },
 ];

@@ -195,9 +195,12 @@ describe('players roster', () => {
     expect(bonus).toContain('ebrar-karakurt');
   });
 
-  it('Ebrar charge çarpanı 1.3', () => {
+  it('Ebrar sert smaç çarpanı taşır', () => {
+    // Sultan Gücü kaldırılınca `charge` bonusu da kalktı; Ebrar'ın
+    // kimliği artık smaç gücü ve açısında.
     const ebrar = getPlayerById('ebrar-karakurt');
-    expect(getModifier(ebrar, 'charge')).toBe(1.3);
+    expect(getModifier(ebrar, 'spikePower')).toBe(1.22);
+    expect(getModifier(ebrar, 'charge')).toBe(1);
   });
 
   it('yaş hesaplar', () => {

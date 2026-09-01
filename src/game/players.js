@@ -35,7 +35,6 @@ export const POSITIONS = {
  *   reach       → çarpışma dairesi yarıçapı
  *   speed       → yatay hareket hızı
  *   jump        → zıplama yüksekliği
- *   charge      → Sultan Gücü barının dolum hızı
  *   angle       → hücum vuruşunun açı genişliği
  */
 
@@ -470,9 +469,15 @@ export const ROSTER = [
     },
     bonus: {
       name: 'Genç Enerji',
-      description: 'Sultan Gücü barı %20 daha hızlı dolar.',
+      description: 'Diri blok; file önünde toparlanması hızlı.',
     },
-    modifiers: { blockPower: 1.12, charge: 1.2 },
+    /*
+     * Sultan Gücü kaldırılınca `charge: 1.2` boşa düştü ve bu oyuncu
+     * tek modifikatörle kalıyordu. Blok gücü telafi olarak yükseltildi
+     * — kaldırılan bonusun yerine yenisi uydurulmadı, mevcut yönü
+     * güçlendirildi.
+     */
+    modifiers: { blockPower: 1.24, jump: 1.06 },
   },
   {
     id: 'zehra-gunes',
@@ -565,7 +570,7 @@ export const ROSTER = [
       name: 'Servis Ateşi',
       description: 'Sert servis ve smaç; bar hızlı dolar.',
     },
-    modifiers: { spikePower: 1.16, speed: 1.08, charge: 1.1 },
+    modifiers: { spikePower: 1.16, speed: 1.08 },
   },
   {
     id: 'melissa-vargas',
@@ -628,7 +633,7 @@ export const ROSTER = [
       name: 'Taze Kan',
       description: 'Çevik ve hevesli; bar biraz daha hızlı dolar.',
     },
-    modifiers: { speed: 1.1, spikePower: 1.04, charge: 1.12 },
+    modifiers: { speed: 1.1, spikePower: 1.04 },
   },
   {
     id: 'ebrar-karakurt',
@@ -658,9 +663,9 @@ export const ROSTER = [
     },
     bonus: {
       name: 'Kara Kurt',
-      description: 'Sert smaç; Sultan Gücü barı %30 daha hızlı dolar.',
+      description: 'Sert smaç; açılı bitiriş.',
     },
-    modifiers: { spikePower: 1.22, charge: 1.3, angle: 1.12, bumpPower: 0.95 },
+    modifiers: { spikePower: 1.22, angle: 1.12, bumpPower: 0.95 },
   },
 ];
 

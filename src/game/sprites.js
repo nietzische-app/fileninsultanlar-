@@ -479,7 +479,6 @@ function drawExtras(px, look, facing, skin) {
  * @param {number} [opts.facing] 1 sağa, -1 sola
  * @param {number} [opts.frame]  Koşu animasyon fazı (0..1)
  * @param {boolean} [opts.showNumber]
- * @param {boolean} [opts.glow]  Sultan Gücü aktifken altın hale
  */
 export function drawSultan(ctx, data, opts) {
   const {
@@ -490,7 +489,6 @@ export function drawSultan(ctx, data, opts) {
     facing = 1,
     frame = 0,
     showNumber = true,
-    glow = false,
   } = opts;
 
   const { primary, secondary, skin, hair, accent } = data.colors;
@@ -501,11 +499,6 @@ export function drawSultan(ctx, data, opts) {
   const px = blockPainter(ctx, originX, originY, u);
 
   ctx.save();
-
-  if (glow) {
-    ctx.shadowColor = PALETTE.gold;
-    ctx.shadowBlur = 18;
-  }
 
   // Dalış tamamen farklı bir düzen: figür yatay uzanır.
   // Ayakta duran iskeleti döndürmek yerine kendi çizimi var.
@@ -810,26 +803,20 @@ function drawDivingSultan(ctx, data, look, { x, y, u, facing }) {
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {{x:number, y:number, radius:number, rotation:number}} ball
- * @param {boolean} [flaming] Sultan Gücü aktifken alevli görünür
  */
-export function drawBall(ctx, ball, flaming = false) {
+export function drawBall(ctx, ball) {
   const { x, y, radius: r, rotation } = ball;
 
   const cell = Math.max(2, r / 5.5);
   const steps = Math.ceil(r / cell) + 1;
 
-  const base = flaming ? PALETTE.flame[0] : PALETTE.ballWhite;
-  const stripeA = flaming ? PALETTE.flame[3] : PALETTE.ballRed;
-  const stripeB = flaming ? PALETTE.flame[1] : PALETTE.ballBlue;
+  const base = PALETTE.ballWhite;
+  const stripeA = PALETTE.ballRed;
+  const stripeB = PALETTE.ballBlue;
 
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(rotation);
-
-  if (flaming) {
-    ctx.shadowColor = PALETTE.flame[2];
-    ctx.shadowBlur = 20;
-  }
 
   for (let i = -steps; i <= steps; i += 1) {
     for (let j = -steps; j <= steps; j += 1) {
@@ -1003,7 +990,7 @@ export function createAppIconDataUrl(size = 32) {
   ctx.fillRect(0, size - Math.max(2, size * 0.06), size, Math.max(2, size * 0.06));
 
   const radius = size * 0.36;
-  drawBall(ctx, { x: size / 2, y: size / 2, radius, rotation: 0.35 }, false);
+  drawBall(ctx, { x: size / 2, y: size / 2, radius, rotation: 0.35 });
 
   return canvas.toDataURL('image/png');
 }

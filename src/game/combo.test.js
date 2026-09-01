@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  comboChargeMultiplier,
   comboPowerMultiplier,
   comboTierAt,
   currentComboTier,
@@ -31,34 +30,30 @@ describe('kombo kademeleri', () => {
   });
 });
 
-describe('kombo çarpanları', () => {
+describe('kombo çarpanı', () => {
   it('kombo yokken çarpan 1', () => {
-    expect(comboChargeMultiplier(0)).toBe(1);
     expect(comboPowerMultiplier(0)).toBe(1);
   });
 
   it('kombo büyüdükçe artar', () => {
-    expect(comboChargeMultiplier(5)).toBeGreaterThan(comboChargeMultiplier(2));
     expect(comboPowerMultiplier(5)).toBeGreaterThan(comboPowerMultiplier(2));
   });
 
   it('tavanı aşmaz', () => {
-    expect(comboChargeMultiplier(999)).toBe(COMBO.maxChargeMultiplier);
     expect(comboPowerMultiplier(999)).toBe(COMBO.maxPowerMultiplier);
   });
 
-  it('güç ödülü dolum ödülünden belirgin biçimde zayıf', () => {
-    // Kombo topu hızlandırmak için değil, Sultan Gücü'ne çabuk ulaşmak
-    // için. Güç de aynı hızda büyüseydi kombo yapan geri dönülemez
-    // biçimde öne geçerdi.
-    expect(COMBO.maxPowerMultiplier).toBeLessThan(COMBO.maxChargeMultiplier);
-    expect(comboPowerMultiplier(10) - 1).toBeLessThan(
-      (comboChargeMultiplier(10) - 1) / 3
-    );
+  it('tavan makul bir aralıkta kalır', () => {
+    /*
+     * Sultan Gücü kaldırılınca kombonun tek karşılığı bu çarpan kaldı
+     * ve güçlendirildi. Yine de üst sınır bir yerde durmalı: kombo
+     * yapan oyuncu topu ışınlayamamalı.
+     */
+    expect(COMBO.maxPowerMultiplier).toBeGreaterThan(1.2);
+    expect(COMBO.maxPowerMultiplier).toBeLessThan(1.6);
   });
 
   it('negatif kombo çarpanı bozmaz', () => {
-    expect(comboChargeMultiplier(-4)).toBe(1);
     expect(comboPowerMultiplier(-4)).toBe(1);
   });
 });

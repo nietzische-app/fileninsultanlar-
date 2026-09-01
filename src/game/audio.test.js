@@ -16,8 +16,6 @@ describe('SfxEngine', () => {
       Sfx.streak(4);
       Sfx.combo(6);
       Sfx.pointLost();
-      Sfx.sultanReady();
-      Sfx.sultanFire();
       Sfx.whistle();
       Sfx.setWon();
       Sfx.setLost();

@@ -34,24 +34,11 @@ export function currentComboTier(count) {
 }
 
 /**
- * Sultan barı dolum çarpanı.
- * @param {number} count
- */
-export function comboChargeMultiplier(count) {
-  const safe = Math.max(0, count);
-  return Math.min(
-    COMBO.maxChargeMultiplier,
-    1 + safe * COMBO.chargeStep
-  );
-}
-
-/**
  * Hücum gücü çarpanı.
  *
- * Bilerek dolum çarpanından çok daha zayıf: kombo topu hızlandırmak
- * için değil, Sultan Gücü'ne daha çabuk ulaşmak için bir ödül. Güç de
- * aynı oranda büyüseydi kombo yapan oyuncu geri dönülemez biçimde
- * öne geçerdi.
+ * Sultan Gücü kaldırıldıktan sonra kombonun TEK karşılığı bu. Önce
+ * asıl ödül bar dolumuydu ve güç katkısı bilerek zayıf tutulmuştu;
+ * bar gidince kombo neredeyse anlamsız kalacaktı.
  *
  * @param {number} count
  */

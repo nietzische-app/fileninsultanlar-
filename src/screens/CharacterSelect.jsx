@@ -185,7 +185,7 @@ export default function CharacterSelect({
             </p>
             <div className="mt-2 grid gap-1 text-[7px] leading-relaxed text-white/60 sm:grid-cols-2">
               <span>
-                <b className="text-white/80">1. OYUNCU</b> — W A S D · BOŞLUK vur · X Sultan
+                <b className="text-white/80">1. OYUNCU</b> — W A S D · BOŞLUK vur
               </span>
               <span>
                 <b className="text-white/80">2. OYUNCU</b> — ok tuşları · ENTER vur
@@ -194,7 +194,7 @@ export default function CharacterSelect({
             <p className="mt-2 text-[7px] leading-relaxed text-white/45">
               {playMode === 'coop'
                 ? 'İki sultan aynı takımda; rakip yapay zekâ.'
-                : '2. oyuncu rakip takımı sürer. Sultan Gücü yalnızca Türkiye\'nindir.'}
+                : '2. oyuncu rakip takımı sürer.'}
             </p>
           </div>
         ) : (

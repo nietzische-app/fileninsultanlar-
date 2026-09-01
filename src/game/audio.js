@@ -706,53 +706,6 @@ class SfxEngine {
     this.crowd({ intensity: 0.25, duration: 0.35, delay: 0.05 });
   }
 
-  /** Sultan Gücü hazır — parlak fanfar. */
-  sultanReady() {
-    this.arp([523, 659, 784, 1047, 1319], {
-      step: 0.055,
-      duration: 0.09,
-      gain: 0.44,
-    });
-    this.tone({
-      freq: 1568,
-      duration: 0.18,
-      gain: 0.3,
-      type: 'triangle',
-      delay: 0.28,
-      detune: 0.01,
-    });
-    this.noise({ duration: 0.12, gain: 0.12, filterFreq: 3500, delay: 0.2 });
-  }
-
-  /** Sultan Gücü ateşi — yükselen whoosh + bass. */
-  sultanFire() {
-    this.tone({
-      freq: 140,
-      endFreq: 1400,
-      duration: 0.32,
-      type: 'sawtooth',
-      gain: 0.5,
-      detune: 0.015,
-    });
-    this.tone({
-      freq: 80,
-      endFreq: 40,
-      duration: 0.28,
-      type: 'sine',
-      gain: 0.4,
-      delay: 0.02,
-    });
-    this.noise({ duration: 0.35, gain: 0.38, filterFreq: 800, filterType: 'lowpass' });
-    this.noise({
-      duration: 0.2,
-      gain: 0.2,
-      filterFreq: 3000,
-      filterType: 'highpass',
-      delay: 0.05,
-    });
-    this.crowd({ intensity: 0.85, duration: 0.5, delay: 0.04 });
-  }
-
   /** Hakem düdüğü. */
   whistle() {
     this.tone({

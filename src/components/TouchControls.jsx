@@ -18,7 +18,6 @@ import GameIcon from './GameIcon.jsx';
  */
 export default function TouchControls({
   onInput,
-  sultanReady,
   disabled = false,
   overlay = false,
   settings = { scale: 1, opacity: 0.85, swap: false },
@@ -51,7 +50,7 @@ export default function TouchControls({
   };
 
   const dpad = (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col items-center gap-2">
       <div className="flex gap-2">
         <HoldButton
           onInput={onInput}
@@ -70,64 +69,36 @@ export default function TouchControls({
           className={`tb-dir ${buttonTone}`}
         />
       </div>
+      {/* Pakette aşağı ok yok; sağ oku çevirmek aynı şekli veriyor */}
       <HoldButton
         onInput={onInput}
         action="dive"
-        label={
-          <span className="flex items-center gap-1.5">
-            {/* Pakette aşağı ok yok; sağ oku çevirmek aynı şekli veriyor */}
-            <GameIcon name="ArrowRight" size="1.15em" rotate={90} />
-            <span>DAL</span>
-          </span>
-        }
+        label={<GameIcon name="ArrowRight" size="45%" rotate={90} />}
         srLabel="Dalış"
         disabled={disabled}
-        className={`tb-wide w-full text-[9px] ${buttonTone}`}
+        className={`tb-wide ${buttonTone}`}
       />
     </div>
   );
 
   const actions = (
     <div className="flex items-end gap-2">
-      <div className="flex flex-col gap-2">
-        <HoldButton
-          onInput={onInput}
-          action="sultan"
-          /*
-           * Yalnızca yıldız: yıldız + "SULTAN" yazısı %70 ölçekte
-           * 36x25px'lik tuşa sığmıyor, ölçümde 11px taşıyordu. Anlamı
-           * hemen üstteki "SULTAN" barı ve erişilebilirlik etiketi
-           * taşıyor.
-           */
-          label={<GameIcon name="Star" size="55%" />}
-          srLabel="Sultan Gücü"
-          disabled={disabled}
-          className={`tb-small ${buttonTone} ${
-            sultanReady ? 'animate-pulse-gold !border-retro-accent !text-retro-accent' : ''
-          }`}
-        />
-        {/* Pakette vuruş/smaç için uygun ikon yok; yazı en anlaşılırı */}
-        <HoldButton
-          onInput={onInput}
-          action="action"
-          label="VUR"
-          srLabel="Vur"
-          disabled={disabled}
-          className={`tb-act text-[9px] ${buttonTone}`}
-        />
-      </div>
+      {/* Pakette vuruş/smaç için uygun ikon yok; yazı en anlaşılırı */}
+      <HoldButton
+        onInput={onInput}
+        action="action"
+        label="VUR"
+        srLabel="Vur"
+        disabled={disabled}
+        className={`tb-act text-[9px] ${buttonTone}`}
+      />
       <HoldButton
         onInput={onInput}
         action="up"
-        label={
-          <span className="flex flex-col items-center gap-1">
-            <GameIcon name="ArrowRight" size="2em" rotate={-90} />
-            <span>ZIPLA</span>
-          </span>
-        }
+        label={<GameIcon name="ArrowRight" size="48%" rotate={-90} />}
         srLabel="Zıpla"
         disabled={disabled}
-        className={`tb-jump text-[9px] ${buttonTone}`}
+        className={`tb-jump ${buttonTone}`}
       />
     </div>
   );

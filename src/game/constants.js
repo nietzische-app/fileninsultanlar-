@@ -34,7 +34,7 @@ export const PHYSICS = {
   ballRadius: 13,
   /** Hedefli vuruşların hedefleyebileceği azami hız. */
   ballMaxSpeed: 1000,
-  /** Mutlak tavan — Sultan Gücü çarpanı dahil hiçbir top bunu aşamaz. */
+  /** Mutlak tavan — çarpanlar üst üste binse de hiçbir top bunu aşamaz. */
   ballSpeedCeiling: 1700,
   ballAirDrag: 0.999,
   wallRestitution: 0.9,
@@ -119,7 +119,6 @@ export const DIVE = {
    */
   saveLift: 520,
   maxDrift: 150,
-  chargeBonus: 10, // başarılı kurtarışta Sultan barı dolumu
 };
 
 /** Maç kuralları. */
@@ -178,7 +177,6 @@ export const PERFECT = {
   /** Tam vuruşun güç çarpanı. */
   power: 1.14,
   /** Tam vuruşta Sultan barına eklenen fazladan dolum. */
-  charge: 7,
   /** Ekranda kalan "TAM VURUŞ" yazısının süresi (sn). */
   flash: 0.55,
 };
@@ -192,12 +190,15 @@ export const PERFECT = {
  */
 export const COMBO = {
   /** Kombo çarpanının Sultan dolumuna etkisi (kombo başına). */
-  chargeStep: 0.09,
-  /** Çarpanın tavanı — bar anında dolmasın. */
-  maxChargeMultiplier: 2.2,
-  /** Hücum gücüne kombo katkısı (kombo başına) ve tavanı. */
-  powerStep: 0.012,
-  maxPowerMultiplier: 1.16,
+  /**
+   * Hücum gücüne kombo katkısı (kombo başına) ve tavanı.
+   *
+   * Sultan Gücü kaldırılınca kombonun tek karşılığı bu kaldı; eskiden
+   * asıl ödül bar dolumuydu ve güç katkısı bilerek zayıf tutulmuştu
+   * (0.012 / 1.16). Tavan yükseltildi ama ölçümle sınırlandı.
+   */
+  powerStep: 0.022,
+  maxPowerMultiplier: 1.3,
   /** Kademeler: `at` komboya ulaşınca `label` duyurulur. */
   tiers: [
     { at: 3, label: 'SÜPER!', color: '#9BE7FF' },
@@ -221,8 +222,6 @@ export const TIP = {
   maxDepth: 165,
   /** Uçuş süresi — yavaş ve kavisli. */
   flight: 0.72,
-  /** Sultan barı dolumu (smaçtan az, manşetten çok). */
-  charge: 8,
 };
 
 /**
@@ -239,18 +238,6 @@ export const HITSTOP = {
   sultan: 0.1,
   /** Üst sınır — birikip oyunu dondurmasın. */
   max: 0.12,
-};
-
-/** Sultan Gücü barı. */
-export const SULTAN = {
-  max: 100,
-  onPoint: 18,
-  onBlock: 14,
-  onRally: 6, // fileyi geçen her başarılı vuruş
-  streakBonus: 10, // üst üste sayıda ek dolum
-  speedMultiplier: 1.55,
-  aiPenalty: 0.45, // aktifken rakip AI tepkisi bu oranda yavaşlar
-  duration: 1.8, // alevli topun etkisi (sn)
 };
 
 /** Renk paleti — tailwind.config.js ile aynı tutulmalı. */

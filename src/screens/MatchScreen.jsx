@@ -3,7 +3,6 @@ import Game from '../game/Game.js';
 import { FORMATS, GAME_HEIGHT, GAME_WIDTH, PHASE } from '../game/constants.js';
 import { getPlayerById } from '../game/players.js';
 import Scoreboard from '../components/Scoreboard.jsx';
-import SultanBar from '../components/SultanBar.jsx';
 import TouchControls from '../components/TouchControls.jsx';
 import MuteButton from '../components/MuteButton.jsx';
 import GameIcon from '../components/GameIcon.jsx';
@@ -19,9 +18,6 @@ const INITIAL_HUD = {
   setNumber: 1,
   setHistory: [],
   phase: PHASE.READY,
-  sultanCharge: 0,
-  sultanReady: false,
-  sultanArmed: false,
   running: false,
   streak: { side: null, count: 0 },
   pointsPerSet: 15,
@@ -36,8 +32,8 @@ const INITIAL_HUD = {
 };
 
 /**
- * Maç ekranı — Canvas oyun alanı, skor tablosu, Sultan Gücü barı
- * ve mobil dokunmatik kontroller.
+ * Maç ekranı — Canvas oyun alanı, skor tablosu ve mobil dokunmatik
+ * kontroller.
  */
 export default function MatchScreen({
   config,
@@ -307,12 +303,6 @@ export default function MatchScreen({
     gameRef.current?.setInput(name, pressed);
   }, [paused, quitConfirm]);
 
-  const handleSultan = useCallback(() => {
-    if (paused || quitConfirm) return;
-    Sfx.unlock();
-    gameRef.current?.activateSultan();
-  }, [paused, quitConfirm]);
-
   const squad = config.homeIds.map((id) => getPlayerById(id)).filter(Boolean);
   const controlsLocked = paused || quitConfirm;
   /*
@@ -336,9 +326,9 @@ export default function MatchScreen({
       className="match-screen mx-auto flex min-h-full w-full max-w-[960px] flex-col items-center gap-3 px-2 py-3 touch:fixed touch:inset-0 touch:z-40 touch:block touch:h-[100dvh] touch:w-screen touch:max-w-none touch:overflow-hidden touch:overscroll-none touch:bg-black touch:p-0 sm:gap-4 sm:px-3 sm:py-5"
     >
       {/*
-        Üst HUD. Mobilde skor tablosu, Sultan barı ve hızlı düğmeler tek
-        bir saydam katmanda sahnenin üstüne biner; masaüstünde eskisi
-        gibi akışta durur.
+        Üst HUD. Mobilde skor tablosu ve hızlı düğmeler tek bir saydam
+        katmanda sahnenin üstüne biner; masaüstünde eskisi gibi akışta
+        durur.
       */}
       <div className="w-full shrink-0 touch:pointer-events-none touch:absolute touch:inset-x-0 touch:top-0 touch:z-20 touch:flex touch:flex-col touch:gap-1 touch:px-1 touch:pt-[env(safe-area-inset-top)]">
         <div className="flex w-full items-start gap-1">
@@ -387,16 +377,6 @@ export default function MatchScreen({
           </div>
         </div>
 
-        {/* Mobil: ince Sultan barı */}
-        <div className="pointer-events-auto fine:hidden">
-          <SultanBar
-            charge={hud.sultanCharge}
-            ready={hud.sultanReady}
-            armed={hud.sultanArmed}
-            onActivate={handleSultan}
-            compact
-          />
-        </div>
       </div>
 
       {/*
@@ -449,7 +429,6 @@ export default function MatchScreen({
         {!twoPlayer && (
           <TouchControls
             onInput={handleTouchInput}
-            sultanReady={hud.sultanReady}
             disabled={controlsLocked}
             dimWhenDisabled={!settingsOpen}
             settings={controls}
@@ -608,15 +587,6 @@ export default function MatchScreen({
             </div>
           </div>
         )}
-      </div>
-
-      <div className="w-full shrink-0 touch:hidden">
-        <SultanBar
-          charge={hud.sultanCharge}
-          ready={hud.sultanReady}
-          armed={hud.sultanArmed}
-          onActivate={handleSultan}
-        />
       </div>
 
       {/* Alt bilgi — masaüstü */}

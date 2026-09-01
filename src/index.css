@@ -161,48 +161,43 @@
   }
 
   .tb-wide {
-    height: calc(min(2.75rem, 9.5vh) * var(--touch-scale, 1));
-    min-width: calc(7.25rem * var(--touch-scale, 1));
+    width: calc(min(3.5rem, 13vh) * var(--touch-scale, 1));
+    height: calc(min(3.5rem, 13vh) * var(--touch-scale, 1));
   }
 
-  .tb-small {
-    width: calc(3.25rem * var(--touch-scale, 1));
-    height: calc(min(2.75rem, 9.5vh) * var(--touch-scale, 1));
-  }
 
   .tb-act {
-    width: calc(3.25rem * var(--touch-scale, 1));
-    height: calc(min(3.5rem, 12.5vh) * var(--touch-scale, 1));
+    width: calc(min(3.9rem, 14.5vh) * var(--touch-scale, 1));
+    height: calc(min(3.9rem, 14.5vh) * var(--touch-scale, 1));
   }
 
   .tb-jump {
-    width: calc(min(4rem, 15vh) * var(--touch-scale, 1));
-    height: calc(min(6.75rem, 22vh) * var(--touch-scale, 1));
+    width: calc(min(4.4rem, 16.5vh) * var(--touch-scale, 1));
+    height: calc(min(4.4rem, 16.5vh) * var(--touch-scale, 1));
   }
 
   /*
-   * Dokunmatik kontrol butonu.
+   * Dokunmatik kontrol butonu — YUVARLAK ve ÇERÇEVESİZ.
    *
-   * Görünüm Prinbles "Silent" GUI paketinden alındı: koyu gövde, renkli
-   * kenar, yuvarlatılmış köşe. Önceki düz piksel kare, tuş ikonlarıyla
-   * birlikte kaba duruyordu. Paketin oranı korunuyor (76px gövdede 6px
-   * yarıçap ≈ %8) ama ölçü `--touch-scale` ile birlikte büyüyüp
-   * küçülüyor — sabit yarıçap %70'te fazla yuvarlak, %140'ta fazla
-   * köşeli görünüyordu.
+   * Kare tuşlar beğenilmedi: "diğer oyunlardan alışkanlık, daha az yer
+   * kaplar." Daire aynı dokunma alanını daha küçük bir görsel ayak
+   * iziyle veriyor.
    *
-   * Renk paketin pembesi değil oyunun kırmızısı; değişkenlerle
-   * veriliyor ki saydam varyant üstüne yazabilsin.
+   * Kenarlık yok; ikonun altında yumuşak bir disk var. Tamamen çıplak
+   * ikon sahanın kalabalık zemininde kayboluyordu — disk hem tuşun
+   * nerede olduğunu söylüyor hem ikona kontrast veriyor. Keskin kutu
+   * gölgesi yerine ince bir dış halka: yuvarlak biçimde kutu gölgesi
+   * ucuz duruyor.
    */
   .touch-button {
     @apply flex select-none items-center justify-center;
-    border-radius: calc(0.7rem * var(--touch-scale, 1));
-    border: 3px solid var(--tb-edge, theme('colors.turkiye.red'));
-    background: var(--tb-fill, #2A2E37);
+    border-radius: 9999px;
+    border: 0;
+    background: var(--tb-fill, rgba(20, 22, 32, 0.72));
     color: var(--tb-edge, theme('colors.turkiye.red'));
-    box-shadow: 0 calc(0.22rem * var(--touch-scale, 1)) 0 0 rgba(0, 0, 0, 0.45);
+    box-shadow: 0 0 0 calc(0.1rem * var(--touch-scale, 1)) rgba(0, 0, 0, 0.3);
     transition:
       transform 90ms ease,
-      box-shadow 90ms ease,
       background-color 90ms ease,
       color 90ms ease;
     touch-action: none;
@@ -211,37 +206,26 @@
     -webkit-touch-callout: none;
   }
 
-  /* Basılıyken renk tersine döner — koyu zeminde en okunur geri bildirim */
+  /* Basılıyken renk tersine döner ve tuş hafifçe küçülür */
   .touch-button:active,
   .touch-button[data-pressed='true'] {
     background: var(--tb-edge, theme('colors.turkiye.red'));
     color: #FFFFFF;
-    transform: translateY(calc(0.22rem * var(--touch-scale, 1)));
-    box-shadow: none;
+    transform: scale(0.92);
   }
 
   /*
-   * Sahnenin üstüne binen şeffaf varyant.
-   *
-   * Tuşlar oyun alanının altında ayrı bir şeritte durduğunda mobilde
-   * saha ~40dvh'ye sıkışıyordu. Artık kontroller sahnenin köşelerine
-   * biniyor; okunur kalmaları için saydamlık yerine ince bir bulanıklık
-   * ve koyu zemin kullanılıyor (saha kırmızı, düz saydamlıkta tuş
-   * kayboluyor).
-   */
-  /*
    * Sahnenin üstüne binen saydam varyant.
    *
-   * Kenar rengi saf oyun kırmızısı değil biraz açığı: saha zemini zaten
-   * koyu kırmızı, aynı ton üstünde tuşun sınırı kayboluyordu.
-   * Bulanıklık 1px — 2px'te tuşun arkasındaki oyuncu seçilmiyordu.
+   * İkon rengi saf oyun kırmızısı değil biraz açığı: saha zemini zaten
+   * koyu kırmızı, aynı tonda ikon kayboluyordu. Bulanıklık 1px —
+   * 2px'te tuşun arkasındaki oyuncu seçilmiyordu.
    */
   .touch-button-overlay {
-    --tb-fill: rgba(14, 16, 24, 0.52);
+    --tb-fill: rgba(10, 12, 20, 0.42);
     --tb-edge: #FF4257;
     backdrop-filter: blur(1px);
     -webkit-backdrop-filter: blur(1px);
-    box-shadow: 0 calc(0.18rem * var(--touch-scale, 1)) 0 0 rgba(0, 0, 0, 0.4);
   }
 
   .touch-button-overlay:active,

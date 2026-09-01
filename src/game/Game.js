@@ -16,7 +16,6 @@ import {
   FORMATS,
   HITSTOP,
   PERFECT,
-  TIP,
   GAME_HEIGHT,
   GAME_WIDTH,
   GROUND_Y,
@@ -26,7 +25,6 @@ import {
   PHYSICS,
   PLAYER,
   RULES,
-  SULTAN,
   SURVIVAL,
   scaleDifficulty,
 } from './constants.js';
@@ -59,7 +57,6 @@ import {
   safeAimRange,
 } from './serve.js';
 import {
-  comboChargeMultiplier,
   comboPowerMultiplier,
   comboTierAt,
   currentComboTier,
@@ -117,8 +114,6 @@ const P1_KEYS = {
   ' ': 'action',
   z: 'action',
   Z: 'action',
-  x: 'sultan',
-  X: 'sultan',
 };
 
 const P2_KEYS = {
@@ -127,8 +122,6 @@ const P2_KEYS = {
   ArrowUp: 'up',
   ArrowDown: 'dive',
   Enter: 'action',
-  Control: 'sultan',
-  Shift: 'sultan',
 };
 
 /** Boş bir girdi durumu. */
@@ -140,7 +133,6 @@ function createInputState() {
     down: false,
     action: false,
     dive: false,
-    sultan: false,
   };
 }
 
@@ -217,7 +209,6 @@ export default class Game {
      */
     this.inputs = { p1: createInputState(), p2: createInputState() };
     this.input = this.inputs.p1;
-    this.sultanKeyLatch = { p1: false, p2: false };
 
     /**
      * Vuruş tuşuna basış sayacı.
@@ -245,10 +236,6 @@ export default class Game {
     /** Üç temas kuralı takibi — hangi taraf kaç kez dokundu. */
     this.touch = { side: null, count: 0 };
 
-    // Sultan Gücü
-    this.sultanCharge = 0;
-    this.sultanArmed = false;
-    this.sultanWasReady = false;
 
     // Hayatta kalma durumu — diğer modlarda kullanılmaz
     this.lives = SURVIVAL.lives;
@@ -439,7 +426,6 @@ export default class Game {
       vy: 0,
       radius: PHYSICS.ballRadius,
       rotation: 0,
-      flaming: 0,
       lastHitBy: null,
       lastHitSide: null,
       /** Servis atıldı ve henüz kimse dokunmadı — aut kuralı bunda işler. */
@@ -491,7 +477,7 @@ export default class Game {
 
   /** İnsan oyuncunun kontrol ettiği sultan. */
   /**
-   * 1. oyuncunun sultanı. HUD, Sultan barı ve istatistikler buna bakar.
+   * 1. oyuncunun sultanı. HUD ve istatistikler buna bakar.
    * Co-Op/VS'te 2. oyuncunun kendi oyuncusu ayrıca `controlSlot` ile
    * bulunur.
    */
@@ -526,15 +512,6 @@ export default class Game {
 
     const { slot, action } = binding;
 
-    if (action === 'sultan') {
-      // Tek basışta bir kez tetiklensin (tuş basılı tutulunca tekrarlamasın)
-      if (!this.sultanKeyLatch[slot]) {
-        this.sultanKeyLatch[slot] = true;
-        this.activateSultan(slot);
-      }
-      return;
-    }
-
     if (action === 'action' && !this.inputs[slot].action) {
       this.actionPresses[slot] += 1;
     }
@@ -548,25 +525,16 @@ export default class Game {
 
     const { slot, action } = binding;
 
-    if (action === 'sultan') {
-      this.sultanKeyLatch[slot] = false;
-      return;
-    }
-
     this.inputs[slot][action] = false;
   }
 
   /**
    * Dokunmatik butonlar — her zaman 1. oyuncu.
    * Tek telefonda iki kişi oynayamayacağı için Co-Op/VS klavyeye özgüdür.
-   * @param {'left'|'right'|'up'|'action'|'dive'|'sultan'} name
+   * @param {'left'|'right'|'up'|'action'|'dive'} name
    * @param {boolean} pressed
    */
   setInput(name, pressed) {
-    if (name === 'sultan') {
-      if (pressed) this.activateSultan('p1');
-      return;
-    }
     if (name in this.inputs.p1) {
       if (name === 'action' && pressed && !this.inputs.p1.action) {
         this.actionPresses.p1 += 1;
@@ -585,8 +553,6 @@ export default class Game {
       input.down = false;
       input.action = false;
       input.dive = false;
-      input.sultan = false;
-      this.sultanKeyLatch[slot] = false;
       // Duraklatma/odak kaybı sonrası eski basış tetiklenmesin
       this.lastActionPresses[slot] = this.actionPresses[slot];
     });
@@ -605,28 +571,6 @@ export default class Game {
     this.clearInput();
   }
 
-  /**
-   * Sultan Gücü'nü kurar — bir sonraki temasta alevli top.
-   *
-   * Bar Türkiye takımına ait; VS modunda rakibi oynatan 2. oyuncu onu
-   * ateşleyemez, yoksa iki oyuncu aynı barı paylaşırdı.
-   * @param {'p1'|'p2'} [slot]
-   */
-  activateSultan(slot = 'p1') {
-    if (this.playMode === 'vs' && slot === 'p2') return;
-    if (this.sultanCharge < SULTAN.max || this.sultanArmed) return;
-    if (this.phase !== PHASE.RALLY) return;
-
-    this.sultanArmed = true;
-    Sfx.sultanFire();
-    this.spawnBurst(
-      this.getControlledPlayer()?.x ?? GAME_WIDTH * 0.25,
-      GROUND_Y - 60,
-      18,
-      PALETTE.gold
-    );
-    this.emitState(true);
-  }
 
   // ===================================================================
   // Ana döngü
@@ -730,8 +674,6 @@ export default class Game {
     const awayChaser = active ? pickChaser(awayAI, ball) : null;
 
     // Alevli top rakibin tepkisini yavaşlatır
-    const slow = ball.flaming > 0 ? SULTAN.aiPenalty : 1;
-
     this.players.forEach((player) => {
       if (player.controlled) {
         // İnsan girdisi doğrudan aktarılır — her oyuncu kendi yuvasından
@@ -757,7 +699,6 @@ export default class Game {
             difficulty: isAway ? this.opponentDifficulty : this.difficulty,
             chasing: player.id === (isAway ? awayChaser : homeChaser),
             homeX: player.homeX,
-            slowFactor: isAway ? slow : 1,
             foes: this.players.filter((p) => p.side !== player.side),
           },
           dt
@@ -915,8 +856,6 @@ export default class Game {
   updateBall(dt, frozen = false) {
     const ball = this.ball;
 
-    ball.flaming = Math.max(0, ball.flaming - dt);
-
     if (frozen) {
       // Sayı anında top yerinde döner, sahne donar
       ball.rotation += dt * 2;
@@ -930,11 +869,6 @@ export default class Game {
      */
     const event = stepBall(ball, dt);
     ball.rotation += ball.vx * dt * 0.03;
-
-    // Alev izi
-    if (ball.flaming > 0) {
-      this.spawnFlame(ball.x, ball.y);
-    }
 
     if (event.net) Sfx.net();
 
@@ -1190,23 +1124,11 @@ export default class Game {
       }
     }
 
-    // Sultan Gücü — kurulmuşsa bu temasta patlar
-    let sultanFired = false;
-    if (this.sultanArmed && player.controlled) {
-      vx *= SULTAN.speedMultiplier;
-      vy *= SULTAN.speedMultiplier;
-      ball.flaming = SULTAN.duration;
-      this.sultanArmed = false;
-      this.sultanCharge = 0;
-      this.sultanWasReady = false;
-      sultanFired = true;
-      this.shake = 14;
-      this.spawnBurst(ball.x, ball.y, 26, PALETTE.flame[2]);
-    }
-
-    // Mutlak hız tavanı — yalnızca güvenlik amaçlı.
-    // Hedefli vuruşlar zaten computeAttackVelocity içinde sınırlanır;
-    // burada asıl amaç Sultan Gücü çarpanının kontrolden çıkmaması.
+    /*
+     * Mutlak hız tavanı — yalnızca güvenlik amaçlı. Hedefli vuruşlar
+     * zaten computeAttackVelocity içinde sınırlanıyor; bu tavan
+     * çarpanların üst üste binip topu ışınlamasına karşı duruyor.
+     */
     const speed = Math.hypot(vx, vy);
     if (speed > PHYSICS.ballSpeedCeiling) {
       const scale = PHYSICS.ballSpeedCeiling / speed;
@@ -1230,31 +1152,20 @@ export default class Game {
     this.stats.rallyTouches += 1;
     this.stats.longestRally = Math.max(this.stats.longestRally, this.stats.rallyTouches);
 
-    // Sultan barı dolumu ve kombo (yalnızca insan oyuncunun tarafı)
+    // Kombo ve istatistikler (yalnızca insan oyuncunun tarafı)
     if (player.side === 'home') {
-      const chargeMod =
-        getModifier(this.getControlledPlayer()?.data ?? data, 'charge') *
-        comboChargeMultiplier(this.combo);
-
       // Komboyu büyüten hamleler: tam vuruş, blok, dalış kurtarışı
       const scoringMove = perfect || isBlock || type === 'dive';
 
       if (type === 'dive') {
-        this.addSultanCharge(DIVE.chargeBonus * chargeMod);
         this.stats.saves += 1;
         this.message = { text: 'KURTARIŞ!', timer: 0.8, color: '#9BE7FF' };
       } else if (isBlock) {
-        this.addSultanCharge(SULTAN.onBlock * chargeMod);
         this.stats.blocks += 1;
         this.message = { text: 'BLOK!', timer: 0.7, color: PALETTE.gold };
-      } else {
-        this.addSultanCharge(
-          (type === 'tip' ? TIP.charge : SULTAN.onRally) * chargeMod
-        );
       }
 
       if (perfect) {
-        this.addSultanCharge(PERFECT.charge * chargeMod);
         this.stats.perfects += 1;
         this.perfectFlash = PERFECT.flash;
         this.spawnRing(ball.x, ball.y, PALETTE.gold, 62);
@@ -1265,14 +1176,12 @@ export default class Game {
     }
 
     // Ses ve parçacık
-    if (!sultanFired) {
-      if (type === 'dive') Sfx.save();
-      else if (isBlock) Sfx.block();
-      else if (type === 'tip') Sfx.tip();
-      else if (type === 'spike') Sfx.spike();
-      else if (type === 'hit') Sfx.hit();
-      else Sfx.bump();
-    }
+    if (type === 'dive') Sfx.save();
+    else if (isBlock) Sfx.block();
+    else if (type === 'tip') Sfx.tip();
+    else if (type === 'spike') Sfx.spike();
+    else if (type === 'hit') Sfx.hit();
+    else Sfx.bump();
 
     if (type === 'dive') {
       this.spawnRing(ball.x, ball.y, '#9BE7FF', 44);
@@ -1286,8 +1195,7 @@ export default class Game {
     }
 
     // Vuruş donması — darbenin ağırlığını hissettirir
-    if (sultanFired) this.addHitStop(HITSTOP.sultan);
-    else if (isBlock) this.addHitStop(HITSTOP.block);
+    if (isBlock) this.addHitStop(HITSTOP.block);
     else if (type === 'spike') this.addHitStop(HITSTOP.spike);
     if (perfect) this.addHitStop(HITSTOP.perfect);
   }
@@ -1599,18 +1507,6 @@ export default class Game {
   // Skor / maç akışı
   // ===================================================================
 
-  addSultanCharge(amount) {
-    if (this.sultanArmed) return;
-
-    this.sultanCharge = Math.min(SULTAN.max, this.sultanCharge + amount);
-
-    if (this.sultanCharge >= SULTAN.max && !this.sultanWasReady) {
-      this.sultanWasReady = true;
-      Sfx.sultanReady();
-      this.message = { text: 'SULTAN GÜCÜ HAZIR!', timer: 1.2, color: PALETTE.gold };
-    }
-  }
-
   /**
    * @param {'home'|'away'} side Sayıyı alan taraf
    * @param {'home'|'away'} landedSide Topun düştüğü yarı saha
@@ -1653,11 +1549,6 @@ export default class Game {
     }
 
     if (side === 'home') {
-      const chargeMod = getModifier(this.getControlledPlayer()?.data, 'charge');
-      let gain = SULTAN.onPoint;
-      if (this.streak.count > 1) gain += SULTAN.streakBonus;
-      this.addSultanCharge(gain * chargeMod);
-
       this.message = {
         text:
           reason ??
@@ -1965,7 +1856,6 @@ export default class Game {
    * @param {boolean} [force]
    */
   emitState(force = false) {
-    const chargeBucket = Math.round(this.sultanCharge / 4);
     const signature = [
       this.score.home,
       this.score.away,
@@ -1973,8 +1863,6 @@ export default class Game {
       this.sets.away,
       this.setNumber,
       this.phase,
-      chargeBucket,
-      this.sultanArmed ? 1 : 0,
       this.running ? 1 : 0,
       this.lives,
       this.wave,
@@ -1990,9 +1878,6 @@ export default class Game {
       setNumber: this.setNumber,
       setHistory: [...this.setHistory],
       phase: this.phase,
-      sultanCharge: this.sultanCharge,
-      sultanReady: this.sultanCharge >= SULTAN.max,
-      sultanArmed: this.sultanArmed,
       running: this.running,
       streak: { ...this.streak },
       pointsPerSet: this.rules.pointsPerSet,
@@ -2056,7 +1941,7 @@ export default class Game {
 
     drawNet(ctx, GROUND_Y);
     this.drawBallTrail();
-    drawBall(ctx, this.ball, this.ball.flaming > 0);
+    drawBall(ctx, this.ball);
     this.drawRings();
     this.drawParticles();
     this.drawServeMeter();
@@ -2147,9 +2032,6 @@ export default class Game {
   }
 
   drawPlayer(player) {
-    const glow =
-      player.controlled && (this.sultanArmed || this.sultanCharge >= SULTAN.max);
-
     const { ctx } = this;
 
     // Squash & stretch: inişte ezilir, yükselirken uzar.
@@ -2185,7 +2067,6 @@ export default class Game {
       pose: player.pose,
       facing: player.facing,
       frame: player.runFrame,
-      glow,
     });
 
     ctx.restore();

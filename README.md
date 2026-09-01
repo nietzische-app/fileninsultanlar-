@@ -28,14 +28,13 @@ Nordik Buz, Balkan Ateşi, Pasifik Dalga.
 | `↑` veya `W` | Zıpla |
 | `↓` veya `S` | **Dalış** — yere düşmek üzere olan topa uzan (havadayken **plase**) |
 | `Boşluk` veya `Z` | Vur (manşet / smaç / blok) · **servis**: 1. basış güç, 2. basış nişan |
-| `X` | **Sultan Gücü** — alevli smaç |
 | `ESC` veya `P` | Duraklat |
 
 ### Mobil
 
 Maç ekranı mobilde viewport'un tamamını kaplar: saha oranını koruyarak
 ortalanır, dokunmatik tuşlar da **sahanın köşelerine şeffaf olarak biner**.
-Skor tablosu ve Sultan barı üstte saydam bir katmanda durur; duraklat /
+Skor tablosu üstte saydam bir katmanda durur; duraklat /
 tam ekran / çık düğmeleri sağ üst köşededir.
 
 - **Yatay tutuş zorunludur.** Saha 9:5 oranında ve dikeyde ekranın ancak
@@ -90,22 +89,29 @@ küçülüyor, %140'ın üstünde sahanın oynanan bandını yutuyor; saydamlık
 
 #### Tuş görünümü
 
-Dokunmatik tuşlar Prinbles **"Silent"** GUI paketinin görsel dilini
-kullanır: koyu gövde, renkli kenar, yuvarlatılmış köşe ve ikonlar
-(ok, yıldız, duraklat, ev). Önceki düz piksel kareler kaba duruyordu.
+Dokunmatik tuşlar **yuvarlak ve çerçevesiz**: ikon, altında yumuşak bir
+disk, kenarlık yok. Kare tuşlar beğenilmedi — "diğer oyunlardan
+alışkanlık, daha az yer kaplar." Daire aynı dokunma alanını daha küçük
+bir görsel ayak iziyle veriyor.
+
+Tamamen çıplak ikon denendi ama sahanın kalabalık zemininde
+kayboluyordu; disk hem tuşun nerede olduğunu söylüyor hem ikona
+kontrast veriyor. İkonlar Prinbles **"Silent"** GUI paketinden
+(ok, duraklat, oynat, ev).
 
 Paket **dosya olarak taşınmıyor** — ikonların path verisi
 `src/components/GameIcon.jsx` içine gömülü. Üç sebep:
 
-1. Paketin PNG'leri 376 KB, SVG'leri 816 KB; gömülü hâli 8 KB ve portal
-   paketini 888 → 894 KB'a çıkarıyor, yani neredeyse hiç.
+1. Paketin PNG'leri 376 KB, SVG'leri 816 KB; gömülü hâli 8 KB, yani
+   portal paketinde neredeyse hiç yer kaplamıyor.
 2. Tuş boyutu ayarlardan %70–%140 arası değişiyor; vektör her boyutta
    keskin kalır, PNG kalmaz.
 3. Renk `currentColor` — paketin pembesi yerine oyunun kendi kırmızısını
    alıyorlar, sonradan yapıştırılmış gibi durmuyorlar.
 
 Aşağı ve yukarı ok paket içinde yok; sağ ok döndürülerek kullanılıyor.
-Vuruş için uygun ikon olmadığından "VUR" yazısı kaldı.
+Vuruş için uygun ikon olmadığından "VUR" yazısı kaldı — yuvarlak tuşta
+kısa yazı zaten oturuyor.
 
 > **Kaynak ve lisans:** Prinbles — https://prinbles.github.io
 > Pakette açık bir lisans metni yok, README yalnızca siteye
@@ -181,9 +187,16 @@ Komboyu büyüten üç hamle var: tam vuruş, blok ve dalış kurtarışı. Komb
 iyi temas zincirledim" sorusunun cevabıdır. Kademeler: 3 SÜPER · 6
 MÜKEMMEL · 10 SULTAN SERİSİ · 15 DURDURULAMAZ.
 
-Kombo asıl olarak **Sultan barını** hızlandırır; hücum gücüne katkısı
-bilerek çok daha zayıf tutuldu (en fazla %16). İkisi aynı hızda büyüseydi
-kombo yapan oyuncu geri dönülemez biçimde öne geçerdi.
+Kombonun karşılığı **hücum gücü**: kombo başına %2.2, en fazla %30.
+Önceden asıl ödül Sultan barını hızlandırmaktı ve güç katkısı bilerek
+zayıf tutulmuştu (%1.2 / en fazla %16); Sultan Gücü kaldırılınca kombo
+neredeyse anlamsız kalacaktı, o yüzden tavan yükseltildi.
+
+Yükseltme ölçüldü: başsız botla 1v1 normalde üç koşum **%70, %50, %68**
+verdi — yani değişiklik ölçülebilir bir fark yaratmıyor, kaçak bir
+güçlenme yok. Botun kombosu ortalama 9–11'e çıkıyor, yani ayar gerçekten
+deneniyor. Ölçüm "kombo daha iyi hissettiriyor" demiyor; onu ancak
+gerçek oynayış söyler.
 
 ### Plase
 
@@ -235,12 +248,6 @@ salonun dolu olduğunu tek bir efekt çalmadan hissettirir. Duraklatınca ve
 maçtan çıkınca susar. Aynı sesin mekanik tekrarını kırmak için vuruşlara
 küçük bir pitch sapması uygulanır.
 
-### Sultan Gücü
-
-Sayı aldıkça, blok yaptıkça ve fileyi geçen her vuruşta bar dolar. Dolduğunda
-`X` ile ateşlersin: bir sonraki vuruşun **alevli** ve %55 daha hızlı olur, rakip
-yapay zekâsının tepkisi yavaşlar. Ebrar Karakurt'un barı %30 daha hızlı dolar.
-
 ### Maç formatı
 
 | Format | Kural |
@@ -259,13 +266,11 @@ Tek klavyede iki kişi oynanır:
 | --- | --- | --- |
 | Hareket | `W` `A` `S` `D` | ok tuşları |
 | Vur | `Boşluk` / `Z` | `Enter` |
-| Sultan Gücü | `X` | — |
 
 - **Co-Op** — iki sultan aynı takımda, karşılarında yapay zekâ. 2v2
   zorunludur (iki insan aynı sahada olmalı).
 - **Karşılıklı (VS)** — 1. oyuncu Türkiye'yi, 2. oyuncu rakip takımı
-  sürer. **Sultan Gücü yalnızca Türkiye'nindir**; iki oyuncu aynı barı
-  paylaşsaydı kimin doldurduğu belirsiz olurdu.
+  sürer.
 
 Tek kişilik oyunda hem `WASD` hem ok tuşları aynı oyuncuyu sürer —
 hangisine alışkınsan. İki kişilik modlarda dokunmatik tuşlar gizlenir:
@@ -324,7 +329,7 @@ yenilgiyle biter, onu kayıp saymak galibiyet serisini anlamsızca sıfırlardı
 Ralli/smaç gibi kişisel zirveler orada da geçerlidir.
 
 İlk açılışta (veya menüden **NASIL OYNANIR**) 4 adımlık Sultan Rehberi çıkar:
-manşet→pas→smaç, dalış, Sultan Gücü, kontroller.
+manşet→pas→smaç, dalış, kontroller.
 
 ## Kadro
 
@@ -345,7 +350,7 @@ karakter seçim ekranında görünür.
 | 12 | Elif Şahin | Pasör | 189 | **Uzun Pasör** — pasör hızı + orta oyuncu erişimi |
 | 13 | Dilay Özdemir | Pasör | 187 | **Sakin Dağıtım** — istikrarlı pas |
 | 15 | Deniz Uyanık | Orta Oyuncu | 195 | **Yüksek Kademe** — file üstünde erişim |
-| 16 | Berka Buse Özden | Orta Oyuncu | 187 | **Genç Enerji** — Sultan barı %20 hızlı dolar |
+| 16 | Berka Buse Özden | Orta Oyuncu | 187 | **Genç Enerji** — diri blok |
 | 18 | Zehra Güneş | Orta Oyuncu | 198 | **Duvar** — en geniş erişim, en sert blok |
 | 20 | Yaprak Erkek | Smaçör | 182 | **Hafif Ayak** — en çevik smaçör |
 | 22 | İlkin Aydın | Smaçör | 183 | **Servis Ateşi** — sert servis ve smaç |
@@ -449,7 +454,7 @@ src/
 │   ├── TutorialScreen.jsx    Nasıl oynanır rehberi
 │   ├── CharacterSelect.jsx   Diziliş, zorluk ve kadro seçimi
 │   ├── TournamentScreen.jsx  Kupa yolu bracket'i — turlar arası ekran
-│   ├── MatchScreen.jsx       Canvas + skor tablosu + Sultan barı + dokunmatik
+│   ├── MatchScreen.jsx       Canvas + skor tablosu + dokunmatik
 │   └── ResultScreen.jsx      Kupa, konfeti, istatistikler, yeni rekorlar
 ├── components/
 │   ├── PixelAvatar.jsx       Sahadakiyle aynı sprite'ı çizen avatar
