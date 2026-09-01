@@ -155,9 +155,16 @@
    * Sınıf olarak yazıldılar çünkü Tailwind'in satır içi keyfi
    * değerleriyle iki değişkenli `calc` okunmaz hale geliyordu.
    */
+  /*
+   * Varsayılan ölçüler bir kademe büyütüldü (~%22): önceki değerlerde
+   * yön tuşu yatay telefonda 51px'e denk geliyordu ve başparmakla
+   * güvenle basılamıyordu. Erişilebilirlik kılavuzlarının dokunma hedefi
+   * alt sınırı ~44px; 51px o sınırın hemen üstünde, yani hata payı yok.
+   * Ayarlar ekranındaki %70–%140 aralığı bu yeni tabanın üstüne biniyor.
+   */
   .tb-dir {
-    width: calc(min(3.5rem, 13vh) * var(--touch-scale, 1));
-    height: calc(min(3.5rem, 13vh) * var(--touch-scale, 1));
+    width: calc(min(4.25rem, 15.5vh) * var(--touch-scale, 1));
+    height: calc(min(4.25rem, 15.5vh) * var(--touch-scale, 1));
   }
 
   /*
@@ -167,7 +174,7 @@
    */
   .tb-wide {
     width: 100%;
-    height: calc(min(2.9rem, 11vh) * var(--touch-scale, 1));
+    height: calc(min(3.4rem, 12.8vh) * var(--touch-scale, 1));
   }
 
   /*
@@ -177,7 +184,7 @@
    * tuşun yüksekliğiyle aynı formüle bağlıyoruz.
    */
   .tb-wide-icon {
-    width: calc(min(1.25rem, 4.7vh) * var(--touch-scale, 1));
+    width: calc(min(1.5rem, 5.6vh) * var(--touch-scale, 1));
     height: auto;
   }
 
@@ -195,20 +202,20 @@
    * ölçekle büyür ama TUŞ büyümez — boyut `.tb-act` içinde ayrı.
    */
   .tb-label {
-    font-size: calc(0.82rem * var(--touch-scale, 1));
+    font-size: calc(0.95rem * var(--touch-scale, 1));
     line-height: 1;
     letter-spacing: 0.04em;
   }
 
 
   .tb-act {
-    width: calc(min(3.9rem, 14.5vh) * var(--touch-scale, 1));
-    height: calc(min(3.9rem, 14.5vh) * var(--touch-scale, 1));
+    width: calc(min(4.75rem, 17.5vh) * var(--touch-scale, 1));
+    height: calc(min(4.75rem, 17.5vh) * var(--touch-scale, 1));
   }
 
   .tb-jump {
-    width: calc(min(4.4rem, 16.5vh) * var(--touch-scale, 1));
-    height: calc(min(4.4rem, 16.5vh) * var(--touch-scale, 1));
+    width: calc(min(5.35rem, 19.8vh) * var(--touch-scale, 1));
+    height: calc(min(5.35rem, 19.8vh) * var(--touch-scale, 1));
   }
 
   /*
@@ -218,55 +225,98 @@
    * kaplar." Daire aynı dokunma alanını daha küçük bir görsel ayak
    * iziyle veriyor.
    *
-   * Kenarlık yok; ikonun altında yumuşak bir disk var. Tamamen çıplak
-   * ikon sahanın kalabalık zemininde kayboluyordu — disk hem tuşun
-   * nerede olduğunu söylüyor hem ikona kontrast veriyor. Keskin kutu
-   * gölgesi yerine ince bir dış halka: yuvarlak biçimde kutu gölgesi
-   * ucuz duruyor.
+   * Kenarlık yok; ikonun altında bir disk var.
+   *
+   * Önceki hâli "sönük ve çirkin" bulundu ve haklı sebebi vardı: düz tek
+   * renk dolgu + saf kırmızı ikon. Saha zemini zaten koyu kırmızı,
+   * dolayısıyla ikon zeminle aynı aileden bir tondaydı ve tuş bulanık bir
+   * lekeye dönüşüyordu.
+   *
+   * Şimdi üç şey değişti:
+   *  1) Dolgu düz değil, üstten aydınlanan bir küre gradyanı — tuş
+   *     yüzeyden çıkıyor gibi duruyor.
+   *  2) İki katmanlı halka: içeride ince açık bir kenar (ışık alan üst
+   *     kenar), dışarıda koyu bir düşüm gölgesi. Yuvarlak biçimde
+   *     retro kutu gölgesi ucuz duruyordu, bu ondan temiz.
+   *  3) İkon artık kırmızı değil kırık beyaz — kırmızı zeminde en yüksek
+   *     kontrastı bu veriyor. Renk kimliği ikonda değil HALKADA taşınıyor.
    */
   .touch-button {
     @apply flex select-none items-center justify-center;
     border-radius: 9999px;
     border: 0;
-    background: var(--tb-fill, rgba(20, 22, 32, 0.72));
-    color: var(--tb-edge, theme('colors.turkiye.red'));
-    box-shadow: 0 0 0 calc(0.1rem * var(--touch-scale, 1)) rgba(0, 0, 0, 0.3);
+    background:
+      radial-gradient(
+        circle at 50% 32%,
+        var(--tb-top, rgba(72, 78, 104, 0.95)) 0%,
+        var(--tb-fill, rgba(22, 24, 38, 0.92)) 72%
+      );
+    color: var(--tb-ink, #F4F6FF);
+    box-shadow:
+      inset 0 calc(0.06rem * var(--touch-scale, 1)) 0
+        calc(0.045rem * var(--touch-scale, 1)) var(--tb-rim, rgba(255, 255, 255, 0.42)),
+      0 0 0 calc(0.11rem * var(--touch-scale, 1)) var(--tb-edge, rgba(255, 66, 87, 0.75)),
+      0 calc(0.14rem * var(--touch-scale, 1)) calc(0.4rem * var(--touch-scale, 1))
+        rgba(0, 0, 0, 0.55);
     transition:
       transform 90ms ease,
-      background-color 90ms ease,
-      color 90ms ease;
+      box-shadow 90ms ease,
+      filter 90ms ease;
     touch-action: none;
     -webkit-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
   }
 
-  /* Basılıyken renk tersine döner ve tuş hafifçe küçülür */
+  /*
+   * Basılı hâl: tuş accent rengiyle dolar, içeri gömülür (üstteki ışık
+   * kenarı alta geçer) ve hafifçe küçülür. Üç sinyal birden veriliyor
+   * çünkü parmak tuşun üstünde duruyor ve rengin çoğunu kapatıyor.
+   */
   .touch-button:active,
   .touch-button[data-pressed='true'] {
-    background: var(--tb-edge, theme('colors.turkiye.red'));
+    background: radial-gradient(
+      circle at 50% 32%,
+      var(--tb-press-top, #FF6B7C) 0%,
+      var(--tb-press, #E30A17) 78%
+    );
     color: #FFFFFF;
-    transform: scale(0.92);
+    box-shadow:
+      inset 0 calc(-0.06rem * var(--touch-scale, 1)) calc(0.2rem * var(--touch-scale, 1))
+        rgba(0, 0, 0, 0.45),
+      0 0 0 calc(0.11rem * var(--touch-scale, 1)) rgba(255, 255, 255, 0.55),
+      0 0 calc(0.7rem * var(--touch-scale, 1)) var(--tb-press, #E30A17);
+    transform: scale(0.93);
   }
 
   /*
-   * Sahnenin üstüne binen saydam varyant.
-   *
-   * İkon rengi saf oyun kırmızısı değil biraz açığı: saha zemini zaten
-   * koyu kırmızı, aynı tonda ikon kayboluyordu. Bulanıklık 1px —
-   * 2px'te tuşun arkasındaki oyuncu seçilmiyordu.
+   * Renk kimliği: hareket tuşları nötr, aksiyon tuşları (VUR / ZIPLA)
+   * altın halkalı. Oyuncu okumadan da hangisinin ne olduğunu ayırt
+   * ediyor — hepsi aynı kırmızı halkadayken tuşlar birbirine karışıyordu.
    */
-  .touch-button-overlay {
-    --tb-fill: rgba(10, 12, 20, 0.42);
-    --tb-edge: #FF4257;
-    backdrop-filter: blur(1px);
-    -webkit-backdrop-filter: blur(1px);
+  .tb-act,
+  .tb-jump {
+    --tb-edge: rgba(255, 210, 74, 0.85);
+    --tb-press: #FFB300;
+    --tb-press-top: #FFE08A;
   }
 
-  .touch-button-overlay:active,
-  .touch-button-overlay[data-pressed='true'] {
-    --tb-fill: #FF4257;
-    color: #FFFFFF;
+  .tb-act:active,
+  .tb-act[data-pressed='true'],
+  .tb-jump:active,
+  .tb-jump[data-pressed='true'] {
+    color: #2A1B00;
+  }
+
+  /*
+   * Sahnenin üstüne binen saydam varyant. Bulanıklık 1px — 2px'te tuşun
+   * arkasındaki oyuncu seçilmiyordu.
+   */
+  .touch-button-overlay {
+    --tb-top: rgba(64, 70, 96, 0.72);
+    --tb-fill: rgba(12, 14, 26, 0.66);
+    backdrop-filter: blur(1px);
+    -webkit-backdrop-filter: blur(1px);
   }
 
   /*

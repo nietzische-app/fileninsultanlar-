@@ -504,12 +504,16 @@ export default function MatchScreen({
               Sabit bir oran (74dvh) yetmiyordu: ölçek %140'a çekilince
               tuşlar büyüyüp yukarı taşıyor ve kart onların üstüne
               biniyordu — ölçümde iPhone SE'de ▶ ve SULTAN kalıyordu.
-              Tuş yığını yaklaşık 22.5vh × ölçek; pay ekleyip çıkarıyoruz.
+
+              Pay, sol taraftaki en uzun yığından geliyor: yön tuşu
+              (15.5vh) + aralık (~3.5vh) + DAL (12.8vh) ≈ 32vh, hepsi
+              ölçekle çarpılıyor. Tuşlar bir kademe büyütülünce eski 24vh
+              yetmez oldu ve ✗ döndü — ölçümde yine "Sağa git" kalıyordu.
             */}
             <div
               className="retro-panel pointer-events-auto w-full max-w-md overflow-y-auto px-4 py-3"
               style={{
-                maxHeight: `max(9rem, calc(100dvh - ${24 * (controls?.scale ?? 1)}vh - 2.5rem))`,
+                maxHeight: `max(9rem, calc(100dvh - ${33 * (controls?.scale ?? 1)}vh - 2.5rem))`,
               }}
             >
               <div className="mb-3 flex items-center justify-between gap-3">

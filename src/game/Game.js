@@ -46,6 +46,7 @@ import {
 } from './opponents.js';
 import { pickChaser, sideBounds, updateAI } from './ai.js';
 import { stepBall } from './ballstep.js';
+import { contactRadius } from './reach.js';
 import {
   SERVE,
   advanceServeMeter,
@@ -692,14 +693,24 @@ export default class Game {
         player.aiSpeedScale = 1;
       } else if (active) {
         const isAway = player.side === 'away';
+        const chaserId = isAway ? awayChaser : homeChaser;
         updateAI(
           player,
           ball,
           {
             difficulty: isAway ? this.opponentDifficulty : this.difficulty,
-            chasing: player.id === (isAway ? awayChaser : homeChaser),
+            chasing: player.id === chaserId,
             homeX: player.homeX,
             foes: this.players.filter((p) => p.side !== player.side),
+            /*
+             * Görevli takım arkadaşı — bu oyuncu ona yol verecek.
+             * Özellikle 2v2'de önemli: yapay zekâ partner insandan hızlı
+             * karar verdiği için topu kapıyordu.
+             */
+            yieldTo:
+              chaserId && chaserId !== player.id
+                ? this.players.find((p) => p.id === chaserId) ?? null
+                : null,
           },
           dt
         );
@@ -916,15 +927,10 @@ export default class Game {
   resolveCollisions() {
     const ball = this.ball;
 
-    // Hızlı topa temiz dokunmak zordur: temas alanı topun hızıyla daralır.
-    // Bu olmadan sert smaç ile yavaş pas aynı kolaylıkta kurtarılıyor ve
-    // özellikle 2v2'de ralliler hiç bitmiyor.
+    // Temas alanı topun hızıyla daralır; formül `reach.js` içinde ve
+    // yapay zekâ da AYNI fonksiyonu okur (ayrı yazıldıklarında sessizce
+    // ayrışıp rakibi menzil sanısıyla boşa vurdurmuşlardı).
     const ballSpeed = Math.hypot(ball.vx, ball.vy);
-    const speedPenalty = clamp(
-      1 - (ballSpeed - PHYSICS.cleanTouchSpeed) / 1600,
-      PLAYER.minReachFactor,
-      1
-    );
 
     this.players.forEach((player) => {
       if (player.hitCooldown > 0) return;
@@ -935,12 +941,12 @@ export default class Game {
       // erişim artar. Yere düşmek üzere olan topu bu yakalar.
       const cx = player.x;
       const cy = player.y - (diving ? DIVE.hitOffsetY : player.hitOffsetY);
-      const bonus = diving
-        ? DIVE.reachBonus
-        : player.input.action
-          ? PLAYER.reachBonus
-          : 0;
-      const reach = (player.hitRadius + bonus) * speedPenalty;
+      const reach = contactRadius({
+        hitRadius: player.hitRadius,
+        acting: player.input.action,
+        diving,
+        ballSpeed,
+      });
 
       const dx = ball.x - cx;
       const dy = ball.y - cy;
