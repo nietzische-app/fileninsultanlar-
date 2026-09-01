@@ -146,6 +146,40 @@
     mix-blend-mode: multiply;
   }
 
+  /*
+   * Dokunmatik tuş ölçüleri.
+   *
+   * Boyutlar hem ekran yüksekliğine (`min(rem, vh)` — kısa ekranda
+   * tuşlar sahanın oynanan bandını yutmasın) hem de kullanıcının
+   * ayarlar ekranından seçtiği `--touch-scale` çarpanına bağlı.
+   * Sınıf olarak yazıldılar çünkü Tailwind'in satır içi keyfi
+   * değerleriyle iki değişkenli `calc` okunmaz hale geliyordu.
+   */
+  .tb-dir {
+    width: calc(min(3.5rem, 13vh) * var(--touch-scale, 1));
+    height: calc(min(3.5rem, 13vh) * var(--touch-scale, 1));
+  }
+
+  .tb-wide {
+    height: calc(min(2.75rem, 9.5vh) * var(--touch-scale, 1));
+    min-width: calc(7.25rem * var(--touch-scale, 1));
+  }
+
+  .tb-small {
+    width: calc(3.25rem * var(--touch-scale, 1));
+    height: calc(min(2.75rem, 9.5vh) * var(--touch-scale, 1));
+  }
+
+  .tb-act {
+    width: calc(3.25rem * var(--touch-scale, 1));
+    height: calc(min(3.5rem, 12.5vh) * var(--touch-scale, 1));
+  }
+
+  .tb-jump {
+    width: calc(min(4rem, 15vh) * var(--touch-scale, 1));
+    height: calc(min(6.75rem, 22vh) * var(--touch-scale, 1));
+  }
+
   /* Dokunmatik kontrol butonu */
   .touch-button {
     @apply flex select-none items-center justify-center border-4 border-white/80 bg-retro-panel/90 text-white;

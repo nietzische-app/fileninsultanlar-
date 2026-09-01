@@ -73,6 +73,39 @@ describe('storage prefs', () => {
     expect(loadPrefs().musicVolume).toBe(DEFAULT_PREFS.musicVolume);
   });
 
+  it('dokunmatik tuş ayarlarını kaydeder', () => {
+    savePrefs({ controls: { scale: 1.2, swap: true } });
+    const c = loadPrefs().controls;
+    expect(c.scale).toBeCloseTo(1.2);
+    expect(c.swap).toBe(true);
+    // Kısmi güncelleme diğer alanı silmemeli
+    expect(c.opacity).toBe(DEFAULT_PREFS.controls.opacity);
+  });
+
+  it('tuş ayarlarını güvenli aralığa çeker', () => {
+    savePrefs({ controls: { scale: 9, opacity: 0 } });
+    const c = loadPrefs().controls;
+    expect(c.scale).toBe(1.4);
+    expect(c.opacity).toBe(0.35);
+  });
+
+  it('tuş ayarı olmayan eski kayıtta varsayılana döner', () => {
+    localStorage.setItem(
+      'filenin-sultanlari-prefs',
+      JSON.stringify({ muted: false, homeIds: ['gizem-orge'] })
+    );
+    expect(loadPrefs().controls).toEqual(DEFAULT_PREFS.controls);
+  });
+
+  it('varsayılanları döndürürken iç içe nesneyi paylaşmaz', () => {
+    const a = loadPrefs();
+    a.controls.scale = 99;
+    a.homeIds.push('bozuk');
+    const b = loadPrefs();
+    expect(b.controls.scale).toBe(DEFAULT_PREFS.controls.scale);
+    expect(b.homeIds).toEqual(DEFAULT_PREFS.homeIds);
+  });
+
   it('bozuk müzik sesi değerlerini toparlar', () => {
     const cases = [
       [2.5, 1],

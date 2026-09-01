@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import StartScreen from './screens/StartScreen.jsx';
 import TutorialScreen from './screens/TutorialScreen.jsx';
+import SettingsScreen from './screens/SettingsScreen.jsx';
 import CharacterSelect from './screens/CharacterSelect.jsx';
 import TournamentScreen from './screens/TournamentScreen.jsx';
 import MatchScreen from './screens/MatchScreen.jsx';
@@ -14,6 +15,7 @@ import {
   roundMatchConfig,
 } from './game/tournament.js';
 import {
+  DEFAULT_PREFS,
   clearTournament,
   loadAchievements,
   loadPrefs,
@@ -55,6 +57,8 @@ export default function App() {
   const [brokenRecords, setBrokenRecords] = useState(null);
   const [muted, setMuted] = useState(initialPrefs.muted);
   const [musicVolume, setMusicVolume] = useState(initialPrefs.musicVolume);
+  const [sfxVolume, setSfxVolume] = useState(initialPrefs.sfxVolume);
+  const [controls, setControls] = useState(initialPrefs.controls);
   const [prefs, setPrefs] = useState(initialPrefs);
   const [records, setRecords] = useState(() => loadRecords());
   const [savedTournament, setSavedTournament] = useState(() => loadTournament());
@@ -72,6 +76,7 @@ export default function App() {
   useEffect(() => {
     Sfx.setMuted(initialPrefs.muted);
     Sfx.setMusicVolume(initialPrefs.musicVolume);
+    Sfx.setSfxVolume(initialPrefs.sfxVolume);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- yalnızca mount
   }, []);
 
@@ -96,6 +101,47 @@ export default function App() {
     setMusicVolume(value);
     Sfx.setMusicVolume(value);
     setPrefs(savePrefs({ musicVolume: value }));
+  }, []);
+
+  const changeSfxVolume = useCallback((value) => {
+    setSfxVolume(value);
+    Sfx.setSfxVolume(value);
+    setPrefs(savePrefs({ sfxVolume: value }));
+  }, []);
+
+  /**
+   * Dokunmatik tuş ayarı — kısmi yama alır (ör. yalnızca `scale`).
+   * `savePrefs` iç içe `controls` nesnesini birleştirdiği için diğer
+   * alanlar korunur.
+   */
+  const changeControls = useCallback((patch) => {
+    const saved = savePrefs({ controls: patch });
+    setControls(saved.controls);
+    setPrefs(saved);
+  }, []);
+
+  /** Ses ve tuş ayarlarını varsayılana döndürür; rekorlara dokunmaz. */
+  const resetSettings = useCallback(() => {
+    const saved = savePrefs({
+      muted: false,
+      musicVolume: DEFAULT_PREFS.musicVolume,
+      sfxVolume: DEFAULT_PREFS.sfxVolume,
+      controls: { ...DEFAULT_PREFS.controls },
+    });
+    setMuted(false);
+    setMusicVolume(saved.musicVolume);
+    setSfxVolume(saved.sfxVolume);
+    setControls(saved.controls);
+    setPrefs(saved);
+    Sfx.setMuted(false);
+    Sfx.setMusicVolume(saved.musicVolume);
+    Sfx.setSfxVolume(saved.sfxVolume);
+  }, []);
+
+  const openSettings = useCallback(() => {
+    Sfx.unlock();
+    Sfx.select();
+    setScreen('settings');
   }, []);
 
   const goSelect = useCallback(() => {
@@ -364,10 +410,26 @@ export default function App() {
           onToggleMute={toggleMute}
           musicVolume={musicVolume}
           onMusicVolume={changeMusicVolume}
+          onSettings={openSettings}
           records={records}
           resumeTournament={savedTournament}
           onResumeTournament={resumeSavedTournament}
           achievements={achievements}
+        />
+      )}
+
+      {screen === 'settings' && (
+        <SettingsScreen
+          onBack={goHome}
+          muted={muted}
+          onToggleMute={toggleMute}
+          musicVolume={musicVolume}
+          onMusicVolume={changeMusicVolume}
+          sfxVolume={sfxVolume}
+          onSfxVolume={changeSfxVolume}
+          controls={controls}
+          onControls={changeControls}
+          onReset={resetSettings}
         />
       )}
 
@@ -412,6 +474,7 @@ export default function App() {
 
       {screen === 'match' && matchConfig && (
         <MatchScreen
+          controls={controls}
           config={matchConfig}
           onFinish={handleFinish}
           onQuit={handleQuitMatch}

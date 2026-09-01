@@ -8,7 +8,12 @@ const RECORDS_KEY = 'filenin-sultanlari-records';
 const TOURNAMENT_KEY = 'filenin-sultanlari-tournament';
 const ACHIEVEMENTS_KEY = 'filenin-sultanlari-achievements';
 
-/** @typedef {{ muted: boolean, musicVolume: number, mode: string, difficulty: string, format: string, opponentId: string, homeIds: string[], tutorialSeen: boolean }} Prefs */
+/**
+ * @typedef {{ scale: number, opacity: number, swap: boolean }} ControlPrefs
+ * @typedef {{ muted: boolean, musicVolume: number, sfxVolume: number,
+ *   controls: ControlPrefs, mode: string, difficulty: string, format: string,
+ *   opponentId: string, homeIds: string[], tutorialSeen: boolean }} Prefs
+ */
 
 /**
  * @typedef {{
@@ -33,6 +38,17 @@ export const DEFAULT_PREFS = {
   muted: false,
   /** Giriş müziği sesi (0–1). */
   musicVolume: 0.55,
+  /** Efekt ve tribün sesi (0–1). */
+  sfxVolume: 1,
+  /**
+   * Dokunmatik tuş ayarları.
+   *
+   * `swap` yön tuşlarını sağa, aksiyon tuşlarını sola alır — solaklar
+   * için. `scale` varsayılan boyutun çarpanı, `opacity` tuşların
+   * saydamlığı (saha üstünde durdukları için kimi oyuncu daha silik
+   * ister).
+   */
+  controls: { scale: 1, opacity: 0.85, swap: false },
   mode: '1v1',
   difficulty: 'normal',
   format: 'classic',
@@ -64,12 +80,29 @@ export const DEFAULT_RECORDS = {
 };
 
 /**
+ * Varsayılan tercihlerin taze bir kopyası.
+ *
+ * Düz `{ ...DEFAULT_PREFS }` yetmiyor: `homeIds` dizisi ve `controls`
+ * nesnesi referansla paylaşılıyordu, yani çağıranlardan biri onları
+ * değiştirse DEFAULT_PREFS'in kendisi bozulurdu.
+ *
+ * @returns {Prefs}
+ */
+function freshDefaults() {
+  return {
+    ...DEFAULT_PREFS,
+    homeIds: [...DEFAULT_PREFS.homeIds],
+    controls: { ...DEFAULT_PREFS.controls },
+  };
+}
+
+/**
  * @returns {Prefs}
  */
 export function loadPrefs() {
   try {
     const raw = localStorage.getItem(PREFS_KEY);
-    if (!raw) return { ...DEFAULT_PREFS, homeIds: [...DEFAULT_PREFS.homeIds] };
+    if (!raw) return freshDefaults();
 
     const parsed = JSON.parse(raw);
     const homeIds = Array.isArray(parsed.homeIds) && parsed.homeIds.length > 0
@@ -79,6 +112,8 @@ export function loadPrefs() {
     return {
       muted: Boolean(parsed.muted),
       musicVolume: clampVolume(parsed.musicVolume),
+      sfxVolume: clampVolume(parsed.sfxVolume, DEFAULT_PREFS.sfxVolume),
+      controls: readControls(parsed.controls),
       mode: parsed.mode === '2v2' ? '2v2' : '1v1',
       difficulty: ['kolay', 'normal', 'zor', 'easy', 'hard'].includes(parsed.difficulty)
         ? ({ easy: 'kolay', hard: 'zor' }[parsed.difficulty] ?? parsed.difficulty)
@@ -91,7 +126,7 @@ export function loadPrefs() {
       tutorialSeen: Boolean(parsed.tutorialSeen),
     };
   } catch {
-    return { ...DEFAULT_PREFS, homeIds: [...DEFAULT_PREFS.homeIds] };
+    return freshDefaults();
   }
 }
 
@@ -105,7 +140,7 @@ export function loadPrefs() {
  * @param {unknown} value
  * @returns {number}
  */
-function clampVolume(value) {
+function clampVolume(value, fallback = DEFAULT_PREFS.musicVolume) {
   /*
    * Doğrudan `Number(value)` yanlış sonuç veriyor: `Number(null)`,
    * `Number('')` ve `Number(false)` sıfır döner, yani alanı bozuk olan
@@ -119,8 +154,48 @@ function clampVolume(value) {
         ? Number(value)
         : NaN;
 
-  if (!Number.isFinite(n)) return DEFAULT_PREFS.musicVolume;
+  if (!Number.isFinite(n)) return fallback;
   return Math.max(0, Math.min(1, n));
+}
+
+/**
+ * Sayıyı aralığa çeker; `clampVolume` ile aynı tür süzmesini kullanır.
+ * @param {unknown} value
+ * @param {number} min
+ * @param {number} max
+ * @param {number} fallback
+ * @returns {number}
+ */
+function clampRange(value, min, max, fallback) {
+  const n =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim() !== ''
+        ? Number(value)
+        : NaN;
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
+
+/**
+ * Dokunmatik tuş ayarlarını okur.
+ *
+ * Alan hiç yoksa (eski kayıt) ya da bozuksa varsayılana döner. Ölçek
+ * 0.7–1.4 ile sınırlı: altında tuşlar basılamayacak kadar küçülüyor,
+ * üstünde sahanın oynanan bandını yutuyor. Saydamlık 0.35'in altına
+ * inemez, yoksa tuşlar görünmez olup oyun oynanamaz hale geliyor.
+ *
+ * @param {unknown} raw
+ * @returns {ControlPrefs}
+ */
+function readControls(raw) {
+  const d = DEFAULT_PREFS.controls;
+  if (!raw || typeof raw !== 'object') return { ...d };
+  return {
+    scale: clampRange(raw.scale, 0.7, 1.4, d.scale),
+    opacity: clampRange(raw.opacity, 0.35, 1, d.opacity),
+    swap: Boolean(raw.swap),
+  };
 }
 
 /**
@@ -128,7 +203,12 @@ function clampVolume(value) {
  * @returns {Prefs}
  */
 export function savePrefs(partial) {
-  const next = { ...loadPrefs(), ...partial };
+  const current = loadPrefs();
+  const next = { ...current, ...partial };
+  // `controls` iç içe: kısmi güncelleme diğer alanları silmesin
+  if (partial && partial.controls) {
+    next.controls = readControls({ ...current.controls, ...partial.controls });
+  }
   try {
     localStorage.setItem(PREFS_KEY, JSON.stringify(next));
   } catch {

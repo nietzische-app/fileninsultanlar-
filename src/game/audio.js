@@ -27,6 +27,7 @@ class SfxEngine {
     this.muted = false;
 
     // --- Giriş müziği ---
+    this.sfxVolume = 1;
     this.musicBus = null;
     this.musicVolume = 0.55;
     /** @type {null | ArrayBuffer} indirilen ham dosya */
@@ -62,11 +63,11 @@ class SfxEngine {
     this.master.connect(this.ctx.destination);
 
     this.sfxBus = this.ctx.createGain();
-    this.sfxBus.gain.value = SFX_GAIN;
+    this.sfxBus.gain.value = SFX_GAIN * this.sfxVolume;
     this.sfxBus.connect(this.master);
 
     this.crowdBus = this.ctx.createGain();
-    this.crowdBus.gain.value = CROWD_GAIN;
+    this.crowdBus.gain.value = CROWD_GAIN * this.sfxVolume;
     this.crowdBus.connect(this.master);
 
     this.musicBus = this.ctx.createGain();
@@ -87,6 +88,24 @@ class SfxEngine {
   // ===================================================================
   // Giriş müziği
   // ===================================================================
+
+  /**
+   * Efekt ve tribün seviyesi (0–1).
+   *
+   * İkisi tek çarpanla ölçeklenir, birbirlerine göre dengeleri
+   * (SFX_GAIN / CROWD_GAIN) korunur. Müzik ayrı bus'ta olduğu için
+   * bundan etkilenmez.
+   *
+   * @param {number} value
+   */
+  setSfxVolume(value) {
+    const v = Math.max(0, Math.min(1, Number(value) || 0));
+    this.sfxVolume = v;
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    if (this.sfxBus) this.sfxBus.gain.setTargetAtTime(SFX_GAIN * v, t, 0.02);
+    if (this.crowdBus) this.crowdBus.gain.setTargetAtTime(CROWD_GAIN * v, t, 0.02);
+  }
 
   /**
    * Müzik ses seviyesi (0–1). Kullanıcı ayarı; tercihte saklanır.

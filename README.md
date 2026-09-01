@@ -56,6 +56,27 @@ tam ekran / çık düğmeleri sağ üst köşededir.
 - Tuşlar `pointer capture` ile çoklu dokunuşu destekler (ör. sağa git +
   zıpla aynı anda).
 
+### Ayarlar
+
+Giriş ekranındaki **⚙ AYARLAR** düğmesi ses ve dokunmatik tuş
+tercihlerini açar; hepsi `localStorage`'da saklanır.
+
+| Bölüm | Ayar |
+|---|---|
+| Ses | Tüm sesler (aç/kapa) · Müzik seviyesi · Efekt + tribün seviyesi |
+| Dokunmatik tuşlar | Boyut (%70–%140) · Saydamlık (%35–%100) · Sol/sağ el düzeni |
+| Sıfırla | Ses ve tuş ayarlarını varsayılana döndürür; rekorlara dokunmaz |
+
+Tuş bölümünde **canlı önizleme** var: sahayla aynı orandaki (9:5) bir
+kutuda gerçek `TouchControls` bileşeni çizilir. Ayrı bir taklit çizmek,
+ikisi ayrışınca oyuncuya yalan söylerdi. Önizleme masaüstünde de
+görünür (`preview` bayrağı `fine:hidden` sınıfını atlar) ki ayar klavye
+başında da yapılabilsin.
+
+Sınırlar bilinçli: ölçek %70'in altında tuşlar basılamayacak kadar
+küçülüyor, %140'ın üstünde sahanın oynanan bandını yutuyor; saydamlık
+%35'in altında tuşlar görünmez oluyor.
+
 ### Servis
 
 Her ralli servisle başlar. Servis atan dip çizgiye geçer, top elinde
@@ -156,9 +177,9 @@ bir efekt dosyası yok. Motor katmanlı: master altında ayrı **efekt**,
 bastırmıyor ve müzik ayrı kısılabiliyor.
 
 **Giriş müziği** bunun tek istisnası — `src/assets/giris-muzigi.mp3`,
-60 saniyelik döngü. Sağ üstteki kaydırıcı yalnızca müziğin seviyesini
-belirler (tercihte saklanır); sessize alma düğmesi ise her şeyi kapatır,
-müzik dahil, çünkü müzik de aynı master'a bağlı.
+60 saniyelik döngü. Müzik ve efektler ayrı bus'larda olduğu için
+ayarlardan bağımsız kısılırlar; sessize alma düğmesi ise master'ı
+kapattığı için hepsini birden susturur.
 
 Üç ayrıntı ölçümle çözüldü:
 

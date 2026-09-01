@@ -37,7 +37,14 @@ const INITIAL_HUD = {
  * Maç ekranı — Canvas oyun alanı, skor tablosu, Sultan Gücü barı
  * ve mobil dokunmatik kontroller.
  */
-export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleMute }) {
+export default function MatchScreen({
+  config,
+  onFinish,
+  onQuit,
+  muted,
+  onToggleMute,
+  controls,
+}) {
   const canvasRef = useRef(null);
   const gameRef = useRef(null);
   const onFinishRef = useRef(onFinish);
@@ -420,6 +427,7 @@ export default function MatchScreen({ config, onFinish, onQuit, muted, onToggleM
             onInput={handleTouchInput}
             sultanReady={hud.sultanReady}
             disabled={controlsLocked}
+            settings={controls}
             overlay
           />
         )}

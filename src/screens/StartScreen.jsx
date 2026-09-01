@@ -30,6 +30,7 @@ export default function StartScreen({
   achievements = [],
   musicVolume = 0.55,
   onMusicVolume,
+  onSettings,
 }) {
   const [messageIndex, setMessageIndex] = useState(0);
   const hasRecords = (records?.matchesPlayed ?? 0) > 0;
@@ -207,13 +208,22 @@ export default function StartScreen({
       </div>
 
       <div className="flex flex-col items-center gap-3">
-        <button
-          type="button"
-          className="retro-button-ghost px-5 py-2 text-[8px]"
-          onClick={onTutorial}
-        >
-          NASIL OYNANIR
-        </button>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <button
+            type="button"
+            className="retro-button-ghost px-5 py-2 text-[8px]"
+            onClick={onTutorial}
+          >
+            NASIL OYNANIR
+          </button>
+          <button
+            type="button"
+            className="retro-button-ghost px-5 py-2 text-[8px]"
+            onClick={onSettings}
+          >
+            ⚙ AYARLAR
+          </button>
+        </div>
         <p className="animate-blink text-[8px] text-white/50">BİR MOD SEÇ</p>
       </div>
 
