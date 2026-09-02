@@ -378,7 +378,13 @@ npm run build    # production build → dist/
 npm run preview  # build çıktısını önizle
 npm run lint
 npm test         # Vitest — kurallar, balistik, storage, kadro
+npm run e2e      # Tarayıcı testleri — düzen, dokunmatik girdi, masaüstü
+npm run olcum    # Denge ölçümü (sayı üretir, geçti/kaldı değil)
 ```
+
+`npm run e2e` kendi geliştirme sunucusunu açar ve gerçek tarayıcıda,
+gerçek dokunuş olaylarıyla çalışır. Ayrıntı ve yazım notları:
+[`tests/README.md`](tests/README.md).
 
 ## CI
 
