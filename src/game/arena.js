@@ -147,19 +147,26 @@ function drawRoof(ctx, time) {
  * Bir tribün katmanı: basamaklar + seyirciler + bayraklar.
  * Üst kat küçük ve soluk, alt kat büyük ve net → derinlik hissi.
  */
-function drawTier(ctx, opts) {
+export function drawTier(ctx, opts) {
   const { y, height, rows, spacing, size, flagEvery, dim, time, hype } = opts;
+  /*
+   * x aralığı parametrik: sahanın yanındaki boşlukları dolduran kanat
+   * katmanı aynı fonksiyonu kendi aralığıyla çağırıyor. Ayrı bir tribün
+   * çizimi yazmak, ikisi ayrıştığında dikişin göze batması demekti.
+   */
+  const x0 = opts.x0 ?? 0;
+  const x1 = opts.x1 ?? GAME_WIDTH;
   const rowHeight = height / rows;
 
   // Basamaklar
   for (let r = 0; r < rows; r += 1) {
     ctx.fillStyle = r % 2 === 0 ? PALETTE.tierStep : PALETTE.tierBack;
-    ctx.fillRect(0, y + r * rowHeight, GAME_WIDTH, rowHeight);
+    ctx.fillRect(x0, y + r * rowHeight, x1 - x0, rowHeight);
   }
 
   // Kat önü korkuluğu
   ctx.fillStyle = PALETTE.hallWallDark;
-  ctx.fillRect(0, y + height - 5, GAME_WIDTH, 5);
+  ctx.fillRect(x0, y + height - 5, x1 - x0, 5);
 
   ctx.save();
   ctx.globalAlpha = dim;
@@ -175,8 +182,8 @@ function drawTier(ctx, opts) {
       // Düzenli ızgara duvar kağıdı gibi görünüyordu; her seyirci
       // kendi tohumuna göre biraz kayar
       const jitter = (rand(seed + 5.5) - 0.5) * spacing * 0.45;
-      const x = 8 + offsetX + i * spacing + jitter;
-      if (x > GAME_WIDTH) break;
+      const x = x0 + 8 + offsetX + i * spacing + jitter;
+      if (x > x1) break;
 
       // Coşku anında daha yüksek ve daha hızlı zıplama
       const bobSpeed = 2.2 + hype * 5;

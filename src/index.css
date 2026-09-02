@@ -289,8 +289,30 @@
    *  3) İkon artık kırmızı değil kırık beyaz — kırmızı zeminde en yüksek
    *     kontrastı bu veriyor. Renk kimliği ikonda değil HALKADA taşınıyor.
    */
+  /*
+   * DOKUNMA ALANI görsel tuştan geniştir.
+   *
+   * Daire biçimli tuşta `border-radius` isabet testini de kırpıyor, yani
+   * karenin dört köşesi ölü alan: 61px'lik daire, 61x61 kareye göre %21
+   * daha küçük hedef. Üstüne parmak tuşun birkaç piksel dışına
+   * düştüğünde hiç algılanmıyordu.
+   *
+   * Çözüm görünmez bir dikdörtgen: tuş aynı boyutta kalır, `::before`
+   * isabet alanını dışarı taşırır. Saydam olması sorun değil — isabet
+   * testi geometriye bakar, boyaya değil.
+   *
+   * YATAY pay komşuya göre sınırlı: iki tuşun alanı üst üste binerse
+   * DOM'da sonra gelen kazanır ve yanlış tuş basılır — tam kaçındığımız
+   * şey. Bu yüzden yatay pay aralığın YARISINI geçmez ve kullanıcının
+   * aralık ayarını takip eder. DİKEY pay cömert: şeritte tuşların altında
+   * ve üstünde rakip yok.
+   */
   .touch-button {
     @apply flex select-none items-center justify-center;
+    position: relative;
+    --tb-hit-y: calc(0.75rem * var(--touch-scale, 1));
+    --tb-hit-l: calc(0.55rem * var(--touch-scale, 1));
+    --tb-hit-r: calc(0.55rem * var(--touch-scale, 1));
     border-radius: 9999px;
     border: 0;
     background:
@@ -314,6 +336,43 @@
     -webkit-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
+  }
+
+  .touch-button::before {
+    content: '';
+    position: absolute;
+    top: calc(-1 * var(--tb-hit-y));
+    bottom: calc(-1 * var(--tb-hit-y));
+    left: calc(-1 * var(--tb-hit-l));
+    right: calc(-1 * var(--tb-hit-r));
+    border-radius: calc(0.6rem * var(--touch-scale, 1));
+  }
+
+  /*
+   * Yan yana duran tuşlarda KOMŞUYA BAKAN pay aralığın yarısını geçmez;
+   * `.tb-gap` ne veriyorsa payı ondan türetiyoruz ki kullanıcı aralığı
+   * kısınca alanlar çakışmasın.
+   *
+   * DIŞA bakan kenarda (grubun ilk tuşunun solu, sonuncusunun sağı)
+   * komşu yok, orada kısıtlamaya gerek de yok: pay cömert kalıyor.
+   * İlk ölçümde iki kenarı da kısıtlamıştım ve dar aralıkta ekranın
+   * kenarına bakan taraf da 2px'e düşüyordu — boşuna.
+   */
+  .tb-gap > .touch-button {
+    --tb-hit-near: min(
+      calc(0.55rem * var(--touch-scale, 1)),
+      calc(0.85rem * var(--touch-scale, 1) * var(--tb-gap, 1) / 2 - 1px)
+    );
+    --tb-hit-l: var(--tb-hit-near);
+    --tb-hit-r: var(--tb-hit-near);
+  }
+
+  .tb-gap > .touch-button:first-child {
+    --tb-hit-l: calc(0.9rem * var(--touch-scale, 1));
+  }
+
+  .tb-gap > .touch-button:last-child {
+    --tb-hit-r: calc(0.9rem * var(--touch-scale, 1));
   }
 
   /*

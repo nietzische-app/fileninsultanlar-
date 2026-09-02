@@ -121,8 +121,13 @@ export default function TouchControls({
     </div>
   );
 
+  /*
+   * Aksiyon tuşları da ayarlanabilir aralığı kullanır (sabit `gap-2`
+   * değil): hem düzen tutarlı oluyor hem de genişletilmiş dokunma
+   * alanının yatay sınırı burada da aralığa göre hesaplanabiliyor.
+   */
   const actions = (
-    <div className={`flex gap-2 ${strip ? 'items-center' : 'items-end'}`}>
+    <div className={`tb-gap flex ${strip ? 'items-center' : 'items-end'}`}>
       {hit}
       {jump}
     </div>

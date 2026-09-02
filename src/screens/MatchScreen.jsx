@@ -4,6 +4,7 @@ import { FORMATS, GAME_HEIGHT, GAME_WIDTH, PHASE } from '../game/constants.js';
 import { getPlayerById } from '../game/players.js';
 import Scoreboard from '../components/Scoreboard.jsx';
 import TouchControls from '../components/TouchControls.jsx';
+import ArenaWings from '../components/ArenaWings.jsx';
 import MuteButton from '../components/MuteButton.jsx';
 import GameIcon from '../components/GameIcon.jsx';
 import { AudioSettings, ControlSettings } from '../components/SettingsPanels.jsx';
@@ -403,11 +404,18 @@ export default function MatchScreen({
          */
         style={{ '--touch-scale': controls?.scale ?? 1 }}
       >
+        {/*
+          Sahanın yanındaki siyah bantları dolduran salon katmanı.
+          Oyun canvas'ının ARKASINDA; canvas'tan önce render edilir ki
+          yığın sırası doğru olsun.
+        */}
+        <ArenaWings canvasRef={canvasRef} />
+
         <canvas
           ref={canvasRef}
           width={GAME_WIDTH}
           height={GAME_HEIGHT}
-          className="pixelated block h-auto max-h-full w-full touch:stage-canvas touch:w-auto"
+          className="pixelated relative z-[1] block h-auto max-h-full w-full touch:stage-canvas touch:w-auto"
           style={{ aspectRatio: `${GAME_WIDTH} / ${GAME_HEIGHT}` }}
           aria-label="Filenin Sultanları voleybol sahası"
         />
