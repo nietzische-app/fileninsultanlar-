@@ -50,6 +50,7 @@ export default function TouchControls({
   const dim = disabled && dimWhenDisabled;
   const styleVars = {
     '--touch-scale': settings.scale ?? 1,
+    '--tb-gap': settings.gap ?? 1,
     opacity: dim ? undefined : (settings.opacity ?? 0.85),
   };
 

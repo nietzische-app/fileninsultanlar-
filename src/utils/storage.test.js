@@ -80,13 +80,28 @@ describe('storage prefs', () => {
     expect(c.swap).toBe(true);
     // Kısmi güncelleme diğer alanı silmemeli
     expect(c.opacity).toBe(DEFAULT_PREFS.controls.opacity);
+    expect(c.gap).toBe(DEFAULT_PREFS.controls.gap);
+  });
+
+  it('tuş aralığını kaydeder', () => {
+    savePrefs({ controls: { gap: 2.2 } });
+    const c = loadPrefs().controls;
+    expect(c.gap).toBeCloseTo(2.2);
+    // Aralık boyuttan bağımsız: biri değişince diğeri durmalı
+    expect(c.scale).toBe(DEFAULT_PREFS.controls.scale);
   });
 
   it('tuş ayarlarını güvenli aralığa çeker', () => {
-    savePrefs({ controls: { scale: 9, opacity: 0 } });
+    savePrefs({ controls: { scale: 9, opacity: 0, gap: 99 } });
     const c = loadPrefs().controls;
     expect(c.scale).toBe(1.4);
     expect(c.opacity).toBe(0.35);
+    expect(c.gap).toBe(3);
+  });
+
+  it('geçersiz aralık değerinde varsayılana döner', () => {
+    savePrefs({ controls: { gap: null } });
+    expect(loadPrefs().controls.gap).toBe(DEFAULT_PREFS.controls.gap);
   });
 
   it('tuş ayarı olmayan eski kayıtta varsayılana döner', () => {

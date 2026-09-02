@@ -48,7 +48,7 @@ export const DEFAULT_PREFS = {
    * saydamlığı (saha üstünde durdukları için kimi oyuncu daha silik
    * ister).
    */
-  controls: { scale: 1, opacity: 0.85, swap: false },
+  controls: { scale: 1, opacity: 0.85, gap: 1, swap: false },
   mode: '1v1',
   difficulty: 'normal',
   format: 'classic',
@@ -194,6 +194,14 @@ function readControls(raw) {
   return {
     scale: clampRange(raw.scale, 0.7, 1.4, d.scale),
     opacity: clampRange(raw.opacity, 0.35, 1, d.opacity),
+    /*
+     * Yön tuşları arasındaki aralık çarpanı. Ayrı bir ayar çünkü tuş
+     * BOYUTUYLA aynı şey değil: büyük parmak küçük tuşlarla da rahat
+     * oynayabilir, sorun tuşların birbirine yakınlığı — yanlışlıkla
+     * diğerine basılıyor. Boyutu büyütmek sahadan yer çalar, aralığı
+     * açmak çalmaz.
+     */
+    gap: clampRange(raw.gap, 0.5, 3, d.gap),
     swap: Boolean(raw.swap),
   };
 }

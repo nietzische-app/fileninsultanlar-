@@ -173,7 +173,7 @@
    * yapışık, %70'te uçuk görünüyor.
    */
   .tb-gap {
-    gap: calc(0.85rem * var(--touch-scale, 1));
+    gap: calc(0.85rem * var(--touch-scale, 1) * var(--tb-gap, 1));
   }
 
   /*

@@ -462,11 +462,18 @@ export function drawFloor(ctx) {
     ctx.fillRect(x - 200, GROUND_Y, 400, GAME_HEIGHT - GROUND_Y);
   });
 
-  // Dip (uzak) çizgi — oyuncuların bastığı hat
-  ctx.fillStyle = PALETTE.courtLine;
-  ctx.fillRect(WALL_PAD, GROUND_Y - 3, GAME_WIDTH - WALL_PAD * 2, 3);
+  /*
+   * Dip çizgi kaldırıldı.
+   *
+   * Mobilde kontrol şeridi tam bu hattan başlıyor, dolayısıyla beyaz
+   * çizgi saha işareti gibi değil arayüz ayracı gibi okunuyordu — sahayı
+   * ikiye bölen kalın bir hat. Hattın kendisi zaten belli: üstünde
+   * oyun hacminin koyusu, altında sahanın kırmızısı var, renk sınırı
+   * çizgiyi görevden alıyor.
+   */
 
   // Yakın çizgi
+  ctx.fillStyle = PALETTE.courtLine;
   const nl = floorX(WALL_PAD, nearY);
   const nr = floorX(GAME_WIDTH - WALL_PAD, nearY);
   ctx.fillRect(Math.round(nl), Math.round(nearY - 4), Math.round(nr - nl), 5);

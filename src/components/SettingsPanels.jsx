@@ -109,6 +109,21 @@ export function ControlSettings({ controls, onControls, showPreview = true }) {
         format={(v) => `${Math.round(v * 100)}%`}
         onChange={(v) => setControl({ scale: v })}
       />
+      {/*
+        Aralık BOYUTTAN ayrı bir ayar. Yanlış tuşa basmanın sebebi tuşun
+        küçüklüğü değil komşusuna yakınlığı; boyutu büyütmek sahadan yer
+        çalarken aralığı açmak çalmıyor.
+      */}
+      <Slider
+        label="TUŞ ARALIĞI"
+        hint="Sağ ve sol tuş birbirine yakınsa yanlışlıkla diğerine basılır"
+        value={controls.gap}
+        min={0.5}
+        max={3}
+        step={0.1}
+        format={(v) => `${Math.round(v * 100)}%`}
+        onChange={(v) => setControl({ gap: v })}
+      />
       <Slider
         label="SAYDAMLIK"
         hint="Tuşlar sahanın üstünde durur"
@@ -169,8 +184,8 @@ function ControlsPreview({ settings }) {
           height: 'calc(var(--strip-h) + 5rem)',
         }}
       >
+        {/* Beyaz dip çizgi yok — sahada da kaldırıldı, önizleme onu izler */}
         <div className="absolute inset-x-0 bottom-0 h-1/3 bg-[#8E1018]" />
-        <div className="absolute bottom-[16%] left-0 right-0 h-[2px] bg-white/50" />
         <div className="absolute bottom-1/3 left-1/2 h-1/3 w-[3px] -translate-x-1/2 bg-white/70" />
 
         {/*
