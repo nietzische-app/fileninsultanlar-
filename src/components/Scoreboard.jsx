@@ -28,7 +28,7 @@ export default function Scoreboard({
 
   return (
     <div
-      className={`${overlay ? 'retro-panel-overlay' : 'retro-panel'} w-full max-w-[900px] ${
+      className={`${overlay ? 'retro-panel-overlay' : 'retro-panel'} w-full ${
         compact ? 'px-2 py-2 sm:px-5 sm:py-3 short:px-2 short:py-1' : 'px-3 py-3 sm:px-5'
       }`}
     >

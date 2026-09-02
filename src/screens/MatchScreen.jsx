@@ -324,14 +324,14 @@ export default function MatchScreen({
   return (
     <div
       ref={stageRef}
-      className="match-screen mx-auto flex min-h-full w-full max-w-[960px] flex-col items-center gap-3 px-2 py-3 touch:fixed touch:inset-0 touch:z-40 touch:block touch:h-[100dvh] touch:w-screen touch:max-w-none touch:overflow-hidden touch:overscroll-none touch:bg-black touch:p-0 sm:gap-4 sm:px-3 sm:py-5"
+      className="match-screen mx-auto flex min-h-full w-full max-w-[1180px] flex-col items-center justify-center gap-3 px-2 py-3 touch:fixed touch:inset-0 touch:z-40 touch:block touch:h-[100dvh] touch:w-screen touch:max-w-none touch:overflow-hidden touch:overscroll-none touch:bg-black touch:p-0 sm:gap-4 sm:px-3 sm:py-5"
     >
       {/*
         Üst HUD. Mobilde skor tablosu ve hızlı düğmeler tek bir saydam
         katmanda sahnenin üstüne biner; masaüstünde eskisi gibi akışta
         durur.
       */}
-      <div className="w-full shrink-0 touch:pointer-events-none touch:absolute touch:inset-x-0 touch:top-0 touch:z-20 touch:flex touch:flex-col touch:gap-1 touch:px-1 touch:pt-[env(safe-area-inset-top)]">
+      <div className="match-hud w-full shrink-0 touch:pointer-events-none touch:absolute touch:inset-x-0 touch:top-0 touch:z-20 touch:flex touch:flex-col touch:gap-1 touch:px-1 touch:pt-[env(safe-area-inset-top)]">
         <div className="flex w-full items-start gap-1">
           <Scoreboard
             score={hud.score}
@@ -395,7 +395,7 @@ export default function MatchScreen({
         önlük şeridin altına değil ortaya denk gelirdi.
       */}
       <div
-        className="match-stage scanlines relative w-full max-w-[900px] shrink border-4 border-white/85 bg-black touch:absolute touch:inset-0 touch:flex touch:max-w-none touch:flex-col touch:items-center touch:justify-start touch:border-0"
+        className="match-stage scanlines relative w-full max-w-[1180px] shrink fine:w-fit border-4 border-white/85 bg-black touch:absolute touch:inset-0 touch:flex touch:max-w-none touch:flex-col touch:items-center touch:justify-start touch:border-0"
         /*
          * Ölçek SAHNEDE de tanımlı olmalı: `--strip-h` ve canvas'ın üst
          * sınırı buradan hesaplanıyor. Yalnızca tuş bileşenine
@@ -619,7 +619,7 @@ export default function MatchScreen({
       </div>
 
       {/* Alt bilgi — masaüstü */}
-      <div className="flex w-full max-w-[900px] shrink-0 flex-wrap items-center justify-between gap-2 touch:hidden">
+      <div className="match-footer flex w-full shrink-0 flex-wrap items-center justify-between gap-2 touch:hidden">
         <div className="hidden items-center gap-3 text-[7px] text-white/45 sm:flex">
           <span>{upper(config.mode)}</span>
           <span className="text-white/20">|</span>
@@ -664,8 +664,8 @@ export default function MatchScreen({
 
       <p className="hidden text-center text-[7px] leading-relaxed text-white/35 fine:block">
         {twoPlayer
-          ? '1. OYUNCU: W A S D · BOŞLUK VUR · X SULTAN   ·   2. OYUNCU: ← → ↑ ↓ · ENTER VUR   ·   ESC DURAKLAT'
-          : '← → HAREKET · ↑ ZIPLA · ↓ DALIŞ (HAVADA PLASE) · BOŞLUK VUR (TAM ZAMANINDA BAS!) · X SULTAN GÜCÜ · ESC DURAKLAT'}
+          ? '1. OYUNCU: W A S D · BOŞLUK VUR   ·   2. OYUNCU: ← → ↑ ↓ · ENTER VUR   ·   ESC DURAKLAT'
+          : '← → HAREKET · ↑ ZIPLA · ↓ DALIŞ (HAVADA PLASE) · BOŞLUK VUR (TAM ZAMANINDA BAS!) · ESC DURAKLAT'}
       </p>
     </div>
   );

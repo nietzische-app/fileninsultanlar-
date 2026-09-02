@@ -235,7 +235,6 @@ export default function StartScreen({
           <span>↑ / W · ZIPLA</span>
           <span>BOŞLUK / Z · VUR</span>
           <span className="text-[#9BE7FF]">↓ / S · DALIŞ (HAVADA PLASE)</span>
-          <span className="text-retro-accent">X · SULTAN GÜCÜ</span>
         </div>
       </div>
 

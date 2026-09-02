@@ -455,9 +455,77 @@
    * kontroller onun köşelerine biner. `100dvh` adres çubuğu gizlenince
    * de doğru yüksekliği verir.
    */
-  .match-stage {
-    height: 100dvh;
-    width: 100vw;
+  /*
+   * Sahne ölçüleri İŞARETÇİ TÜRÜNE bağlı.
+   *
+   * Bu kural koşulsuzdu ve masaüstünü bozuyordu: sahne viewport boyu
+   * (900x768) oluyor, canvas ise 892x496'da kalıyordu — altında kocaman
+   * siyah bir boşluk, üstelik sayfa taşıp kayıyor ve skor tablosu ekranın
+   * dışında kalıyordu. Mobil düzene odaklanırken masaüstü sessizce
+   * bozulmuş.
+   */
+  @media (pointer: coarse) {
+    .match-stage {
+      height: 100dvh;
+      width: 100vw;
+    }
+  }
+
+  /*
+   * Masaüstü: sahne içeriği kadar yüksek. Canvas hem genişliğe hem
+   * KALAN YÜKSEKLİĞE sığar — pay üstteki skor tablosu, alttaki düğme
+   * sırası ve klavye ipucu içindir. Bu olmadan yüksek pencerede canvas
+   * büyüyüp sayfayı taşırıyordu.
+   */
+  @media (pointer: fine) {
+    /*
+     * Sahne canvas'ı SARAR. `w-full` bırakıldığında çerçeve 1156px'e
+     * yayılıyor, canvas 965px'te kalıyor ve beyaz çerçevenin içinde iki
+     * yanda siyah bant oluşuyordu — çerçevenin işi sahayı çerçevelemek,
+     * boşluğu değil. Genişlik `fine:w-fit` ile Tailwind tarafında
+     * açılıyor (utilities katmanı bu kuralı ezerdi).
+     */
+    /*
+     * Saha genişliği tek yerde: skor tablosu, sahne ve alt düğme sırası
+     * hep aynı hatta hizalanır. Ayrı ayrı yazıldığında skor tablosu
+     * 905px, sahne 968px oluyor ve ikisi kaymış duruyordu.
+     */
+    .match-screen {
+      --court-w: min(1148px, calc((100dvh - 14.5rem) * 1.8));
+    }
+
+    .match-hud,
+    .match-footer {
+      width: 100%;
+      max-width: calc(var(--court-w) + 8px);
+      margin-inline: auto;
+    }
+
+    .match-stage {
+      display: flex;
+      justify-content: center;
+      margin-inline: auto;
+    }
+
+    .match-stage > canvas {
+      /*
+       * Genişlik yüzde, yükseklik orandan gelir.
+       *
+       * `width: auto` denendi ve saha 900px'de takılı kaldı: canvas'ın
+       * kendi öz genişliği 900 ve `max-*` yalnızca KIRPAR, büyütmez.
+       * Yükseklik sınırını da `max-height` yerine orana çevirip
+       * `max-width`e koyuyoruz — `max-height` ile genişlik yüzde
+       * kaldığından 9:5 oranı bozuluyordu.
+       *
+       * Pay ölçüldü, tahmin edilmedi: 1280x600 penceresinde sayfa
+       * 622px'e taşıyordu, canvas 400px'ti — üst/alt arayüz 222px
+       * (13.9rem). 14.5rem küçük bir emniyet payı bırakır.
+       */
+      width: var(--court-w);
+      height: auto;
+      aspect-ratio: 9 / 5;
+      max-width: 100%;
+    }
   }
 
   /*
