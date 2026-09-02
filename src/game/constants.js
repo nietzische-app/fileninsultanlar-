@@ -90,7 +90,44 @@ export const FLOOR = {
 export const PLAYER = {
   hitRadius: 40, // gövde + kollar
   hitOffsetY: 44, // ayaklardan gövde merkezine
-  reachBonus: 12, // vuruş tuşu basılıyken erişim artışı
+  /*
+   * HAVADA + vuruş tuşundayken temas merkezi yükselir — kol uzanır.
+   *
+   * Voleybolda smaç kafanın ÜSTÜNDEN vurulur; oyunda ise temas dairesi
+   * zıplarken bile göğüs hizasında (44px) kalıyordu. Ölçümde
+   * gerçekleşen temaslarda topun KENARI ile gövde kutusu arasındaki
+   * boşluk ortanca 8.5px, havadaki vuruşların %13'ünde ise sıfırın
+   * altındaydı — yani topu üstüne almadan vurulamıyordu.
+   *
+   * Neden merkez, neden yarıçap değil: yarıçapı büyütmek savunmayı da
+   * kolaylaştırıyor. Denendi ve ölçüm reddetti — ralliler bitmez oldu
+   * (zorda temas 9.7 → 14.5, 2v2'de 19.8 → 33.7). Merkezi yukarı almak
+   * yalnızca hücum hamlesine dokunuyor.
+   *
+   * 52 = +8px. 60 da denendi; boşluğu 15.6px'e çıkarıyor ama dengeyi
+   * belirgin kaydırıyordu (zor sayı payı %49 → %69).
+   */
+  attackOffsetY: 52,
+  /*
+   * Vuruş tuşu basılıyken erişim artışı — yerdeyken.
+   *
+   * Bunu 20'ye çıkarmak denendi ve ölçüm reddetti: pay savunmaya da
+   * yaradığı için ralliler bitmez oldu (zorda temas 9.0 → 14.5, 2v2'de
+   * 19.5 → 33.7) ve rakip çöktü. Yerdeki değer olduğu gibi kalıyor.
+   */
+  reachBonus: 12,
+  /*
+   * HAVADAYKEN vuruş tuşu: kolunu uzatarak vurma payı.
+   *
+   * Asıl şikâyet buydu — "şut atarken topu üstüne almak gerekiyor".
+   * Ölçümde gerçekleşen temaslarda topun KENARI ile gövde kutusu
+   * arasındaki boşluk ortanca 8.5px, %15.6'sında sıfırın altındaydı
+   * (top gövdeye biniyor). Teorik pay da dardı: smaçta 19px.
+   *
+   * Pay yalnızca hücum hamlesine verilir; yerdeki manşet aynı kalır,
+   * böylece ralliler uzamıyor.
+   */
+  attackReachBonus: 12,
   minReachFactor: 0.55, // hızlı toplarda temas alanının inebileceği alt sınır
   spriteScale: 3.4,
 };

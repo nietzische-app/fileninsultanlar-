@@ -18,7 +18,7 @@ import {
   WALL_PAD,
   xToSpread,
 } from './constants.js';
-import { contactDistance } from './reach.js';
+import { contactCenterY, contactDistance } from './reach.js';
 
 /** Vuruş tuşuna temas eşiğinden bu kadar px önce basılır. */
 const PRESS_LEAD = 20;
@@ -306,7 +306,7 @@ export function updateAI(player, ball, opts, dt) {
      * bonusu zaten uygulanacak.
      */
     const reach = contactDistance(player, ball, { acting: true });
-    const dist = Math.hypot(ball.x - player.x, ball.y - (player.y - player.hitOffsetY));
+    const dist = Math.hypot(ball.x - player.x, ball.y - contactCenterY(player, { acting: true }));
     /*
      * Tuşa tam eşikte değil, biraz erken basılır. Basmak erişimi
      * ARTIRDIĞI için erken basmanın bedeli yok; geç basmanın bedeli ise

@@ -46,7 +46,7 @@ import {
 } from './opponents.js';
 import { pickChaser, sideBounds, updateAI } from './ai.js';
 import { stepBall } from './ballstep.js';
-import { contactRadius, mayTouch } from './reach.js';
+import { contactCenterY, contactRadius, mayTouch } from './reach.js';
 import {
   SERVE,
   advanceServeMeter,
@@ -961,11 +961,12 @@ export default class Game {
       // Dalışta gövde yere yakın ve uzanmış: temas merkezi alçalır,
       // erişim artar. Yere düşmek üzere olan topu bu yakalar.
       const cx = player.x;
-      const cy = player.y - (diving ? DIVE.hitOffsetY : player.hitOffsetY);
+      const cy = contactCenterY(player, { diving, airborne: !player.onGround });
       const reach = contactRadius({
         hitRadius: player.hitRadius,
         acting: player.input.action,
         diving,
+        airborne: !player.onGround,
         ballSpeed,
       });
 

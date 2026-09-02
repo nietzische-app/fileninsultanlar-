@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { arrivalHeight, interceptPoint, predictLanding, shouldYield } from './ai.js';
-import { contactDistance, contactRadius, mayTouch, speedPenalty } from './reach.js';
+import {
+  contactCenterY,
+  contactDistance,
+  contactRadius,
+  mayTouch,
+  speedPenalty,
+} from './reach.js';
 import { GROUND_Y, NET, PHYSICS, PLAYER } from './constants.js';
 
 /**
@@ -186,5 +192,40 @@ describe('file kuralı — arkadan vuruş yok', () => {
     // Topun altı file hizasının altındaysa blok sayılmaz
     const yarim = ball({ x: 480, y: NET.topY + 2 });
     expect(mayTouch(homeAtNet, yarim)).toBe(false);
+  });
+});
+
+describe('hücumda temas merkezi', () => {
+  const yerde = player({ onGround: true, input: { action: true } });
+  const havada = player({ onGround: false, input: { action: true } });
+
+  it('yerde göğüs hizasında', () => {
+    expect(contactCenterY(yerde)).toBe(yerde.y - PLAYER.hitOffsetY);
+  });
+
+  /*
+   * Havada + vuruş tuşu = smaç. Merkez yükselmezse top kafanın üstünden
+   * geçerken vurulamıyor; ölçümde temasların %13'ünde top gövdeye
+   * biniyordu.
+   */
+  it('havada vuruşta yükselir', () => {
+    expect(contactCenterY(havada)).toBe(havada.y - PLAYER.attackOffsetY);
+    expect(contactCenterY(havada)).toBeLessThan(contactCenterY(yerde));
+  });
+
+  it('havada ama tuşa basmıyorsa yükselmez', () => {
+    const bos = player({ onGround: false, input: { action: false } });
+    expect(contactCenterY(bos)).toBe(bos.y - PLAYER.hitOffsetY);
+  });
+
+  it('dalışta gövde alçalır', () => {
+    const dalan = player({ diveTimer: 0.2 });
+    expect(contactCenterY(dalan)).toBeGreaterThan(contactCenterY(yerde));
+  });
+
+  it('hücum payı yerdeki savunmayı büyütmez', () => {
+    // Yarıçap değil MERKEZ değişti: yerdeki erişim aynı kalmalı
+    const b = ball({ vx: 400, vy: 100 });
+    expect(contactDistance(yerde, b)).toBe(contactDistance(havada, b));
   });
 });

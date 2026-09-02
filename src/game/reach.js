@@ -60,16 +60,52 @@ export function speedPenalty(ballSpeed) {
 }
 
 /**
+ * Temas dairesinin MERKEZİ (ekran y'si).
+ *
+ * Dalışta gövde yere yakın ve uzanmış; havada vuruş tuşundayken ise kol
+ * yukarı uzanır ve merkez yükselir. Motor ve yapay zekâ aynı noktayı
+ * kullanmalı — ayrı hesaplandıklarında sessizce ayrışıp rakibi boşa
+ * vurdurmuşlardı.
+ *
+ * @param {object} player
+ * @param {object} [opts]
+ */
+export function contactCenterY(player, opts = {}) {
+  const diving =
+    opts.diving ?? (player.diveTimer > 0 || player.recoverTimer > 0);
+  if (diving) return player.y - DIVE.hitOffsetY;
+
+  const acting = opts.acting ?? Boolean(player.input?.action);
+  const airborne = opts.airborne ?? player.onGround === false;
+  const offset =
+    acting && airborne ? PLAYER.attackOffsetY : (player.hitOffsetY ?? PLAYER.hitOffsetY);
+
+  return player.y - offset;
+}
+
+/**
  * Bir oyuncunun bu karedeki temas yarıçapı (top yarıçapı HARİÇ).
  *
  * @param {object} opts
  * @param {number} opts.hitRadius
  * @param {boolean} [opts.acting] Vuruş tuşu basılı mı
  * @param {boolean} [opts.diving] Dalış hâlinde mi
+ * @param {boolean} [opts.airborne] Havada mı — hücum hamlesi
  * @param {number} opts.ballSpeed
  */
-export function contactRadius({ hitRadius, acting = false, diving = false, ballSpeed }) {
-  const bonus = diving ? DIVE.reachBonus : acting ? PLAYER.reachBonus : 0;
+export function contactRadius({
+  hitRadius,
+  acting = false,
+  diving = false,
+  airborne = false,
+  ballSpeed,
+}) {
+  /*
+   * Havada + vuruş tuşu = hücum hamlesi, kol uzanır. Pay yalnızca burada
+   * cömert: yerdeki savunma temasına da verildiğinde ralliler bitmiyordu.
+   */
+  const swing = airborne ? PLAYER.attackReachBonus : PLAYER.reachBonus;
+  const bonus = diving ? DIVE.reachBonus : acting ? swing : 0;
   return (hitRadius + bonus) * speedPenalty(ballSpeed);
 }
 
@@ -82,15 +118,22 @@ export function contactRadius({ hitRadius, acting = false, diving = false, ballS
  * @param {object} [opts]
  * @param {boolean} [opts.acting] Varsayılan: oyuncunun mevcut girdisi
  * @param {boolean} [opts.diving] Varsayılan: oyuncunun mevcut hâli
+ * @param {boolean} [opts.airborne] Varsayılan: oyuncunun mevcut hâli
  */
 export function contactDistance(player, ball, opts = {}) {
   const acting = opts.acting ?? Boolean(player.input?.action);
   const diving =
     opts.diving ?? (player.diveTimer > 0 || player.recoverTimer > 0);
+  const airborne = opts.airborne ?? player.onGround === false;
   const ballSpeed = Math.hypot(ball.vx, ball.vy);
 
   return (
-    contactRadius({ hitRadius: player.hitRadius, acting, diving, ballSpeed }) +
-    ball.radius
+    contactRadius({
+      hitRadius: player.hitRadius,
+      acting,
+      diving,
+      airborne,
+      ballSpeed,
+    }) + ball.radius
   );
 }
