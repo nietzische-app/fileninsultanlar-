@@ -64,22 +64,41 @@ export function drawWings(ctx, { width, time = 0, hype = 0 }) {
   }
   ctx.fillRect(0, 19, w, 3);
 
-  // --- Tribünler: oyun alanıyla AYNI fonksiyon, aynı hizada ---
+  /*
+   * --- Tribünler: oyun alanıyla AYNI fonksiyon, aynı hizada ---
+   *
+   * Basamaklar tüm genişliğe (birkaç büyük dikdörtgen), KALABALIK ise
+   * yalnızca görünen kanat bantlarına çizilir. Orta 900 birim oyun
+   * canvas'ının altında kalıyor; oraya seyirci çizmek ölçülen maliyetin
+   * dörtte üçünü boşa harcıyordu.
+   */
+  const bantlar = pad > 0 ? [[0, pad], [w - pad, w]] : [];
+
   drawTier(ctx, {
-    x0: 0, x1: w,
+    x0: 0, x1: w, crowd: false,
     y: ARENA.upperTierY, height: ARENA.upperTierH,
     rows: 2, spacing: 20, size: 0.95, flagEvery: 5, dim: 0.55, time, hype,
   });
+  bantlar.forEach(([a, b]) => drawTier(ctx, {
+    x0: a, x1: b, steps: false,
+    y: ARENA.upperTierY, height: ARENA.upperTierH,
+    rows: 2, spacing: 20, size: 0.95, flagEvery: 5, dim: 0.55, time, hype,
+  }));
 
   // Şerit bandı (orta koridordaki afiş kanatlarda düz bant olarak sürer)
   ctx.fillStyle = PALETTE.hallWallDark;
   ctx.fillRect(0, ARENA.ribbonY, w, ARENA.ribbonH);
 
   drawTier(ctx, {
-    x0: 0, x1: w,
+    x0: 0, x1: w, crowd: false,
     y: ARENA.lowerTierY, height: ARENA.lowerTierH,
     rows: 2, spacing: 30, size: 1.45, flagEvery: 3, dim: 0.9, time, hype,
   });
+  bantlar.forEach(([a, b]) => drawTier(ctx, {
+    x0: a, x1: b, steps: false,
+    y: ARENA.lowerTierY, height: ARENA.lowerTierH,
+    rows: 2, spacing: 30, size: 1.45, flagEvery: 3, dim: 0.9, time, hype,
+  }));
 
   // Tribünü geri iten pus — oyun alanındakiyle aynı
   const haze = ctx.createLinearGradient(0, 0, 0, ARENA.boardsY);

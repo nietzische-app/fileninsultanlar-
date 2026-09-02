@@ -156,17 +156,29 @@ export function drawTier(ctx, opts) {
    */
   const x0 = opts.x0 ?? 0;
   const x1 = opts.x1 ?? GAME_WIDTH;
+  /*
+   * `steps` / `crowd` ayrı açılıp kapanabilir. Kanat katmanı basamakları
+   * tek seferde tüm genişliğe (ucuz, birkaç büyük dikdörtgen), kalabalığı
+   * ise YALNIZCA görünen kanat bantlarına çiziyor — ortadaki 900 birim
+   * oyun canvas'ıyla örtülü olduğu için oraya seyirci çizmek saf israftı.
+   */
+  const steps = opts.steps ?? true;
+  const crowd = opts.crowd ?? true;
   const rowHeight = height / rows;
 
   // Basamaklar
-  for (let r = 0; r < rows; r += 1) {
+  for (let r = 0; steps && r < rows; r += 1) {
     ctx.fillStyle = r % 2 === 0 ? PALETTE.tierStep : PALETTE.tierBack;
     ctx.fillRect(x0, y + r * rowHeight, x1 - x0, rowHeight);
   }
 
   // Kat önü korkuluğu
-  ctx.fillStyle = PALETTE.hallWallDark;
-  ctx.fillRect(x0, y + height - 5, x1 - x0, 5);
+  if (steps) {
+    ctx.fillStyle = PALETTE.hallWallDark;
+    ctx.fillRect(x0, y + height - 5, x1 - x0, 5);
+  }
+
+  if (!crowd) return;
 
   ctx.save();
   ctx.globalAlpha = dim;
