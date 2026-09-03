@@ -54,9 +54,18 @@ function oyuncuPaketle(p) {
   ];
 }
 
-function oyuncuUygula(p, d) {
+/**
+ * Oyuncunun ARA DEĞERLENMEYEN alanları.
+ *
+ * Konum (x, y, vy, runFrame, squash) burada YOK: onlar paketler arası
+ * yumuşatılıyor (bkz. Game.agKonumHedefle). Buradakiler kategorik ya da
+ * eşikli değerler — "yarı dönmüş yüz" ya da "yarı dalış" diye bir şey
+ * yok, anında geçmeleri gerekiyor.
+ */
+function oyuncuAyriksiUygula(p, d) {
   if (!d) return;
-  [p.x, p.y, p.vy, p.facing, p.pose, p.runFrame, p.squash] = d;
+  p.facing = d[3];
+  p.pose = d[4];
   p.onGround = d[7] === 1;
   p.diveTimer = d[8];
   p.recoverTimer = d[9];
@@ -140,11 +149,17 @@ export function uygula(oyun, paket) {
   oyun.message = paket.ms;
   oyun.finished = paket.bt === 1;
 
-  oyun.ball.x = paket.b[0];
-  oyun.ball.y = paket.b[1];
-  oyun.ball.rotation = paket.b[2];
+  paket.p.forEach((d, i) => oyuncuAyriksiUygula(oyun.players[i], d));
 
-  paket.p.forEach((d, i) => oyuncuUygula(oyun.players[i], d));
+  /*
+   * Konumlar doğrudan yazılmıyor, hedef olarak veriliyor.
+   *
+   * Doğrudan yazıldığı sürümde misafirin ekranı saniyede 20 kez
+   * güncelleniyordu: tarayıcı 60 FPS çizse bile top 20 kez zıplayarak
+   * ilerlediği için oyun "donuyor" gibi görünüyordu. Şimdi iki paket
+   * arası ara değerleniyor (Game.agAradegerle).
+   */
+  oyun.agKonumHedefle(paket.b, paket.p);
 
   oyun.combo = paket.ko;
   oyun.perfectFlash = paket.tv;

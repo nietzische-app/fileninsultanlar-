@@ -348,11 +348,17 @@ export default function MatchScreen({
   const squad = config.homeIds.map((id) => getPlayerById(id)).filter(Boolean);
   const controlsLocked = paused || quitConfirm;
   /*
-   * Tek telefonda iki kişi oynayamaz; Co-Op/VS klavyeye özgüdür.
-   * Dokunmatik tuşları göstermek 2. oyuncunun kontrolü yokmuş gibi
-   * yanıltıcı olurdu.
+   * "İki kişi AYNI cihazda" mı — dokunmatik tuşların gizlenme ölçütü bu.
+   * Tek telefonda iki kişi oynayamaz, tuşları göstermek 2. oyuncunun
+   * kontrolü yokmuş gibi yanıltıcı olurdu.
+   *
+   * Çevrimiçi maç motor açısından `vs` ama iki oyuncu AYRI cihazlarda ve
+   * her biri kendi ekranında tek başına. `agRol` denetimi olmadan
+   * telefondan katılan oyuncuya hiç tuş çıkmıyordu — oyuna girip
+   * hareket edemiyordu.
    */
-  const twoPlayer = config.playMode === 'coop' || config.playMode === 'vs';
+  const twoPlayer =
+    !config.agRol && (config.playMode === 'coop' || config.playMode === 'vs');
 
   // Ham id değil etiket: upper('classic') Türkçe eşlemede "CLASSİC" veriyordu
   const matchLabel =

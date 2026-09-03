@@ -11,7 +11,9 @@
  */
 
 import { baslat } from '../../sunucu/rele.js';
-import { tarayiciAc, masaustuBaglam, URL, VARSAYILAN_TERCIH, kontrolcu } from './yardim.mjs';
+import {
+  tarayiciAc, masaustuBaglam, mobilBaglam, URL, VARSAYILAN_TERCIH, kontrolcu, tusKutulari,
+} from './yardim.mjs';
 
 const RELE_PORT = 8799;
 const rele = await baslat({ port: RELE_PORT, nabiz: 60_000 });
@@ -20,9 +22,17 @@ const RELE_URL = `ws://localhost:${RELE_PORT}`;
 const kontrol = kontrolcu();
 const browser = await tarayiciAc();
 
-/** Sayfayı röle adresiyle açar — geliştirmede `?rele=` ezmesi geçerli. */
-async function oyuncuAc(ad) {
-  const ctx = await masaustuBaglam(browser, { width: 1280, height: 720 });
+/**
+ * Sayfayı röle adresiyle açar — geliştirmede `?rele=` ezmesi geçerli.
+ *
+ * `mobil` seçeneği bilerek var: hata bildirimi telefondan katılan
+ * oyuncuda çıktı (dokunmatik tuşlar hiç görünmüyordu), masaüstü
+ * bağlamında o hata görünmez.
+ */
+async function oyuncuAc(ad, { mobil = false } = {}) {
+  const ctx = mobil
+    ? await mobilBaglam(browser)
+    : await masaustuBaglam(browser, { width: 1280, height: 720 });
   const page = await ctx.newPage();
   const hatalar = [];
   page.on('pageerror', (e) => hatalar.push(`${ad} PAGEERROR ${String(e).slice(0, 200)}`));
@@ -70,7 +80,8 @@ function durum(page) {
 }
 
 const ev = await oyuncuAc('EV');
-const misafir = await oyuncuAc('MISAFIR');
+// Misafir telefon: gerçek kullanımda da Android'den katılındı
+const misafir = await oyuncuAc('MISAFIR', { mobil: true });
 
 console.log('═══ çevrimiçi');
 
@@ -118,6 +129,21 @@ kontrol(
 
 // --- Simülasyon yalnız ev sahibinde ---
 kontrol('ev sahibi simüle ediyor', (evDurum?.adim ?? 0) > 30, `adım=${evDurum?.adim}`);
+
+/*
+ * Telefondan katılan oyuncuda dokunmatik tuşlar.
+ *
+ * Bu hata canlıda çıktı: motor açısından çevrimiçi maç `playMode: 'vs'`
+ * ve ekran "iki kişi tek klavyede oynuyor" varsayıp tuşları gizliyordu.
+ * Ayrı cihazlardaki iki oyuncu için yanlış — telefondan katılan oyuncu
+ * sahaya giriyor ama hiçbir şekilde hareket edemiyordu.
+ */
+const misafirTuslar = await tusKutulari(misafir.page);
+kontrol(
+  'telefondan katılan misafirde dokunmatik tuşlar var',
+  misafirTuslar.length >= 4,
+  `${misafirTuslar.length} tuş: ${misafirTuslar.map((t) => t.etiket).join(', ')}`,
+);
 
 // --- Misafir ev sahibini takip ediyor mu ---
 await ev.page.waitForTimeout(1500);

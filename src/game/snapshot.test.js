@@ -72,7 +72,10 @@ function masaKur() {
   return { ev, misafir, evPaketleri, misafirPaketleri };
 }
 
-/** Karşılaştırılan alanlar — misafirin ekranında görünen her şey. */
+/**
+ * Maç durumu — paket gelir gelmez aynen uygulanan, ara değerlenmeyen
+ * alanlar. Bunlar iki tarafta BİREBİR eşit olmalı.
+ */
 function goruntu(oyun) {
   return {
     faz: oyun.phase,
@@ -82,12 +85,34 @@ function goruntu(oyun) {
     servis: oyun.servingSide,
     dokunus: [oyun.touch.side, oyun.touch.count],
     mesaj: oyun.message,
-    top: [Math.round(oyun.ball.x), Math.round(oyun.ball.y)],
-    oyuncular: oyun.players.map((p) => [
-      Math.round(p.x), Math.round(p.y), p.pose, p.facing, p.onGround,
-    ]),
+    oyuncular: oyun.players.map((p) => [p.pose, p.facing, p.onGround]),
     kombo: oyun.combo,
   };
+}
+
+/**
+ * Konumlar — ara değerlendiği için birebir DEĞİL, yakın olmalı.
+ * Misafir tanımı gereği bir paket kadar geriden geliyor.
+ */
+function konum(oyun) {
+  return {
+    top: [oyun.ball.x, oyun.ball.y],
+    oyuncular: oyun.players.map((p) => [p.x, p.y]),
+  };
+}
+
+/** İki konum kümesi arasındaki en büyük mesafe (piksel). */
+function enBuyukSapma(a, b) {
+  const uzaklik = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]);
+  return Math.max(
+    uzaklik(a.top, b.top),
+    ...a.oyuncular.map((p, i) => uzaklik(p, b.oyuncular[i])),
+  );
+}
+
+/** Misafirin kare döngüsü — paketleri işledikten sonra çizime hazırlar. */
+function misafirKare(misafir, kare = 1) {
+  for (let i = 0; i < kare; i += 1) misafir.misafirGuncelle(PHYSICS.step);
 }
 
 describe('anlık görüntü', () => {
@@ -98,18 +123,20 @@ describe('anlık görüntü', () => {
   it('misafir ev sahibiyle aynı maçı görür', () => {
     const { ev, misafir } = masaKur();
 
-    // Ev sahibi 3 saniyelik maç koşturur, her adımda misafire yollar
+    // Her adımda paket: ara değerleme tam bir adımda hedefe varır
     for (let i = 0; i < 180; i += 1) {
       ev.update(PHYSICS.step);
       const paket = paketle(ev, ev.agOlaylar);
       ev.agOlaylar = [];
       expect(misafir.agPaketAl(paket)).toBe(true);
+      misafirKare(misafir);
     }
 
     expect(goruntu(misafir)).toEqual(goruntu(ev));
+    expect(enBuyukSapma(konum(misafir), konum(ev))).toBeLessThan(1);
   });
 
-  it('20 Hz seyrek gönderimde de aynı duruma varır', () => {
+  it('20 Hz seyrek gönderimde durum aynı, konum bir paket geriden gelir', () => {
     const { ev, misafir } = masaKur();
 
     // Gerçek akış her adımda değil, 3 adımda bir paket yolluyor
@@ -119,9 +146,47 @@ describe('anlık görüntü', () => {
         misafir.agPaketAl(paketle(ev, ev.agOlaylar));
         ev.agOlaylar = [];
       }
+      misafirKare(misafir);
     }
 
+    // Skor/faz/duruş gecikmez — paket gelir gelmez uygulanır
     expect(goruntu(misafir)).toEqual(goruntu(ev));
+
+    /*
+     * Konum gecikir ve gecikmeli olması DOĞRU: misafir iki paket
+     * arasını yumuşatıyor, yani hedefi bir paket geriden takip ediyor.
+     * Sınır, topun bir paket aralığında (50 ms) alabileceği en fazla
+     * yolun biraz üstünde — asıl yakalanmak istenen "kopmuş, artık
+     * takip etmiyor" hâli.
+     */
+    expect(enBuyukSapma(konum(misafir), konum(ev))).toBeLessThan(120);
+  });
+
+  it('paket gelmeyen karelerde de hareket sürer', () => {
+    const { ev, misafir } = masaKur();
+
+    // Rallinin ortasına gel, top hareket hâlinde olsun
+    for (let i = 0; i < 200; i += 1) ev.update(PHYSICS.step);
+    ev.inputs.p1.action = true;
+    for (let i = 0; i < 40; i += 1) ev.update(PHYSICS.step);
+
+    misafir.agPaketAl(paketle(ev));
+    misafirKare(misafir);
+
+    // 20 Hz'de paketler arası 3 kare var; sonraki paketi göndermiyoruz
+    for (let i = 0; i < 12; i += 1) ev.update(PHYSICS.step);
+    misafir.agPaketAl(paketle(ev));
+
+    const kareBasi = konum(misafir);
+    misafirKare(misafir);
+    const kareSonu = konum(misafir);
+
+    /*
+     * Asıl bildirilen hata buydu: konumlar yalnızca paket gelince
+     * yazılıyordu, aradaki karelerde hiçbir şey kıpırdamıyordu ve oyun
+     * 20 FPS'e düşmüş gibi görünüyordu ("misafirin oyunu çok donuyor").
+     */
+    expect(enBuyukSapma(kareBasi, kareSonu)).toBeGreaterThan(0);
   });
 
   it('geç kalan paket topu geri zıplatmaz', () => {
@@ -132,10 +197,11 @@ describe('anlık görüntü', () => {
     const yeni = paketle(ev);
 
     expect(misafir.agPaketAl(yeni)).toBe(true);
-    const once = goruntu(misafir);
+    misafirKare(misafir, 4);
+    const once = { ...goruntu(misafir), ...konum(misafir) };
     // Sırası geçmiş paket sessizce atılmalı
     expect(misafir.agPaketAl(eski)).toBe(false);
-    expect(goruntu(misafir)).toEqual(once);
+    expect({ ...goruntu(misafir), ...konum(misafir) }).toEqual(once);
   });
 
   it('sürüm uyuşmazlığı uygulanmaz', () => {

@@ -265,6 +265,21 @@ export default class Game {
     this.agSonGirdi = '';
     /** Uygulanan son paketin adım numarası; -1 = henüz paket gelmedi. */
     this.agSonAdim = -1;
+    /**
+     * Misafir tarafın konum ara değerlemesi.
+     *
+     * Paketler saniyede 20 kez geliyor ama ekran 60 kez çiziliyor.
+     * Konumları paket gelir gelmez yazarsak aradaki 40 karede hiçbir
+     * şey kıpırdamaz — oyun 20 FPS'e düşmüş gibi görünür ("misafirin
+     * oyunu çok donuyor" şikâyeti tam olarak buydu). Bunun yerine son
+     * paketi HEDEF alıp, o ana kadarki konumdan hedefe doğru her karede
+     * biraz ilerliyoruz.
+     *
+     * Bedeli: misafirin gördüğü görüntü bir paket kadar (~50 ms)
+     * geriden gelir. Takas bilinçli — sıçrayan ama "anlık" bir görüntü,
+     * akan ama 50 ms geriden gelen görüntüden daha kötü oynanıyor.
+     */
+    this.agAra = null;
 
     /**
      * Ses çağrılarının tek kapısı.
@@ -839,10 +854,75 @@ export default class Game {
    */
   misafirGuncelle(dt) {
     this.time += dt;
+    this.agAradegerle(dt);
     this.updateParticles(dt);
     this.updateRings(dt);
     this.updateBallTrail();
     this.updateAtmosphere();
+  }
+
+  /**
+   * Gelen paketteki konumları ara değerleme hedefi yapar.
+   *
+   * Başlangıç noktası "paketteki bir önceki konum" değil, EKRANDA O AN
+   * DURAN konum. Aradaki fark önemli: paket gecikirse ara değerleme
+   * hedefe varıp durur, sonraki paket geldiğinde oradan devam eder —
+   * geriye sıçrama olmaz.
+   *
+   * @param {number[]} top   [x, y, rotation]
+   * @param {Array[]} oyuncular Her oyuncu için paket dizisi
+   */
+  agKonumHedefle(top, oyuncular) {
+    const simdi = this.time;
+    /*
+     * Süre ölçülüyor, sabit 1/20 varsayılmıyor: ağ gecikmesi oynuyor ve
+     * sabit varsayımda paket geç kalınca ara değerleme hedefe erken
+     * varıp donuyordu. Alt sınır bir kare (aynı karede iki paket gelirse
+     * sıfıra bölme olmasın), üst sınır 0.25 sn (bağlantı kopukluğunda
+     * saatlerce sürecek bir ara değerlemeye düşmeyelim).
+     */
+    const olculen = this.agAra ? simdi - this.agAra.baslangic : 1 / AG.durumHz;
+    const sure = Math.max(PHYSICS.step, Math.min(0.25, olculen));
+
+    this.agAra = {
+      baslangic: simdi,
+      t: 0,
+      sure,
+      // Nereden: şu an çizilen konum
+      oncekiTop: [this.ball.x, this.ball.y, this.ball.rotation],
+      oncekiOyuncu: this.players.map((p) => [p.x, p.y, p.vy, p.runFrame, p.squash]),
+      // Nereye: pakettekiler
+      hedefTop: top,
+      hedefOyuncu: oyuncular,
+    };
+
+    // İlk pakette geçiş yapacak bir "önceki" yok — anında yerleş
+    if (this.agSonAdim <= 0) this.agAradegerle(sure);
+  }
+
+  /** Ara değerlemeyi bir kare ilerletir. */
+  agAradegerle(dt) {
+    const ara = this.agAra;
+    if (!ara) return;
+
+    ara.t = Math.min(ara.sure, ara.t + dt);
+    const a = ara.sure > 0 ? ara.t / ara.sure : 1;
+    const karis = (once, hedef) => once + (hedef - once) * a;
+
+    this.ball.x = karis(ara.oncekiTop[0], ara.hedefTop[0]);
+    this.ball.y = karis(ara.oncekiTop[1], ara.hedefTop[1]);
+    this.ball.rotation = karis(ara.oncekiTop[2], ara.hedefTop[2]);
+
+    ara.hedefOyuncu.forEach((hedef, i) => {
+      const oyuncu = this.players[i];
+      const once = ara.oncekiOyuncu[i];
+      if (!oyuncu || !once || !hedef) return;
+      oyuncu.x = karis(once[0], hedef[0]);
+      oyuncu.y = karis(once[1], hedef[1]);
+      oyuncu.vy = karis(once[2], hedef[2]);
+      oyuncu.runFrame = karis(once[3], hedef[5]);
+      oyuncu.squash = karis(once[4], hedef[6]);
+    });
   }
 
   update(dt) {
