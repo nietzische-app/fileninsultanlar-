@@ -5,6 +5,7 @@ import {
   createTournament,
   currentRound,
   roundMatchConfig,
+  roundStrength,
   tournamentLadder,
   tournamentSummary,
 } from './tournament.js';
@@ -150,5 +151,33 @@ describe('bracket ve özet', () => {
       wins: 1,
       lastRoundLabel: TOURNAMENT_ROUNDS[1].label,
     });
+  });
+});
+
+/*
+ * Rakip sırası ve rampa birlikte çalışmalı. Eskiden en ZAYIF takım
+ * (BALKAN, ölçümde sayı payı %80) yarı finaldeydi ve eğri orada
+ * kırılıyordu: çeyrek finalden kolay bir yarı final.
+ */
+describe('turnuva zorluk eğrisi', () => {
+  it('rampa turdan tura artar', () => {
+    const ramps = TOURNAMENT_ROUNDS.map((r) => r.ramp);
+    for (let i = 1; i < ramps.length; i += 1) {
+      expect(ramps[i]).toBeGreaterThan(ramps[i - 1]);
+    }
+  });
+
+  it('güç yıldızı rampayı izler ve 1–5 arasında kalır', () => {
+    const yildiz = TOURNAMENT_ROUNDS.map((r) => roundStrength(r));
+    expect(yildiz[0]).toBe(1);
+    expect(yildiz[yildiz.length - 1]).toBe(5);
+    for (let i = 1; i < yildiz.length; i += 1) {
+      expect(yildiz[i]).toBeGreaterThanOrEqual(yildiz[i - 1]);
+    }
+  });
+
+  it('aynı rakip iki turda çıkmaz', () => {
+    const ids = TOURNAMENT_ROUNDS.map((r) => r.opponentId);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });

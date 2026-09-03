@@ -70,7 +70,7 @@ export const OPPONENT_TEAMS = [
       hair: '#1A1008',
       accent: '#FF8A4C',
     },
-    modifiers: { spikePower: 1.12, charge: 1.05, bumpPower: 0.96 },
+    modifiers: { spikePower: 1.12, bumpPower: 0.96 },
     blurb: 'Agresif smaç, riskli savunma.',
   },
   {

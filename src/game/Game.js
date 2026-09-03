@@ -94,7 +94,7 @@ import {
   updateRings as fxUpdateRings,
 } from './effects.js';
 import Sfx from './audio.js';
-import { upper } from '../utils/text.js';
+import { ilgiEki, upper } from '../utils/text.js';
 
 /**
  * Klavye eşlemeleri.
@@ -1600,7 +1600,7 @@ export default class Game {
       Sfx.pointLost();
     } else {
       this.message = {
-        text: reason ?? `${this.opponent.shortName} SAYI`,
+        text: reason ?? `SAYI ${ilgiEki(this.opponent.shortName)}`,
         timer: this.rules.servePause,
         color: reason ? PALETTE.gold : this.opponent.colors.accent,
       };
@@ -1632,7 +1632,7 @@ export default class Game {
         text:
           winner === 'home'
             ? `${this.setNumber}. SET TÜRKİYE'NİN!`
-            : `${this.setNumber}. SET ${this.opponent.shortName}`,
+            : `${this.setNumber}. SET ${ilgiEki(this.opponent.shortName)}`,
         timer: 2.6,
         color: winner === 'home' ? PALETTE.gold : this.opponent.colors.accent,
       };

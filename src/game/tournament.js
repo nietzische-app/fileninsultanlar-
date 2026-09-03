@@ -24,12 +24,24 @@ import { OPPONENT_TEAMS } from './opponents.js';
  * @property {number} ramp      scaleDifficulty adımı
  */
 
+/*
+ * Rakip sırası ÖLÇÜLDÜ, tahmin edilmedi.
+ *
+ * Her takımın kendi çarpanları var ve bunlar zorluk rampasıyla kavga
+ * edebiliyor. Aynı botla ramp 0'da ölçülen sayı payı (yüksek = zayıf
+ * rakip): BALKAN %80 · ADRİYA %71 · ATLAS %70 · NORDİK %58 · PASİFİK %58.
+ *
+ * Eskiden en ZAYIF takım (BALKAN, savunması `bumpPower: 0.96` ile
+ * kasten cılız) yarı finaldeydi; eğri orada kırılıyor, çeyrek finalden
+ * daha kolay bir yarı final çıkıyordu. Şimdi kendi gücü de rampayla
+ * aynı yöne bakıyor.
+ */
 /** @type {TournamentRound[]} */
 export const TOURNAMENT_ROUNDS = [
   {
     id: 'r1',
     label: '1. TUR',
-    opponentId: 'adriyatik',
+    opponentId: 'balkan',
     format: 'single',
     rules: { setsToWin: 1, pointsPerSet: 11, pointCap: 15 },
     ramp: 0,
@@ -37,26 +49,26 @@ export const TOURNAMENT_ROUNDS = [
   {
     id: 'r2',
     label: '2. TUR',
-    opponentId: 'atlas',
+    opponentId: 'adriyatik',
     format: 'single',
     rules: { setsToWin: 1, pointsPerSet: 11, pointCap: 15 },
-    ramp: 0.4,
+    ramp: 0.6,
   },
   {
     id: 'qf',
     label: 'ÇEYREK FİNAL',
-    opponentId: 'pasifik',
+    opponentId: 'atlas',
     format: 'single',
     rules: { setsToWin: 1, pointsPerSet: 15, pointCap: 19 },
-    ramp: 0.8,
+    ramp: 1.2,
   },
   {
     id: 'sf',
     label: 'YARI FİNAL',
-    opponentId: 'balkan',
+    opponentId: 'pasifik',
     format: 'single',
     rules: { setsToWin: 1, pointsPerSet: 15, pointCap: 19 },
-    ramp: 1.2,
+    ramp: 1.8,
   },
   {
     id: 'final',
@@ -64,9 +76,24 @@ export const TOURNAMENT_ROUNDS = [
     opponentId: 'nordik',
     format: 'classic',
     rules: { setsToWin: 2, pointsPerSet: 15, pointCap: 21 },
-    ramp: 1.6,
+    ramp: 2.5,
   },
 ];
+
+/**
+ * Turun zorluk yıldızı (1–5).
+ *
+ * `ramp` üzerinden türetilir ki rampayı değiştirdiğimizde gösterge de
+ * kendiliğinden uysun — ayrı bir sabit tutmak ikisinin sessizce
+ * ayrışması demekti.
+ *
+ * @param {TournamentRound} round
+ * @returns {number} 1–5
+ */
+export function roundStrength(round) {
+  const step = (round?.ramp ?? 0) / 0.625;
+  return Math.max(1, Math.min(5, 1 + Math.round(step)));
+}
 
 /**
  * @typedef {Object} TournamentState

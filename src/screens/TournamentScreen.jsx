@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import MuteButton from '../components/MuteButton.jsx';
 import PixelAvatar from '../components/PixelAvatar.jsx';
 import { getPlayerById } from '../game/players.js';
-import { tournamentLadder } from '../game/tournament.js';
+import { roundStrength, tournamentLadder } from '../game/tournament.js';
 import { FORMATS } from '../game/constants.js';
 import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
@@ -97,6 +97,13 @@ export default function TournamentScreen({
               <p className="mt-1 text-[7px] leading-relaxed text-white/45 sm:max-w-[150px]">
                 {next.opponent?.blurb ?? ''}
               </p>
+              {/*
+                Zorluk turdan tura artıyor ama oyuncu bunu ancak sahada
+                hissediyordu. Yıldızlar rampayı görünür kılıyor.
+              */}
+              <p className="mt-2 text-[7px] tracking-widest text-retro-accent sm:text-right">
+                GÜÇ <GucYildizi seviye={roundStrength(next)} />
+              </p>
             </div>
           </div>
         </div>
@@ -153,11 +160,31 @@ function LadderRow({ round }) {
       <span className="min-w-0 flex-1 truncate text-[7px] text-white/55 sm:text-[8px]">
         {round.opponent?.name ?? '—'}
       </span>
+      <span className="shrink-0 text-[7px] text-retro-accent/70">
+        <GucYildizi seviye={roundStrength(round)} />
+      </span>
       {round.result && (
         <span className="shrink-0 text-[7px] text-white/45 sm:text-[8px]">
           {round.result.sets.home}-{round.result.sets.away}
         </span>
       )}
     </div>
+  );
+}
+
+/**
+ * Rakip gücü — dolu/boş yıldız.
+ *
+ * Ekran okuyucu için metin karşılığı da veriliyor; yalnızca sembol
+ * bırakıldığında "yıldız yıldız yıldız" diye okunuyor.
+ */
+function GucYildizi({ seviye }) {
+  const dolu = '★'.repeat(seviye);
+  const bos = '☆'.repeat(5 - seviye);
+  return (
+    <span aria-label={`Rakip gücü: 5 üzerinden ${seviye}`} title={`Güç ${seviye}/5`}>
+      {dolu}
+      <span className="text-white/25">{bos}</span>
+    </span>
   );
 }
