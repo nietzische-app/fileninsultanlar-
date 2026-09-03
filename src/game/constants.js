@@ -173,6 +173,24 @@ export const PLAYER = {
    * böylece ralliler uzamıyor.
    */
   attackReachBonus: 12,
+  /**
+   * Vuruş salınımının süresi (sn).
+   *
+   * Vuruş eskiden "tuş basılı mı" durumuydu: basılı tutan oyuncu sürekli
+   * vuruş pozunda kalıyor, erişim artışını ve vuruş gücünü hiç
+   * bırakmıyordu. Yani en iyi strateji tuşu bırakmamaktı ve karakter
+   * kalıcı olarak vuruş pozunda donuyordu.
+   *
+   * Artık basış bir SALINIM başlatıyor: bu süre boyunca vuruş açık,
+   * sonra kapanıyor. Basılı tutmak yeni salınım başlatmaz — tuşu
+   * bırakıp yeniden basmak gerekir.
+   *
+   * Süre tam vuruş penceresinden (PERFECT.window, 0.17) uzun olmalı:
+   * eşit olsaydı salınımdaki HER temas tam vuruş sayılır ve zamanlama
+   * ödülü anlamını yitirirdi. 0.34 = pencerenin iki katı; ilk yarısı
+   * tam vuruş, kalanı normal vuruş.
+   */
+  swingDuration: 0.45,
   minReachFactor: 0.55, // hızlı toplarda temas alanının inebileceği alt sınır
   spriteScale: 3.4,
 };

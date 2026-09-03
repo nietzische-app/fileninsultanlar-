@@ -12,13 +12,24 @@ const URL = process.env.OYUN_URL ?? 'http://localhost:5173/';
  * varyansı çok daha düşük.
  */
 const N = Number(process.env.N ?? 10);
+/*
+ * Botun vuruş tuşuna bastığı mesafe (piksel).
+ *
+ * Varsayılan 78, topun uzağından basıp BASILI TUTAN bir oyuncuyu taklit
+ * eder. Vuruş "basılı tutulan hâl"den kısa süreli salınıma çevrilince
+ * bu strateji cezalandırılır oldu — ölçüm de düştü. Düşüşün salınımdan
+ * mı yoksa botun artık ödüllendirilmeyen stratejisinden mi geldiğini
+ * ayırmak için basış mesafesi ayarlanabilir: küçük değer, topa
+ * yaklaşınca basan (insan gibi oynayan) bir bot demek.
+ */
+const BASIS_YARICAP = Number(process.env.BASIS_YARICAP ?? 78);
 const LEVELS = (process.env.LEVELS ?? 'kolay,normal,zor').split(',');
 const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined });
 const page = await browser.newPage();
 page.on('pageerror', (e) => console.log('HATA', String(e).slice(0, 200)));
 await page.goto(URL, { waitUntil: 'load' });
 await page.waitForTimeout(1500);
-const rows = await page.evaluate(async ({ n, levels }) => {
+const rows = await page.evaluate(async ({ n, levels, basisYaricap }) => {
   const { default: Game } = await import('/src/game/Game.js');
   const stub = new Proxy({}, { get: (_t, k) => {
     if (k === 'canvas') return { width: 900, height: 500 };
@@ -33,7 +44,7 @@ const rows = await page.evaluate(async ({ n, levels }) => {
     const dx = b.x - p.x;
     i.left = dx < -8; i.right = dx > 8;
     i.up = Math.abs(dx) < 70 && b.y < p.y - 40;
-    const near = Math.hypot(dx, b.y - (p.y - 40)) < 78;
+    const near = Math.hypot(dx, b.y - (p.y - 40)) < basisYaricap;
     if (near && !i.action) g.actionPresses.p1 += 1;
     i.action = near; i.dive = false;
   }
@@ -67,6 +78,6 @@ const rows = await page.evaluate(async ({ n, levels }) => {
       'insan payı %': (hT+pT) ? Math.round(hT/(hT+pT)*100) : null });
   }
   return out;
-}, { n: N, levels: LEVELS });
+}, { n: N, levels: LEVELS, basisYaricap: BASIS_YARICAP });
 await browser.close();
 console.table(rows);

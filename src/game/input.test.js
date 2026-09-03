@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import Game from './Game.js';
+import { PHASE, PHYSICS, PLAYER } from './constants.js';
 
 /**
  * Girdi yönlendirmesi.
@@ -98,6 +99,74 @@ describe('girdi yuvaları', () => {
     expect(game.inputs.p2.left).toBe(true);
     expect(game.inputs.p2.right).toBe(false);
     expect(game.inputs.p2.up).toBe(false);
+  });
+
+  /*
+   * Bildirilen hata: "space tuşuna basılı tutunca karakter sürekli
+   * vuruyor halde oluyor". Vuruş bir DURUM değil, kısa süreli bir
+   * salınım olmalı.
+   */
+  describe('vuruş salınımı', () => {
+    /*
+     * Ralli fazı şart: motor RALLİ dışındaki fazlarda insan girdisini
+     * sıfırlıyor (sayı arası kimse hareket etmesin diye). İlk yazdığım
+     * hâlde bunu atlamıştım ve testler salınımı hiç tetikleyemiyordu.
+     */
+    beforeEach(() => {
+      game.phase = PHASE.RALLY;
+    });
+
+    /** Tuş basılıyken n saniye ilerlet, ralli fazında kal. */
+    const ilerlet = (oyuncu, saniye) => {
+      const adim = PHYSICS.step;
+      for (let t = 0; t < saniye; t += adim) {
+        game.phase = PHASE.RALLY;
+        game.update(adim);
+      }
+      return oyuncu;
+    };
+
+    it('basılı tutmak vuruşu sonsuza kadar açık bırakmaz', () => {
+      const oyuncu = game.players.find((p) => p.controlSlot === 'p1');
+      game.setInput('action', true);
+      game.update(PHYSICS.step);
+      expect(oyuncu.swingTimer).toBeGreaterThan(0);
+
+      // Tuş HÂLÂ basılı — salınım yine de kapanmalı
+      ilerlet(oyuncu, PLAYER.swingDuration + 0.1);
+      expect(game.inputs.p1.action).toBe(true);
+      expect(oyuncu.swingTimer).toBe(0);
+      expect(oyuncu.pose).not.toBe('bump');
+    });
+
+    it('salınım sürerken yeniden basmak onu uzatmaz', () => {
+      const oyuncu = game.players.find((p) => p.controlSlot === 'p1');
+      game.setInput('action', true);
+      game.update(PHYSICS.step);
+      ilerlet(oyuncu, PLAYER.swingDuration * 0.5);
+      const kalan = oyuncu.swingTimer;
+
+      // Bırak–bas: mash ile vuruşu sürekli açık tutmak mümkün olmamalı
+      game.setInput('action', false);
+      game.setInput('action', true);
+      game.update(PHYSICS.step);
+
+      expect(oyuncu.swingTimer).toBeLessThan(kalan);
+    });
+
+    it('bırakıp yeniden basmak yeni salınım başlatır', () => {
+      const oyuncu = game.players.find((p) => p.controlSlot === 'p1');
+      game.setInput('action', true);
+      ilerlet(oyuncu, PLAYER.swingDuration + 0.1);
+      expect(oyuncu.swingTimer).toBe(0);
+
+      game.setInput('action', false);
+      game.update(PHYSICS.step);
+      game.setInput('action', true);
+      game.update(PHYSICS.step);
+
+      expect(oyuncu.swingTimer).toBeGreaterThan(0);
+    });
   });
 
   it('applyInput yuvalar arasında sızmaz', () => {

@@ -520,6 +520,8 @@ export default class Game {
        */
       actionPressedAt: null,
       actionWasDown: false,
+      /** Vuruş salınımında kalan süre (sn); 0 = vuruş kapalı. */
+      swingTimer: 0,
       // Dalış durumu
       diveTimer: 0,
       recoverTimer: 0,
@@ -575,6 +577,8 @@ export default class Game {
       player.onGround = true;
       player.pose = 'idle';
       player.hitCooldown = 0;
+      player.swingTimer = 0;
+      player.actionPressedAt = null;
       player.diveTimer = 0;
       player.recoverTimer = 0;
       player.diveCooldown = 0;
@@ -1092,12 +1096,22 @@ export default class Game {
         player.input.dive = false;
       }
 
-      // Vuruş tuşunun yükselen kenarı — tam vuruş penceresi buradan başlar
+      /*
+       * Vuruş tuşunun yükselen kenarı bir SALINIM başlatır.
+       *
+       * `swingTimer <= 0` koşulu kasıtlı: salınım sürerken yeniden
+       * basmak onu uzatmaz. Uzatsaydı tuşa hızlı hızlı basarak vuruşu
+       * sürekli açık tutmak mümkün olurdu — düzeltmeye çalıştığımız
+       * "basılı tut, hep vuruşta kal" davranışının aynısı.
+       *
+       * Basılı tutmak da yeni salınım başlatmaz: kenar bir kez olur,
+       * süre dolunca vuruş kapanır ve tuşu bırakıp yeniden basmak
+       * gerekir.
+       */
       const down = player.input.action;
-      if (down && !player.actionWasDown) {
+      if (down && !player.actionWasDown && player.swingTimer <= 0) {
+        player.swingTimer = PLAYER.swingDuration;
         player.actionPressedAt = this.time;
-      } else if (!down) {
-        player.actionPressedAt = null;
       }
       player.actionWasDown = down;
 
@@ -1214,10 +1228,21 @@ export default class Game {
     const bounds = sideBounds(player.side, 22);
     player.x = Math.max(bounds.min, Math.min(bounds.max, player.x));
 
-    // Poz seçimi
+    /*
+     * Salınımı ilerlet. Süre dolunca tam vuruş penceresinin başlangıcı
+     * da temizlenir — yoksa bir sonraki temas, çoktan bitmiş bir
+     * salınımın zamanlamasına göre değerlendirilirdi.
+     */
+    if (player.swingTimer > 0) {
+      player.swingTimer = Math.max(0, player.swingTimer - dt);
+      if (player.swingTimer === 0) player.actionPressedAt = null;
+    }
+    const vuruyor = player.swingTimer > 0;
+
+    // Poz seçimi — tuşun basılı olmasına değil, salınıma bağlı
     if (!player.onGround) {
-      player.pose = input.action ? 'spike' : 'jump';
-    } else if (input.action) {
+      player.pose = vuruyor ? 'spike' : 'jump';
+    } else if (vuruyor) {
       player.pose = 'bump';
     } else if (dir !== 0) {
       player.pose = 'run';
@@ -1315,7 +1340,7 @@ export default class Game {
       const cy = contactCenterY(player, { diving, airborne: !player.onGround });
       const reach = contactRadius({
         hitRadius: player.hitRadius,
-        acting: player.input.action,
+        acting: player.swingTimer > 0,
         diving,
         airborne: !player.onGround,
         ballSpeed,
@@ -1357,7 +1382,7 @@ export default class Game {
     ball.y = cy + ny * (reach + ball.radius + 1);
 
     const airborne = !player.onGround;
-    const acting = player.input.action;
+    const acting = player.swingTimer > 0;
     const toOpponent = player.side === 'home' ? 1 : -1;
 
     // Topun geldiği yön — blok tespiti için
