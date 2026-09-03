@@ -77,7 +77,9 @@ export const POSITIONS = {
  * @property {number} number Forma numarası (sprite üzerine çizilir)
  * @property {string} position
  * @property {boolean} captain
- * @property {boolean} [guest] Bonus kadro — Milletler Ligi'nde dinlenen / özel eklenti
+ * @property {boolean} [guest] Bonus kadro — özel eklenti oyuncular için
+ *   ayrılmış bayrak. Şu an kimsede yok: Eda Erdem ve Ebrar Karakurt
+ *   asıl kadroya alındı.
  * @property {string|null} birthDate ISO 'YYYY-MM-DD' — bilinmiyorsa null
  * @property {number|null} height cm — bilinmiyorsa null
  * @property {number|null} weight kg — bilinmiyorsa null
@@ -385,7 +387,6 @@ export const ROSTER = [
     number: 14,
     position: POSITIONS.ORTA,
     captain: false,
-    guest: true,
     birthDate: '1987-06-22',
     height: 188,
     weight: 75,
@@ -641,7 +642,6 @@ export const ROSTER = [
     number: 99,
     position: POSITIONS.PASOR_CAPRAZI,
     captain: false,
-    guest: true,
     birthDate: '2000-01-17',
     height: 195,
     weight: 72,
@@ -703,12 +703,17 @@ export const DEFAULT_PLAYER_ID = 'gizem-orge';
 /** Giriş ekranındaki vitrin kadrosu. */
 export const SHOWCASE_IDS = ['gizem-orge', 'zehra-gunes', 'melissa-vargas'];
 
-/** Aktif turnuva kadrosu (bonus/dinlenen oyuncular hariç). */
+/**
+ * Aktif kadro (bonus işaretli oyuncular hariç).
+ *
+ * Şu an tüm kadro aktif; bayrak ileride özel bir eklenti oyuncu
+ * gerekirse diye duruyor.
+ */
 export function getActiveRoster() {
   return ROSTER.filter((player) => !player.guest);
 }
 
-/** Bonus kadro — Milletler Ligi dinlenmesi vb. özel eklentiler. */
+/** Bonus kadro — şu an boş; `guest: true` işaretli oyuncu yok. */
 export function getBonusRoster() {
   return ROSTER.filter((player) => player.guest);
 }

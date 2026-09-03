@@ -16,6 +16,7 @@ import {
 import { createTournament } from '../game/tournament.js';
 import {
   getAge,
+  getActiveRoster,
   getBonusRoster,
   getCaptain,
   getModifier,
@@ -204,10 +205,17 @@ describe('players roster', () => {
     expect(captain?.captain).toBe(true);
   });
 
-  it('bonus kadroda Eda ve Ebrar vardır', () => {
-    const bonus = getBonusRoster().map((p) => p.id);
-    expect(bonus).toContain('eda-erdem');
-    expect(bonus).toContain('ebrar-karakurt');
+  it('Eda ve Ebrar asıl kadroda, bonus değil', () => {
+    const aktif = getActiveRoster().map((p) => p.id);
+    expect(aktif).toContain('eda-erdem');
+    expect(aktif).toContain('ebrar-karakurt');
+    // Bonus bölümü boş kalınca seçim ekranında hiç görünmüyor
+    expect(getBonusRoster()).toHaveLength(0);
+  });
+
+  it('kadroda kimse iki kez geçmiyor', () => {
+    const ids = getActiveRoster().map((p) => p.id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
   it('Ebrar sert smaç çarpanı taşır', () => {
