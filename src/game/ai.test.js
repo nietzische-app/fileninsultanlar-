@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { arrivalHeight, interceptPoint, predictLanding, shouldYield } from './ai.js';
+import {
+  arrivalHeight,
+  interceptPoint,
+  netCrossing,
+  predictLanding,
+  shouldYield,
+} from './ai.js';
 import {
   contactCenterY,
   contactDistance,
@@ -227,5 +233,44 @@ describe('hücumda temas merkezi', () => {
     // Yarıçap değil MERKEZ değişti: yerdeki erişim aynı kalmalı
     const b = ball({ vx: 400, vy: 100 });
     expect(contactDistance(yerde, b)).toBe(contactDistance(havada, b));
+  });
+});
+
+describe('blok — file geçişi', () => {
+  /*
+   * Blok kararı topun DÜŞECEĞİ yere değil, FİLEYİ GEÇECEĞİ ana bakar:
+   * blok top daha karşı sahadayken verilir. Eski kod yalnızca kendi
+   * sahasındaki topa bakıyordu, dolayısıyla blok hiç olmuyordu —
+   * ölçümde partner rallinin %62'sini file dibinde geçirip 100 karede
+   * 0.46 kez sıçrıyordu.
+   */
+  it('karşı sahadan gelen topun geçiş anını ve yüksekliğini verir', () => {
+    const b = ball({ x: NET.x + 120, y: NET.topY - 40, vx: -400, vy: 60 });
+    const g = netCrossing(b, 'home');
+    expect(g).not.toBeNull();
+    expect(g.t).toBeGreaterThan(0);
+    expect(g.t).toBeLessThan(0.6);
+    expect(g.y).toBeGreaterThan(NET.topY - 60);
+  });
+
+  it('top zaten bizim taraftaysa null (blok konusu değil)', () => {
+    const b = ball({ x: NET.x - 100, y: 200, vx: -300, vy: 0 });
+    expect(netCrossing(b, 'home')).toBeNull();
+  });
+
+  it('fileye varmadan yere düşen topta null', () => {
+    const b = ball({ x: NET.x + 300, y: GROUND_Y - 20, vx: -80, vy: 400 });
+    expect(netCrossing(b, 'home')).toBeNull();
+  });
+
+  it('uzaklaşan topta null', () => {
+    const b = ball({ x: NET.x + 100, y: 200, vx: 400, vy: -50 });
+    expect(netCrossing(b, 'home')).toBeNull();
+  });
+
+  it('iki taraf simetrik çalışır', () => {
+    const bize = ball({ x: NET.x - 120, y: NET.topY - 40, vx: 400, vy: 60 });
+    expect(netCrossing(bize, 'away')).not.toBeNull();
+    expect(netCrossing(bize, 'home')).toBeNull();
   });
 });

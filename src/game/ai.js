@@ -26,8 +26,18 @@ const PRESS_LEAD = 20;
 /** Görevli takım arkadaşı bu payla yetişiyorsa top onundur. */
 const YIELD_MARGIN = 30;
 
-/** Yol veren oyuncunun düşüş noktasına bırakacağı boşluk (px). */
+/** Yol veren oyuncunun görevliye bırakacağı boşluk (px). */
 const CLEAR_RADIUS = 110;
+
+/** Blok için file dibinde sayılan mesafe. */
+const BLOCK_RANGE = 135;
+
+/** Topun file üstünü bu bandın içinde geçmesi blok edilebilir sayılır. */
+const BLOCK_BAND = 45;
+
+/** Tamamlayıcı savunma konumları: fileden uzaklık (px). */
+const NET_COVER = 115;
+const DEEP_COVER = 300;
 
 /** İnsan oyuncunun topa uzaklığı bu çarpanla kısaltılır (top onun sayılır). */
 const HUMAN_PRIORITY = 0.5;
@@ -257,6 +267,58 @@ export function updateAI(player, ball, opts, dt) {
    */
   const standDown = !chasing && shouldYield(player, ball, yieldTo);
 
+  /*
+   * BLOK — file dibinde, gelen hücumu karşılamak için sıçra.
+   *
+   * Bu karar bilerek `onOwnSide` VE `standDown` kapılarının DIŞINDA:
+   *  - Blok, top daha KARŞI SAHADAYKEN verilir. `onOwnSide` içinde
+   *    kaldığı sürece oyuncu topun kendi sahasına geçmesini bekliyor ve
+   *    blok hiç gerçekleşmiyordu.
+   *  - Blok topu kovalamak değil; görevli arkadaşına yol veren oyuncu da
+   *    blok yapabilmeli. Ölçümde partner rallinin %62'sini file dibinde
+   *    geçirip 100 karede yalnızca 0.46 kez sıçrıyordu.
+   *
+   * Zamanlama: sıçramanın tepesi ~0.33sn sürüyor, top file düzlemini o
+   * civarda geçmeli. Erken sıçrayan blok iner, geç sıçrayan yetişemez.
+   */
+  const fileMesafesi = Math.abs(NET.x - player.x);
+  /*
+   * Servis bloklanmaz — voleybolda faul, oyunda da servisi anlamsız
+   * kılardı: file dibindeki oyuncu her servise sıçrayıp keserdi.
+   */
+  const bloklanabilir = !ball.serveUntouched;
+  const gecis = bloklanabilir ? netCrossing(ball, player.side) : null;
+
+  /*
+   * Karar ATAK BAŞINA bir kez verilir, kare başına değil.
+   *
+   * İlk sürümde olasılık her karede atılıyordu ve koşul ~18 kare
+   * sürdüğü için `blockSkill` anlamsızlaşıyordu: %30'luk bir kol
+   * pratikte 1-(0.7^18) ≈ %99.8'e çıkıyor. Ölçümde kolu yarıya
+   * indirmek sayı payını 23'ten yalnızca 26'ya taşıdı — kol hiç
+   * bağlamıyordu. Şimdi geçiş ilk göründüğünde bir kez atılıp
+   * mandallanıyor.
+   */
+  if (gecis === null) {
+    player.aiBlockChoice = null;
+  } else if (player.aiBlockChoice === null || player.aiBlockChoice === undefined) {
+    player.aiBlockChoice = Math.random() < (difficulty.blockSkill ?? 0.5);
+  }
+
+  if (
+    player.aiBlockChoice === true &&
+    player.onGround &&
+    player.aiJumpCooldown <= 0 &&
+    fileMesafesi < BLOCK_RANGE &&
+    gecis.y < NET.topY + BLOCK_BAND &&
+    gecis.t > 0.1 &&
+    gecis.t < 0.4
+  ) {
+    input.up = true;
+    input.action = true; // eller yukarı
+    player.aiJumpCooldown = 0.6;
+  }
+
   if (onOwnSide && !standDown) {
     /*
      * Sıçramanın ölçütü "top yüksek mi" değil, "sıçramak ERİŞİM
@@ -399,23 +461,85 @@ export function shouldYield(player, ball, yieldTo) {
 }
 
 /**
- * Görevli olmayan oyuncunun duracağı nokta.
+ * Görevli olmayan oyuncunun duracağı nokta — TAMAMLAYICI savunma.
  *
- * Sadece `homeX`'te beklemek yetmiyordu: top tam oraya düştüğünde
- * görevlinin önünü kesiyordu. Topun düşeceği noktaya çok yakınsa
- * kenara çekilir, değilse kendi bölgesini kapatır.
+ * Önceki sürüm yalnızca düşüş noktasından KAÇIYORDU: top uzaktaysa
+ * `homeX`'te bekliyor, yaklaşınca kenara açılıyordu. Sonuç, hiç
+ * kıpırdamayan bir takım arkadaşıydı — ölçümde rallinin ancak %18.9'unda
+ * hareket ediyor, topa ortalama 194px uzakta duruyordu.
+ *
+ * Şimdi sahayı görevliyle PAYLAŞIYOR: görevli fileye çıktıysa derinliği
+ * kapatıyor, derinde kaldıysa file dibine geçiyor. Voleybolda savunma
+ * böyle kurulur ve yan etkisi olarak partner blok bölgesine de girmiş
+ * oluyor.
  */
 function coverSpot(player, ball, homeX, yieldTo) {
-  const jitter = (Math.random() * 2 - 1) * 20;
-  if (!yieldTo || yieldTo === player) return homeX + jitter;
-
-  const landing = predictLanding(ball);
   const bounds = sideBounds(player.side, player.hitRadius * 0.5);
-  if (Math.abs(homeX - landing.x) > CLEAR_RADIUS) return homeX + jitter;
+  const jitter = (Math.random() * 2 - 1) * 14;
+  if (!yieldTo || yieldTo === player) {
+    return clamp(homeX + jitter, bounds.min, bounds.max);
+  }
 
-  // Düşüş noktasının ters tarafına açıl
-  const away = homeX <= landing.x ? -1 : 1;
-  return clamp(landing.x + away * CLEAR_RADIUS, bounds.min, bounds.max);
+  const toNet = player.side === 'home' ? 1 : -1;
+  const topRakipte = player.side === 'home' ? ball.x > NET.x : ball.x < NET.x;
+
+  /*
+   * Ritim voleybolun kendi ritmi:
+   *  - Top RAKİPTEYSE hücum geliyor demektir → file dibine geç, blok
+   *    bölgesini kur.
+   *  - Top BİZDEYSE görevliyi tamamla: o fileye çıktıysa derinliği
+   *    kapat, derinde kaldıysa file dibini kapat.
+   *
+   * İlk denemede yalnızca "görevliyi tamamla" kuralı vardı ve partner
+   * zamanının %17'sini file dibinde geçiriyordu (öncesinde %62); blok
+   * fırsatı doğmuyordu. Blok kararı file dibinde olmayı gerektiriyor.
+   */
+  const gorevliFilede = Math.abs(NET.x - yieldTo.x) < 160;
+  const hedef = topRakipte
+    ? NET.x - toNet * NET_COVER
+    : gorevliFilede
+      ? NET.x - toNet * DEEP_COVER
+      : NET.x - toNet * NET_COVER;
+
+  // Görevliyle aynı noktaya yığılma
+  const ayrik =
+    Math.abs(hedef - yieldTo.x) < CLEAR_RADIUS
+      ? hedef + (hedef >= yieldTo.x ? 1 : -1) * CLEAR_RADIUS
+      : hedef;
+
+  return clamp(ayrik + jitter, bounds.min, bounds.max);
+}
+
+/**
+ * Top file düzlemini ne zaman ve hangi yükseklikte geçecek?
+ *
+ * Blok kararı için gerekli: blok, top daha karşı sahadayken verilir,
+ * dolayısıyla "topun düşeceği yer" değil "fileyi geçeceği an" lazım.
+ *
+ * @param {object} ball
+ * @param {'home'|'away'} side Bloğu yapacak oyuncunun tarafı
+ * @returns {{y: number, t: number}|null} Geçmiyorsa null
+ */
+export function netCrossing(ball, side) {
+  // Top zaten bizim taraftaysa blok konusu değil
+  const bizdeMi = side === 'home' ? ball.x < NET.x : ball.x > NET.x;
+  if (bizdeMi) return null;
+
+  let { x, y, vx, vy } = ball;
+  const step = 1 / 120;
+
+  for (let i = 0; i < 180; i += 1) {
+    vy += PHYSICS.ballGravity * step;
+    x += vx * step;
+    y += vy * step;
+
+    if (y + ball.radius >= GROUND_Y) return null;
+
+    const geldi = side === 'home' ? x <= NET.x : x >= NET.x;
+    if (geldi) return { y, t: i * step };
+  }
+
+  return null;
 }
 
 /**

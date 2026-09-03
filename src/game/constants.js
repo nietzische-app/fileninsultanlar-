@@ -325,11 +325,12 @@ export const PALETTE = {
 export const DIFFICULTY = {
   // placement: vuruşu rakibin boş bıraktığı alana yerleştirme becerisi
   //            (0 = tamamen rastgele, 1 = her zaman en uzak boşluğa)
+  // blockSkill: file dibinde gelen hücuma blok için sıçrama olasılığı
   // diveSkill: yetişemeyeceği topa dalma olasılığı
   // serveSkill: servis gücü ve nişan tutarlılığı
-  kolay: { label: 'KOLAY', speed: 0.68, reaction: 0.4, error: 130, power: 0.85, placement: 0.12, diveSkill: 0.12, serveSkill: 0.25 },
-  normal: { label: 'NORMAL', speed: 0.82, reaction: 0.29, error: 98, power: 0.97, placement: 0.4, diveSkill: 0.48, serveSkill: 0.55 },
-  zor: { label: 'ZOR', speed: 0.94, reaction: 0.2, error: 82, power: 1.06, placement: 0.62, diveSkill: 0.6, serveSkill: 0.88 },
+  kolay: { label: 'KOLAY', speed: 0.68, reaction: 0.4, error: 130, power: 0.85, placement: 0.12, diveSkill: 0.12, serveSkill: 0.25, blockSkill: 0.25 },
+  normal: { label: 'NORMAL', speed: 0.82, reaction: 0.29, error: 98, power: 0.97, placement: 0.4, diveSkill: 0.48, serveSkill: 0.55, blockSkill: 0.5 },
+  zor: { label: 'ZOR', speed: 0.94, reaction: 0.2, error: 82, power: 1.06, placement: 0.62, diveSkill: 0.6, serveSkill: 0.88, blockSkill: 0.72 },
 };
 
 /**
@@ -361,6 +362,7 @@ export function scaleDifficulty(base, step = 0) {
     power: clampRange(base.power * (1 + 0.04 * t), 0.6, 1.22),
     placement: clampRange(base.placement + 0.14 * t, 0.02, 0.92),
     diveSkill: clampRange(base.diveSkill + 0.12 * t, 0, 0.9),
+    blockSkill: clampRange((base.blockSkill ?? 0.5) + 0.1 * t, 0.1, 0.92),
   };
 }
 

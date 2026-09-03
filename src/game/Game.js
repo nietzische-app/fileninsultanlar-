@@ -430,6 +430,7 @@ export default class Game {
       diveDir: 1,
       // AI durumu
       aiTimer: 0,
+      aiBlockChoice: null,
       aiTargetX: 0,
       aiJumpCooldown: 0,
       aiSpeedScale: 1,
