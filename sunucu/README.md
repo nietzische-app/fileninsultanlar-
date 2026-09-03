@@ -79,7 +79,12 @@ curl http://127.0.0.1:8787/saglik
 *(`docker compose` çalışmazsa eski sürüm demektir, `docker-compose`
 — arada tire ile — dene.)*
 
-**2) nginx'e röleyi tanıt:**
+**2) Röleyi 80/443'ü tutan şeye tanıt.** Hangi yolu izleyeceğin
+sunucunda **ne çalıştığına** bağlı — `sudo ss -ltnp | grep -E ':80|:443'`
+ile bak, sonra `docker ps` ile o portu tutan şey bir konteynerse
+hangisi olduğunu bul.
+
+**2a) nginx varsa** (host'a kurulu, `nginx -v` çalışıyorsa):
 
 ```bash
 sudo cp nginx-rele.conf.ornek /etc/nginx/sites-available/filenin-rele
@@ -91,10 +96,48 @@ sudo nginx -t && sudo systemctl reload nginx
 `nginx -t` hata verirse dur — muhtemelen sunucunda `sites-available`
 düzeni farklı (bazı kurulumlar `conf.d/` kullanır); o zaman dosyayı
 `/etc/nginx/conf.d/filenin-rele.conf` olarak koy, `sites-enabled`
-adımını atla.
+adımını atla. Ardından **3) TLS sertifikası al**'a geç.
 
-**3) TLS sertifikası al** (certbot kuruluysa; değilse önce
-`sudo apt install certbot python3-certbot-nginx`):
+**2b) Caddy varsa** (`docker ps` içinde `caddy` imajlı bir konteyner,
+80/443'ü o tutuyorsa) — nginx adımlarını ATLA, certbot da GEREKMEZ:
+Caddy kendi TLS sertifikasını otomatik alıyor.
+
+```bash
+# Caddy hangi Docker ağında, Caddyfile host'ta nerede — önce öğren
+docker inspect <caddy-konteyner-adı> --format '{{json .NetworkSettings.Networks}}'
+docker inspect <caddy-konteyner-adı> --format '{{json .Mounts}}'
+```
+
+`docker-compose.yml` içindeki `rele` servisi zaten `aegis_net` adlı
+bir ağa katılacak şekilde ayarlı — **eğer senin Caddy ağının adı
+farklıysa** dosyadaki iki `aegis_net` geçen satırı kendi ağ adınla
+değiştir. Sonra röleyi o ağa gerçekten bağla:
+
+```bash
+docker compose up -d --build
+```
+
+Caddyfile'a (host'taki gerçek dosya yoluna, örn. `/opt/aegis/Caddyfile`)
+şu bloğu ekle — `filenin-rele` konteyner adı, `8787` röle konteynerinin
+İÇ portu (host portu değil, çünkü artık aynı Docker ağındasınız):
+
+```
+178-104-2-249.nip.io {
+    reverse_proxy filenin-rele:8787
+}
+```
+
+Sonra Caddy'yi yeniden başlatmadan ayarı uygula:
+
+```bash
+docker exec <caddy-konteyner-adı> caddy reload --config /etc/caddy/Caddyfile
+```
+
+Caddy ilk istekte bu domain için otomatik Let's Encrypt sertifikası
+alır — certbot'a hiç gerek yok. Ardından doğrudan **4) Sınama**'ya geç.
+
+**3) TLS sertifikası al** (yalnız 2a — nginx yolunu izlediysen;
+certbot kuruluysa, değilse önce `sudo apt install certbot python3-certbot-nginx`):
 
 ```bash
 sudo certbot --nginx -d 178-104-2-249.nip.io

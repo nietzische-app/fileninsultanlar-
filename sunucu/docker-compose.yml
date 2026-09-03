@@ -1,16 +1,20 @@
 # Röle sunucusu — Hetzner (kendi sunucu) dağıtımı.
 #
-# Bu, mevcut bir nginx'in ÖNÜNDE değil ARKASINDA çalışacağı için port
-# 80/443'e hiç dokunmuyor. Röle yalnızca 127.0.0.1:8787'de dinliyor —
-# dışarıdan doğrudan erişilemez, TLS'i (wss://) mevcut nginx karşılıyor
-# ve isteği buraya yönlendiriyor. `sunucu/nginx-rele.conf.ornek` o
-# yönlendirmenin şablonu.
+# Bu sunucuda 80/443'ü nginx değil, kendi Caddy konteynerin (aegis_net
+# ağındaki `aegis-caddy`) kullanıyor. Röle port açmıyor — Caddy'nin
+# ulaşabilmesi için aynı Docker ağına (`aegis_net`) katılıyor ve orada
+# konteyner adıyla (`filenin-rele:8787`) görünüyor. `127.0.0.1:8787`
+# ayrıca host'ta da açık duruyor — sunucunun kendi üstünden hızlı
+# `curl` ile sağlık kontrolü yapabilmek için, dışarıya değil.
 #
-# Sunucuda 8787 numaralı portun başka bir şey tarafından kullanılmadığını
-# önceden kontrol et: `ss -ltnp | grep 8787` boş dönmeli.
+# `aegis_net` bu dosyada OLUŞTURULMUYOR (external: true) — zaten var
+# olan ağa katılıyoruz. Ağ yoksa (örn. Caddy henüz kurulmadıysa)
+# `docker compose up` "network aegis_net declared as external, but
+# could not be found" diye durur; o zaman önce Caddy'nin ayakta
+# olduğundan emin ol.
 #
 # Kullanım (sunucu/ dizininden):
-#   docker compose up -d --build      # başlat
+#   docker compose up -d --build      # başlat / ağ eklemesini uygula
 #   docker compose logs -f            # günlükleri izle
 #   docker compose down               # durdur
 #   docker compose up -d --build      # güncelleme sonrası yeniden başlat
@@ -26,3 +30,9 @@ services:
       # Yalnızca localhost'a bağlı — "0.0.0.0:8787" YAZMA, o zaman
       # röle sunucunun herkese açık IP'sinden TLS'siz erişilebilir olur.
       - "127.0.0.1:8787:8787"
+    networks:
+      - aegis_net
+
+networks:
+  aegis_net:
+    external: true
