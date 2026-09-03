@@ -43,26 +43,24 @@ bağlantının oyuncuyu yabancı bir sunucuya bağlaması istenmiyor.
 Kendi sunucunda mevcut bir **nginx zaten 80/443'ü kullanıyorsa** bu
 yol en azdan-çoğa gider: röle dışarıya hiç açılmaz, yalnızca
 `127.0.0.1:8787`'de dinler; mevcut nginx onun önünde durup TLS'i
-(`wss://`) karşılar. Domain'in yoksa ücretsiz **nip.io** ile de olur —
-`SUNUCU_IP.nip.io` gibi bir adres, DNS kaydı hiç uğraşmadan otomatik
-o IP'ye çözülür (tireyle: `5-9-120-3.nip.io` → `5.9.120.3`).
+(`wss://`) karşılar. Domain yerine ücretsiz **nip.io** kullanılıyor —
+DNS kaydı gerektirmeden IP'ye çözülen bir adres.
+
+Aşağıdaki adımlar **senin gerçek sunucunun IP'sine göre** yazıldı:
+
+```
+Sunucu IP'si:  178.104.2.249
+Röle adresi:   178-104-2-249.nip.io
+```
+
+(Bu ikisi eşleşiyor — nip.io, adın içindeki tireli sayıları noktaya
+çevirip o IP'ye yönlendiriyor. Sunucunun IP'si değişirse — örn. yeni
+bir Hetzner sunucusuna taşınırsan — bu adres de değişir, aşağıdaki
+her komutta yeniden hesaplaman gerekir.)
 
 Tüm komutlar **kendi sunucunda**, SSH ile bağlanıp çalıştırılır.
 
-**1) Sunucunun herkese açık IP'sini öğren ve nip.io adresini oluştur:**
-
-```bash
-curl -4 icanhazip.com
-```
-
-Çıktı `5.9.120.3` gibiyse, adresin: **noktaları tireyle değiştir**,
-sonuna `.nip.io` ekle → `5-9-120-3.nip.io`.
-
-⚠️ Aşağıdaki komutlarda örnek olarak hep `5-9-120-3.nip.io` yazıyor —
-bu **benim uydurduğum bir örnek**, senin sunucunun gerçek IP'si değil.
-Kopyala-yapıştır yapmadan önce bunu KENDİ hesapladığın adresle değiştir.
-
-**2) Depoyu sunucuya al (yoksa klonla, varsa güncelle) ve röleyi başlat:**
+**1) Depoyu sunucuya al (yoksa klonla, varsa güncelle) ve röleyi başlat:**
 
 ```bash
 git clone https://github.com/nietzische-app/fileninsultanlar-.git
@@ -81,12 +79,11 @@ curl http://127.0.0.1:8787/saglik
 *(`docker compose` çalışmazsa eski sürüm demektir, `docker-compose`
 — arada tire ile — dene.)*
 
-**3) nginx'e röleyi tanıt.** `nginx-rele.conf.ornek` dosyasını kopyala,
-`RELE_DOMAIN` yerine 1. adımdaki adresi yaz:
+**2) nginx'e röleyi tanıt:**
 
 ```bash
 sudo cp nginx-rele.conf.ornek /etc/nginx/sites-available/filenin-rele
-sudo sed -i 's/RELE_DOMAIN/5-9-120-3.nip.io/' /etc/nginx/sites-available/filenin-rele
+sudo sed -i 's/RELE_DOMAIN/178-104-2-249.nip.io/' /etc/nginx/sites-available/filenin-rele
 sudo ln -s /etc/nginx/sites-available/filenin-rele /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 ```
@@ -96,30 +93,30 @@ düzeni farklı (bazı kurulumlar `conf.d/` kullanır); o zaman dosyayı
 `/etc/nginx/conf.d/filenin-rele.conf` olarak koy, `sites-enabled`
 adımını atla.
 
-**4) TLS sertifikası al** (certbot kuruluysa; değilse önce
+**3) TLS sertifikası al** (certbot kuruluysa; değilse önce
 `sudo apt install certbot python3-certbot-nginx`):
 
 ```bash
-sudo certbot --nginx -d 5-9-120-3.nip.io
+sudo certbot --nginx -d 178-104-2-249.nip.io
 ```
 
 Certbot 443 bloğunu ve http→https yönlendirmesini otomatik ekler.
 E-posta/onay soracak, mail adresini gir ve kabul et.
 
-**5) Sınama:**
+**4) Sınama:**
 
 ```bash
-curl https://5-9-120-3.nip.io/saglik
+curl https://178-104-2-249.nip.io/saglik
 ```
 
 Aynı `{"durum":"ayakta",...}` cevabını, bu sefer `https://` üstünden
 görmelisin.
 
-**6) Oyunu bu adrese bağla** — Vercel'de:
+**5) Oyunu bu adrese bağla** — Vercel'de:
 
 - Projene gir → **Settings** → **Environment Variables**.
-- **Key:** `VITE_RELE_URL`, **Value:** `wss://5-9-120-3.nip.io`
-  (kendi adresin), **Environment:** Production. Kaydet.
+- **Key:** `VITE_RELE_URL`, **Value:** `wss://178-104-2-249.nip.io`,
+  **Environment:** Production. Kaydet.
 - **Deployments** sekmesinden en üstteki yayının **⋯** → **Redeploy**.
   Değişken ancak yeni bir yayında etki eder.
 
