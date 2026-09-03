@@ -274,6 +274,54 @@ describe('anlık görüntü', () => {
     expect(misafir.time).toBeGreaterThan(0);
   });
 
+  it('zorlanan girdi gönderimi değişmemiş olsa da gider', () => {
+    const { misafir, misafirPaketleri } = masaKur();
+
+    misafir.setInput('right', true);
+    misafir.agGirdiGonder();
+    const ilk = misafirPaketleri.length;
+
+    // Değişmediği için normal çağrı yollamaz
+    misafir.agGirdiGonder();
+    expect(misafirPaketleri.length).toBe(ilk);
+
+    /*
+     * Sekme arka plana geçince tarayıcı kare döngüsünü durduruyor;
+     * basılı tuşu temizlesek bile onu yollayacak kare hiç gelmiyordu ve
+     * ev sahibinde tuş sonsuza kadar basılı kalıyordu. Zorlama bunun
+     * için var.
+     */
+    misafir.clearInput();
+    misafir.agGirdiGonder(true);
+    expect(misafirPaketleri.length).toBe(ilk + 1);
+    expect(misafirPaketleri.at(-1).k.right).toBe(false);
+  });
+
+  it('paket gelmeyince sessizlik büyür, gelince sıfırlanır', () => {
+    const { ev, misafir } = masaKur();
+    ev.update(PHYSICS.step);
+
+    // Henüz paket gelmedi — ölçülecek bir sessizlik de yok
+    expect(misafir.agSessizlik()).toBe(0);
+
+    misafir.agPaketAl(paketle(ev));
+    expect(misafir.agSessizlik()).toBe(0);
+
+    // Paketsiz 2 saniye: maç ekranı bunu "rakip bekleniyor" diye gösteriyor
+    misafirKare(misafir, 120);
+    expect(misafir.agSessizlik()).toBeGreaterThan(1.5);
+
+    ev.update(PHYSICS.step);
+    misafir.agPaketAl(paketle(ev));
+    expect(misafir.agSessizlik()).toBe(0);
+  });
+
+  it('ev sahibinde sessizlik ölçülmez', () => {
+    const { ev } = masaKur();
+    // Ölçüt yalnız misafir için anlamlı; ev sahibi paket beklemiyor
+    expect(ev.agSessizlik()).toBe(0);
+  });
+
   it('paket makul boyutta kalır', () => {
     const { ev } = masaKur();
     for (let i = 0; i < 120; i += 1) ev.update(PHYSICS.step);

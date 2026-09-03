@@ -265,6 +265,8 @@ export default class Game {
     this.agSonGirdi = '';
     /** Uygulanan son paketin adım numarası; -1 = henüz paket gelmedi. */
     this.agSonAdim = -1;
+    /** Son durum paketinin geldiği an (motor zamanı); null = hiç gelmedi. */
+    this.agSonPaketAn = null;
     /**
      * Misafir tarafın konum ara değerlemesi.
      *
@@ -744,17 +746,47 @@ export default class Game {
       return;
     }
 
-    /*
-     * Değişmediyse yollama. Tuşlar çoğu karede aynı; her karede paket
-     * atmak röleyi ve pili boşuna yorar. Basış sayacı da imzaya dahil,
-     * çünkü bas–bırak aynı kareye sıkışsa tuş durumu değişmemiş
-     * görünür ama vuruş yapılmıştır.
-     */
+    this.agGirdiGonder();
+  }
+
+  /**
+   * Misafirin tuş durumunu ev sahibine yollar.
+   *
+   * Normalde yalnız DEĞİŞTİĞİNDE yollanır: tuşlar çoğu karede aynı, her
+   * karede paket atmak röleyi ve pili boşuna yorar. Basış sayacı da
+   * imzaya dahil, çünkü bas–bırak aynı kareye sıkışsa tuş durumu
+   * değişmemiş görünür ama vuruş yapılmıştır.
+   *
+   * `zorla`, kare döngüsünün duracağı anlar için: sekme arka plana
+   * geçince tarayıcı `requestAnimationFrame`i durduruyor, yani basılı
+   * tuşu temizlesek bile onu YOLLAYACAK kare hiç gelmiyordu ve ev
+   * sahibinde tuş sonsuza kadar basılı kalıyordu — oyuncu geri
+   * döndüğünde kendini duvara koşarken buluyordu. Soket arka planda da
+   * çalıştığı için doğrudan yollamak bunu çözüyor.
+   *
+   * @param {boolean} [zorla] Değişmemiş olsa da yolla
+   */
+  agGirdiGonder(zorla = false) {
+    if (this.agRol !== 'misafir' || !this.agGonder) return;
+
     const tuslar = this.inputs.p1;
     const imza = `${tuslar.left}${tuslar.right}${tuslar.up}${tuslar.down}${tuslar.action}${tuslar.dive}|${this.actionPresses.p1}`;
-    if (imza === this.agSonGirdi) return;
+    if (!zorla && imza === this.agSonGirdi) return;
     this.agSonGirdi = imza;
     this.agGonder(girdiPaketle(tuslar, this.actionPresses.p1));
+  }
+
+  /**
+   * Misafirde son durum paketinden bu yana geçen süre (sn).
+   *
+   * Ev sahibinin sekmesi arka plana geçerse ya da bağlantısı takılırsa
+   * paketler durur ama soket açık kalır: misafirin ekranı donar ve
+   * hiçbir açıklama görünmez. Maç ekranı bu değere bakıp "rakip
+   * bekleniyor" diyor.
+   */
+  agSessizlik() {
+    if (this.agRol !== 'misafir' || this.agSonPaketAn === null) return 0;
+    return Math.max(0, this.time - this.agSonPaketAn);
   }
 
   /**
@@ -767,6 +799,7 @@ export default class Game {
 
     if (paket.t === 'durum' && this.agRol === 'misafir') {
       if (!uygula(this, paket)) return false;
+      this.agSonPaketAn = this.time;
       (paket.o ?? []).forEach((olay) => this.agOlayUygula(olay));
       return true;
     }

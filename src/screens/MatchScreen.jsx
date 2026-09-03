@@ -13,6 +13,15 @@ import useViewport from '../hooks/useViewport.js';
 import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
 
+/**
+ * Misafirde bu kadar saniye paket gelmezse "rakip bekleniyor" denir.
+ *
+ * 20 Hz akışta normal aralık 0.05 sn; 1.5 sn, ağdaki tekil bir
+ * takılmayı ekrana yansıtmayacak kadar uzun, donmayı açıklamayacak
+ * kadar kısa.
+ */
+const AG_SESSIZLIK_SINIRI = 1.5;
+
 const INITIAL_HUD = {
   score: { home: 0, away: 0 },
   sets: { home: 0, away: 0 },
@@ -161,15 +170,31 @@ export default function MatchScreen({
     };
   }, []);
 
+  /**
+   * Çevrimiçi maçta simülasyon DURDURULAMAZ.
+   *
+   * Duraklatma tek kişilik oyun için yazılmıştı ve çevrimiçide üç ayrı
+   * şekilde bozuluyordu:
+   *   • Ev sahibi duraklatınca motoru durduruyordu → paket akışı kesilip
+   *     misafirin ekranı hiçbir açıklama olmadan donuyordu.
+   *   • Misafir duraklatınca kendi döngüsü duruyordu ama maç ev sahibinde
+   *     sürüyordu → "DURAKLATILDI" yazarken oyuncu sayı kaybediyordu.
+   *   • Durmuş döngü tuş da yollayamıyordu (aşağıdaki takılı tuş sorunu).
+   *
+   * Katman yine açılıyor — ayarlara ve çıkışa oradan ulaşılıyor — ama
+   * motor koşmaya devam ediyor ve katman bunu açıkça söylüyor.
+   */
+  const cevrimici = Boolean(config.agRol);
+
   const pauseGame = useCallback(() => {
     const game = gameRef.current;
     if (!game || game.finished) return;
-    if (game.running) {
+    if (!cevrimici && game.running) {
       game.stop();
       Sfx.pause();
     }
     setPaused(true);
-  }, []);
+  }, [cevrimici]);
 
   const resumeGame = useCallback(() => {
     const game = gameRef.current;
@@ -195,14 +220,25 @@ export default function MatchScreen({
   // --- Sekme arka plana geçince duraklat ---
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.hidden && gameRef.current && !gameRef.current.finished) {
-        pauseGame();
+      const game = gameRef.current;
+      if (!document.hidden || !game || game.finished) return;
+      if (cevrimici) {
+        /*
+         * Maç karşı tarafta sürüyor, durduramayız. Ama basılı kalan tuş
+         * ev sahibinde takılı kalmasın: temizleyip DOĞRUDAN yolluyoruz,
+         * çünkü arka plandaki sekmede kare döngüsü çalışmıyor ve normal
+         * akışla yollanacak kare hiç gelmiyor.
+         */
+        game.clearInput();
+        game.agGirdiGonder(true);
+        return;
       }
+      pauseGame();
     };
 
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [pauseGame]);
+  }, [pauseGame, cevrimici]);
 
   /*
    * Klavye odağı kaybolunca duraklat.
@@ -220,12 +256,39 @@ export default function MatchScreen({
   useEffect(() => {
     const handleBlur = () => {
       const game = gameRef.current;
-      if (game && !game.finished && game.running) pauseGame();
+      if (!game || game.finished || !game.running) return;
+      if (cevrimici) {
+        // Çevrimiçide maç durmaz; yalnız basılı kalan tuşu bırak
+        game.clearInput();
+        game.agGirdiGonder(true);
+        return;
+      }
+      pauseGame();
     };
 
     window.addEventListener('blur', handleBlur);
     return () => window.removeEventListener('blur', handleBlur);
-  }, [pauseGame]);
+  }, [pauseGame, cevrimici]);
+
+  /*
+   * Paket akışı bekçisi (yalnız misafir).
+   *
+   * Ev sahibinin sekmesi arka plana geçerse ya da ağı takılırsa soket
+   * açık kalır ama paket gelmez: misafirin ekranı donar ve hiçbir
+   * açıklama görünmez — "oyun çöktü" gibi hissettirir. Kopmuş bağlantı
+   * değil bu, bekleme; ayrı bir katman ve kendi kendine kaybolması
+   * gerekiyor.
+   */
+  const [agBekliyor, setAgBekliyor] = useState(false);
+  useEffect(() => {
+    if (config.agRol !== 'misafir') return undefined;
+    const sayac = setInterval(() => {
+      const game = gameRef.current;
+      if (!game) return;
+      setAgBekliyor(game.agSessizlik() > AG_SESSIZLIK_SINIRI);
+    }, 400);
+    return () => clearInterval(sayac);
+  }, [config.agRol]);
 
   /*
    * Çoklu dokunuşun sahayı yakınlaştırmasını engelle.
@@ -530,12 +593,24 @@ export default function MatchScreen({
             className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-black/80 px-3"
             role="dialog"
             aria-modal="true"
-            aria-label="Oyun duraklatıldı"
+            aria-label={cevrimici ? 'Maç menüsü' : 'Oyun duraklatıldı'}
           >
-            <p className="text-lg text-retro-accent">DURAKLATILDI</p>
+            {/*
+              Çevrimiçide "DURAKLATILDI" yazmak yalan olurdu: maç karşı
+              tarafta sürüyor ve bu sırada sayı kaybediliyor. Katman
+              ayarlara/çıkışa erişim için duruyor, adı da onu söylüyor.
+            */}
+            <p className="text-lg text-retro-accent">
+              {cevrimici ? 'MAÇ MENÜSÜ' : 'DURAKLATILDI'}
+            </p>
+            {cevrimici && (
+              <p className="max-w-xs text-center text-[7px] leading-relaxed text-turkiye-red sm:text-[8px]">
+                ÇEVRİMİÇİ MAÇ DURMAZ — RAKİBİN OYNAMAYA DEVAM EDİYOR
+              </p>
+            )}
             <div className="flex flex-wrap justify-center gap-3">
               <button type="button" className="retro-button" onClick={resumeGame}>
-                DEVAM ET
+                {cevrimici ? 'SAHAYA DÖN' : 'DEVAM ET'}
               </button>
               <button
                 type="button"
@@ -623,6 +698,22 @@ export default function MatchScreen({
                 />
               </div>
             </div>
+          </div>
+        )}
+
+        {/*
+          Rakip beklenirken: kopma DEĞİL, akışın durması. Ekranı
+          kaplamıyor — maç geri geldiğinde kendiliğinden kaybolsun ve
+          oyuncu sahayı görmeye devam etsin diye üstte ince bir şerit.
+        */}
+        {agBekliyor && !agKopuk && (
+          <div
+            className="pointer-events-none absolute inset-x-0 top-1/2 z-20 -translate-y-1/2 text-center"
+            role="status"
+          >
+            <p className="mx-auto inline-block border-4 border-white/25 bg-black/85 px-4 py-2 text-[9px] text-retro-accent">
+              RAKİP BEKLENİYOR…
+            </p>
           </div>
         )}
 

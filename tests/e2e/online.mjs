@@ -200,6 +200,65 @@ const evYuvalar = await ev.page.evaluate(() => ({
 }));
 kontrol('yuvalar karışmıyor', evYuvalar.p1 === false, `p1.left=${evYuvalar.p1}`);
 
+/*
+ * Ev sahibi duraklatınca maç DURMAMALI.
+ *
+ * Duraklatma tek kişilik oyun için yazılmıştı: motoru durduruyordu.
+ * Çevrimiçide bu, paket akışını kesip misafirin ekranını hiçbir
+ * açıklama olmadan donduruyordu.
+ */
+const duraklamaOncesi = await durum(ev.page);
+await ev.page.keyboard.press('Escape');
+await ev.page.waitForTimeout(900);
+const duraklamaSonrasi = await durum(ev.page);
+const evKatman = await ev.page.evaluate(() => ({
+  kosuyor: window.__game.running,
+  duraklatmaGorunur: Boolean(
+    [...document.querySelectorAll('p')].find((n) => /DURAKLATILDI|MAÇ MENÜSÜ/.test(n.textContent)),
+  ),
+}));
+
+/*
+ * Ölçütün `adim` OLMAMASI önemli: ilk yazdığım hâlde yalnız adıma
+ * bakıyordum ve düzeltme geri alındığında da geçiyordu — çünkü test
+ * duraklatma katmanını açıyor ama motorun durup durmadığını
+ * sormuyordu. `running` doğrudan o soruyu soruyor.
+ */
+kontrol('ev sahibinde duraklatma katmanı açıldı', evKatman.duraklatmaGorunur);
+kontrol(
+  'ev sahibi duraklatsa da motor koşmaya devam ediyor',
+  evKatman.kosuyor === true && duraklamaSonrasi.adim > duraklamaOncesi.adim,
+  `running=${evKatman.kosuyor} · adım ${duraklamaOncesi.adim} → ${duraklamaSonrasi.adim}`,
+);
+kontrol(
+  'çevrimiçide duraklatma katmanı bunu söylüyor',
+  await ev.page.getByText('ÇEVRİMİÇİ MAÇ DURMAZ', { exact: false }).isVisible().catch(() => false),
+);
+await ev.page.keyboard.press('Escape');
+await ev.page.waitForTimeout(400);
+
+/*
+ * Paket akışı kesilirse misafir bunu ÖĞRENMELİ.
+ *
+ * Ev sahibinin sekmesi arka plana geçtiğinde soket açık kalır ama
+ * tarayıcı kare döngüsünü durdurur; misafirin ekranı donar. Kopmuş
+ * bağlantı değil bu — ayrı bir uyarı gerekiyor.
+ */
+await ev.page.evaluate(() => window.__game.stop());
+await misafir.page.waitForTimeout(2600);
+kontrol(
+  'akış kesilince misafir "rakip bekleniyor" görüyor',
+  await misafir.page.getByText('RAKİP BEKLENİYOR').isVisible().catch(() => false),
+);
+
+// Akış geri gelince uyarı kendiliğinden kaybolmalı
+await ev.page.evaluate(() => window.__game.start());
+await misafir.page.waitForTimeout(1200);
+kontrol(
+  'akış dönünce uyarı kayboluyor',
+  !(await misafir.page.getByText('RAKİP BEKLENİYOR').isVisible().catch(() => false)),
+);
+
 // --- Ayrılınca karşı taraf haber alıyor mu ---
 await misafir.page.close();
 await ev.page.waitForTimeout(1200);
