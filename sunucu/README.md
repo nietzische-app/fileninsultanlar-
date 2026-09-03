@@ -40,20 +40,24 @@ bağlantının oyuncuyu yabancı bir sunucuya bağlaması istenmiyor.
 
 ## Dağıtım — Hetzner (kendi sunucun)
 
-Kendi sunucunda mevcut bir **nginx zaten 80/443'ü kullanıyorsa** bu
-yol en azdan-çoğa gider: röle dışarıya hiç açılmaz, yalnızca
-`127.0.0.1:8787`'de dinler; mevcut nginx onun önünde durup TLS'i
-(`wss://`) karşılar. Domain yerine ücretsiz **nip.io** kullanılıyor —
-DNS kaydı gerektirmeden IP'ye çözülen bir adres.
+Kendi sunucunda mevcut bir ters vekil (nginx veya Caddy) zaten
+80/443'ü kullanıyorsa bu yol en azdan-çoğa gider: röle dışarıya hiç
+açılmaz, yalnızca `127.0.0.1:8787`'de dinler; mevcut ters vekil onun
+önünde durup TLS'i (`wss://`) karşılar. Domain yerine ücretsiz
+**nip.io** ya da **sslip.io** kullanılabilir — ikisi de aynı işi
+görüyor: DNS kaydı gerektirmeden adın içindeki IP'ye çözülüyorlar.
 
-Aşağıdaki adımlar **senin gerçek sunucunun IP'sine göre** yazıldı:
+Aşağıdaki adımlar **senin gerçek sunucunun IP'sine göre** yazıldı.
+Bu sunucuda Caddy zaten başka bir servis için `panel-<ip>.sslip.io`
+kalıbını kullandığından (bkz. Caddyfile), röle için de sslip.io ve
+aynı `<isim>-<ip>` kalıbı seçildi:
 
 ```
 Sunucu IP'si:  178.104.2.249
-Röle adresi:   178-104-2-249.nip.io
+Röle adresi:   rele-178-104-2-249.sslip.io
 ```
 
-(Bu ikisi eşleşiyor — nip.io, adın içindeki tireli sayıları noktaya
+(Bu ikisi eşleşiyor — sslip.io, adın içindeki tireli sayıları noktaya
 çevirip o IP'ye yönlendiriyor. Sunucunun IP'si değişirse — örn. yeni
 bir Hetzner sunucusuna taşınırsan — bu adres de değişir, aşağıdaki
 her komutta yeniden hesaplaman gerekir.)
@@ -88,7 +92,7 @@ hangisi olduğunu bul.
 
 ```bash
 sudo cp nginx-rele.conf.ornek /etc/nginx/sites-available/filenin-rele
-sudo sed -i 's/RELE_DOMAIN/178-104-2-249.nip.io/' /etc/nginx/sites-available/filenin-rele
+sudo sed -i 's/RELE_DOMAIN/rele-178-104-2-249.sslip.io/' /etc/nginx/sites-available/filenin-rele
 sudo ln -s /etc/nginx/sites-available/filenin-rele /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 ```
@@ -122,7 +126,7 @@ Caddyfile'a (host'taki gerçek dosya yoluna, örn. `/opt/aegis/Caddyfile`)
 İÇ portu (host portu değil, çünkü artık aynı Docker ağındasınız):
 
 ```
-178-104-2-249.nip.io {
+rele-178-104-2-249.sslip.io {
     reverse_proxy filenin-rele:8787
 }
 ```
@@ -140,7 +144,7 @@ alır — certbot'a hiç gerek yok. Ardından doğrudan **4) Sınama**'ya geç.
 certbot kuruluysa, değilse önce `sudo apt install certbot python3-certbot-nginx`):
 
 ```bash
-sudo certbot --nginx -d 178-104-2-249.nip.io
+sudo certbot --nginx -d rele-178-104-2-249.sslip.io
 ```
 
 Certbot 443 bloğunu ve http→https yönlendirmesini otomatik ekler.
@@ -149,7 +153,7 @@ E-posta/onay soracak, mail adresini gir ve kabul et.
 **4) Sınama:**
 
 ```bash
-curl https://178-104-2-249.nip.io/saglik
+curl https://rele-178-104-2-249.sslip.io/saglik
 ```
 
 Aynı `{"durum":"ayakta",...}` cevabını, bu sefer `https://` üstünden
@@ -158,7 +162,7 @@ görmelisin.
 **5) Oyunu bu adrese bağla** — Vercel'de:
 
 - Projene gir → **Settings** → **Environment Variables**.
-- **Key:** `VITE_RELE_URL`, **Value:** `wss://178-104-2-249.nip.io`,
+- **Key:** `VITE_RELE_URL`, **Value:** `wss://rele-178-104-2-249.sslip.io`,
   **Environment:** Production. Kaydet.
 - **Deployments** sekmesinden en üstteki yayının **⋯** → **Redeploy**.
   Değişken ancak yeni bir yayında etki eder.
@@ -175,13 +179,13 @@ git pull
 docker compose up -d --build
 ```
 
-### nip.io yerine gerçek domain
+### nip.io/sslip.io yerine gerçek domain
 
-İleride bir domain alırsan tek fark 1. ve 3-4. adımlar: nip.io yerine
-`rele.senin-domainin.com` gibi bir A kaydını sunucunun IP'sine
-yönlendirirsin, gerisi (docker compose, nginx şablonu, certbot) aynen
-çalışır. nip.io üçüncü taraf bir servis — uzun vadede kendi domain'in
-altında bir alt alan adı daha sağlam bir seçim.
+İleride bir domain alırsan tek fark 1. ve 3-4. adımlar: nip.io/sslip.io
+yerine `rele.senin-domainin.com` gibi bir A kaydını sunucunun IP'sine
+yönlendirirsin, gerisi (docker compose, nginx/Caddy şablonu, certbot)
+aynen çalışır. nip.io/sslip.io üçüncü taraf servisler — uzun vadede
+kendi domain'in altında bir alt alan adı daha sağlam bir seçim.
 
 ### Neden Docker dışarıya port açmıyor
 
@@ -189,7 +193,8 @@ altında bir alt alan adı daha sağlam bir seçim.
 değil. Röle TLS konuşmuyor; port doğrudan dışarıya açık olsaydı
 tarayıcı zaten `wss://` isteyip `ws://`ya bağlanamazdı ama biri
 `ws://sunucu-ip:8787` ile şifresiz de bağlanabilirdi. Tüm trafiğin
-tek girişi nginx'in TLS uçlaması olsun diye kapalı tutuluyor.
+tek girişi ters vekilin (nginx/Caddy) TLS uçlaması olsun diye kapalı
+tutuluyor.
 
 ## Dağıtım — Fly.io
 
