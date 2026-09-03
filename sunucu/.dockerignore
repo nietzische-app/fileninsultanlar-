@@ -8,5 +8,7 @@ node_modules
 # Belgeler ve dağıtım tanımları imajın içinde yer kaplamasın
 README.md
 fly.toml
+docker-compose.yml
+nginx-rele.conf.ornek
 Dockerfile
 .dockerignore

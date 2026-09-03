@@ -1,0 +1,39 @@
+# nginx sunucu bloğu ŞABLONU — röleyi mevcut nginx'in arkasına ekler.
+#
+# Bu dosyanın adı .ornek (örnek) ile bitiyor, nginx onu OKUMAZ. Yapman
+# gereken: RELE_DOMAIN yerine kendi adresini yazıp
+# /etc/nginx/sites-available/ altına GERÇEK bir dosya adıyla kopyalamak.
+# Adım adım açıklama sunucu/README.md → "Dağıtım — Hetzner" bölümünde.
+#
+# WebSocket için önemli iki satır `Upgrade` ve `Connection "upgrade"` —
+# onlar olmadan nginx bağlantıyı normal bir HTTP isteği sanır ve maç
+# hiç kurulmaz (tarayıcı konsolunda "WebSocket bağlantısı kapandı" hatası
+# görülür).
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name RELE_DOMAIN;
+
+    location / {
+        proxy_pass http://127.0.0.1:8787;
+
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Maç bağlantısı dakikalarca açık kalır; nginx'in varsayılan
+        # 60 saniyelik zaman aşımı devam eden bir maçı keser.
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+}
+
+# Bu bloktan SONRA `certbot --nginx -d RELE_DOMAIN` çalıştırınca certbot
+# buraya otomatik olarak bir `listen 443 ssl` bloğu ekleyip 80'i 443'e
+# yönlendirecek. Elle 443/ssl_certificate eklemene gerek yok.

@@ -38,8 +38,122 @@ Geliştirmede `?rele=ws://localhost:8787` sorgu parametresiyle de
 ezilebilir. Üretim yapısında bu parametre okunmaz: paylaşılan bir
 bağlantının oyuncuyu yabancı bir sunucuya bağlaması istenmiyor.
 
+## Dağıtım — Hetzner (kendi sunucun)
+
+Kendi sunucunda mevcut bir **nginx zaten 80/443'ü kullanıyorsa** bu
+yol en azdan-çoğa gider: röle dışarıya hiç açılmaz, yalnızca
+`127.0.0.1:8787`'de dinler; mevcut nginx onun önünde durup TLS'i
+(`wss://`) karşılar. Domain'in yoksa ücretsiz **nip.io** ile de olur —
+`SUNUCU_IP.nip.io` gibi bir adres, DNS kaydı hiç uğraşmadan otomatik
+o IP'ye çözülür (tireyle: `5-9-120-3.nip.io` → `5.9.120.3`).
+
+Tüm komutlar **kendi sunucunda**, SSH ile bağlanıp çalıştırılır.
+
+**1) Sunucunun herkese açık IP'sini öğren ve nip.io adresini oluştur:**
+
+```bash
+curl -4 icanhazip.com
+```
+
+Çıktı `5.9.120.3` gibiyse, adresin: **noktaları tireyle değiştir**,
+sonuna `.nip.io` ekle → `5-9-120-3.nip.io`.
+
+⚠️ Aşağıdaki komutlarda örnek olarak hep `5-9-120-3.nip.io` yazıyor —
+bu **benim uydurduğum bir örnek**, senin sunucunun gerçek IP'si değil.
+Kopyala-yapıştır yapmadan önce bunu KENDİ hesapladığın adresle değiştir.
+
+**2) Depoyu sunucuya al (yoksa klonla, varsa güncelle) ve röleyi başlat:**
+
+```bash
+git clone https://github.com/nietzische-app/fileninsultanlar-.git
+cd fileninsultanlar-/sunucu
+
+# 8787 boş mu, önce kontrol et — dolu ise başka bir şey o portu kullanıyor
+ss -ltnp | grep 8787
+
+docker compose up -d --build
+curl http://127.0.0.1:8787/saglik
+```
+
+Şunu görmelisin: `{"durum":"ayakta","oda":0,"istemci":0,...}`. Görmüyorsan
+`docker compose logs` ile hataya bak.
+
+*(`docker compose` çalışmazsa eski sürüm demektir, `docker-compose`
+— arada tire ile — dene.)*
+
+**3) nginx'e röleyi tanıt.** `nginx-rele.conf.ornek` dosyasını kopyala,
+`RELE_DOMAIN` yerine 1. adımdaki adresi yaz:
+
+```bash
+sudo cp nginx-rele.conf.ornek /etc/nginx/sites-available/filenin-rele
+sudo sed -i 's/RELE_DOMAIN/5-9-120-3.nip.io/' /etc/nginx/sites-available/filenin-rele
+sudo ln -s /etc/nginx/sites-available/filenin-rele /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+`nginx -t` hata verirse dur — muhtemelen sunucunda `sites-available`
+düzeni farklı (bazı kurulumlar `conf.d/` kullanır); o zaman dosyayı
+`/etc/nginx/conf.d/filenin-rele.conf` olarak koy, `sites-enabled`
+adımını atla.
+
+**4) TLS sertifikası al** (certbot kuruluysa; değilse önce
+`sudo apt install certbot python3-certbot-nginx`):
+
+```bash
+sudo certbot --nginx -d 5-9-120-3.nip.io
+```
+
+Certbot 443 bloğunu ve http→https yönlendirmesini otomatik ekler.
+E-posta/onay soracak, mail adresini gir ve kabul et.
+
+**5) Sınama:**
+
+```bash
+curl https://5-9-120-3.nip.io/saglik
+```
+
+Aynı `{"durum":"ayakta",...}` cevabını, bu sefer `https://` üstünden
+görmelisin.
+
+**6) Oyunu bu adrese bağla** — Vercel'de:
+
+- Projene gir → **Settings** → **Environment Variables**.
+- **Key:** `VITE_RELE_URL`, **Value:** `wss://5-9-120-3.nip.io`
+  (kendi adresin), **Environment:** Production. Kaydet.
+- **Deployments** sekmesinden en üstteki yayının **⋯** → **Redeploy**.
+  Değişken ancak yeni bir yayında etki eder.
+
+Yeniden yayın bitince ana menüde **ÇEVRİMİÇİ** düğmesi görünür.
+
+### Güncelleme
+
+Kod değiştiğinde sunucuda:
+
+```bash
+cd fileninsultanlar-/sunucu
+git pull
+docker compose up -d --build
+```
+
+### nip.io yerine gerçek domain
+
+İleride bir domain alırsan tek fark 1. ve 3-4. adımlar: nip.io yerine
+`rele.senin-domainin.com` gibi bir A kaydını sunucunun IP'sine
+yönlendirirsin, gerisi (docker compose, nginx şablonu, certbot) aynen
+çalışır. nip.io üçüncü taraf bir servis — uzun vadede kendi domain'in
+altında bir alt alan adı daha sağlam bir seçim.
+
+### Neden Docker dışarıya port açmıyor
+
+`docker-compose.yml` içinde `127.0.0.1:8787:8787` diyor, `0.0.0.0`
+değil. Röle TLS konuşmuyor; port doğrudan dışarıya açık olsaydı
+tarayıcı zaten `wss://` isteyip `ws://`ya bağlanamazdı ama biri
+`ws://sunucu-ip:8787` ile şifresiz de bağlanabilirdi. Tüm trafiğin
+tek girişi nginx'in TLS uçlaması olsun diye kapalı tutuluyor.
+
 ## Dağıtım — Fly.io
 
+Kendi sunucun yoksa ya da altyapıyla uğraşmak istemiyorsan alternatif.
 Vercel kalıcı WebSocket taşımıyor; röle ayrı bir yerde durmalı. Depoda
 Fly.io için hazır `Dockerfile` ve `fly.toml` var.
 
