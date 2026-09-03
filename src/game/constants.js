@@ -50,7 +50,52 @@ export const PHYSICS = {
    * karşılanır. Dig → pas → smaç ritmini kuran eşik budur.
    */
   attackControlSpeed: 620,
-  maxDelta: 1 / 30,
+  /**
+   * Sabit simülasyon adımı (sn).
+   *
+   * Fizik eskiden ekranın tazeleme hızına bağlıydı: adım, iki kare
+   * arasında geçen gerçek süreydi — yani 60 Hz telefonla 144 Hz telefon
+   * aynı topu farklı yere düşürüyordu. Ölçümde (adim.mjs) eski döngü
+   * altı ayrı kare hızında altı ayrı sonuç verdi; yeni döngü hepsinde
+   * birebir aynısını veriyor. Ağ üzerinden oynanacaksa bu zaten şart:
+   * anlık görüntüler adım numarasına bağlanacak.
+   *
+   * Ölçüm koşumları (tests/olcum) zaten `update(1/60)` çağırıyordu;
+   * oyun da artık ölçtüğümüz şeyi çalıştırıyor.
+   */
+  step: 1 / 60,
+  /**
+   * Bir karede telafi edilecek en fazla gerçek zaman (sn) — 2 adım.
+   *
+   * Sekme arkaya alınıp geri gelindiğinde biriken saniyeler tek karede
+   * kapatılmaya çalışılırsa top fileden geçip gider.
+   *
+   * Sınırın 5 adım (1/12) olduğu sürüm ölçümde reddedildi: eski döngü
+   * ağır cihazda oyunu sessizce ağır çekime alıp kareleri ucuzlatıyordu,
+   * 5 adımlık telafi ise gerçek zamanı korumak için kare başına üç kat
+   * iş yapıyor ve 6x CPU kısıtında 50 ms üstü kare oranını %33'ten
+   * %50'ye çıkarıyordu. 2 adımda oran %27–37 bandında, yani tabanla
+   * aynı. Bedeli açık: 30 FPS'in altında oyun yine ağırlaşıyor —
+   * eskisi gibi. Düşük FPS'te akıcılık, kare maliyetiyle takas
+   * edilemiyor; takas edilebilen tek şey hangisinin bozulacağıydı.
+   */
+  maxCatchUp: 1 / 30,
+  /**
+   * Adım eşiğindeki tolerans (sn) — "az kaldıysa yine de at".
+   *
+   * 60 Hz ekranda kare süresi adımın kendisidir ama zaman damgası ±1 ms
+   * oynar. Tolerans olmadan biriken artık sıfırın iki yanında gezinir:
+   * bir kare hiç ilerlemez, sonraki iki adım atar. Ölçüm (adim.mjs,
+   * 10 sn, ±1 ms titreme) bunu tam 60 Hz'de 600 karenin 148'inde boş +
+   * 148'inde çift olarak gösterdi; hissedilen "hafif kasma" bu.
+   *
+   * Adımı erken atıp açığı biriktirerek taşıyoruz — bu yüzden oyun
+   * hızlanmıyor. İlk denemem kare süresini tam adıma YUVARLAMAKTI;
+   * boş/çift kareyi o da kesiyordu ama 61 Hz ekranda oyunu kalıcı
+   * olarak %1.5 hızlandırıyordu. Açığı taşımak ikisini de çözer:
+   * fazlalık birikince kendiliğinden bir boş kare doğar.
+   */
+  stepSlack: 0.002,
 };
 
 /**

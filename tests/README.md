@@ -47,6 +47,7 @@ sonra koşup farka bakmak için:
 | `servis-tani` | Servis as oranı (zorluk × güç) |
 | `temas-mesafe` | Temas anında topun gövdeye uzaklığı — "vurmak için değdirmek gerekiyor mu" |
 | `perf` | CPU kısıtlı mobil taklidinde kare süresi dağılımı |
+| `adim` | Sabit adım: kare hızından bağımsızlık, boş/çift kare, sim/gerçek oranı |
 
 **Uyarı:** `oran` içindeki bot mükemmel top takip eder ve mekanik olarak
 zıplar; insan gibi oynamaz. Mutlak yüzdeleri değil, aynı botla ölçülen
@@ -56,6 +57,11 @@ zıplar; insan gibi oynamaz. Mutlak yüzdeleri değil, aynı botla ölçülen
 Sabitleri çalışma anında değiştirip süpüren yaklaşım da güvenilmez çıktı —
 "değişiklik yok" kolu bile şişik sonuç verdi. Bir sabiti sınayacaksanız
 dosyayı düzenleyip ölçün, gerekirse `git stash` ile temel çizgiyi doğrulayın.
+Sebebi `adim` ölçümünde net göründü: Vite düzenlenen modülü `?t=...`
+sorgusuyla yeniden servis ediyor, yani testin içe aktardığı `constants.js`
+ile oyunun tuttuğu ayrı nesneler oluyor. Değer **okumak** güvenli,
+**yazmak** değil. Karşılaştıracağınız varyantı ölçüm dosyasında yeniden
+kurun — `adim` hem eski hem toleranssız döngüyü böyle koşturuyor.
 
 ## Yazarken dikkat
 

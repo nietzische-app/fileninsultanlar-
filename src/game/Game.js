@@ -210,6 +210,8 @@ export default class Game {
     this.rafId = null;
     this.lastTime = 0;
     this.time = 0;
+    /** Henüz adıma dönüşmemiş gerçek zaman artığı (sn). */
+    this.accumulator = 0;
 
     /**
      * İnsan girdileri, oyuncu yuvası başına.
@@ -321,6 +323,8 @@ export default class Game {
     this.clearInput();
     this.running = true;
     this.lastTime = performance.now();
+    // Duraklatmada biriken artık, dönüşte tek karede boşalmasın
+    this.accumulator = 0;
 
     window.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('keyup', this.handleKeyUp);
@@ -550,18 +554,44 @@ export default class Game {
   }
 
   /**
-   * Dokunmatik butonlar — her zaman 1. oyuncu.
-   * Tek telefonda iki kişi oynayamayacağı için Co-Op/VS klavyeye özgüdür.
-   * @param {'left'|'right'|'up'|'action'|'dive'} name
+   * Bir tuşu doğrudan bir yuvaya yazar.
+   *
+   * Dokunmatik butonlar tek telefonda oynandığı için hep p1'e gider;
+   * yuva yine de parametre çünkü girdinin tek giriş kapısı burası
+   * olmalı. Ağdan gelen ikinci oyuncunun tuşları da p2 diyerek buradan
+   * girecek — klavye/dokunmatik/ağ arasında ayrı yol yok.
+   *
+   * @param {'left'|'right'|'up'|'down'|'action'|'dive'} name
    * @param {boolean} pressed
+   * @param {'p1'|'p2'} [slot]
    */
-  setInput(name, pressed) {
-    if (name in this.inputs.p1) {
-      if (name === 'action' && pressed && !this.inputs.p1.action) {
-        this.actionPresses.p1 += 1;
-      }
-      this.inputs.p1[name] = pressed;
+  setInput(name, pressed, slot = 'p1') {
+    const input = this.inputs[slot];
+    if (!input || !(name in input)) return;
+
+    if (name === 'action' && pressed && !input.action) {
+      this.actionPresses[slot] += 1;
     }
+    input[name] = pressed;
+  }
+
+  /**
+   * Bir yuvanın tüm tuşlarını tek seferde uygular.
+   *
+   * Ağ üzerinden gelen girdi kare kare bir paket hâlinde gelir; tuş
+   * tuş `setInput` çağırmak yerine paketi olduğu gibi vermek hem daha
+   * ucuz hem de eksik alanı "bırakıldı" saymayı garantiler — kayıp bir
+   * "bıraktım" paketi yüzünden oyuncunun sağa doğru koşup gitmesinin
+   * önüne geçen şey bu.
+   *
+   * @param {'p1'|'p2'} slot
+   * @param {object} state Tuş adı → basılı mı
+   */
+  applyInput(slot, state = {}) {
+    if (!this.inputs[slot]) return;
+    Object.keys(this.inputs[slot]).forEach((name) => {
+      this.setInput(name, Boolean(state[name]), slot);
+    });
   }
 
   /** Tüm insan girdilerini sıfırlar. */
@@ -597,13 +627,33 @@ export default class Game {
   // Ana döngü
   // ===================================================================
 
+  /**
+   * Kare döngüsü — çizim kare hızında, fizik sabit adımda.
+   *
+   * Geçen gerçek zaman biriktirilir ve `PHYSICS.step`lik tam adımlarla
+   * tüketilir; artan kalır, bir sonraki kareye devreder. Bu yüzden
+   * bazı karelerde hiç adım atılmaz (120 Hz ekran), bazılarında iki
+   * adım atılır (30 Hz ekran) — ikisinde de saha aynı hızda akar.
+   */
   loop(timestamp) {
     if (!this.running) return;
 
-    const delta = Math.min((timestamp - this.lastTime) / 1000, PHYSICS.maxDelta);
+    const elapsed = Math.min((timestamp - this.lastTime) / 1000, PHYSICS.maxCatchUp);
     this.lastTime = timestamp;
 
-    this.update(delta);
+    /*
+     * Eşik tam adım değil, adım eksi tolerans — gerekçe ve ölçüm
+     * PHYSICS.stepSlack'in yanında. Erken atılan adımın açığı
+     * `accumulator`da eksi olarak kalır ve sonraki karelerde kapanır,
+     * yani zaman kaybolmaz. Artık daima [-stepSlack, step) aralığında
+     * olduğu için döngü sonsuza gitmez.
+     */
+    this.accumulator += elapsed;
+    while (this.accumulator >= PHYSICS.step - PHYSICS.stepSlack) {
+      this.accumulator -= PHYSICS.step;
+      this.update(PHYSICS.step);
+    }
+
     this.render();
     this.emitState();
 
