@@ -38,22 +38,111 @@ Geliştirmede `?rele=ws://localhost:8787` sorgu parametresiyle de
 ezilebilir. Üretim yapısında bu parametre okunmaz: paylaşılan bir
 bağlantının oyuncuyu yabancı bir sunucuya bağlaması istenmiyor.
 
-## Dağıtım
+## Dağıtım — Fly.io
 
-Vercel kalıcı WebSocket taşımıyor; röle ayrı bir yerde durmalı.
-Fly.io, Railway ve Render'ın küçük katmanları yeter — sunucu durum
-tutuyor ama ağır değil (oda başına iki soket, mesaj başına tek
-`send`).
+Vercel kalıcı WebSocket taşımıyor; röle ayrı bir yerde durmalı. Depoda
+Fly.io için hazır `Dockerfile` ve `fly.toml` var.
 
-İki nokta:
+```bash
+# 1) flyctl kur ve giriş yap
+curl -L https://fly.io/install.sh | sh
+fly auth login
 
-- **Uyuyan örnek.** Ücretsiz katmanlar boştaki örneği uyutuyor ve ilk
-  bağlantı 10-20 saniye sürüyor. Oda kodunu girip bekleyen iki arkadaş
-  o sürede vazgeçer. `/saglik` ucu bunun için var: dışarıdan dakikada
-  bir çağrılırsa örnek uyanık kalır. Kalıcı çözüm uyumayan bir katman.
-- **TLS.** Oyun `https://` üzerinden servis ediliyorsa tarayıcı `ws://`
-  bağlantısına izin vermez; röle `wss://` olmalı. Barındırma katmanları
-  bunu genelde kendi veriyor.
+# 2) BU dizinden (sunucu/) uygulamayı oluştur — dağıtma henüz
+cd sunucu
+fly launch --no-deploy --copy-config --name <benzersiz-ad> --region fra
+
+# 3) fly.toml içindeki `app` satırını verdiğin adla eşitle
+
+# 4) Dağıt — --ha=false ŞART, sebebi aşağıda
+fly deploy --ha=false
+
+# 5) Ayakta mı
+fly status
+curl https://<benzersiz-ad>.fly.dev/saglik
+```
+
+`/saglik` şunu döndürmeli:
+
+```json
+{"durum":"ayakta","oda":0,"istemci":0,"makine":"148e2..."}
+```
+
+### `--ha=false` neden şart
+
+Röle **durum tutuyor**: hangi kodun hangi iki sokete ait olduğu
+sunucunun belleğinde. Fly varsayılan olarak iki makine açar ve
+bağlantıları aralarında paylaştırır — oda açan bir makineye, katılan
+diğerine düşerse katılan "oda yok" hatası alır ve hata aralıklı
+görünür (bazen çalışır, bazen çalışmaz), teşhisi zor bir tür arıza.
+
+`fly.toml` bunu tek makineye 400 bağlantı verecek şekilde ayarlıyor
+(200 eşzamanlı maç). Daha fazlası gerekirse çözüm makine eklemek
+değil, oda defterini paylaşılan bir yere (Redis) taşımak ya da kodu
+makine kimliğiyle etiketlemek olur.
+
+Sonradan kontrol:
+
+```bash
+fly scale count 1
+fly machines list      # tek makine görünmeli
+
+# En kesin sınama: birkaç kez çağır, `makine` hep aynı olmalı
+for i in 1 2 3 4 5; do curl -s https://<ad>.fly.dev/saglik | grep -o '"makine":"[^"]*"'; done
+```
+
+Farklı kimlikler dönüyorsa birden fazla makine çalışıyor demektir ve
+çevrimiçi maç aralıklı olarak "oda yok" verecektir.
+
+### Oyunu röleye bağlamak
+
+Adres yapı sırasında gömülüyor:
+
+```bash
+VITE_RELE_URL=wss://<benzersiz-ad>.fly.dev npm run build
+```
+
+Vercel'de bunu proje ayarlarından **Environment Variables** altına
+`VITE_RELE_URL` olarak ekleyip yeniden dağıtmak gerekiyor. Değişken
+tanımlı değilse menüde **ÇEVRİMİÇİ** seçeneği hiç görünmez —
+çalışmayan bir düğme, basılana kadar süren bir yalandır.
+
+`ws://` değil `wss://` olmalı: oyun `https://` üzerinden servis
+ediliyor ve tarayıcı şifresiz WebSocket'e izin vermez. `fly.toml`
+zaten `force_https = true` diyor.
+
+### Uyuyan makine
+
+`fly.toml` boştaki makineyi durduruyor (`auto_stop_machines = 'stop'`,
+`min_machines_running = 0`). Maç sürerken bağlantılar açık olduğu için
+makine durmaz; yalnızca kimse oynamıyorken duruyor ve ilk bağlantı
+uyanmayı bekliyor. Oyuncuya bu, lobideki "BAĞLANIYOR…" yazısının
+birkaç saniye durması olarak görünür.
+
+Hep sıcak kalsın istersen:
+
+```toml
+min_machines_running = 1
+```
+
+Bu makineyi sürekli çalışır tutar; ücretlendirme de ona göre olur.
+Ara çözüm: `/saglik` ucunu dışarıdan (örneğin bir cron servisi)
+dakikada bir çağırmak.
+
+### Dağıtım sırasında devam eden maçlar
+
+`fly deploy` eski makineyi kapatır. Sunucu SIGTERM'i yakalayıp
+soketleri kapatıyor, yani devam eden maçlar donmak yerine "BAĞLANTI
+KOPTU" katmanını görüyor. Kötü haber, ama sessiz donmadan iyi.
+Konteynerde süreç PID 1 olduğu için bu sinyalin varsayılan davranışı
+yok — hem `index.js` içindeki dinleyici hem Dockerfile'daki `tini`
+bunun için.
+
+### Günlükler
+
+```bash
+fly logs
+```
 
 ## Protokol
 

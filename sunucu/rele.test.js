@@ -183,6 +183,12 @@ describe('röle', () => {
     const veri = await cevap.json();
     expect(veri.durum).toBe('ayakta');
     expect(veri.oda).toBeGreaterThanOrEqual(1);
+    /*
+     * Makine kimliği alanı teşhis için: birden fazla makine çalışırsa
+     * oda açan ile katılan ayrı süreçlere düşer ve arıza aralıklı
+     * görünür. Alan hep bulunmalı, değeri ortama göre değişir.
+     */
+    expect('makine' in veri).toBe(true);
     ev.kapat();
   });
 });

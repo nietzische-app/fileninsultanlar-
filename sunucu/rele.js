@@ -68,7 +68,22 @@ export async function baslat({ port = 8787, nabiz: nabizAraligi = NABIZ } = {}) 
      */
     if (istek.url === '/saglik') {
       cevap.writeHead(200, { 'content-type': 'application/json' });
-      cevap.end(JSON.stringify({ durum: 'ayakta', oda: defter.sayi, istemci: wss.clients.size }));
+      cevap.end(
+        JSON.stringify({
+          durum: 'ayakta',
+          oda: defter.sayi,
+          istemci: wss.clients.size,
+          /*
+           * Makine kimliği teşhis için. Röle durum tutuyor: bir odanın
+           * iki soketi AYNI süreçte olmalı. Birden fazla makine
+           * çalışıyorsa oda açan biri, katılan diğeri olabilir ve
+           * katılan "oda yok" alır — arıza aralıklı görünür, teşhisi
+           * zordur. `/saglik` birkaç kez çağrılıp farklı kimlik
+           * dönüyorsa sebep budur.
+           */
+          makine: process.env.FLY_MACHINE_ID ?? process.env.HOSTNAME ?? null,
+        }),
+      );
       return;
     }
     cevap.writeHead(404).end();

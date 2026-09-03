@@ -1,0 +1,12 @@
+# Bağımlılıklar imajın içinde yeniden kurulur (npm ci --omit=dev)
+node_modules
+
+# Testler üretim imajında işe yaramaz — üstelik rele.test.js vitest'i
+# içe aktarıyor ve o burada kurulu değil
+*.test.js
+
+# Belgeler ve dağıtım tanımları imajın içinde yer kaplamasın
+README.md
+fly.toml
+Dockerfile
+.dockerignore

@@ -1,0 +1,53 @@
+# Fly.io yapılandırması — röle sunucusu.
+#
+# `fly launch` bu dosyayı üretir ve üzerine yazmak ister; burada elle
+# tutuluyor çünkü birkaç ayarın gerekçesi var ve varsayılanları maçı
+# bozuyor. `fly launch --no-deploy` ile başlarsan bu dosyayı KORU.
+#
+# Uygulama adı `fly launch` sırasında verilir ve benzersiz olmalı;
+# aşağıdaki ad örnektir, kendi adınla değiştir.
+
+app = 'fileninsultanlar-rele'
+primary_region = 'fra'   # Frankfurt — Türkiye'ye en yakın Fly bölgesi
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  # Dockerfile ve internal_port ile aynı olmalı
+  PORT = '8787'
+
+[http_service]
+  internal_port = 8787
+  # Oyun https:// üzerinden servis ediliyor; tarayıcı ws:// bağlantısına
+  # izin vermez. Bu satır wss://'i zorunlu kılıyor.
+  force_https = true
+
+  # Boştaki makineyi durdur, istek gelince başlat. Maç sürerken
+  # bağlantılar açık olduğu için makine durmaz; yalnızca kimse
+  # oynamıyorken duruyor. Bedeli ilk bağlantıdaki birkaç saniyelik
+  # uyanma. Hep sıcak kalsın istersen min_machines_running = 1 yap —
+  # o zaman makine sürekli çalışır ve ücretlendirme ona göre olur.
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+
+  # Röle durum tutuyor: bir odanın iki soketi AYNI makinede olmalı.
+  # Birden fazla makineye yayılırsa oda açan ile katılan farklı
+  # süreçlere düşer ve kod "oda yok" der. Tek makine, yüksek eşzamanlılık.
+  [http_service.concurrency]
+    type = 'connections'
+    hard_limit = 400
+    soft_limit = 350
+
+  [[http_service.checks]]
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '10s'
+    method = 'GET'
+    path = '/saglik'
+
+[[vm]]
+  # Röle yalnızca mesaj taşıyor; iş yükü ağ, işlemci değil.
+  size = 'shared-cpu-1x'
+  memory = '256mb'
