@@ -25,6 +25,7 @@ aldım — Tailwind yapılandırması güncellenmemişti ve test yeşil görün�
 | `aralik` | Tuş aralığı ayarı mesafeyi değiştiriyor, tuş boyutunu değiştirmiyor |
 | `multitouch` | İki tuşa aynı anda basılabiliyor, tuşlar takılı kalmıyor, pinch sahayı yakınlaştırmıyor |
 | `kanat` | Sahanın yanındaki bantlar salon katmanıyla dolu; masaüstünde katman gizli ve çizim yapmıyor |
+| `online` | İki gerçek tarayıcı, gerçek röle: oda kur, katıl, aynı maçı gör, tuş geçir |
 | `masa-duzen` | Masaüstünde sayfa taşmıyor, oran 9:5, çerçeve sahayı sarıyor, skor tablosu ekranda |
 | `masaustu` | Masaüstünde dokunmatik tuş yok, klavye çalışıyor |
 | `mobil` | Altı cihazda sahne tam ekran ve saha ortalı |
@@ -75,5 +76,9 @@ ederken yanlış şeyi ölçmeye başlıyor.
   artık salon kanadı katmanını döndürüyor.
 - Gizli elemanlar DOM'da kalır; "tuş yok" kontrolü için sayı değil
   `getBoundingClientRect().width > 0` bakın.
+- Girdiyi **doğru fazda** ölçün. `online` testinde misafirin tuşunu
+  servis fazında basıp "tuş çalışmıyor" sonucuna varmıştım; girdi
+  zinciri baştan sona doğruydu, ama SERVİS fazında motor hiç
+  `updatePlayers` çağırmıyor ve kimse kıpırdamıyor.
 
 Ekran görüntüleri `tests/ciktilar/` altına yazılır ve depoya girmez.

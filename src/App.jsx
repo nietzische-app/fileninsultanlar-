@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import StartScreen from './screens/StartScreen.jsx';
 import TutorialScreen from './screens/TutorialScreen.jsx';
 import SettingsScreen from './screens/SettingsScreen.jsx';
 import CharacterSelect from './screens/CharacterSelect.jsx';
 import TournamentScreen from './screens/TournamentScreen.jsx';
 import MatchScreen from './screens/MatchScreen.jsx';
+import OnlineScreen from './screens/OnlineScreen.jsx';
 import ResultScreen from './screens/ResultScreen.jsx';
 import RotateGate from './components/RotateGate.jsx';
 import useViewport from './hooks/useViewport.js';
@@ -67,6 +68,8 @@ export default function App() {
   const [freshAchievements, setFreshAchievements] = useState([]);
   /** Tutorial menüden mi açıldı (geri → start), yoksa ilk akış mı (→ select). */
   const [tutorialFromMenu, setTutorialFromMenu] = useState(false);
+  /** Açık çevrimiçi bağlantı — sahibi burası, kapatan da burası. */
+  const baglantiRef = useRef(null);
 
   // Dokunmatik cihazda dikey tutuş oyunu tamamen kapatır
   const { portrait, coarse } = useViewport();
@@ -217,6 +220,8 @@ export default function App() {
   const startMatch = useCallback(
     (config) => {
       const mode = config.campaign ?? 'match';
+      // Çevrimiçi bilgisi menü modundan gelir; kadro ekranı bunu bilmez
+      const online = getGameMode(modeId).online === true;
       setCampaign(mode);
       if (config.playMode) setPlayMode(config.playMode);
 
@@ -252,9 +257,14 @@ export default function App() {
         playMode: config.playMode ?? 'solo',
         startedAt: Date.now(),
       });
-      setScreen('match');
+      /*
+       * Çevrimiçi modda seçim ekranından doğrudan maça gidilmiyor:
+       * önce lobi. Maçın ne zaman başlayacağını karşı taraf belirliyor
+       * ve ayarlar odayı açanınkiler.
+       */
+      setScreen(online ? 'online' : 'match');
     },
-    []
+    [modeId]
   );
 
   /**
@@ -275,6 +285,10 @@ export default function App() {
 
   const handleFinish = useCallback(
     (matchResult) => {
+      // Maç bitti: çevrimiçiyse oda da bitti
+      baglantiRef.current?.kapat();
+      baglantiRef.current = null;
+
       // --- Hayatta kalma: koşu bitti ---
       if (matchResult.campaign === 'survival') {
         const { records: nextRecords, broken } = recordSurvivalResult(matchResult);
@@ -381,7 +395,20 @@ export default function App() {
   }, [matchConfig, result, campaign, prefs.difficulty]);
 
   /** Maçtan çıkış — kampanyada koşu/turnuva iptal olur. */
+  /**
+   * Çevrimiçi bağlantıyı kapatır.
+   *
+   * Soketin sahibi App: maç ekranı efekt temizliğinde kapatamaz, çünkü
+   * StrictMode efekti bağla-çöz-bağla diye çalıştırıyor ve bağlantı
+   * daha maç başlamadan ölüyor.
+   */
+  const agiKapat = useCallback(() => {
+    baglantiRef.current?.kapat();
+    baglantiRef.current = null;
+  }, []);
+
   const handleQuitMatch = useCallback(() => {
+    agiKapat();
     if (campaign === 'tournament') {
       abandonTournament();
       setScreen('start');
@@ -392,7 +419,7 @@ export default function App() {
       return;
     }
     setScreen('select');
-  }, [campaign, abandonTournament]);
+  }, [campaign, abandonTournament, agiKapat]);
 
   return (
     <div className="min-h-full">
@@ -469,6 +496,23 @@ export default function App() {
           }}
           muted={muted}
           onToggleMute={toggleMute}
+        />
+      )}
+
+      {screen === 'online' && matchConfig && (
+        <OnlineScreen
+          config={matchConfig}
+          onStart={(agConfig) => {
+            baglantiRef.current = agConfig.baglanti;
+            setMatchConfig({
+              ...matchConfig,
+              ...agConfig,
+              campaign: 'match',
+              startedAt: Date.now(),
+            });
+            setScreen('match');
+          }}
+          onBack={() => setScreen('select')}
         />
       )}
 

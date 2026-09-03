@@ -6,6 +6,7 @@ import MuteButton from '../components/MuteButton.jsx';
 import MusicVolume from '../components/MusicVolume.jsx';
 import { ROSTER, SHOWCASE_IDS } from '../game/players.js';
 import { GAME_MODES } from '../game/modes.js';
+import { onlineAcik } from '../net/baglanti.js';
 import AchievementGrid from '../components/AchievementGrid.jsx';
 import { ACHIEVEMENTS } from '../game/achievements.js';
 import Sfx from '../game/audio.js';
@@ -33,6 +34,15 @@ export default function StartScreen({
   onSettings,
 }) {
   const [messageIndex, setMessageIndex] = useState(0);
+  /*
+   * Röle sunucusu tanımlı değilse çevrimiçi modu listede yok. Basınca
+   * "sunucu yok" diyen bir düğme, oyuncuya kendi internetinde sorun
+   * varmış gibi hissettirir.
+   */
+  const modlar = useMemo(
+    () => GAME_MODES.filter((mode) => !mode.online || onlineAcik()),
+    [],
+  );
   const hasRecords = (records?.matchesPlayed ?? 0) > 0;
   const hasSurvivalRecord = (records?.bestSurvivalPoints ?? 0) > 0;
 
@@ -177,7 +187,7 @@ export default function StartScreen({
 
       {/* Mod seçimi */}
       <div className="flex w-full max-w-xl flex-col gap-3">
-        {GAME_MODES.map((mode, i) => (
+        {modlar.map((mode, i) => (
           <button
             key={mode.id}
             type="button"

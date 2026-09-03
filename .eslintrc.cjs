@@ -22,6 +22,11 @@ module.exports = {
       files: ['scripts/**/*.mjs'],
       env: { node: true, browser: false },
     },
+    {
+      // Röle sunucusu Node'da çalışır; oyunun paketine girmez
+      files: ['sunucu/**/*.js'],
+      env: { node: true, browser: false },
+    },
   ],
   rules: {
     'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],

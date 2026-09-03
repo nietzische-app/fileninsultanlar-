@@ -1,0 +1,16 @@
+{
+  "name": "filenin-sultanlari-rele",
+  "version": "1.0.0",
+  "description": "Filenin Sultanları çevrimiçi maç rölesi",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^8.21.3"
+  },
+  "type": "module"
+}

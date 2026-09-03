@@ -60,6 +60,8 @@ export default function MatchScreen({
   const [paused, setPaused] = useState(false);
   const [quitConfirm, setQuitConfirm] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  /** Çevrimiçi maçta karşı taraf gittiğinde gösterilen katman. */
+  const [agKopuk, setAgKopuk] = useState(null);
 
   const fullscreen = useFullscreen(stageRef);
   const { portrait, coarse } = useViewport();
@@ -84,10 +86,41 @@ export default function MatchScreen({
       roundNumber: config.roundNumber,
       roundCount: config.roundCount,
       onState: setHud,
-      onFinish: (result) => onFinishRef.current(result),
+      /*
+       * Maçın bittiğini yalnız ev sahibi bilir — misafir simüle
+       * etmiyor, dolayısıyla kendi `onFinish`i hiç tetiklenmez.
+       * Sonuç olduğu gibi aktarılıyor: iki taraf aynı sahayı
+       * izlediği için sonuç ekranı da ikisinde aynı olmalı.
+       */
+      onFinish: (result) => {
+        if (config.agRol === 'ev') config.baglanti?.yolla({ t: 'bitis', sonuc: result });
+        onFinishRef.current(result);
+      },
+      // Çevrimiçi maçta rol ve gönderim kapısı
+      agRol: config.agRol ?? null,
+      agGonder: config.baglanti ? (paket) => config.baglanti.yolla(paket) : null,
     });
 
     gameRef.current = game;
+
+    /*
+     * Ağ paketlerini motora bağla. Motor tanımadığı paketi yok sayıyor,
+     * bu yüzden filtre burada değil orada: denetim mesajları (oda,
+     * eşleşme) da aynı kanaldan geçiyor.
+     */
+    const cozucular = [];
+    if (config.baglanti) {
+      cozucular.push(config.baglanti.on('mesaj', (paket) => game.agPaketAl(paket)));
+      cozucular.push(
+        config.baglanti.on('bitis', (paket) => {
+          if (config.agRol === 'misafir' && paket.sonuc) onFinishRef.current(paket.sonuc);
+        }),
+      );
+      // Karşı taraf gidince maç donup kalmasın — sebebi söylenmeli
+      cozucular.push(config.baglanti.on('ayrildi', () => setAgKopuk('RAKİP AYRILDI')));
+      cozucular.push(config.baglanti.on('kapandi', () => setAgKopuk('BAĞLANTI KOPTU')));
+    }
+
     game.start();
 
     // Geliştirme kolaylığı: konsoldan motora ve ses motoruna eriş
@@ -99,6 +132,14 @@ export default function MatchScreen({
     }
 
     return () => {
+      /*
+       * Yalnız abonelikler bırakılıyor, soket KAPATILMIYOR.
+       * Kapatmayı burada denemiştim: React StrictMode geliştirmede
+       * efekti bağla-çöz-bağla diye çalıştırıyor ve ilk çözümde
+       * bağlantı ölüyordu — maç kuruluyor ama tek paket gelmiyordu.
+       * Soketin sahibi bu ekran değil, akışı yöneten App.
+       */
+      cozucular.forEach((coz) => coz());
       game.destroy();
       gameRef.current = null;
       if (import.meta.env.DEV) {
@@ -576,6 +617,24 @@ export default function MatchScreen({
                 />
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Çevrimiçi kopma — maç sürdürülemez, tek çıkış var */}
+        {agKopuk && (
+          <div
+            className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-black/90 px-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Bağlantı sonlandı"
+          >
+            <p className="text-center text-sm text-turkiye-red sm:text-lg">{agKopuk}</p>
+            <p className="max-w-xs text-center text-[7px] leading-relaxed text-white/55 sm:text-[8px]">
+              Çevrimiçi maç iki tarafla sürer. Menüye dönüp yeni bir oda açabilirsin.
+            </p>
+            <button type="button" className="retro-button" onClick={onQuit}>
+              MENÜYE DÖN
+            </button>
           </div>
         )}
 

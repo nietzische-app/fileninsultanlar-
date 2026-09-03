@@ -24,6 +24,7 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
-    include: ['src/**/*.test.{js,jsx}'],
+    // `sunucu/` oyunun paketine girmez ama testleri aynı koşumda çıksın
+    include: ['src/**/*.test.{js,jsx}', 'sunucu/**/*.test.js'],
   },
 });

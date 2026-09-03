@@ -94,6 +94,7 @@ import {
   updateRings as fxUpdateRings,
 } from './effects.js';
 import Sfx from './audio.js';
+import { paketle, uygula, girdiPaketle } from './snapshot.js';
 import { ilgiEki, upper } from '../utils/text.js';
 
 /**
@@ -111,6 +112,18 @@ import { ilgiEki, upper } from '../utils/text.js';
  */
 const BG_REFRESH = 1 / 10;
 
+/**
+ * Ağ ayarları.
+ *
+ * 20 Hz durum: 60 Hz göndermek bant genişliğini üç katına çıkarıp
+ * hissedilir bir şey kazandırmıyor — top zaten karelerin arasında
+ * yumuşak görünecek kadar yavaş yer değiştiriyor. Tuşlar ise
+ * değiştiği anda gidiyor, orada gecikme doğrudan hissediliyor.
+ */
+const AG = {
+  durumHz: 20,
+};
+
 const P1_KEYS = {
   a: 'left',
   A: 'left',
@@ -123,6 +136,25 @@ const P1_KEYS = {
   ' ': 'action',
   z: 'action',
   Z: 'action',
+};
+
+/**
+ * Misafir tarafta ters çevrilen sesler.
+ *
+ * Motorun sesleri ev sahibinin gözünden: `point` ev sahibi sayı
+ * yapınca çalıyor. Online maçta misafir karşı takımı oynuyor, yani
+ * ev sahibinin sayısı onun için kayıp. Ekran ikisinde de aynı sahayı
+ * gösteriyor ama zafer sesi tarafa göre değişmeli — yoksa misafir
+ * yenilirken kutlama sesi duyar.
+ */
+const MISAFIR_SES = {
+  point: 'pointLost',
+  pointLost: 'point',
+  streak: 'pointLost',
+  setWon: 'setLost',
+  setLost: 'setWon',
+  victory: 'defeat',
+  defeat: 'victory',
 };
 
 const P2_KEYS = {
@@ -212,6 +244,50 @@ export default class Game {
     this.time = 0;
     /** Henüz adıma dönüşmemiş gerçek zaman artığı (sn). */
     this.accumulator = 0;
+    /**
+     * Atılan sabit adım sayısı.
+     *
+     * Anlık görüntülerin sırasını bu belirliyor: misafir, numarası
+     * geride kalan bir paketi atıyor. Sabit adım olmadan böyle bir
+     * numara tanımlanamazdı — ağ tarafının ona dayanmasının sebebi bu.
+     */
+    this.adim = 0;
+
+    /**
+     * Ağ rolü: 'ev' simüle eder ve durumu yollar, 'misafir' yalnızca
+     * çizer ve tuşlarını yollar. `null` çevrimdışı oyun.
+     */
+    this.agRol = options.agRol ?? null;
+    this.agGonder = options.agGonder ?? null;
+    /** Bir sonraki pakete binecek efekt/ses olayları. */
+    this.agOlaylar = [];
+    this.agSonDurum = -Infinity;
+    this.agSonGirdi = '';
+    /** Uygulanan son paketin adım numarası; -1 = henüz paket gelmedi. */
+    this.agSonAdim = -1;
+
+    /**
+     * Ses çağrılarının tek kapısı.
+     *
+     * Motorun içindeki `Sfx.x()` çağrıları buradan geçiyor; ev sahibi
+     * rolündeyken çağrı hem yerel çalınıyor hem de olay olarak
+     * misafire yazılıyor. 27 çağrı yerini tek yerden yönetmenin sebebi
+     * bu: aksi hâlde online maç sessiz olurdu ve her yeni ses
+     * eklendiğinde biri onu ağa koymayı unuturdu.
+     *
+     * Salon uğultusu (`setAtmosphere`) bilerek dışarıda — o her karede
+     * çağrılıyor ve misafir zaten aşama/coşku değerlerinden kendisi
+     * hesaplıyor.
+     */
+    this.ses = new Proxy(
+      {},
+      {
+        get: (_hedef, ad) => (...args) => {
+          if (this.agRol === 'ev') this.agOlay('ses', ad, args);
+          Sfx[ad]?.(...args);
+        },
+      },
+    );
 
     /**
      * İnsan girdileri, oyuncu yuvası başına.
@@ -525,7 +601,15 @@ export default class Game {
   resolveKeyBinding(key) {
     if (key in P1_KEYS) return { slot: 'p1', action: P1_KEYS[key] };
     if (key in P2_KEYS) {
-      return { slot: this.playMode === 'solo' ? 'p1' : 'p2', action: P2_KEYS[key] };
+      /*
+       * İkinci tuş takımı yalnız TEK KLAVYEDE iki kişi oynarken ayrı
+       * bir yuvaya gider. Çevrimiçide iki oyuncu ayrı cihazda ve her
+       * biri kendi ekranında 1. oyuncu; ok tuşlarını 2. yuvaya
+       * yazmak, misafirin tuşunun hiçbir yere gitmemesine yol
+       * açıyordu (gönderilen yuva p1, yazılan p2).
+       */
+      const yerelIkinci = this.playMode !== 'solo' && !this.agRol;
+      return { slot: yerelIkinci ? 'p2' : 'p1', action: P2_KEYS[key] };
     }
     return null;
   }
@@ -622,6 +706,84 @@ export default class Game {
     this.clearInput();
   }
 
+  // ===================================================================
+  // Ağ
+  // ===================================================================
+
+  /**
+   * Her karenin sonundaki ağ işi.
+   *
+   * Ev sahibi durum yollar, misafir tuş yollar. İkisinin de hızı
+   * ayrı ayarlanıyor: durum saniyede ~20 kez yeter (çizim arada
+   * yumuşatılıyor), tuş ise değiştiği anda gitmeli — gecikme oradan
+   * hissediliyor.
+   */
+  agAkis() {
+    if (!this.agRol || !this.agGonder) return;
+
+    if (this.agRol === 'ev') {
+      if (this.time - this.agSonDurum < 1 / AG.durumHz) return;
+      this.agSonDurum = this.time;
+      this.agGonder(paketle(this, this.agOlaylar));
+      this.agOlaylar = [];
+      return;
+    }
+
+    /*
+     * Değişmediyse yollama. Tuşlar çoğu karede aynı; her karede paket
+     * atmak röleyi ve pili boşuna yorar. Basış sayacı da imzaya dahil,
+     * çünkü bas–bırak aynı kareye sıkışsa tuş durumu değişmemiş
+     * görünür ama vuruş yapılmıştır.
+     */
+    const tuslar = this.inputs.p1;
+    const imza = `${tuslar.left}${tuslar.right}${tuslar.up}${tuslar.down}${tuslar.action}${tuslar.dive}|${this.actionPresses.p1}`;
+    if (imza === this.agSonGirdi) return;
+    this.agSonGirdi = imza;
+    this.agGonder(girdiPaketle(tuslar, this.actionPresses.p1));
+  }
+
+  /**
+   * Ağdan gelen paketi işler.
+   *
+   * @returns {boolean} Paket tanındıysa true
+   */
+  agPaketAl(paket) {
+    if (!paket || typeof paket !== 'object') return false;
+
+    if (paket.t === 'durum' && this.agRol === 'misafir') {
+      if (!uygula(this, paket)) return false;
+      (paket.o ?? []).forEach((olay) => this.agOlayUygula(olay));
+      return true;
+    }
+
+    if (paket.t === 'girdi' && this.agRol === 'ev') {
+      this.agGirdiUygula(paket);
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Misafirin tuşlarını 2. yuvaya yazar.
+   *
+   * `setInput` yerine doğrudan yazılıyor çünkü basış sayacı ağdan
+   * geliyor: `setInput` yükselen kenarda sayacı kendi artırır ve
+   * misafirin sayacıyla çakışırdı. Sayacı olduğu gibi almak, iki kare
+   * arasına sıkışan hızlı bir vuruşun ağ üzerinden de kaybolmamasını
+   * sağlıyor — yerel oyunda bu sorunu çözen mekanizmanın aynısı.
+   */
+  agGirdiUygula(paket) {
+    const gelen = paket.k ?? {};
+    const yuva = this.inputs.p2;
+    Object.keys(yuva).forEach((ad) => {
+      yuva[ad] = Boolean(gelen[ad]);
+    });
+    if (typeof paket.b === 'number' && paket.b >= this.actionPresses.p2) {
+      this.actionPresses.p2 = paket.b;
+    }
+  }
+
 
   // ===================================================================
   // Ana döngü
@@ -651,16 +813,41 @@ export default class Game {
     this.accumulator += elapsed;
     while (this.accumulator >= PHYSICS.step - PHYSICS.stepSlack) {
       this.accumulator -= PHYSICS.step;
-      this.update(PHYSICS.step);
+      /*
+       * Misafir simüle etmez. Fizik ev sahibinde koşuyor; burada
+       * çalıştırmak iki farklı maç üretirdi ve gelen her paket topu
+       * geri zıplatırdı. Yalnızca süslemeler (parçacık, iz, uğultu)
+       * yerel akar — onlar sonucu değiştirmiyor.
+       */
+      if (this.agRol === 'misafir') this.misafirGuncelle(PHYSICS.step);
+      else this.update(PHYSICS.step);
     }
 
     this.render();
     this.emitState();
+    this.agAkis();
 
     this.rafId = requestAnimationFrame(this.loop);
   }
 
+  /**
+   * Misafir tarafın kare işi — simülasyon yok, yalnız süslemeler.
+   *
+   * Zaman ilerlemeli: parçacıkların ömrü, topun izi ve salon uğultusu
+   * `dt` ile sönüyor. `this.time` ayrıca çizimdeki salınımları (isim
+   * levhasının zıplaması gibi) sürüyor.
+   */
+  misafirGuncelle(dt) {
+    this.time += dt;
+    this.updateParticles(dt);
+    this.updateRings(dt);
+    this.updateBallTrail();
+    this.updateAtmosphere();
+  }
+
   update(dt) {
+    this.adim += 1;
+
     // Bu karede yeni vuruş basışı geldi mi (kare arasına sıkışsa bile)
     ['p1', 'p2'].forEach((slot) => {
       this.actionEdge[slot] = this.actionPresses[slot] !== this.lastActionPresses[slot];
@@ -820,7 +1007,7 @@ export default class Game {
     player.squash = 0;
 
     this.spawnDust(player.x - dir * 12, GROUND_Y, 6);
-    Sfx.dive();
+    this.ses.dive();
   }
 
   /**
@@ -951,7 +1138,7 @@ export default class Game {
     const event = stepBall(ball, dt);
     ball.rotation += ball.vx * dt * 0.03;
 
-    if (event.net) Sfx.net();
+    if (event.net) this.ses.net();
 
     /*
      * Dokunulmamış servis dip çizgiyi aştı mı?
@@ -1248,19 +1435,19 @@ export default class Game {
         this.stats.perfects += 1;
         this.perfectFlash = PERFECT.flash;
         this.spawnRing(ball.x, ball.y, PALETTE.gold, 62);
-        Sfx.perfect();
+        this.ses.perfect();
       }
 
       if (scoringMove) this.bumpCombo();
     }
 
     // Ses ve parçacık
-    if (type === 'dive') Sfx.save();
-    else if (isBlock) Sfx.block();
-    else if (type === 'tip') Sfx.tip();
-    else if (type === 'spike') Sfx.spike();
-    else if (type === 'hit') Sfx.hit();
-    else Sfx.bump();
+    if (type === 'dive') this.ses.save();
+    else if (isBlock) this.ses.block();
+    else if (type === 'tip') this.ses.tip();
+    else if (type === 'spike') this.ses.spike();
+    else if (type === 'hit') this.ses.hit();
+    else this.ses.bump();
 
     if (type === 'dive') {
       this.spawnRing(ball.x, ball.y, '#9BE7FF', 44);
@@ -1351,7 +1538,7 @@ export default class Game {
     };
 
     this.message = { text: 'SERVİS', timer: 1, color: PALETTE.gold };
-    Sfx.whistle();
+    this.ses.whistle();
     this.emitState(true);
   }
 
@@ -1457,7 +1644,7 @@ export default class Game {
         serveStat: server?.data?.stats?.serve ?? 70,
       });
 
-      Sfx.select();
+      this.ses.select();
       this.message = {
         text: serve.safeAim ? 'NİŞAN' : 'GÜÇ YETMEDİ!',
         timer: 0.8,
@@ -1515,7 +1702,7 @@ export default class Game {
 
     this.spawnDust(server.x, GROUND_Y, 8);
     this.spawnRing(this.ball.x, this.ball.y, PALETTE.gold, 36);
-    Sfx.hit();
+    this.ses.hit();
 
     this.serve = null;
     this.phase = PHASE.RALLY;
@@ -1538,7 +1725,7 @@ export default class Game {
     if (tier) {
       this.message = { text: tier.label, timer: 1, color: tier.color };
       this.hype = Math.max(this.hype, 0.7);
-      Sfx.combo(this.combo);
+      this.ses.combo(this.combo);
     }
   }
 
@@ -1618,7 +1805,7 @@ export default class Game {
 
     this.spawnDust(this.ball.x, GROUND_Y, 16);
     this.hype = 1;
-    Sfx.ground();
+    this.ses.ground();
 
     // Sayı serisi
     if (this.streak.side === side) {
@@ -1635,8 +1822,8 @@ export default class Game {
         timer: this.rules.servePause,
         color: reason ? PALETTE.gold : PALETTE.turkishRed,
       };
-      if (this.streak.count >= 3) Sfx.streak(this.streak.count);
-      else Sfx.point();
+      if (this.streak.count >= 3) this.ses.streak(this.streak.count);
+      else this.ses.point();
     } else if (this.survivalMode) {
       // Kaybedilen sayı bir can demek. Can burada düşülüyor ki HUD ve
       // ekrandaki mesaj aynı anı göstersin — sayı donmasının sonunda
@@ -1647,14 +1834,14 @@ export default class Game {
         timer: this.rules.servePause,
         color: this.opponent.colors.accent,
       };
-      Sfx.pointLost();
+      this.ses.pointLost();
     } else {
       this.message = {
         text: reason ?? `SAYI ${ilgiEki(this.opponent.shortName)}`,
         timer: this.rules.servePause,
         color: reason ? PALETTE.gold : this.opponent.colors.accent,
       };
-      Sfx.pointLost();
+      this.ses.pointLost();
     }
 
     // Konsol dışı bir amaç için tutulur (istatistik ekranı)
@@ -1687,8 +1874,8 @@ export default class Game {
         color: winner === 'home' ? PALETTE.gold : this.opponent.colors.accent,
       };
 
-      if (winner === 'home') Sfx.setWon();
-      else Sfx.setLost();
+      if (winner === 'home') this.ses.setWon();
+      else this.ses.setLost();
       this.emitState(true);
       return;
     }
@@ -1707,8 +1894,8 @@ export default class Game {
       this.finished = true;
 
       const winner = matchWinner(this.sets);
-      if (winner === 'home') Sfx.victory();
-      else Sfx.defeat();
+      if (winner === 'home') this.ses.victory();
+      else this.ses.defeat();
 
       this.emitState(true);
       this.emitFinish(winner);
@@ -1811,7 +1998,7 @@ export default class Game {
       timer: SURVIVAL.waveAnnounce,
       color: PALETTE.gold,
     };
-    Sfx.setWon();
+    this.ses.setWon();
     this.emitState(true);
   }
 
@@ -1843,7 +2030,7 @@ export default class Game {
     this.phase = PHASE.MATCH_END;
     this.message = null;
     this.finished = true;
-    Sfx.defeat();
+    this.ses.defeat();
 
     this.emitState(true);
     // Hayatta kalmada "galip" yok: koşu her zaman biter. `winner: null`
@@ -1862,21 +2049,52 @@ export default class Game {
   // Parçacıklar (effects.js)
   // ===================================================================
 
+  /**
+   * Efekt olayını misafire iletilmek üzere kaydeder.
+   *
+   * Parçacıklar anlık görüntüye konmuyor: bir sayı sonrası sahada
+   * onlarca parçacık oluyor ve her biri altı alan — paket on katına
+   * çıkardı. Doğuş olayı ise nadir ve küçük; misafir kendi
+   * parçacıklarını aynı çağrıyla üretip yerel olarak söndürüyor.
+   */
+  agOlay(...olay) {
+    if (this.agRol !== 'ev') return;
+    // Tek pakete sığmayacak kadar birikirse en yenileri kalsın
+    if (this.agOlaylar.length < 40) this.agOlaylar.push(olay);
+  }
+
   spawnBurst(x, y, count, color) {
+    this.agOlay('burst', Math.round(x), Math.round(y), count, color);
     fxSpawnBurst(this.particles, x, y, count, color);
   }
 
   spawnFlame(x, y) {
+    this.agOlay('flame', Math.round(x), Math.round(y));
     fxSpawnFlame(this.particles, x, y);
   }
 
   spawnDust(x, y, count = 7) {
+    this.agOlay('dust', Math.round(x), Math.round(y), count);
     fxSpawnDust(this.particles, x, y, count);
   }
 
   /** Vuruş anında genişleyen darbe halkası. */
   spawnRing(x, y, color, maxRadius = 46) {
+    this.agOlay('ring', Math.round(x), Math.round(y), color, maxRadius);
     fxSpawnRing(this.rings, x, y, color, maxRadius);
+  }
+
+  /** Misafirde gelen efekt olayını uygular. */
+  agOlayUygula(olay) {
+    const [tur, x, y, a, b] = olay;
+    if (tur === 'burst') fxSpawnBurst(this.particles, x, y, a, b);
+    else if (tur === 'flame') fxSpawnFlame(this.particles, x, y);
+    else if (tur === 'dust') fxSpawnDust(this.particles, x, y, a);
+    else if (tur === 'ring') fxSpawnRing(this.rings, x, y, a, b);
+    else if (tur === 'ses') {
+      const ad = MISAFIR_SES[x] ?? x;
+      Sfx[ad]?.(...(y ?? []));
+    }
   }
 
   updateRings(dt) {

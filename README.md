@@ -276,6 +276,26 @@ Tek kişilik oyunda hem `WASD` hem ok tuşları aynı oyuncuyu sürer —
 hangisine alışkınsan. İki kişilik modlarda dokunmatik tuşlar gizlenir:
 tek telefonda iki kişi oynayamaz, göstermek yanıltıcı olurdu.
 
+### Çevrimiçi — ayrı cihazlarda 1v1
+
+Menüdeki **ÇEVRİMİÇİ**, karşılıklı modun uzaktan oynananı. Biri oda
+açar, ekranda çıkan dört harflik kodu söyler; diğeri kodu girer ve maç
+başlar. Herkes kendi cihazında 1. oyuncu tuşlarını (`WASD` · `Boşluk`)
+ya da dokunmatik tuşları kullanır.
+
+Maçı **odayı açan taraf** koşturur; katılan taraf onun ürettiği durumu
+çizer ve tuşlarını yollar. Bu yüzden kadro, rakip takım ve format odayı
+açanın seçimidir — iki taraf farklı kadro kurarsa aynı maçı çizemezler.
+
+Seçeneğin görünmesi için bir röle sunucusu gerekiyor; kurulumu ve
+mimarinin gerekçesi [`sunucu/README.md`](sunucu/README.md) içinde.
+`VITE_RELE_URL` tanımlı değilse menüde bu seçenek hiç çıkmaz.
+
+**Bilinen sınır:** gecikme telafisi (tahmin/uzlaştırma) henüz yok.
+Katılan tarafta tuş ile görüntü arası gecikme, gidiş-dönüş süresi
+kadardır; tam vuruş penceresi 170 ms olduğu için yüksek gecikmede o
+pencereyi yakalamak zorlaşır.
+
 ### Turnuva — Kupa Yolu
 
 Beş tur, beş rakip, tek eleme. Her turu kazanan bir üste çıkar; tek yenilgi

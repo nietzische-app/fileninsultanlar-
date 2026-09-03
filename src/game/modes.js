@@ -74,6 +74,27 @@ export const GAME_MODES = [
     twoPlayer: true,
   },
   {
+    /*
+     * Çevrimiçi, "karşılıklı"nın uzaktan oynananı: motor açısından
+     * ikisi de `vs` — 1. yuva Türkiye'de, 2. yuva rakip takımda. Fark
+     * yalnızca 2. yuvanın tuşlarının nereden geldiği. Bu yüzden ayrı
+     * bir oyun modu değil, aynı modun ağ üzerinden hâli.
+     *
+     * Röle adresi tanımlı değilse menüde hiç görünmez (App bunu
+     * `onlineAcik()` ile eliyor) — çalışmayan bir düğme göstermek,
+     * basılana kadar süren bir yalan olurdu.
+     */
+    id: 'online',
+    campaign: 'match',
+    label: 'ÇEVRİMİÇİ',
+    tagline: 'İNTERNET',
+    description:
+      'İki kişi ayrı cihazlarda. Biri oda açar, diğeri kodu girer.',
+    pickOpponent: true,
+    playMode: 'vs',
+    online: true,
+  },
+  {
     id: 'survival',
     campaign: 'survival',
     playMode: 'solo',

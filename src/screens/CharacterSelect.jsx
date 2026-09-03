@@ -183,19 +183,39 @@ export default function CharacterSelect({
             <p className="text-[8px] text-retro-accent">
               {gameMode.label} · {playMode === 'coop' ? '2 vs 2' : '1 vs 1'}
             </p>
-            <div className="mt-2 grid gap-1 text-[7px] leading-relaxed text-white/60 sm:grid-cols-2">
-              <span>
-                <b className="text-white/80">1. OYUNCU</b> — W A S D · BOŞLUK vur
-              </span>
-              <span>
-                <b className="text-white/80">2. OYUNCU</b> — ok tuşları · ENTER vur
-              </span>
-            </div>
-            <p className="mt-2 text-[7px] leading-relaxed text-white/45">
-              {playMode === 'coop'
-                ? 'İki sultan aynı takımda; rakip yapay zekâ.'
-                : '2. oyuncu rakip takımı sürer.'}
-            </p>
+            {/*
+              Çevrimiçide iki oyuncu aynı klavyede değil: herkes kendi
+              cihazında 1. oyuncu tuşlarını kullanıyor. Yerel eşleşmenin
+              metnini olduğu gibi göstermek, karşıdakine "sen ok
+              tuşlarını kullan" dedirtirdi.
+            */}
+            {gameMode.online ? (
+              <>
+                <p className="mt-2 text-[7px] leading-relaxed text-white/60">
+                  <b className="text-white/80">SENİN TUŞLARIN</b> — W A S D · BOŞLUK vur
+                </p>
+                <p className="mt-2 text-[7px] leading-relaxed text-white/45">
+                  Rakibin kendi cihazında aynı tuşları kullanır. Seçtiğin kadro
+                  ve rakip takım odayı açan taraf olarak ikinize de geçerlidir.
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="mt-2 grid gap-1 text-[7px] leading-relaxed text-white/60 sm:grid-cols-2">
+                  <span>
+                    <b className="text-white/80">1. OYUNCU</b> — W A S D · BOŞLUK vur
+                  </span>
+                  <span>
+                    <b className="text-white/80">2. OYUNCU</b> — ok tuşları · ENTER vur
+                  </span>
+                </div>
+                <p className="mt-2 text-[7px] leading-relaxed text-white/45">
+                  {playMode === 'coop'
+                    ? 'İki sultan aynı takımda; rakip yapay zekâ.'
+                    : '2. oyuncu rakip takımı sürer.'}
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <ChipRow label="MOD">
@@ -382,9 +402,11 @@ export default function CharacterSelect({
               ? 'KUPA YOLUNA ÇIK'
               : campaign === 'survival'
                 ? 'SAHAYA ÇIK'
-                : twoPlayer
-                  ? 'İKİ KİŞİ BAŞLA'
-                  : 'MAÇA BAŞLA'}
+                : gameMode.online
+                  ? 'ODA KUR'
+                  : twoPlayer
+                    ? 'İKİ KİŞİ BAŞLA'
+                    : 'MAÇA BAŞLA'}
           </button>
           {!canStart && (
             <p className="text-[7px] text-white/45 sm:text-[8px]">
