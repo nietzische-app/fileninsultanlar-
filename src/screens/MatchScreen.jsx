@@ -278,12 +278,22 @@ export default function MatchScreen({
    * gerekiyor.
    */
   const [agBekliyor, setAgBekliyor] = useState(false);
+  /*
+   * Sürüm uyuşmazlığı ayrı bir durum, "bekleme" değil.
+   *
+   * Site (Vercel) ile röle ayrı dağıtılıyor. Biri yeni öbürü eskiyse
+   * paketler geliyor ama hiçbiri uygulanmıyor: bekçi bunu "rakip
+   * bekleniyor" diye gösterir ve oyuncu sonsuza kadar bekler. Sebebi
+   * söylemek gerekiyor, çünkü çaresi de oyuncuda: sayfayı yenilemek.
+   */
+  const [agSurumSorunu, setAgSurumSorunu] = useState(false);
   useEffect(() => {
     if (config.agRol !== 'misafir') return undefined;
     const sayac = setInterval(() => {
       const game = gameRef.current;
       if (!game) return;
       setAgBekliyor(game.agSessizlik() > AG_SESSIZLIK_SINIRI);
+      setAgSurumSorunu(game.agSurumUyusmazligi);
     }, 400);
     return () => clearInterval(sayac);
   }, [config.agRol]);
@@ -709,9 +719,18 @@ export default function MatchScreen({
             className="pointer-events-none absolute inset-x-0 top-1/2 z-20 -translate-y-1/2 text-center"
             role="status"
           >
-            <p className="mx-auto inline-block border-4 border-white/25 bg-black/85 px-4 py-2 text-[9px] text-retro-accent">
-              RAKİP BEKLENİYOR…
-            </p>
+            {agSurumSorunu ? (
+              <p className="mx-auto inline-block max-w-xs border-4 border-white/25 bg-black/85 px-4 py-2 text-[9px] leading-relaxed text-turkiye-red">
+                SÜRÜM UYUŞMUYOR
+                <span className="mt-2 block text-[7px] text-white/60">
+                  Sayfayı yenile. Sorun sürerse iki taraf da yenilesin.
+                </span>
+              </p>
+            ) : (
+              <p className="mx-auto inline-block border-4 border-white/25 bg-black/85 px-4 py-2 text-[9px] text-retro-accent">
+                RAKİP BEKLENİYOR…
+              </p>
+            )}
           </div>
         )}
 

@@ -33,13 +33,47 @@ birkaç saniyede birbirinden kopar.
 Sunucu hakem mimaride rastgelelik tek yerde çalışıyor, iki taraf da
 sonucu okuyor. Determinizm gerekmiyor.
 
-## Bilinen eksik: gecikme telafisi
+## Gecikme telafisi
 
-Şu an tahmin/uzlaştırma yok. Sunucu hakem olunca **iki oyuncu da**
-kendi tuşuyla ekrandaki karşılığı arasında gidiş-dönüş süresi kadar
-gecikme hissediyor — eskiden bunu yalnız katılan taraf hissediyordu.
-Tam vuruş penceresi 0.17 sn olduğu için yüksek gecikmede o pencereyi
-yakalamak zorlaşıyor. Sıradaki adım bu.
+Sunucu hakem olunca **iki oyuncu da** kendi tuşuyla ekrandaki karşılığı
+arasında bir gidiş-dönüş bekliyordu — eskiden bunu yalnız katılan taraf
+hissediyordu. Tam vuruş penceresi 0.17 sn olduğu için yüksek gecikmede o
+pencereyi yakalamak imkânsıza yaklaşıyordu.
+
+Çözüm klasik: **istemci tarafı tahmin + uzlaştırma**.
+
+1. İstemci kendi oyuncusunu tuşa basar basmaz hareket ettirir; sunucunun
+   onayını beklemez.
+2. Her girdi paketi istemcinin kendi **saat damgasını** taşır (`z`).
+   Sunucu bu damgayı okumaz, anlık görüntüyle geri yollar (`az`) — o
+   damganın sunucuda beklediği süreyle birlikte (`ay`).
+3. Anlık görüntü gelince istemci kendi oyuncusunu sunucunun gerçeğine
+   yazar ve aradaki adımları **kendi girdi geçmişiyle** yeniden oynar.
+4. Kalan fark ışınlanma olmasın diye birkaç karede ekrana yedirilir.
+
+Tahmin, hareket kodunu **kopyalamıyor**: sunucu da istemci de aynı
+`Game.insanOyuncuAdimla` çağrısından geçiyor. Bu depoda `reach.js`'te
+aynı hesabın iki kopyası tutulmuş ve %79'a kadar ayrışmıştı; tek çağrı
+noktası o hatanın tekrarını engelliyor (`tahmin.test.js` bunu sınıyor).
+
+Ölçüm — `node tests/olcum/gecikme.mjs`, yapay gecikmeli iki motor:
+
+| Gidiş-dönüş | Tepki (önce → sonra) | Tahmin hatası (önce → sonra) |
+|---|---|---|
+| 0 ms | 67 ms → **17 ms** | 26.7 px → **0 px** |
+| 50 ms | 83 ms → **17 ms** | 46.8 px → **6.7 px** |
+| 100 ms | 167 ms → **17 ms** | 60.2 px → **6.7 px** |
+| 200 ms | 217 ms → **17 ms** | 100.3 px → **9.9 px** |
+
+`TAHMIN=0` ile katman kapanıyor; "önce" sütunu böyle ölçüldü.
+
+**Kalan eksik:** tahmin yalnız oyuncunun kendisine uygulanıyor. Top ve
+rakip hâlâ anlık görüntüden ara değerleniyor, yani ekranda oyuncu
+"şimdi"yi, top ise yarım gidiş-dönüş öncesini gösteriyor. 100 ms'lik
+bir bağlantıda bu, topla oyuncu arasında birkaç on piksellik bir zaman
+farkı demek. Topu da ileri sarmak mümkün (`ballstep.js` bunun için ayrı
+duruyor) ama top yalnız serbest uçarken tahmin edilebilir — vuruş anında
+tahmin yanılır ve topu zıplatır. Ölçmeden yapılacak bir iş değil.
 
 ## Çalıştırma
 
@@ -339,12 +373,12 @@ kaçınılmaz. Tanımadığı mesajlar hâlâ karşı tarafa ham hâliyle aktar�
 | → | `{t:'oda-ac'}` | Yeni oda aç |
 | → | `{t:'oda-gir', kod}` | Odaya katıl |
 | → | `{t:'mac-basla', cfg}` | Maçı başlat (yalnız odayı açan) |
-| → | `{t:'girdi', k, b}` | Tuş durumu — kendi yuvana yazılır |
+| → | `{t:'girdi', k, b, z}` | Tuş durumu — kendi yuvana yazılır; `z` istemci saati |
 | → | `{t:'ayril'}` | Odadan çık |
 | ← | `{t:'oda', kod, rol}` | Oda kuruldu / katılındı |
 | ← | `{t:'eslesme', rol}` | İki taraf da hazır |
 | ← | `{t:'mac', cfg, yuva}` | Maç kuruldu; `yuva` seni söyler ('p1'/'p2') |
-| ← | `{t:'durum', ...}` | Anlık görüntü (~20 Hz) |
+| ← | `{t:'durum', ...}` | Anlık görüntü (~20 Hz); `az`/`ay` girdi onayı |
 | ← | `{t:'bitis', sonuc}` | Maç bitti |
 | ← | `{t:'ayrildi', kapandi}` | Karşı taraf gitti |
 | ← | `{t:'hata', sebep}` | İstek reddedildi |
@@ -357,7 +391,9 @@ Yuva dağıtımı: odayı **açan** Türkiye'yi (`p1`), **katılan** rakip takı
 
 - Tek mesaj en fazla 16 KB (`maxPayload`).
 - Saniyede 150 mesaj; aşan bağlantı kapatılır. Normal akış ~80
-  (ev sahibi 20 durum, misafir tuş değiştikçe).
+  (sunucu 20 durum, istemci tuş değiştikçe + saniyede 20 saat damgası).
+  Damga, girdi değişmese de gidiyor: tahmin penceresi onun tazeliğine
+  bağlı, durursa istemci kendini gitgide daha ileri sürerdi.
 - Aynı anda 500 oda.
 - 30 saniyede bir ping/pong; yanıtsız soket düşürülür. Mobilde ağ
   değişince soket "açık" görünüp hiçbir şey taşımayabiliyor; bu
@@ -370,6 +406,9 @@ Yuva dağıtımı: odayı **açan** Türkiye'yi (`p1`), **katılan** rakip takı
 
 - `oda.test.js` — eşleşme mantığı, soketsiz.
 - `rele.test.js` — gerçek WebSocket'lerle tel üzerindeki davranış.
+- `src/game/tahmin.test.js` — tahmin, uzlaştırma ve düzeltmenin
+  yedirilmesi. Testlerin bir kısmı tahmin KAPALIYKEN de geçiyor; onlar
+  ölçüm aracının kendisini doğruluyor.
 
 Uçtan uca sınamayı `npm run e2e online` yapıyor: iki gerçek tarayıcı,
 bu sunucunun bir örneği, menüden sahaya kadar tam yol.

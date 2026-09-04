@@ -49,6 +49,18 @@ sonra koşup farka bakmak için:
 | `temas-mesafe` | Temas anında topun gövdeye uzaklığı — "vurmak için değdirmek gerekiyor mu" |
 | `perf` | CPU kısıtlı mobil taklidinde kare süresi dağılımı |
 | `adim` | Sabit adım: kare hızından bağımsızlık, boş/çift kare, sim/gerçek oranı |
+| `gecikme` | Çevrimiçi tepki süresi, tahmin hatası, öngörü mesafesi, uzlaştırma sıçraması |
+
+`gecikme` tarayıcı kullanmıyor: iki motoru (sunucu + istemci) aynı süreçte
+adım adım kilitli koşturup paketleri **N adım geciktiriyor**. Yapay gecikme
+şart, çünkü yerelde ağ 0 ms ve gecikme telafisinin kazandırdığı hiçbir şey
+görünmüyor. `TAHMIN=0` ile tahmin katmanı kapanıyor — aracın kendisini
+doğrulamanın yolu bu:
+
+```
+TAHMIN=0 node tests/olcum/gecikme.mjs   # tepki 67–217 ms
+node tests/olcum/gecikme.mjs            # tepki 17 ms
+```
 
 **Uyarı:** `oran` içindeki bot mükemmel top takip eder ve mekanik olarak
 zıplar; insan gibi oynamaz. Mutlak yüzdeleri değil, aynı botla ölçülen
@@ -80,5 +92,15 @@ ederken yanlış şeyi ölçmeye başlıyor.
   servis fazında basıp "tuş çalışmıyor" sonucuna varmıştım; girdi
   zinciri baştan sona doğruydu, ama SERVİS fazında motor hiç
   `updatePlayers` çağırmıyor ve kimse kıpırdamıyor.
+- **Doğru soruyu** sorun. `gecikme` ölçümünün ilk hâli istemcinin konumunu
+  sunucunun AYNI ANDAKİ konumuyla karşılaştırıyordu ve 40 px'lik bir fark
+  gösteriyordu. O farkın tamamı kasıtlıydı: tahminin işi zaten ileride
+  olmak. Doğru karşılaştırma, istemcinin çizdiği konum ile sunucunun BİR
+  GİDİŞ YOLU SONRA ürettiği konum arasında. Yanlış eksende ölçülen bir
+  sayı, doğru çalışan bir düzeltmeyi bozukmuş gibi gösteriyor.
+- Ekranda ne görünüyorsa **onu** okuyun. Uzlaştırma düzeltmesi çizim
+  sırasında yediriliyor, yani `player.x` ile çizilen konum bir süre farklı.
+  Ölçüm çizim kodunun okuduğu fonksiyonun aynısını (`agCizimKaydirma`)
+  çağırıyor; ayrı hesaplasa yumuşatmanın etkisini hiç göremezdi.
 
 Ekran görüntüleri `tests/ciktilar/` altına yazılır ve depoya girmez.

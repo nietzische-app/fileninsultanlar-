@@ -94,7 +94,7 @@ import {
   updateRings as fxUpdateRings,
 } from './effects.js';
 import Sfx from './audio.js';
-import { paketle, uygula, girdiPaketle } from './snapshot.js';
+import { paketle, uygula, girdiPaketle, oyuncuFizikUygula } from './snapshot.js';
 import { ilgiEki, upper } from '../utils/text.js';
 
 /**
@@ -122,6 +122,48 @@ const BG_REFRESH = 1 / 10;
  */
 const AG = {
   durumHz: 20,
+
+  /**
+   * Girdinin EN AZ bu sıklıkta yollanması (Hz).
+   *
+   * Girdi normalde yalnız değiştiğinde gidiyor. Tahmin gelince bu tek
+   * başına yetmez oldu: istemci "sunucu benim hangi anımı işledi"
+   * sorusunu kendi girdi damgasının geri dönmesinden okuyor, tuşa
+   * dokunmadığında damga tazelenmiyor ve tahmin penceresi durmadan
+   * büyüyordu — 3 saniye kıpırdamayan oyuncu 180 adım geri sarılıyordu.
+   * Değişmese de saniyede 20 kez damga gitmesi bunu kesiyor.
+   */
+  onayHz: 20,
+
+  /**
+   * Tahminde ileri sarılacak EN FAZLA süre (sn).
+   *
+   * Bağlantı kopunca son onay eskir ve pencere sınırsız büyür: istemci
+   * her pakette yüzlerce adım koşturmaya çalışır, kare süresi patlar ve
+   * "donma"nın üstüne bir de ısınan telefon gelir. 0.5 sn = 30 adım;
+   * bunun ötesindeki gecikmede zaten oynanabilir bir maç yok.
+   */
+  azamiTahmin: 0.5,
+
+  /**
+   * Uzlaştırma düzeltmesinin ekrana yedirilme hızı (1/sn).
+   *
+   * Sunucu tahmini düzelttiğinde oyuncuyu doğrudan yeni yere yazmak
+   * ışınlanma gibi görünüyor. Fark bunun yerine bir SAPMA olarak
+   * tutuluyor ve her karede bu oranda eritiliyor: 12 ≈ 80 ms'de
+   * neredeyse kapanıyor, yani düzeltme görünür ama sıçrama değil.
+   */
+  duzeltmeHizi: 12,
+
+  /**
+   * Bu mesafenin üstündeki düzeltme YEDİRİLMEZ, anında uygulanır (px).
+   *
+   * Sayı arası, dalış ya da bir paket kaybı sonrası tahmin gerçekten
+   * uzağa düşebiliyor. Böyle bir farkı yumuşatmak oyuncuyu saniyelerce
+   * yanlış yerde gösterirdi; büyük farkta doğruluk, küçük farkta
+   * yumuşaklık isteniyor.
+   */
+  anindaDuzeltme: 60,
 };
 
 const P1_KEYS = {
@@ -307,6 +349,65 @@ export default class Game {
      * akan ama 50 ms geriden gelen görüntüden daha kötü oynanıyor.
      */
     this.agAra = null;
+
+    /**
+     * Gecikme telafisi açık mı (istemci tarafı tahmin).
+     *
+     * Kapatılabilir olması ölçüm için: aynı koşumda açık ve kapalı
+     * sayıları yan yana koyabilmek, iyileşmenin gerçekten tahminden
+     * geldiğini gösteriyor.
+     */
+    this.agTahmin = options.agTahmin ?? true;
+
+    /**
+     * Girdi geçmişi (yalnız istemcide): [{ an, tuslar }].
+     *
+     * Uzlaştırma sırasında geri sarılan her adım için "o anda hangi
+     * tuşlar basılıydı" sorusunun cevabı burada. Yalnız o anki tuşları
+     * kullanıp tüm pencereyi onunla sarsaydık, tuşu yeni bırakmış
+     * oyuncu geri sarımda hâlâ koşuyor sanılır ve her pakette geri
+     * teperdi.
+     */
+    this.agGirdiGecmisi = [];
+    /** İstemcide: en son girdi paketi yollanan an (motor saati). */
+    this.agSonGirdiAn = -Infinity;
+    /**
+     * Sunucuda: yuva başına `{ z, geldi }` — istemcinin damgası ve o
+     * paketin SUNUCU saatinde geldiği an. Bir de simülasyona katılmış
+     * hâli ayrı tutuluyor.
+     *
+     * İkisi ayrı çünkü paket iki adımın arasında geliyor: alındığı an
+     * onaylasaydık istemci daha işlenmemiş bir girdiyi işlenmiş sanıp
+     * yarım adım fazla tahmin ederdi.
+     *
+     * `geldi` alanının sebebi daha ince. İstemci tahmin penceresini
+     * "kendi saatim eksi geri dönen damgam" diye hesaplıyor; bu fark
+     * gidiş-dönüş süresi DEĞİL, ona damganın sunucuda beklediği süre de
+     * ekleniyor. Girdi her adımda yollanmadığı için (değişmedikçe
+     * saniyede 20) bu bekleme 50 ms'i buluyordu ve istemci kendini üç
+     * adım fazla ileri sürüyordu — ölçümde her pakette 27 px'lik bir
+     * sıçrama olarak görünüyordu. Bekleme süresini sunucu ölçüp geri
+     * yolluyor, istemci onu düşüyor.
+     */
+    this.agOnay = { p1: null, p2: null };
+    this.agOnayIslenen = { p1: null, p2: null };
+    /**
+     * İstemcide: tahminle sunucu arasındaki, ekrana yedirilen sapma.
+     *
+     * Düzeltme oyuncunun konumuna doğrudan yazılmıyor; fark burada
+     * tutulup her karede eritiliyor (bkz. AG.duzeltmeHizi).
+     */
+    this.agSapma = { x: 0, y: 0 };
+
+    /**
+     * Karşı taraf farklı paket sürümü konuşuyor mu.
+     *
+     * Site ile röle ayrı dağıtılıyor: biri güncellenip öbürü
+     * güncellenmezse paketler gelir ama hiçbiri uygulanmaz. Belirtisi
+     * "rakip bekleniyor" yazan donmuş bir ekran olurdu ve sebebi
+     * görünmezdi. Bayrak maç ekranına gerçek sebebi söyletiyor.
+     */
+    this.agSurumUyusmazligi = false;
 
     /**
      * Ses çağrılarının tek kapısı.
@@ -760,6 +861,16 @@ export default class Game {
       player.input.action = false;
       player.input.dive = false;
     });
+
+    /*
+     * Tahmin geçmişi de temizleniyor. Odak kaybı ya da duraklama
+     * sonrası geri dönen oyuncunun geri sarımı, tuşlar bırakılmadan
+     * ÖNCEKİ kayıtları kullanırdı: sunucu duran bir oyuncu gösterirken
+     * istemci onu hâlâ koşturur, her pakette geri çekilirdi.
+     */
+    this.agGirdiGecmisi = [];
+    this.agSonGirdi = '';
+    this.agSapma = { x: 0, y: 0 };
   }
 
   handleWindowBlur() {
@@ -814,9 +925,55 @@ export default class Game {
 
     const tuslar = this.inputs.p1;
     const imza = `${tuslar.left}${tuslar.right}${tuslar.up}${tuslar.down}${tuslar.action}${tuslar.dive}|${this.actionPresses.p1}`;
-    if (!zorla && imza === this.agSonGirdi) return;
-    this.agSonGirdi = imza;
-    this.agGonder(girdiPaketle(tuslar, this.actionPresses.p1));
+    const degisti = imza !== this.agSonGirdi;
+
+    /*
+     * Değişmemiş girdi de arada bir gidiyor: paket yalnız tuş
+     * bilgisi taşımıyor, istemcinin saat damgasını da taşıyor ve
+     * tahmin penceresi o damganın tazeliğine bağlı (bkz. AG.onayHz).
+     */
+    const damgaEskidi = this.time - this.agSonGirdiAn >= 1 / AG.onayHz;
+    if (!zorla && !degisti && !damgaEskidi) return;
+
+    if (degisti) {
+      this.agSonGirdi = imza;
+      this.agGirdiGecmisiYaz(tuslar);
+    }
+    this.agSonGirdiAn = this.time;
+    this.agGonder(girdiPaketle(tuslar, this.actionPresses.p1, this.time));
+  }
+
+  /**
+   * Girdi geçmişine bir kayıt düşer ve eskiyenleri atar.
+   *
+   * Pencere `AG.azamiTahmin`in iki katı: geri sarım o kadar geriye
+   * gidebiliyor, biraz da pay bırakıyoruz. Sınırsız büyüseydi uzun bir
+   * maçta dizi on binlerce kayda çıkar ve her paket onu tararken kare
+   * süresini yerdi.
+   */
+  agGirdiGecmisiYaz(tuslar) {
+    this.agGirdiGecmisi.push({ an: this.time, tuslar: { ...tuslar } });
+    const sinir = this.time - AG.azamiTahmin * 2;
+    while (this.agGirdiGecmisi.length > 1 && this.agGirdiGecmisi[1].an < sinir) {
+      this.agGirdiGecmisi.shift();
+    }
+  }
+
+  /**
+   * Verilen andaki tuş durumu — geri sarım için.
+   *
+   * "O andan önceki SON kayıt" aranıyor, en yakını değil: tuşlar bir
+   * seviye, bir olay değil. `an`dan sonraki bir kayıt henüz olmamış bir
+   * şeydir; onu kullanmak geleceği tahmine karıştırırdı.
+   */
+  agGirdiOku(an) {
+    const gecmis = this.agGirdiGecmisi;
+    let bulunan = null;
+    for (let i = 0; i < gecmis.length; i += 1) {
+      if (gecmis[i].an > an) break;
+      bulunan = gecmis[i].tuslar;
+    }
+    return bulunan ?? gecmis[0]?.tuslar ?? this.inputs.p1;
   }
 
   /**
@@ -880,6 +1037,143 @@ export default class Game {
     if (typeof paket.b === 'number' && paket.b >= this.actionPresses[yuvaAdi]) {
       this.actionPresses[yuvaAdi] = paket.b;
     }
+    /*
+     * Damga ALINDI olarak işaretleniyor, İŞLENDİ olarak değil —
+     * aradaki fark `update`in başında kapanıyor. Burada işlenmiş
+     * saysaydık, adımlar arasında gelen bir paket sayesinde istemci
+     * bir adım fazla ileri tahmin ederdi.
+     */
+    if (typeof paket.z === 'number') {
+      this.agOnay[yuvaAdi] = { z: paket.z, geldi: this.time };
+    }
+  }
+
+  /**
+   * Sunucudan gelen düzeltmeyi kendi oyuncusuna uygular ve aradaki
+   * gecikmeyi tahminle kapatır.
+   *
+   * İşleyiş: paket, istemcinin `az` anındaki girdisine kadar olan
+   * gerçeği taşıyor. O hâlden başlanıp aradaki adımlar YEREL girdi
+   * geçmişiyle yeniden koşturuluyor — yani "geçmişi düzelt, bugüne
+   * kadar tekrar oyna". Sonuç, oyuncunun sunucuda ŞU AN olduğu yerin
+   * tahmini.
+   *
+   * @returns {number|null} Tahmin edilen oyuncunun sırası — ara
+   *   değerlemeden çıkarılması için; tahmin kapalıysa null.
+   */
+  agUzlastir(paket) {
+    if (!this.agTahmin || this.agRol !== 'misafir' || !this.agYuvam) return null;
+
+    const sira = this.players.findIndex((p) => p.controlSlot === this.agYuvam);
+    const veri = paket.p?.[sira];
+    if (sira < 0 || !veri) return null;
+
+    const player = this.players[sira];
+    const oncekiX = player.x;
+    const oncekiY = player.y;
+
+    // 1) Sunucunun gerçeği
+    oyuncuFizikUygula(player, veri);
+
+    // 2) Aradaki adımları kendi girdimizle yeniden koştur
+    const yuvaSira = this.agYuvam === 'p1' ? 0 : 1;
+    const onay = paket.az?.[yuvaSira];
+    if (typeof onay === 'number') {
+      /*
+       * Pencere = gidiş-dönüş. Ham fark buna eşit değil: damganın
+       * sunucuda beklediği süre (`ay`) de içinde. Düşülmezse istemci
+       * her pakette birkaç adım fazla ileri sarıp geri sıçrıyor.
+       */
+      const bekleme = paket.ay?.[yuvaSira] ?? 0;
+      const pencere = Math.max(0, Math.min(AG.azamiTahmin, this.time - onay - bekleme));
+      const adet = Math.round(pencere / PHYSICS.step);
+      /*
+       * Aşama pakettekinden okunuyor: girdinin işlenip işlenmediğini
+       * (`active`) belirleyen o. Servis aşamasında sunucu oyuncuyu hiç
+       * hareket ettirmiyor; orada tahmin etseydik istemci sunucunun
+       * yapmadığı bir hareketi çizerdi.
+       */
+      const active = paket.f === PHASE.RALLY;
+      for (let i = 1; i <= adet; i += 1) {
+        this.insanOyuncuAdimla(player, this.agGirdiOku(onay + i * PHYSICS.step), active, PHYSICS.step);
+      }
+    }
+
+    // 3) Farkı ekrana yedirmek üzere sapmaya al
+    this.agSapmaAl(player, oncekiX, oncekiY);
+    return sira;
+  }
+
+  /**
+   * Düzeltme farkını görünür sapmaya çevirir.
+   *
+   * Oyuncu düzeltilmiş konuma YAZILDI; ama ekranda hemen oraya
+   * atlamasın diye eski konumla arasındaki fark `agSapma`ya alınıyor.
+   * Çizim `x + sapma` gösteriyor: düzeltme anında sapma tam olarak eski
+   * konumu geri veriyor, sonra her karede eriyip gerçek konuma
+   * yaklaşıyor. Yani simülasyon doğru yerde, göz kayarak takip ediyor.
+   *
+   * Büyük farkta yedirme yok: bkz. AG.anindaDuzeltme.
+   */
+  agSapmaAl(player, oncekiX, oncekiY) {
+    const dx = oncekiX - player.x;
+    const dy = oncekiY - player.y;
+    if (Math.hypot(dx, dy) > AG.anindaDuzeltme) {
+      this.agSapma.x = 0;
+      this.agSapma.y = 0;
+      return;
+    }
+    this.agSapma.x = dx;
+    this.agSapma.y = dy;
+  }
+
+  /**
+   * Bir oyuncunun ÇİZİM kaydırması — yoksa null.
+   *
+   * Yalnız tahmin edilen oyuncuda ve yalnız yedirilmemiş düzeltme
+   * kaldığında dolu. Tek bir yerden okunmasının sebebi ölçüm: hem
+   * çizim hem de gecikme ölçümü aynı fonksiyonu çağırıyor, yani
+   * ölçtüğümüz sayı oyuncunun GÖRDÜĞÜ konum. Ayrı hesaplasalardı
+   * ölçüm ekrandaki sıçramayı hiç göremezdi.
+   */
+  agCizimKaydirma(player) {
+    if (!this.agTahmin || !this.agYuvam || player.controlSlot !== this.agYuvam) return null;
+    if (this.agSapma.x === 0 && this.agSapma.y === 0) return null;
+    return this.agSapma;
+  }
+
+  /**
+   * İstemcinin kendi oyuncusunu bir adım ileri sürer.
+   *
+   * Paketler arasında çalışan kısım bu: tuşa basıldığı anda oyuncu
+   * kıpırdıyor, sunucunun onayı beklenmiyor. Sunucu farklı düşünürse
+   * bir sonraki pakette `agUzlastir` düzeltiyor.
+   */
+  agTahminAdimla(dt) {
+    if (!this.agTahmin || !this.agYuvam) return;
+    const player = this.players.find((p) => p.controlSlot === this.agYuvam);
+    if (!player) return;
+
+    /*
+     * Kare arasına sıkışan basış tahminde de "basılı" sayılıyor —
+     * sunucudaki `updatePlayers` ile aynı kural. Aksi hâlde hızlı
+     * tıklanan vuruş yerel ekranda hiç görünmez, yalnızca sunucunun
+     * düzeltmesiyle bir gidiş-dönüş sonra ortaya çıkardı.
+     */
+    const pad = this.inputs.p1;
+    this.insanOyuncuAdimla(
+      player,
+      { ...pad, action: pad.action || this.actionEdge.p1 },
+      this.phase === PHASE.RALLY,
+      dt,
+    );
+
+    // Yedirilen düzeltme
+    const erime = Math.max(0, 1 - AG.duzeltmeHizi * dt);
+    this.agSapma.x *= erime;
+    this.agSapma.y *= erime;
+    if (Math.abs(this.agSapma.x) < 0.05) this.agSapma.x = 0;
+    if (Math.abs(this.agSapma.y) < 0.05) this.agSapma.y = 0;
   }
 
 
@@ -952,8 +1246,15 @@ export default class Game {
    * levhasının zıplaması gibi) sürüyor.
    */
   misafirGuncelle(dt) {
+    this.basisKenariHesapla();
     this.time += dt;
     this.agAradegerle(dt);
+    /*
+     * Ara değerlemeden SONRA: tahmin edilen oyuncu hedef listesinde
+     * yok, kendi adımını burada atıyor. Sıranın tersi olsaydı ara
+     * değerleme bir sonraki karede onu geri çekerdi.
+     */
+    this.agTahminAdimla(dt);
     this.updateParticles(dt);
     this.updateRings(dt);
     this.updateBallTrail();
@@ -970,8 +1271,11 @@ export default class Game {
    *
    * @param {number[]} top   [x, y, rotation]
    * @param {Array[]} oyuncular Her oyuncu için paket dizisi
+   * @param {number|null} [disarida] Ara değerlemeye KATILMAYACAK oyuncunun
+   *   sırası — tahmin edilen kendi oyuncumuz. Onu da yumuşatsaydık
+   *   tahmin her pakette geri çekilir, tuş yine geç cevap verirdi.
    */
-  agKonumHedefle(top, oyuncular) {
+  agKonumHedefle(top, oyuncular, disarida = null) {
     const simdi = this.time;
     /*
      * Süre ölçülüyor, sabit 1/20 varsayılmıyor: ağ gecikmesi oynuyor ve
@@ -992,7 +1296,7 @@ export default class Game {
       oncekiOyuncu: this.players.map((p) => [p.x, p.y, p.vy, p.runFrame, p.squash]),
       // Nereye: pakettekiler
       hedefTop: top,
-      hedefOyuncu: oyuncular,
+      hedefOyuncu: oyuncular.map((d, i) => (i === disarida ? null : d)),
     };
 
     // İlk pakette geçiş yapacak bir "önceki" yok — anında yerleş
@@ -1024,14 +1328,40 @@ export default class Game {
     });
   }
 
-  update(dt) {
-    this.adim += 1;
-
-    // Bu karede yeni vuruş basışı geldi mi (kare arasına sıkışsa bile)
+  /**
+   * Bu adımda yeni vuruş basışı geldi mi (kare arasına sıkışsa bile).
+   *
+   * Ayrı yöntem çünkü misafir `update`i hiç çağırmıyor ama tahmin
+   * yaparken bu kenara ihtiyacı var: hızlı bir tık iki kare arasına
+   * sıkıştığında tuş durumu hiç "basılı" görünmüyor, yalnız sayaç
+   * artıyor. Kenar hesaplanmadan tahmin o vuruşu kaçırır, sunucu ise
+   * yapardı — oyuncu kendi ekranında vurmadığını, skorda vurduğunu
+   * görürdü.
+   */
+  basisKenariHesapla() {
     ['p1', 'p2'].forEach((slot) => {
       this.actionEdge[slot] = this.actionPresses[slot] !== this.lastActionPresses[slot];
       this.lastActionPresses[slot] = this.actionPresses[slot];
     });
+  }
+
+  update(dt) {
+    this.adim += 1;
+
+    /*
+     * Bu adıma kadar ALINAN girdiler artık İŞLENMİŞ sayılıyor: adım
+     * onları kullanacak. Onay damgası burada ilerliyor, paket geldiği
+     * anda değil — istemcinin tahmin penceresi yarım adım kaymasın
+     * diye. `update` içinde durmasının bir sebebi daha var: aşamadan
+     * bağımsız, yani servis sırasında da (oyuncu hareket etmese bile)
+     * onay tazeleniyor ve pencere büyümüyor.
+     */
+    if (this.agRol === 'ev') {
+      this.agOnayIslenen.p1 = this.agOnay.p1;
+      this.agOnayIslenen.p2 = this.agOnay.p2;
+    }
+
+    this.basisKenariHesapla();
 
     this.time += dt;
     this.shake = Math.max(0, this.shake - dt * 60);
@@ -1116,18 +1446,21 @@ export default class Game {
         // İnsan girdisi doğrudan aktarılır — her oyuncu kendi yuvasından
         const slot = player.controlSlot ?? 'p1';
         const pad = this.inputs[slot] ?? this.inputs.p1;
-        player.input.left = active && pad.left;
-        player.input.right = active && pad.right;
-        player.input.up = active && pad.up;
         /*
          * Kare arasına sıkışan basış da bir kare boyunca "basılı"
          * sayılır: yoksa hızlı tıklayan oyuncunun vuruşu hiç
          * gerçekleşmiyor, tuş çalışmamış gibi hissediliyordu.
          */
-        player.input.action = active && (pad.action || this.actionEdge[slot]);
-        player.input.dive = active && pad.dive;
-        player.aiSpeedScale = 1;
-      } else if (active) {
+        this.insanOyuncuAdimla(
+          player,
+          { ...pad, action: pad.action || this.actionEdge[slot] },
+          active,
+          dt,
+        );
+        return;
+      }
+
+      if (active) {
         const isAway = player.side === 'away';
         const chaserId = isAway ? awayChaser : homeChaser;
         updateAI(
@@ -1158,27 +1491,56 @@ export default class Game {
         player.input.dive = false;
       }
 
-      /*
-       * Vuruş tuşunun yükselen kenarı bir SALINIM başlatır.
-       *
-       * `swingTimer <= 0` koşulu kasıtlı: salınım sürerken yeniden
-       * basmak onu uzatmaz. Uzatsaydı tuşa hızlı hızlı basarak vuruşu
-       * sürekli açık tutmak mümkün olurdu — düzeltmeye çalıştığımız
-       * "basılı tut, hep vuruşta kal" davranışının aynısı.
-       *
-       * Basılı tutmak da yeni salınım başlatmaz: kenar bir kez olur,
-       * süre dolunca vuruş kapanır ve tuşu bırakıp yeniden basmak
-       * gerekir.
-       */
-      const down = player.input.action;
-      if (down && !player.actionWasDown && player.swingTimer <= 0) {
-        player.swingTimer = PLAYER.swingDuration;
-        player.actionPressedAt = this.time;
-      }
-      player.actionWasDown = down;
-
-      this.movePlayer(player, dt);
+      this.oyuncuAdimla(player, dt);
     });
+  }
+
+  /**
+   * Bir oyuncunun tek adımı — girdisi ZATEN yazılmışken.
+   *
+   * Vuruş tuşunun yükselen kenarı bir SALINIM başlatır.
+   *
+   * `swingTimer <= 0` koşulu kasıtlı: salınım sürerken yeniden basmak
+   * onu uzatmaz. Uzatsaydı tuşa hızlı hızlı basarak vuruşu sürekli açık
+   * tutmak mümkün olurdu — düzeltmeye çalıştığımız "basılı tut, hep
+   * vuruşta kal" davranışının aynısı.
+   *
+   * Basılı tutmak da yeni salınım başlatmaz: kenar bir kez olur, süre
+   * dolunca vuruş kapanır ve tuşu bırakıp yeniden basmak gerekir.
+   */
+  oyuncuAdimla(player, dt) {
+    const down = player.input.action;
+    if (down && !player.actionWasDown && player.swingTimer <= 0) {
+      player.swingTimer = PLAYER.swingDuration;
+      player.actionPressedAt = this.time;
+    }
+    player.actionWasDown = down;
+
+    this.movePlayer(player, dt);
+  }
+
+  /**
+   * İnsan oyuncunun tek adımı: tuşları yaz, sonra adımla.
+   *
+   * Ayrı bir yöntem olmasının sebebi TAHMİN. İstemci kendi oyuncusunu
+   * sunucudan önce hareket ettiriyor (bkz. agTahminAdimla) ve o kodun
+   * sunucudakiyle BİREBİR aynı olması gerekiyor — kopyalasaydık iki
+   * kopya zamanla ayrışır, oyuncu kendi ekranında bir yerde, sunucuda
+   * başka bir yerde olurdu. Bu projede `reach.js`'te tam olarak bu
+   * yaşanmıştı: aynı hesabın iki kopyası %79'a kadar ayrışmıştı.
+   *
+   * @param {object} tuslar Bu adımda basılı sayılan tuşlar
+   * @param {boolean} active Aşama oyuncu girdisini kabul ediyor mu
+   */
+  insanOyuncuAdimla(player, tuslar, active, dt) {
+    player.input.left = active && Boolean(tuslar.left);
+    player.input.right = active && Boolean(tuslar.right);
+    player.input.up = active && Boolean(tuslar.up);
+    player.input.action = active && Boolean(tuslar.action);
+    player.input.dive = active && Boolean(tuslar.dive);
+    player.aiSpeedScale = 1;
+
+    this.oyuncuAdimla(player, dt);
   }
 
   /** Dalışı başlatır: oyuncu yatay olarak fırlar. */
@@ -2432,12 +2794,13 @@ export default class Game {
       const isDiving = p.diveTimer > 0 || p.recoverTimer > 0;
       if (isDiving) {
         // Yatan gövde geniş ve yakın bir gölge bırakır
-        this.drawShadow(p.x - p.facing * 8, GROUND_Y, 44);
+        this.drawShadow(p.x - p.facing * 8 + (this.agCizimKaydirma(p)?.x ?? 0), GROUND_Y, 44);
         return;
       }
       // Havadayken gölge küçülür — yükseklik hissi verir
       const lift = clamp((GROUND_Y - p.y) / 170, 0, 1);
-      this.drawShadow(p.x, GROUND_Y, 30 * (1 - lift * 0.45));
+      // Gölge de kaydırmayı almalı — yoksa figür gölgesinden ayrılıyor
+      this.drawShadow(p.x + (this.agCizimKaydirma(p)?.x ?? 0), GROUND_Y, 30 * (1 - lift * 0.45));
     });
     this.drawShadow(this.ball.x, GROUND_Y, 16 * this.ballShadowScale());
 
@@ -2571,6 +2934,18 @@ export default class Game {
   drawPlayer(player) {
     const { ctx } = this;
 
+    /*
+     * Uzlaştırma düzeltmesi ekrana YEDİRİLİYOR. Simülasyondaki konum
+     * çoktan düzeltildi; burada kalan fark kadar geri kaydırılıp her
+     * karede eritiliyor, böylece düzeltme ışınlanma değil kayma
+     * oluyor. Bkz. agSapma / agSapmaAl.
+     */
+    const kaydir = this.agCizimKaydirma(player);
+    if (kaydir) {
+      ctx.save();
+      ctx.translate(kaydir.x, kaydir.y);
+    }
+
     // Squash & stretch: inişte ezilir, yükselirken uzar.
     // Ölçekleme ayakların değdiği noktadan yapılır ki figür yere basılı kalsın.
     let scaleX = 1;
@@ -2649,6 +3024,8 @@ export default class Game {
       ctx.textBaseline = 'middle';
       ctx.fillText(upper(player.data.name), player.x, top - 34 + bounce);
     }
+
+    if (kaydir) ctx.restore();
   }
 
   drawParticles() {

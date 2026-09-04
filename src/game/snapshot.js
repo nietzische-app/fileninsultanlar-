@@ -22,7 +22,7 @@
  * yenilememiştir). Uyuşmazlığı sessizce yanlış çizmektense açıkça
  * söylemek gerekiyor.
  */
-export const PAKET_SURUM = 1;
+export const PAKET_SURUM = 2;
 
 /** Yön kısaltmaları — 'home'/'away' yerine tek harf. */
 const YON_KISA = { home: 'h', away: 'a' };
@@ -33,11 +33,22 @@ function yuvarla(sayi) {
   return Math.round(sayi * 10) / 10;
 }
 
+/** Süre alanları için: milisaniye çözünürlüğü. */
+function yuvarla3(sayi) {
+  return Math.round(sayi * 1000) / 1000;
+}
+
 /**
  * Oyuncunun çizim ve his için gereken alanları.
  *
- * Fizik alanları (vx, hitCooldown, AI durumu) YOK: misafir simüle
- * etmiyor. `vy` istisna — havadaki gerilme efekti onu okuyor.
+ * 0-9 arası çizim alanları. 10'dan sonrakiler FİZİK alanları: istemci
+ * kendi oyuncusunu tahmin ederken sunucunun düzeltmesini bu hâlden
+ * devam ettirmek zorunda. Onlarsız uzlaştırma yarım kalırdı — konum
+ * doğru, hız yanlış olurdu ve oyuncu her düzeltmede seğirirdi.
+ *
+ * Dört alan da her oyuncu için gidiyor, yalnız tahmin edilen için
+ * değil: paket ~60 bayt büyüyor, karşılığında hangi yuvanın hangi
+ * istemcide tahmin edildiğini paketleyicinin bilmesi gerekmiyor.
  */
 function oyuncuPaketle(p) {
   return [
@@ -51,7 +62,45 @@ function oyuncuPaketle(p) {
     p.onGround ? 1 : 0,
     yuvarla(p.diveTimer),
     yuvarla(p.recoverTimer),
+    // --- tahmin için gereken fizik ---
+    yuvarla(p.vx),
+    // Sayaçlar 0.1 sn çözünürlükte yuvarlanamaz: salınım 0.45 sn ve
+    // adım 0.017 sn — kaba yuvarlama vuruşu bir adım uzatıp kısaltırdı.
+    yuvarla3(p.swingTimer ?? 0),
+    yuvarla3(p.diveCooldown ?? 0),
+    p.actionWasDown ? 1 : 0,
   ];
+}
+
+/**
+ * Paketteki fizik alanlarını oyuncuya yazar — tahminin başlangıç hâli.
+ *
+ * Yalnız uzlaştırma yolunda çağrılıyor: tahmin etmediğimiz oyuncular
+ * için bu alanlar boşuna yazılırdı, onları zaten simüle etmiyoruz.
+ */
+export function oyuncuFizikUygula(p, d) {
+  if (!p || !d || d.length < 14) return;
+  p.x = d[0];
+  p.y = d[1];
+  p.vy = d[2];
+  p.facing = d[3];
+  p.pose = d[4];
+  p.runFrame = d[5];
+  p.squash = d[6];
+  p.onGround = d[7] === 1;
+  p.diveTimer = d[8];
+  p.recoverTimer = d[9];
+  p.vx = d[10];
+  p.swingTimer = d[11];
+  p.diveCooldown = d[12];
+  p.actionWasDown = d[13] === 1;
+  /*
+   * `actionPressedAt` bilerek YOK. Tek okuyucusu tam vuruş
+   * zamanlaması (`resolveCollisions`) ve o yalnız sunucuda koşuyor —
+   * istemcide değeri hiçbir şeyi değiştirmiyor. Üstelik sunucunun
+   * saatiyle istemcininki aynı değil; olduğu gibi yazsak yanlış bir
+   * şeyi doğru sanırdık.
+   */
 }
 
 /**
@@ -98,6 +147,31 @@ export function paketle(oyun, olaylar = []) {
     // Görsel durum
     b: [yuvarla(b.x), yuvarla(b.y), yuvarla(b.rotation)],
     p: oyun.players.map(oyuncuPaketle),
+    /*
+     * Girdi onayı: her yuva için, SİMÜLASYONA KATILMIŞ son girdinin
+     * istemci saatindeki damgası. İstemci bunu kendi saatiyle
+     * karşılaştırıp "bu görüntü ne kadar eski" sorusunu yanıtlıyor ve
+     * aradaki farkı kendi tahminiyle kapatıyor.
+     *
+     * Damga sunucunun değil İSTEMCİNİN saati — geri yolladığımız şey
+     * onun kendi gönderdiği sayı. İki saati birbirine ayarlamaya gerek
+     * kalmıyor; yalnız aynı saatteki iki an çıkarılıyor.
+     */
+    az: [oyun.agOnayIslenen.p1?.z ?? null, oyun.agOnayIslenen.p2?.z ?? null],
+    /*
+     * O damganın sunucuda BEKLEDİĞİ süre (sn).
+     *
+     * İstemcinin gördüğü fark (kendi saati eksi geri dönen damga)
+     * gidiş-dönüşe eşit değil: damga sunucuya vardıktan sonra bir
+     * sonraki anlık görüntüye kadar bekliyor, üstelik girdi her adımda
+     * yollanmadığı için sunucudaki en taze damga zaten biraz eski
+     * olabiliyor. Bu bekleme düşülmezse istemci kendini fazla ileri
+     * sürüyor. Süreyi ancak sunucu bilebilir; ölçüp yolluyor.
+     */
+    ay: [
+      oyun.agOnayIslenen.p1 ? yuvarla3(oyun.time - oyun.agOnayIslenen.p1.geldi) : 0,
+      oyun.agOnayIslenen.p2 ? yuvarla3(oyun.time - oyun.agOnayIslenen.p2.geldi) : 0,
+    ],
     ko: oyun.combo,
     tv: yuvarla(oyun.perfectFlash),
     hy: yuvarla(oyun.hype),
@@ -121,7 +195,20 @@ export function paketle(oyun, olaylar = []) {
  * @returns {boolean} Uygulandıysa true
  */
 export function uygula(oyun, paket) {
-  if (!paket || paket.v !== PAKET_SURUM) return false;
+  if (!paket) return false;
+  if (paket.v !== PAKET_SURUM) {
+    /*
+     * Sürüm uyuşmazlığı sessizce atılmıyor, İŞARETLENİYOR.
+     *
+     * Belirtisi teşhis edilemez bir şey: paketler geliyor ama hiçbiri
+     * uygulanmıyor, ekran donuyor ve "rakip bekleniyor" yazıyor —
+     * oysa rakip orada. Gerçek sebep sitenin yeni, rölenin eski (ya da
+     * tersi) sürümde olması; dağıtımın ikisini birden kapsaması
+     * gerekiyor. Maç ekranı bu bayrağı okuyup bunu söylüyor.
+     */
+    oyun.agSurumUyusmazligi = true;
+    return false;
+  }
 
   /*
    * Sıra denetimi `adim`e değil ayrı bir alana bakıyor. İkisini
@@ -152,6 +239,14 @@ export function uygula(oyun, paket) {
   paket.p.forEach((d, i) => oyuncuAyriksiUygula(oyun.players[i], d));
 
   /*
+   * Kendi oyuncusunu tahmin eden istemci onu ara değerlemeye BIRAKMAZ:
+   * uzlaştırma paketin fizik alanlarından devam ediyor. Sıra önemli —
+   * `agUzlastir` konumu yazdıktan sonra `agKonumHedefle` çağrılıyor ve
+   * tahmin edilen oyuncu hedef listesinden çıkarılıyor.
+   */
+  const tahminIndeksi = oyun.agUzlastir(paket);
+
+  /*
    * Konumlar doğrudan yazılmıyor, hedef olarak veriliyor.
    *
    * Doğrudan yazıldığı sürümde misafirin ekranı saniyede 20 kez
@@ -159,7 +254,7 @@ export function uygula(oyun, paket) {
    * ilerlediği için oyun "donuyor" gibi görünüyordu. Şimdi iki paket
    * arası ara değerleniyor (Game.agAradegerle).
    */
-  oyun.agKonumHedefle(paket.b, paket.p);
+  oyun.agKonumHedefle(paket.b, paket.p, tahminIndeksi);
 
   oyun.combo = paket.ko;
   oyun.perfectFlash = paket.tv;
@@ -190,8 +285,13 @@ export function uygula(oyun, paket) {
  * Tüm tuşlar her pakette gider; eksik alan "bırakıldı" demektir. Fark
  * göndermek daha ucuz olurdu ama kaybolan tek bir "bıraktım" paketi
  * oyuncuyu sağa doğru koşturup bırakırdı. Paket zaten 60 bayt.
+ *
+ * @param {number} an İstemcinin motor saati. Sunucu bunu okumaz, geri
+ *   yollar (`az`); istemci kendi saatinden çıkarıp "görüntü ne kadar
+ *   eski" sorusunu yanıtlıyor. Saatleri eşitlemeye gerek kalmamasının
+ *   sebebi bu — damga hep sahibine dönüyor.
  */
-export function girdiPaketle(tuslar, basisSayaci) {
+export function girdiPaketle(tuslar, basisSayaci, an) {
   return {
     t: 'girdi',
     v: PAKET_SURUM,
@@ -204,5 +304,6 @@ export function girdiPaketle(tuslar, basisSayaci) {
       dive: Boolean(tuslar.dive),
     },
     b: basisSayaci,
+    z: an,
   };
 }
