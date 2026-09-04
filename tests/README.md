@@ -28,6 +28,7 @@ aldım — Tailwind yapılandırması güncellenmemişti ve test yeşil görün�
 | `online` | İki gerçek tarayıcı, gerçek röle: oda kur, katıl, aynı maçı gör, tuş geçir |
 | `eslesme` | Birbirini tanımayan iki oyuncu: hızlı eşleşme sırası, takma adın karşıya ulaşması, rakip yokken yapay zekâ teklifi |
 | `tablo` | Skor tablosu: sunucunun verdiği kimlik, maç sonucunun tabloya yazılması, röle yeniden başlayınca verinin durması |
+| `paket` | Mağaza kabuğu: yapılmış `dist/` düz dosya sunucusundan servis edilip açılıyor — varlık yolları, gömülü röle adresi, üretimde `?rele=` ezmesinin kapalı olması |
 | `masa-duzen` | Masaüstünde sayfa taşmıyor, oran 9:5, çerçeve sahayı sarıyor, skor tablosu ekranda |
 | `masaustu` | Masaüstünde dokunmatik tuş yok, klavye çalışıyor |
 | `mobil` | Altı cihazda sahne tam ekran ve saha ortalı |
@@ -106,6 +107,12 @@ ederken yanlış şeyi ölçmeye başlıyor.
   unutulması; ikisi de tek bir eşleşmeye bakarak görünmüyor.
   `sira.test.js` bu yüzden 200 istemciyi karışık sırayla girip
   çıkartıyor ve sonunda sayım tutturuyor.
+- **Var olmayan bir alanı okuyup "yok, demek ki çalışmıyor" demeyin.**
+  `paket` testinde `?rele=` ezmesinin üretimde kapalı olduğunu
+  `window.__RELE_URL` diye hiç var olmayan bir alanı okuyarak
+  "sınıyordum" — her hâlükârda geçen bir kontroldü. Doğru ölçüm:
+  ezme denenince oyunun HÂLÂ gömülü adrese bağlandığını görmek.
+  Mutasyonla doğrulandı.
 - **Ölçümü DOĞRU FAZDA yapın — ikinci kez aynı tuzak.** `kapasite`
   ölçümünün ilk hâli maçları servis fazında koşturuyordu ve "32 maçta
   CPU %4" diyordu. Servis ucuz; asıl iş rallide. Maçlar rallide

@@ -8,7 +8,13 @@ module.exports = {
     'plugin:react-hooks/recommended',
   ],
   // `portal` build çıktısıdır (minified paket) — dist gibi taranmamalı
-  ignorePatterns: ['dist', 'portal', '.eslintrc.cjs'],
+  /*
+   * `android` ve `ios`: Capacitor yerel projeleri. İçlerinde bizim
+   * yazdığımız JS yok — `assets/public` altındaki şey `dist`in bire bir
+   * kopyası, yani zaten paketlenmiş kod. Dışlanmazsa lint 116 hatayla
+   * düşüyor ve hepsi kendi kaynağımızda olmayan sorunlar.
+   */
+  ignorePatterns: ['dist', 'portal', 'android', 'ios', '.eslintrc.cjs'],
   parserOptions: { ecmaVersion: 'latest', sourceType: 'module' },
   settings: { react: { version: '18.3' } },
   plugins: ['react-refresh'],

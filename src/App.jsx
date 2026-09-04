@@ -9,6 +9,7 @@ import OnlineScreen from './screens/OnlineScreen.jsx';
 import ResultScreen from './screens/ResultScreen.jsx';
 import RotateGate from './components/RotateGate.jsx';
 import useViewport from './hooks/useViewport.js';
+import useGeriTusu, { geriKarari } from './hooks/useGeriTusu.js';
 import Sfx from './game/audio.js';
 import {
   advanceTournament,
@@ -188,6 +189,26 @@ export default function App() {
     Sfx.select();
     setScreen('start');
   }, []);
+
+  /*
+   * Android donanım GERİ tuşu.
+   *
+   * İşlenmezse varsayılan davranış uygulamayı KAPATMAK. Maçın
+   * ortasında yanlışlıkla dokunmak çevrimiçide hükmen mağlubiyet
+   * demek — karşı taraf "rakip ayrıldı" alıyor.
+   *
+   * Kural: maçta YUTULUYOR (hiçbir şey yapmıyor; çıkmak için ekrandaki
+   * duraklat → maçtan çık yolu var, o da onay soruyor). Öteki
+   * ekranlarda menüye dönüyor. Başlangıç ekranında yutulmuyor, yani
+   * uygulama kapanıyor — Android'de beklenen davranış bu.
+   */
+  useGeriTusu(
+    useCallback(() => {
+      const { yut, hedef } = geriKarari(screen);
+      if (hedef) setScreen(hedef);
+      return yut;
+    }, [screen]),
+  );
 
   // --- Turnuva ---
 

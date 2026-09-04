@@ -15,13 +15,21 @@
     "olcum": "node tests/olcum/oran.mjs",
     "vercel-build": "vite build",
     "build:portal": "node scripts/build-portal.mjs",
-    "rele": "node sunucu/index.js"
+    "rele": "node sunucu/index.js",
+    "paket": "node scripts/paket-onkontrol.mjs && npm run build && npx cap sync",
+    "paket:android": "npm run paket && npx cap open android",
+    "e2e:paket": "node tests/e2e/paket.mjs",
+    "ikon": "node scripts/ikon-uret.mjs"
   },
   "dependencies": {
+    "@capacitor/android": "^6.2.2",
+    "@capacitor/app": "^6.0.3",
+    "@capacitor/core": "^6.2.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^6.2.2",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.19",
     "eslint": "^8.57.0",

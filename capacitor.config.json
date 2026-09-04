@@ -1,0 +1,20 @@
+{
+  "appId": "app.fileninsultanlari.oyun",
+  "appName": "Filenin Sultanları",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#0E0E1A"
+  },
+  "ios": {
+    "backgroundColor": "#0E0E1A",
+    "contentInset": "never"
+  },
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": false
+    }
+  }
+}
