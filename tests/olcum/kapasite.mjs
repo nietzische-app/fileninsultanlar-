@@ -208,7 +208,8 @@ async function olc(macSayisi) {
 
 const satirlar = [];
 for (const n of MACLAR) {
-  // eslint-disable-next-line no-await-in-loop -- ölçümler sırayla koşmalı
+  // Ölçümler SIRAYLA koşmalı: paralel koşsalar birbirlerinin CPU'sunu
+  // yer ve her satır ötekinin gürültüsünü ölçerdi
   satirlar.push(await olc(n));
 }
 

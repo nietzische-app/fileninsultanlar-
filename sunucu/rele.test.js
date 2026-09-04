@@ -670,7 +670,7 @@ describe('IP başına bağlantı sınırı', () => {
     try {
       for (let i = 0; i < 3; i += 1) {
         const s = new WebSocket(`ws://localhost:${kisitli.port}`);
-        // eslint-disable-next-line no-await-in-loop -- sırayla açılmalı
+        // Sırayla açılmalı: sınırı aşmayı adım adım denemek istiyoruz
         await new Promise((coz, red) => {
           s.once('open', coz);
           s.once('error', red);
@@ -709,13 +709,13 @@ describe('IP başına bağlantı sınırı', () => {
       // Sınırın iki katı kadar aç-kapa yap
       for (let i = 0; i < 6; i += 1) {
         const s = new WebSocket(`ws://localhost:${kisitli.port}`);
-        // eslint-disable-next-line no-await-in-loop -- sırayla
+        // Sırayla: her bağlantı bir öncekinin kapanmasından sonra
         await new Promise((coz, red) => {
           s.once('open', coz);
           s.once('error', red);
         });
         s.close();
-        // eslint-disable-next-line no-await-in-loop -- kapanmayı bekle
+        // Kapanmayı bekle, yoksa sayaç henüz düşmemiş olur
         await new Promise((coz) => { s.once('close', coz); });
       }
 
