@@ -52,6 +52,7 @@ sonra koşup farka bakmak için:
 | `perf` | CPU kısıtlı mobil taklidinde kare süresi dağılımı |
 | `adim` | Sabit adım: kare hızından bağımsızlık, boş/çift kare, sim/gerçek oranı |
 | `gecikme` | Çevrimiçi tepki süresi, tahmin hatası, öngörü mesafesi, uzlaştırma sıçraması |
+| `kapasite` | Kaç eşzamanlı maç: tik gecikmesi, simülasyon hızı, CPU, bant genişliği, bellek |
 
 `gecikme` tarayıcı kullanmıyor: iki motoru (sunucu + istemci) aynı süreçte
 adım adım kilitli koşturup paketleri **N adım geciktiriyor**. Yapay gecikme
@@ -105,6 +106,11 @@ ederken yanlış şeyi ölçmeye başlıyor.
   unutulması; ikisi de tek bir eşleşmeye bakarak görünmüyor.
   `sira.test.js` bu yüzden 200 istemciyi karışık sırayla girip
   çıkartıyor ve sonunda sayım tutturuyor.
+- **Ölçümü DOĞRU FAZDA yapın — ikinci kez aynı tuzak.** `kapasite`
+  ölçümünün ilk hâli maçları servis fazında koşturuyordu ve "32 maçta
+  CPU %4" diyordu. Servis ucuz; asıl iş rallide. Maçlar rallide
+  tutulunca gerçek sayılar çıktı ve sonuç da değişti: darboğaz
+  işlemci değil, bant genişliğiymiş.
 - **Doğru sandığınız kuralı sınayın.** Sıraya "en uzun bekleyen ilk
   eşleşir" testi yazdım ve o kural bu tasarımda hiç çalışmıyordu:
   gelen ya bekleyenle eşleşiyor ya tek bekleyen oluyor, sırada aynı

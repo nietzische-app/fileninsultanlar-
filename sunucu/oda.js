@@ -28,6 +28,13 @@ export class OdaDefteri {
    * @param {object} [ayar]
    * @param {() => string} [ayar.kodUret] Kod üreteci — testte sabitlenir.
    * @param {number} [ayar.azamiOda] Aynı anda açık kalabilecek oda sayısı.
+   *   500 uydurma bir sayı değil, konteyner sınırlarıyla uyumlu:
+   *   ölçüme göre (`tests/olcum/kapasite.mjs`) maç başına ~128 KB
+   *   bellek düşüyor, yani 500 oda ≈ 119 MB — `docker-compose.yml`
+   *   içindeki 256 MB sınırının rahatça altında. Bant genişliği
+   *   tarafında 500 oda ≈ 45 Mbit/sn sürekli trafik demek (her anlık
+   *   görüntü İKİ sokete birden yazılıyor); asıl darboğaz bu. Bu
+   *   sayıyı büyütürsen ötekileri de gözden geçir.
    * @param {number} [ayar.omur] Kimse katılmazsa odanın yaşayacağı süre (ms).
    */
   constructor({ kodUret = varsayilanKodUret, azamiOda = 500, omur = 15 * 60 * 1000 } = {}) {

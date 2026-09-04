@@ -50,6 +50,41 @@ const SANIYEDE_MESAJ = 150;
 /** Sıradakilerin bekleme süresinin denetlenme aralığı (ms). */
 const SIRA_TIK = 1000;
 
+/**
+ * Tek IP'den açılabilecek en fazla eşzamanlı bağlantı.
+ *
+ * Var olan hız sınırı SOKET BAŞINA mesaj sayıyor; bir soketin çok
+ * konuşmasını engelliyor ama BİN SOKET açılmasını engellemiyor. Ölçüme
+ * göre maç başına ~88/256 MB ≈ 350 KB bellek düşüyor, yani on binlerce
+ * boş soket makineyi dosya tanıtıcısı ve bellek tarafından zorlar.
+ *
+ * 20 neden: bir ev ya da ofis tek genel IP'nin arkasında olabiliyor,
+ * mobil operatörlerde CGNAT yüzünden yüzlerce kişi aynı IP'yi
+ * paylaşabiliyor. Sayı bu yüzden cömert — amaç meşru kalabalığı değil,
+ * tek makineden soket yağdıran birini durdurmak. CGNAT arkasındaki
+ * gerçek kalabalık bu sınıra takılırsa `IP_SINIRI` ile yükseltilebilir.
+ */
+const IP_BASINA_BAGLANTI = Number(process.env.IP_SINIRI ?? 20);
+
+/**
+ * Soketin geldiği adres.
+ *
+ * Ters vekilin (Caddy/nginx) arkasındayız: `socket.remoteAddress`
+ * HER ZAMAN vekilin adresi olur ve sınır tüm oyuncuları tek kovaya
+ * koyardı. Gerçek adres `x-forwarded-for`ın İLK girdisinde — sonraki
+ * girdiler istemcinin uydurabileceği değerler.
+ *
+ * Başlık yoksa sokete düşülüyor: doğrudan bağlantı (test, yerel
+ * geliştirme) böyle çalışıyor.
+ */
+function adresOku(istek, soket) {
+  const baslik = istek?.headers?.['x-forwarded-for'];
+  if (typeof baslik === 'string' && baslik.length) {
+    return baslik.split(',')[0].trim();
+  }
+  return soket?._socket?.remoteAddress ?? 'bilinmiyor';
+}
+
 /** Tek istemciye yollar — soket kapanmışsa sessizce geçer. */
 function yolla(soket, veri) {
   if (!soket || soket.readyState !== soket.OPEN) return;
@@ -85,6 +120,8 @@ export async function baslat({
   yaziTura = () => Math.random() < 0.5,
   /** Veri dizini — testte geçici bir dizine yönlendiriliyor. */
   veriDizini,
+  /** IP başına bağlantı sınırı — testte küçültülüyor. */
+  ipSiniri = IP_BASINA_BAGLANTI,
 } = {}) {
   const defter = new OdaDefteri();
   const sira = new EslesmeSirasi({ beklemeSiniri });
@@ -271,7 +308,25 @@ export async function baslat({
     }
   }
 
-  wss.on('connection', (soket) => {
+  /** IP → açık bağlantı sayısı. */
+  const ipSayaci = new Map();
+
+  wss.on('connection', (soket, istek) => {
+    const adres = adresOku(istek, soket);
+    const acik = ipSayaci.get(adres) ?? 0;
+    if (acik >= ipSiniri) {
+      /*
+       * Sınırı aşan bağlantı hemen kapatılıyor. Sebep söyleniyor
+       * çünkü meşru bir kalabalık (CGNAT) da buraya düşebilir ve
+       * sessizce kapanan bir soket "oyun bozuk" gibi görünürdü.
+       */
+      hataYolla(soket, 'cok-baglanti');
+      soket.close(1008, 'cok-baglanti');
+      return;
+    }
+    ipSayaci.set(adres, acik + 1);
+    soket.adres = adres;
+
     soket.canli = true;
     soket.pencere = { basi: Date.now(), sayi: 0 };
 
@@ -487,6 +542,16 @@ export async function baslat({
     });
 
     const kapanis = () => {
+      /*
+       * IP sayacını düşür. Düşürmezsek sayaç tek yönlü büyür ve
+       * yeterince açılıp kapanan bağlantıdan sonra o IP kalıcı
+       * olarak kilitlenirdi — sinsi bir arıza, çünkü yalnız çok
+       * oynayan kişide görünürdü.
+       */
+      const kalan = (ipSayaci.get(soket.adres) ?? 1) - 1;
+      if (kalan > 0) ipSayaci.set(soket.adres, kalan);
+      else ipSayaci.delete(soket.adres);
+
       // Sıradaysa da çıkar: yoksa kapanmış bir soketle eşleşme denenir
       sira.cik(soket);
       const oda = defter.odaOf(soket);
@@ -547,5 +612,5 @@ export async function baslat({
       wss.close(() => http.close(coz));
     });
 
-  return { http, wss, defter, sira, depo, port: http.address().port, kapat };
+  return { http, wss, defter, sira, depo, ipSayaci, port: http.address().port, kapat };
 }

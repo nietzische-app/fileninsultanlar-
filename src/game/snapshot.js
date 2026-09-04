@@ -142,7 +142,16 @@ export function paketle(oyun, olaylar = []) {
     sv: YON_KISA[oyun.servingSide] ?? 'h',
     sr: [YON_KISA[oyun.streak.side] ?? null, oyun.streak.count],
     dk: [YON_KISA[oyun.touch.side] ?? null, oyun.touch.count],
-    ms: oyun.message,
+    /*
+     * Mesaj sayacı YUVARLANIYOR. Paketteki her sayı yuvarlanıyordu ama
+     * bu alan nesne olarak olduğu gibi geçtiği için gözden kaçmıştı:
+     * `timer: 1.0500000000000003` telde 19 karakter yer kaplıyordu,
+     * yuvarlanmış hâli 4. Ekranda görünen fark yok — mesaj sayacı
+     * yalnız solma zamanlamasını sürüyor.
+     */
+    ms: oyun.message
+      ? { ...oyun.message, timer: yuvarla3(oyun.message.timer ?? 0) }
+      : null,
     bt: oyun.finished ? 1 : 0,
     // Görsel durum
     b: [yuvarla(b.x), yuvarla(b.y), yuvarla(b.rotation)],

@@ -29,6 +29,39 @@ services:
       dockerfile: sunucu/Dockerfile
     container_name: filenin-rele
     restart: unless-stopped
+
+    # --- Kaynak sınırları ---
+    #
+    # Bu makine YALNIZ oyunu koşturmuyor: aynı kutuda başka üretim
+    # servisleri var. Sınırsız bir konteyner, rölede bir bellek
+    # sızıntısı olduğunda ötekileri de götürürdü. Sınırlar tahmin
+    # değil, ölçüm: `node --expose-gc tests/olcum/kapasite.mjs`
+    #
+    #   maç   CPU   RSS
+    #     1    %2   56 MB
+    #    64   %14   64 MB
+    #   128   %14   72 MB
+    #   256   %17   88 MB
+    #
+    # 256 eşzamanlı maç (512 oyuncu) tek çekirdeğin %17'si ve 88 MB.
+    # 256 MB ~3 kat pay bırakıyor; 1.0 CPU ölçülenin beş katı.
+    # Darboğaz zaten işlemci değil, bant genişliği (maç başına
+    # ~11.6 KB/sn) — bu sınırlar oyunu kısıtlamak için değil, ARIZA
+    # ANINDA komşu servisleri korumak için.
+    mem_limit: 256m
+    cpus: 1.0
+
+    # --- Günlük dönüşümü ---
+    #
+    # Docker'ın varsayılan json-file sürücüsü SINIRSIZ büyüyor. Uzun
+    # koşan bir serviste bu, diski dolduran ve makinedeki HER ŞEYİ
+    # durduran sessiz bir arıza. 3 × 10 MB fazlasıyla yeter: teşhis
+    # için son birkaç saatin günlüğü zaten elimizde olur.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       - PORT=8787
       - VERI_DIZINI=/veri

@@ -42,6 +42,7 @@ export const HATA_METNI = {
   'sunucu-dolu': 'Sunucu şu an dolu, biraz sonra deneyin.',
   'kod-uretilemedi': 'Oda açılamadı, tekrar deneyin.',
   'cok-hizli': 'Bağlantı çok fazla mesaj gönderdi.',
+  'cok-baglanti': 'Bu ağdan çok fazla bağlantı açık. Diğer sekmeleri kapatıp deneyin.',
   'bozuk-mesaj': 'Sunucu mesajı anlamadı.',
   baglanti: 'Sunucuya ulaşılamadı.',
   koptu: 'Bağlantı koptu.',

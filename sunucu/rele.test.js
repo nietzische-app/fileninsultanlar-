@@ -655,3 +655,83 @@ describe('kimlik ve skor tablosu', () => {
     a.kapat();
   });
 });
+
+describe('IP başına bağlantı sınırı', () => {
+  it('sınırı aşan bağlantı sebebiyle birlikte kapatılıyor', async () => {
+    /*
+     * Var olan hız sınırı SOKET BAŞINA mesaj sayıyor: bir soketin çok
+     * konuşmasını engelliyor ama bin soket açılmasını engellemiyor.
+     * Bu test o boşluğu bekçiliyor.
+     */
+    const kisitli = await baslat({
+      port: 0, nabiz: 60_000, veriDizini, ipSiniri: 3,
+    });
+    const acilanlar = [];
+    try {
+      for (let i = 0; i < 3; i += 1) {
+        const s = new WebSocket(`ws://localhost:${kisitli.port}`);
+        // eslint-disable-next-line no-await-in-loop -- sırayla açılmalı
+        await new Promise((coz, red) => {
+          s.once('open', coz);
+          s.once('error', red);
+        });
+        acilanlar.push(s);
+      }
+      expect(acilanlar).toHaveLength(3);
+
+      // Dördüncü reddedilmeli
+      const fazla = new WebSocket(`ws://localhost:${kisitli.port}`);
+      const mesajlar = [];
+      fazla.on('message', (ham) => mesajlar.push(JSON.parse(ham.toString())));
+      const kod = await new Promise((coz) => {
+        fazla.once('close', (c) => coz(c));
+      });
+
+      expect(kod).toBe(1008);
+      expect(mesajlar.some((m) => m.sebep === 'cok-baglanti')).toBe(true);
+    } finally {
+      acilanlar.forEach((s) => s.close());
+      await kisitli.kapat();
+    }
+  });
+
+  it('kapanan bağlantı sayacı DÜŞÜRÜYOR', async () => {
+    /*
+     * Asıl sinsi arıza bu: sayaç düşürülmezse tek yönlü büyür ve
+     * yeterince açılıp kapanan bağlantıdan sonra o IP kalıcı olarak
+     * kilitlenir. Belirtisi yalnız çok oynayan kişide görünürdü —
+     * "bir süre sonra bağlanamıyorum".
+     */
+    const kisitli = await baslat({
+      port: 0, nabiz: 60_000, veriDizini, ipSiniri: 2,
+    });
+    try {
+      // Sınırın iki katı kadar aç-kapa yap
+      for (let i = 0; i < 6; i += 1) {
+        const s = new WebSocket(`ws://localhost:${kisitli.port}`);
+        // eslint-disable-next-line no-await-in-loop -- sırayla
+        await new Promise((coz, red) => {
+          s.once('open', coz);
+          s.once('error', red);
+        });
+        s.close();
+        // eslint-disable-next-line no-await-in-loop -- kapanmayı bekle
+        await new Promise((coz) => { s.once('close', coz); });
+      }
+
+      // Sayaç sıfırlanmış olmalı — kilitli kalmamalı
+      await new Promise((coz) => { setTimeout(coz, 100); });
+      expect(kisitli.ipSayaci.size).toBe(0);
+
+      // Ve yeni bağlantı hâlâ kabul edilmeli
+      const yeni = new WebSocket(`ws://localhost:${kisitli.port}`);
+      await new Promise((coz, red) => {
+        yeni.once('open', coz);
+        yeni.once('error', red);
+      });
+      yeni.close();
+    } finally {
+      await kisitli.kapat();
+    }
+  });
+});

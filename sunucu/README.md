@@ -491,6 +491,102 @@ Yedek (kendi sunucunda):
 docker compose cp rele:/veri/oyuncular.jsonl ./yedek.jsonl
 ```
 
+## Kapasite — ölçülmüş
+
+`node --expose-gc tests/olcum/kapasite.mjs` (4 çekirdekli makine):
+
+| maç | tik p95 | sim hızı | CPU | KB/sn | RSS |
+|---|---|---|---|---|---|
+| 1 | 0 ms | 0.996 | %2 | 11.5 | 56 MB |
+| 64 | 0 ms | 0.997 | %14 | 743 | 64 MB |
+| 128 | 0 ms | 0.997 | %14 | 1484 | 72 MB |
+| 256 | 0 ms | 0.997 | %17 | 2981 | 88 MB |
+
+**Darboğaz işlemci değil.** 256 eşzamanlı maç (512 oyuncu) tek
+çekirdeğin %17'si ve 88 MB. Simülasyon ralli fazında update başına
+~3.6 µs; sunucu hakem mimarisi bu kutuda pahalı değil.
+
+Asıl sınır **bant genişliği**: maç başına ~11.6 KB/sn (her anlık
+görüntü İKİ sokete birden yazılıyor). Bu da şu demek:
+
+| maç | trafik |
+|---|---|
+| 128 | 1.5 MB/sn · 11 Mbit/sn |
+| 256 | 2.9 MB/sn · 23 Mbit/sn |
+| 500 (üst sınır) | 5.7 MB/sn · 45 Mbit/sn |
+
+Bellek tarafında 500 oda ≈ 119 MB, yani 256 MB'lık konteyner
+sınırının altında — iki sayı birbirine bağlı, birini değiştirirsen
+ötekine bak (`oda.js`, `docker-compose.yml`).
+
+**Ölçümün sınırı:** gerçek soket yok. Paketler JSON'a çevriliyor
+(gerçek maliyet) ve iki istemciye yazılmış gibi sayılıyor, ama sokete
+gerçekten yazılmıyor; TLS, TCP ve `ws` çerçeveleme bunun üstüne
+biniyor. Sayılar ALT SINIR.
+
+**Bu ölçüm iki kez yanlış sonuç verdi ve ikisi de düzeltildi:**
+
+1. Maçlar SERVİS fazında takılıyordu. Servis ucuz olduğu için
+   "32 maçta CPU %4" gibi iyimser bir tablo çıkıyordu. Maçlar rallide
+   tutulunca gerçek sayılar ortaya çıktı — ve sonuç da değişti:
+   darboğaz işlemci değil, bant genişliğiymiş.
+2. Her anlık görüntü BİR kez sayılıyordu. `Mac.yolla` odaya bir kez
+   çağrılıyor ama röle onu iki sokete birden yazıyor; telde geçen
+   trafik ölçülenin iki katıymış. Bu düzeltilmeden önce bu belgede
+   "500 oda ≈ 23 Mbit/sn" yazıyordu, doğrusu 45.
+
+## Koruma ve yedek
+
+**Kaynak sınırları** (`docker-compose.yml`): 256 MB bellek, 1.0 CPU.
+Bu makinede başka üretim servisleri var; sınırlar oyunu kısıtlamak
+için değil, rölede bir arıza olduğunda komşuları korumak için.
+Sayılar yukarıdaki ölçümden geliyor, tahminden değil.
+
+**Günlük dönüşümü**: Docker'ın varsayılan json-file sürücüsü sınırsız
+büyüyor ve diski doldurup makinedeki her şeyi durdurabiliyor.
+3 × 10 MB ile sınırlandı.
+
+**IP başına bağlantı sınırı**: 20 (`IP_SINIRI` ile değiştirilebilir).
+Var olan hız sınırı soket başına mesaj sayıyor — bir soketin çok
+konuşmasını engelliyor ama bin soket açılmasını engellemiyordu.
+CGNAT arkasında yüzlerce kişi aynı IP'yi paylaşabildiği için sayı
+cömert tutuldu.
+
+**Yedek**:
+
+```bash
+./yedekle.sh                 # ./yedekler/ altına, son 30 kopya
+./geri-yukle.sh ./yedekler/oyuncular-20260904-041700.jsonl
+```
+
+Günlük otomatik yedek (`crontab -e`):
+
+```
+17 4 * * * cd /root/fileninsultanlar-/sunucu && ./yedekle.sh >> /var/log/filenin-yedek.log 2>&1
+```
+
+Geri yükleme betiği röleyi durdurup başlatıyor: çalışırken dosyanın
+üstüne yazmak, sunucunun bellekteki hâliyle yarışmak demek. Yedeği bir
+kez **gerçekten geri yükleyip deneyin** — denenmemiş bir yedek, yedek
+değildir.
+
+## İzleme
+
+Dışarıdan `/saglik` çağırmak yeterli; JSON şu alanları veriyor:
+
+| Alan | Anlamı |
+|---|---|
+| `durum` | `"ayakta"` |
+| `oda` / `sira` / `istemci` | Anlık yük |
+| `oyuncu` | Kayıtlı oyuncu sayısı |
+| `kalici` | Veri dizinine yazılabiliyor mu |
+| `birim` | Kalıcı birim bağlı mı |
+| `makine` | Süreç kimliği (tek makine olduğunu doğrulamak için) |
+
+Ücretsiz bir uptime servisine (UptimeRobot vb.)
+`https://<adresin>/saglik` verilebilir. `kalici` ya da `birim` alanı
+`false` dönüyorsa maçlar oynanır ama skor tablosu kalıcı değildir.
+
 ## Sınırlar
 
 - Tek mesaj en fazla 16 KB (`maxPayload`).
