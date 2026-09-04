@@ -50,6 +50,8 @@ import {
   mkdirSync,
   readFileSync,
   renameSync,
+  rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
@@ -101,8 +103,58 @@ export class Depo {
     /** Günlükteki satır sayısı — sıkıştırma kararı buna bakıyor. */
     this.satir = 0;
 
-    mkdirSync(dizin, { recursive: true });
-    if (yukle) this.yukle();
+    /**
+     * Veri dizini gerçekten YAZILABİLİR mi.
+     *
+     * Açılışta bir kez sınanıyor, çünkü boş bir dizine bakarak bu
+     * soruya cevap verilemiyor. Sınamasaydık arıza ancak ilk maçın
+     * sonucu kaybolduğunda ortaya çıkardı — üstelik kimse o anda
+     * bakmıyor olurdu.
+     *
+     * SINIRI: bu denetim salt okunur bağlanmış bir birimi (EROFS)
+     * yakalıyor ama HİÇ BAĞLANMAMIŞ birimi yakalamıyor — o durumda
+     * yol sıradan bir konteyner dizini oluyor ve pekâlâ yazılabilir.
+     * "Bağlandı mı" sorusunun cevabı `birimde` alanında; ikisi ayrı
+     * sorular ve ikisi de gerekiyor.
+     *
+     * Yazamıyorsak sunucu YİNE AÇILIYOR: maçlar oynanabilir kalıyor,
+     * yalnız skor tablosu kalıcı olmuyor. Açılmayı reddetmek,
+     * düzeltilebilir bir aksaklık yüzünden oyunu tamamen kapatmak
+     * olurdu.
+     */
+    this.yazilabilir = false;
+    this.acilisHatasi = null;
+    try {
+      mkdirSync(dizin, { recursive: true });
+      const dene = join(dizin, '.yazma-denemesi');
+      writeFileSync(dene, 'x');
+      rmSync(dene, { force: true });
+      this.yazilabilir = true;
+    } catch (hata) {
+      this.acilisHatasi = hata?.message ?? String(hata);
+    }
+
+    /**
+     * Veri dizini ayrı bir aygıtta mı — yani bir birim bağlı mı.
+     *
+     * Docker birimi bağlandığında o yol farklı bir aygıt numarası
+     * alıyor; bağlanmadığında konteynerin kök dosya sistemiyle aynı
+     * kalıyor. Ayrımı ancak bu gösteriyor: yazma denemesi iki durumda
+     * da BAŞARILI oluyor, çünkü konteyner root olarak koşuyor ve
+     * bağlanmamış dizin gayet yazılabilir.
+     *
+     * Docker dışında (geliştirmede, testte) bu doğal olarak `false` —
+     * bir hata değil, yalnız "birim yok" bilgisi. Bu yüzden uyarı
+     * metni Docker'a özgü değil, olguyu söylüyor.
+     */
+    this.birimde = false;
+    try {
+      this.birimde = statSync(dizin).dev !== statSync('/').dev;
+    } catch {
+      /* aygıt numarası okunamadı — bilinmiyor sayılıyor */
+    }
+
+    if (yukle && this.yazilabilir) this.yukle();
   }
 
   get sayi() {
@@ -140,9 +192,19 @@ export class Depo {
     });
   }
 
-  /** Tek kaydı günlüğe ekler ve gerekirse sıkıştırır. */
+  /**
+   * Tek kaydı günlüğe ekler ve gerekirse sıkıştırır.
+   *
+   * Disk yazılamıyorsa kayıt yalnız bellekte tutuluyor: maç sürüyor,
+   * tablo o oturum boyunca çalışıyor, ama yeniden başlatmada gidiyor.
+   * Her yazmada tekrar denemenin anlamı yok — bağlanmamış bir birim
+   * kendiliğinden bağlanmıyor ve her maçta bir istisna fırlatmak
+   * günlüğü doldururdu.
+   */
   yaz(kayit) {
     this.oyuncular.set(kayit.id, kayit);
+    if (!this.yazilabilir) return kayit;
+
     appendFileSync(this.dosya, `${JSON.stringify(kayit)}\n`);
     this.satir += 1;
     if (this.satir > Math.max(32, this.oyuncular.size * SIKISTIRMA_ORANI)) {
@@ -161,6 +223,7 @@ export class Depo {
    * konu; bkz. dosya başındaki dayanıklılık notu.)
    */
   sikistir() {
+    if (!this.yazilabilir) return;
     const gecici = `${this.dosya}.yeni`;
     const govde = [...this.oyuncular.values()]
       .map((k) => JSON.stringify(k))

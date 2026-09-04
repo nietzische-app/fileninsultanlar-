@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, readFileSync, writeFileSync, appendFileSync } from 'node:fs';
+import {
+  mkdtempSync, rmSync, readFileSync, writeFileSync, appendFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Depo, genelGorunum, BASLANGIC_PUAN } from './depo.js';
@@ -275,5 +277,84 @@ describe('sıralama', () => {
     // Hiç oynamamışın sırası yok
     const d = depo.oyuncuAc('D').kayit;
     expect(depo.sira(d.id)).toBe(null);
+  });
+});
+
+describe('yazılamayan dizin', () => {
+  /*
+   * DİKKAT — ilk yazdığım test yanlıştı ve bunu ölçerken öğrendim:
+   * dizine `chmod 0o500` verip "artık yazılamaz" sanmıştım. Testler
+   * (ve konteyner) ROOT olarak koşuyor ve root dizin izin bitlerini
+   * atlıyor; dosya yine yazıldı. İzin bitleri bu ortamda bir şey
+   * ölçmüyor.
+   *
+   * Gerçek arıza yolu ikiye ayrılıyor ve ikisi AYRI şeyler:
+   *   1. Birim salt okunur bağlanmış (EROFS) — root bile yazamaz.
+   *      `yazilabilir` bunu yakalıyor. Aşağıda ENOTDIR ile
+   *      benzetiliyor: root'un atlayamayacağı bir dosya sistemi
+   *      hatası.
+   *   2. Birim HİÇ bağlanmamış — yol sıradan bir dizin, yazılabilir,
+   *      ama konteyner yeniden kurulunca gidiyor. Yazma denemesi
+   *      bunu göremiyor; `birimde` alanı bunun için var.
+   */
+  it('yazılamayan yolda açılıyor ama kalıcı DEĞİL', () => {
+    // Bir DOSYANIN altındaki yol: mkdir ENOTDIR verir, root da atlayamaz
+    const kok = mkdtempSync(join(tmpdir(), 'depo-hata-'));
+    const dosyaYolu = join(kok, 'bu-bir-dosya');
+    writeFileSync(dosyaYolu, 'x');
+    try {
+      const depo = new Depo({ dizin: join(dosyaYolu, 'alt') });
+      expect(depo.yazilabilir).toBe(false);
+      expect(depo.acilisHatasi).toBeTruthy();
+    } finally {
+      rmSync(kok, { recursive: true, force: true });
+    }
+  });
+
+  it('yazılamasa bile maç ve tablo O OTURUMDA çalışıyor', () => {
+    /*
+     * Açılmayı reddetmek, düzeltilebilir bir aksaklık yüzünden oyunu
+     * tamamen kapatmak olurdu. Kayıtlar bellekte tutuluyor: tablo
+     * çalışıyor, yalnız yeniden başlatmayı atlatmıyor.
+     */
+    const kok = mkdtempSync(join(tmpdir(), 'depo-hata-'));
+    const dosyaYolu = join(kok, 'bu-bir-dosya');
+    writeFileSync(dosyaYolu, 'x');
+    try {
+      const depo = new Depo({ dizin: join(dosyaYolu, 'alt') });
+      const a = depo.oyuncuAc('A').kayit;
+      const b = depo.oyuncuAc('B').kayit;
+      expect(depo.sonucIsle(a.id, b.id, puanDegisimi)).toBeTruthy();
+      expect(depo.siralama()).toHaveLength(2);
+    } finally {
+      rmSync(kok, { recursive: true, force: true });
+    }
+  });
+
+  it('yazılabilir dizinde bayrak açık', () => {
+    // Ölçüm aracı doğrulaması: bayrak her zaman false dönmüyor
+    expect(ac().yazilabilir).toBe(true);
+  });
+});
+
+describe('birim algılama', () => {
+  it('sıradan bir dizin birimde SAYILMIYOR', () => {
+    /*
+     * Docker'da birim bağlanmadığında durum tam olarak bu: yol
+     * yazılabilir ama konteynerin kök dosya sistemiyle aynı aygıtta,
+     * yani yeniden kurulumda gidiyor. Yazma denemesi bunu göremiyor;
+     * ayrım bu alanda.
+     */
+    const depo = ac();
+    expect(depo.yazilabilir).toBe(true);
+    expect(depo.birimde).toBe(false);
+  });
+
+  it('kalıcılık iddiası İKİ ayrı soruya bağlı', () => {
+    // İkisi bağımsız: yazılabilir olmak kalıcı olmayı garanti etmiyor
+    const depo = ac();
+    expect(typeof depo.yazilabilir).toBe('boolean');
+    expect(typeof depo.birimde).toBe('boolean');
+    expect(depo.yazilabilir && !depo.birimde).toBe(true);
   });
 });

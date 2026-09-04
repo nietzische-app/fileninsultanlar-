@@ -8,8 +8,38 @@
 
 import { baslat } from './rele.js';
 
-const { port, kapat } = await baslat({ port: Number(process.env.PORT ?? 8787) });
+const { port, kapat, depo } = await baslat({ port: Number(process.env.PORT ?? 8787) });
 console.log(`Röle ayakta — ws://localhost:${port} · sağlık: http://localhost:${port}/saglik`);
+
+/*
+ * Kalıcılık durumu AÇILIŞTA söyleniyor.
+ *
+ * Bunu günlüğe basmamızın sebebi somut: veri dizini boşken "birim
+ * bağlandı mı" sorusuna bakarak cevap verilemiyor — bağlanmamış bir
+ * dizinle boş bir dizin birebir aynı görünüyor. Arıza ancak ilk maçın
+ * sonucu kaybolduğunda ortaya çıkardı ve o an kimse bakmıyor olurdu.
+ * Şimdi `docker compose logs` ilk satırlarda söylüyor.
+ */
+if (!depo.yazilabilir) {
+  console.warn(
+    `UYARI: veri dizini YAZILAMIYOR (${depo.dizin}) — ${depo.acilisHatasi}\n` +
+      '        Maçlar oynanır ama skor tablosu yeniden başlatmada sıfırlanır.',
+  );
+} else if (depo.birimde) {
+  console.log(`Skor tablosu kalıcı — birim bağlı: ${depo.dizin}`);
+} else {
+  /*
+   * Yazılabiliyor ama ayrı bir aygıtta değil. Geliştirmede normal;
+   * Docker'da BİRİM BAĞLANMAMIŞ demek ve tablo her yeniden kurulumda
+   * gider. Yazma denemesi bunu yakalayamıyor — bağlanmamış dizin de
+   * gayet yazılabilir olduğu için ayrı bir uyarı gerekiyor.
+   */
+  console.warn(
+    `UYARI: veri dizini (${depo.dizin}) kalıcı bir birimde DEĞİL.\n` +
+      '        Docker/Fly kullanıyorsan birim bağlanmamış: skor tablosu\n' +
+      '        her yeniden kurulumda sıfırlanır. Yerelde koşuyorsan normal.',
+  );
+}
 
 /*
  * Düzgün kapanma.

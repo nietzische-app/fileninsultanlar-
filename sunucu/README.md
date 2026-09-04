@@ -238,28 +238,48 @@ git pull
 docker compose up -d --build
 ```
 
-Doğrulama — `/saglik` yeni alanları göstermeli:
+Doğrulama:
 
 ```bash
-curl http://127.0.0.1:8787/saglik
-# {"durum":"ayakta","oda":0,"sira":0,"oyuncu":0,...}
+# Konteyner hemen açılmıyor; birkaç saniye ver
+sleep 3 && curl http://127.0.0.1:8787/saglik
 ```
 
-`oyuncu` alanı **yoksa** eski imaj hâlâ ayakta demektir;
-`docker compose logs --tail 30` ile yapı hatasına bak.
+Beklenen:
 
-**Oyuncu kayıtları güncellemede SİLİNMEZ** — `docker-compose.yml`
-adlandırılmış bir birim tanımlıyor ve veri konteynerin dışında
-duruyor. Birimin gerçekten bağlandığını bir kez doğrula:
+```json
+{"durum":"ayakta","oda":0,"sira":0,"oyuncu":0,"kalici":true,"birim":true,...}
+```
+
+Üç şeye bak:
+
+| Belirti | Anlamı |
+|---|---|
+| `curl: (56) Recv failure` | Konteyner henüz açılmamış (docker-proxy bağlantıyı kabul edip sıfırlıyor) ya da süreç çökmüş. Birkaç saniye sonra tekrar dene; hâlâ öyleyse `docker compose logs --tail 40`. |
+| `oyuncu`/`kalici` alanları yok | Eski imaj hâlâ ayakta — yapı başarısız olmuş. `docker compose logs --tail 40`. |
+| `"kalici": false` | Veri dizinine yazılamıyor. Maçlar oynanır, tablo yeniden başlatmada sıfırlanır. |
+| `"birim": false` | **Kalıcı birim bağlanmamış.** Tablo her `up --build` ile gider. |
+
+### Neden `ls /veri` ile doğrulanmıyor
+
+Denemek isteyebilirsin ama **hiçbir şey söylemiyor**: veri dizini ilk
+maça kadar zaten boş, ve birim hiç bağlanmamışken de aynı boş dizin
+görünüyor. Üstelik konteyner root olarak koştuğu için yazma denemesi
+de o durumu yakalamıyor — bağlanmamış dizin gayet yazılabilir.
+
+Ayrım sunucunun kendisinde yapılıyor: veri dizini konteynerin kök
+dosya sisteminden FARKLI bir aygıtta mı (`birim` alanı). Açılış
+günlüğü de aynı şeyi söylüyor:
 
 ```bash
-docker compose exec rele ls -la /veri
-docker volume ls | grep filenin
+docker compose logs | grep -i -E "kalıcı|UYARI"
 ```
 
-Boş çıkıyorsa (henüz kimse oynamadıysa dosya olmayabilir) ilk
-çevrimiçi maçtan sonra tekrar bak. `/veri` diye bir dizin HİÇ yoksa
-birim bağlanmamıştır ve tablo her dağıtımda sıfırlanır.
+Yedek:
+
+```bash
+docker compose cp rele:/veri/oyuncular.jsonl ./yedek.jsonl
+```
 
 ### nip.io/sslip.io yerine gerçek domain
 

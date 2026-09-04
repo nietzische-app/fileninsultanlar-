@@ -105,6 +105,20 @@ export async function baslat({
           oda: defter.sayi,
           sira: sira.sayi,
           oyuncu: depo.sayi,
+          /*
+           * Dağıtımdan sonra bakılacak iki alan. Boş bir veri dizinine
+           * bakmak hiçbir şey söylemiyor, bu ikisi söylüyor:
+           *
+           *   kalici — dizine YAZILABİLİYOR mu. false ise maçlar
+           *     oynanır ama tablo yeniden başlatmada sıfırlanır.
+           *   birim  — veri dizini ayrı bir aygıtta mı, yani kalıcı
+           *     birim BAĞLI mı. Docker'da false ise birim bağlanmamış
+           *     demektir ve tablo her `up --build` ile gider; yazma
+           *     denemesi bunu yakalayamaz çünkü bağlanmamış dizin de
+           *     gayet yazılabilir.
+           */
+          kalici: depo.yazilabilir,
+          birim: depo.birimde,
           istemci: wss.clients.size,
           /*
            * Makine kimliği teşhis için. Röle durum tutuyor: bir odanın
@@ -533,5 +547,5 @@ export async function baslat({
       wss.close(() => http.close(coz));
     });
 
-  return { http, wss, defter, sira, port: http.address().port, kapat };
+  return { http, wss, defter, sira, depo, port: http.address().port, kapat };
 }
