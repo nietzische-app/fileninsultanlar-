@@ -21,7 +21,12 @@
 
 services:
   rele:
-    build: .
+    build:
+      # Bağlam depo KÖKÜ: sunucu maçı koşturuyor ve oyun motorunu
+      # (src/game) içe aktarıyor. Yalnız sunucu/ olsaydı imaj eksik
+      # kalır, konteyner "Cannot find module" ile açılmazdı.
+      context: ..
+      dockerfile: sunucu/Dockerfile
     container_name: filenin-rele
     restart: unless-stopped
     environment:

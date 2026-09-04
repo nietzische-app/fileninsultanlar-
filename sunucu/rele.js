@@ -1,25 +1,32 @@
 /**
  * Filenin Sultanları — röle sunucusu.
  *
- * Tek işi var: oda koduyla iki istemciyi buluşturmak ve aralarındaki
- * mesajları taşımak. Oyunu SİMÜLE ETMEZ; maçı ev sahibi istemci koşturur
- * ve durumu misafire yollar (host-authoritative).
+ * İki işi var: oda koduyla iki istemciyi buluşturmak, ve MAÇI
+ * KOŞTURMAK. Maç `mac.js` içinde, oyun motorunun başsız hâliyle burada
+ * işliyor; iki istemci de yalnızca çiziyor ve tuşlarını yolluyor.
  *
- * Neden böyle: iki makinenin aynı girdiden aynı sonucu üretmesini
- * gerektiren lockstep mimarisi bu oyunda mümkün değil — simülasyon
- * yolunda 30'dan fazla `Math.random()` çağrısı var. Röle bunu
- * gerektirmiyor: rastgelelik tek yerde çalışıyor, öbür taraf sonucu
- * okuyor.
+ * Önce ev sahibi yetkili bir röleydi: maçı odayı açan oyuncunun cihazı
+ * koşturuyordu. Arkadaş maçında sorun değil ama yabancıyla oynanınca
+ * iki sorun doğuyor — ev sahibi kendi tarayıcısındaki simülasyona
+ * müdahale edebiliyor, ve sıfır gecikmeyle oynarken karşısındaki tam
+ * gidiş-dönüş süresi kadar geriden oynuyor. Hakem sunucu olunca ikisi
+ * de aynı mesafede.
  *
- * Sunucunun oyun protokolünden haberi olmaması bilinçli. `oda-*` ile
- * başlayan denetim mesajları dışındaki her şey karşı tarafa ham metin
- * olarak aktarılır — protokol değişince sunucuyu yeniden dağıtmak
- * gerekmez.
+ * Lockstep yine elenmiş durumda: iki makinenin aynı girdiden aynı
+ * sonucu üretmesi gerekirdi, simülasyon yolunda 30'dan fazla
+ * `Math.random()` çağrısı var. Sunucu hakem mimaride rastgelelik tek
+ * yerde çalışıyor, iki taraf da sonucu okuyor.
+ *
+ * Not: sunucu artık oyun protokolünü BİLİYOR (`mac-basla`, `girdi`,
+ * `durum`, `bitis`). Eski röle bunlardan habersizdi; maçı koşturan
+ * taraf olunca bu kaçınılmaz oldu. Tanımadığı mesajlar hâlâ karşı
+ * tarafa olduğu gibi aktarılıyor.
  */
 
 import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
 import { OdaDefteri, HATA } from './oda.js';
+import { Mac } from './mac.js';
 
 /** Tek mesajın azami boyu (bayt). Anlık görüntü ~300 bayt; 16 KB fazlasıyla yeter. */
 const AZAMI_MESAJ = 16 * 1024;
@@ -91,6 +98,45 @@ export async function baslat({ port = 8787, nabiz: nabizAraligi = NABIZ } = {}) 
 
   const wss = new WebSocketServer({ server: http, maxPayload: AZAMI_MESAJ });
 
+  /** Odadaki iki sokete de yollar. */
+  function odayaYolla(oda, paket) {
+    const metin = JSON.stringify(paket);
+    yolla(oda.ev, metin);
+    yolla(oda.misafir, metin);
+  }
+
+  /** Odada maçı kurar ve iki istemciye de rolünü bildirir. */
+  function macKur(oda, ayar) {
+    oda.mac = new Mac({
+      ayar,
+      yolla: (paket) => odayaYolla(oda, paket),
+      bitince: () => {
+        oda.mac = null;
+      },
+    });
+
+    /*
+     * İstemciler maçı motorun KESİNLEŞMİŞ ayarıyla kuruyor, istenen
+     * ayarla değil: "rastgele rakip" seçilmişse takımı sunucu belirler
+     * ve iki taraf da aynısını çizer. Yuva bilgisi de burada gidiyor —
+     * her istemci hangi oyuncuyu sürdüğünü böyle öğreniyor.
+     */
+    const gercek = oda.mac.gercekAyar;
+    yolla(oda.ev, { t: 'mac', cfg: gercek, yuva: 'p1' });
+    yolla(oda.misafir, { t: 'mac', cfg: gercek, yuva: 'p2' });
+
+    oda.mac.baslat();
+  }
+
+  /** Oda kapanır ya da biri ayrılırsa maçı da durdur — sunucuda sürmesin. */
+  function macBitir(kod) {
+    const oda = defter.odalar.get(kod);
+    if (oda?.mac) {
+      oda.mac.durdur();
+      oda.mac = null;
+    }
+  }
+
   wss.on('connection', (soket) => {
     soket.canli = true;
     soket.pencere = { basi: Date.now(), sayi: 0 };
@@ -147,6 +193,45 @@ export async function baslat({ port = 8787, nabiz: nabizAraligi = NABIZ } = {}) 
         case 'ayril': {
           const sonuc = defter.ayril(soket);
           if (sonuc?.es) yolla(sonuc.es, { t: 'ayrildi', kapandi: sonuc.kapandi });
+          if (sonuc?.kod) macBitir(sonuc.kod);
+          break;
+        }
+
+        case 'mac-basla': {
+          /*
+           * Maçı YALNIZCA odayı açan başlatabilir. Katılan da
+           * başlatabilseydi ikisi aynı anda başlatıp iki motor
+           * kurabilirdi; üstelik maç ayarı (kadro, rakip, format)
+           * odayı açanın seçimi.
+           */
+          const oda = defter.odaOf(soket);
+          if (!oda) {
+            hataYolla(soket, HATA.odaYok);
+            break;
+          }
+          if (oda.ev !== soket) {
+            hataYolla(soket, 'yetki-yok');
+            break;
+          }
+          if (!oda.misafir) {
+            hataYolla(soket, 'rakip-yok');
+            break;
+          }
+          if (oda.mac) break; // zaten başlamış
+
+          macKur(oda, mesaj.cfg);
+          break;
+        }
+
+        case 'girdi': {
+          /*
+           * Girdi karşı tarafa DEĞİL maça gider — hakem sunucu.
+           * Hangi yuvaya yazılacağını soket belirliyor: odayı açan
+           * Türkiye'yi (p1), katılan rakip takımı (p2) sürüyor.
+           */
+          const oda = defter.odaOf(soket);
+          if (!oda?.mac) break;
+          oda.mac.girdi(oda.ev === soket ? 'p1' : 'p2', mesaj);
           break;
         }
 
@@ -165,8 +250,18 @@ export async function baslat({ port = 8787, nabiz: nabizAraligi = NABIZ } = {}) 
     });
 
     const kapanis = () => {
+      const oda = defter.odaOf(soket);
       const sonuc = defter.ayril(soket);
       if (sonuc?.es) yolla(sonuc.es, { t: 'ayrildi', kapandi: sonuc.kapandi });
+      /*
+       * Maçı da durdur. Yoksa oyuncular gittikten sonra sunucuda
+       * sahipsiz bir motor 60 Hz koşmaya devam eder — tek maçta fark
+       * edilmez, birikince sunucuyu yer.
+       */
+      if (oda?.mac) {
+        oda.mac.durdur();
+        oda.mac = null;
+      }
     };
     soket.on('close', kapanis);
     soket.on('error', kapanis);

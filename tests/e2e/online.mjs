@@ -68,6 +68,7 @@ function durum(page) {
     if (!g) return null;
     return {
       rol: g.agRol,
+      yuva: g.agYuvam,
       adim: g.adim,
       faz: g.phase,
       top: [Math.round(g.ball.x), Math.round(g.ball.y)],
@@ -112,8 +113,22 @@ await ev.page.waitForTimeout(2500);
 const evDurum = await durum(ev.page);
 const misafirDurum = await durum(misafir.page);
 
-kontrol('ev sahibi maça girdi', evDurum?.rol === 'ev', `rol=${evDurum?.rol}`);
-kontrol('misafir maça girdi', misafirDurum?.rol === 'misafir', `rol=${misafirDurum?.rol}`);
+/*
+ * Artık İKİ taraf da misafir: maçı sunucu koşturuyor. Eskiden odayı
+ * açanın cihazı hakemdi — hile açıktı ve gecikme avantajı tamamen
+ * ondaydı.
+ */
+kontrol(
+  'odayı açan da misafir rolünde (simülasyon sunucuda)',
+  evDurum?.rol === 'misafir',
+  `rol=${evDurum?.rol}`,
+);
+kontrol('katılan misafir rolünde', misafirDurum?.rol === 'misafir', `rol=${misafirDurum?.rol}`);
+kontrol(
+  'yuvalar ayrı dağıtıldı',
+  evDurum?.yuva === 'p1' && misafirDurum?.yuva === 'p2',
+  `${evDurum?.yuva} / ${misafirDurum?.yuva}`,
+);
 
 // --- Aynı maç mı ---
 kontrol(
@@ -127,8 +142,12 @@ kontrol(
   `${evDurum?.kadro} / ${misafirDurum?.kadro}`,
 );
 
-// --- Simülasyon yalnız ev sahibinde ---
-kontrol('ev sahibi simüle ediyor', (evDurum?.adim ?? 0) > 30, `adım=${evDurum?.adim}`);
+// --- Sunucu simüle ediyor: iki tarafta da adım ilerliyor ---
+kontrol(
+  'sunucudan gelen adım iki tarafta da ilerliyor',
+  (evDurum?.adim ?? 0) > 30 && (misafirDurum?.adim ?? 0) > 30,
+  `ev=${evDurum?.adim} misafir=${misafirDurum?.adim}`,
+);
 
 /*
  * Telefondan katılan oyuncuda dokunmatik tuşlar.
@@ -193,12 +212,20 @@ kontrol(
   `${oncekiAway} → ${sonrakiAway}`,
 );
 
-// Ev sahibinin girdisi misafire sızmamalı — iki yuva ayrı kalmalı
+/*
+ * İstemcide karşı tarafın tuşu HİÇ bulunmamalı. Eskiden ev sahibi
+ * misafirin girdisini kendi p2 yuvasına yazıyordu; artık girdi
+ * doğrudan sunucuya gidiyor ve istemciler birbirinin tuşunu görmüyor.
+ */
 const evYuvalar = await ev.page.evaluate(() => ({
   p1: window.__game.inputs.p1.left,
   p2: window.__game.inputs.p2.left,
 }));
-kontrol('yuvalar karışmıyor', evYuvalar.p1 === false, `p1.left=${evYuvalar.p1}`);
+kontrol(
+  'istemci karşı tarafın tuşunu tutmuyor',
+  evYuvalar.p1 === false && evYuvalar.p2 === false,
+  `p1.left=${evYuvalar.p1} p2.left=${evYuvalar.p2}`,
+);
 
 /*
  * Ev sahibi duraklatınca maç DURMAMALI.
@@ -244,7 +271,15 @@ await ev.page.waitForTimeout(400);
  * tarayıcı kare döngüsünü durdurur; misafirin ekranı donar. Kopmuş
  * bağlantı değil bu — ayrı bir uyarı gerekiyor.
  */
-await ev.page.evaluate(() => window.__game.stop());
+/*
+ * Akışı kesmek için artık SUNUCUDAKİ maçı durduruyoruz. Eskiden ev
+ * sahibinin motorunu durdurmak yetiyordu (paketleri o üretiyordu);
+ * hakem sunucu olunca istemciyi durdurmak yalnız o istemciyi etkiliyor.
+ * Röle bu testin kendi süreci içinde olduğu için maça buradan
+ * ulaşabiliyoruz — gerçek hayatta karşılığı sunucunun tökezlemesi.
+ */
+const oda = [...rele.defter.odalar.values()][0];
+oda.mac.durdur();
 await misafir.page.waitForTimeout(2600);
 kontrol(
   'akış kesilince misafir "rakip bekleniyor" görüyor',
@@ -252,7 +287,7 @@ kontrol(
 );
 
 // Akış geri gelince uyarı kendiliğinden kaybolmalı
-await ev.page.evaluate(() => window.__game.start());
+oda.mac.baslat();
 await misafir.page.waitForTimeout(1200);
 kontrol(
   'akış dönünce uyarı kayboluyor',

@@ -1,10 +1,27 @@
-# Röle sunucusu
+# Oyun sunucusu
 
-Çevrimiçi maçların buluşma noktası. Oyunu **simüle etmez**: oda koduyla
-iki istemciyi eşleştirir ve aralarındaki mesajları taşır. Maçı odayı
-açan taraf koşturur, katılan taraf onun ürettiği durumu çizer.
+Çevrimiçi maçların hem buluşma noktası hem hakemi. Oda koduyla iki
+istemciyi eşleştirir **ve maçı kendisi koşturur**: fizik, kurallar,
+servis burada işler; iki istemci de yalnızca çizer ve tuşlarını yollar.
 
-## Neden röle, neden lockstep değil
+## Neden sunucu hakem
+
+Önce ev sahibi yetkiliydi: maçı odayı açan oyuncunun cihazı koşturuyordu.
+Arkadaş maçında sorun değil ama yabancıyla oynanınca iki sorun doğuyor:
+
+- **Hile.** Ev sahibi kendi tarayıcısında koşan simülasyona müdahale
+  edebilir.
+- **Gecikme avantajı.** Ev sahibi sıfır gecikmeyle oynarken karşısındaki
+  tam gidiş-dönüş süresi kadar geriden oynuyor. Hakem sunucu olunca
+  ikisi de aynı mesafede.
+
+Motorun sunucuda koşabilmesi tesadüf değil: simülasyonun kendisi DOM'a
+dokunmuyor. Tarayıcıya bağlı üç şey var (arka plan önbelleği, klavye
+dinleyicileri, `requestAnimationFrame` döngüsü) ve üçü de `update()`
+dışında; `bassiz: true` ile üçü de atlanıyor, döngüyü sunucu kendi
+zamanlayıcısıyla sürüyor (`mac.js`).
+
+## Neden lockstep değil
 
 Lockstep mimaride sunucu yalnız tuşları taşır, iki makine de simülasyonu
 kendi çalıştırır — ve aynı girdiden aynı sonucu üretmek zorundadır.
@@ -13,8 +30,16 @@ Bu oyunun simülasyon yolunda 30'dan fazla `Math.random()` çağrısı var
 çevirmek ayrı bir proje; çevirmeden lockstep denenirse iki taraftaki maç
 birkaç saniyede birbirinden kopar.
 
-Ev sahibi yetkili (host-authoritative) mimaride rastgelelik tek yerde
-çalışıyor, öbür taraf sonucu okuyor. Determinizm gerekmiyor.
+Sunucu hakem mimaride rastgelelik tek yerde çalışıyor, iki taraf da
+sonucu okuyor. Determinizm gerekmiyor.
+
+## Bilinen eksik: gecikme telafisi
+
+Şu an tahmin/uzlaştırma yok. Sunucu hakem olunca **iki oyuncu da**
+kendi tuşuyla ekrandaki karşılığı arasında gidiş-dönüş süresi kadar
+gecikme hissediyor — eskiden bunu yalnız katılan taraf hissediyordu.
+Tam vuruş penceresi 0.17 sn olduğu için yüksek gecikmede o pencereyi
+yakalamak zorlaşıyor. Sıradaki adım bu.
 
 ## Çalıştırma
 
@@ -213,8 +238,9 @@ fly launch --no-deploy --copy-config --name <benzersiz-ad> --region fra
 
 # 3) fly.toml içindeki `app` satırını verdiğin adla eşitle
 
-# 4) Dağıt — --ha=false ŞART, sebebi aşağıda
-fly deploy --ha=false
+# 4) Dağıt — KÖKTEN, --ha=false ŞART (sebepleri aşağıda)
+cd ..
+fly deploy --config sunucu/fly.toml --dockerfile sunucu/Dockerfile --ha=false .
 
 # 5) Ayakta mı
 fly status
@@ -305,23 +331,27 @@ fly logs
 
 ## Protokol
 
-Sunucu oyun protokolünü **bilmez**. `oda-*` ve `ayril` dışındaki her
-mesaj karşı tarafa ham metin olarak aktarılır; oyun paketleri değişince
-sunucuyu yeniden dağıtmak gerekmez.
+Sunucu artık oyun protokolünü **biliyor** — maçı o koşturduğu için
+kaçınılmaz. Tanımadığı mesajlar hâlâ karşı tarafa ham hâliyle aktarılır.
 
 | Yön | Mesaj | Anlam |
 |---|---|---|
 | → | `{t:'oda-ac'}` | Yeni oda aç |
 | → | `{t:'oda-gir', kod}` | Odaya katıl |
+| → | `{t:'mac-basla', cfg}` | Maçı başlat (yalnız odayı açan) |
+| → | `{t:'girdi', k, b}` | Tuş durumu — kendi yuvana yazılır |
 | → | `{t:'ayril'}` | Odadan çık |
 | ← | `{t:'oda', kod, rol}` | Oda kuruldu / katılındı |
 | ← | `{t:'eslesme', rol}` | İki taraf da hazır |
+| ← | `{t:'mac', cfg, yuva}` | Maç kuruldu; `yuva` seni söyler ('p1'/'p2') |
+| ← | `{t:'durum', ...}` | Anlık görüntü (~20 Hz) |
+| ← | `{t:'bitis', sonuc}` | Maç bitti |
 | ← | `{t:'ayrildi', kapandi}` | Karşı taraf gitti |
 | ← | `{t:'hata', sebep}` | İstek reddedildi |
 | ↔ | diğer her şey | Karşı tarafa aktarılır |
 
-Oyun paketleri (`durum`, `girdi`, `mac`, `bitis`) `src/game/snapshot.js`
-ve `src/screens/OnlineScreen.jsx` içinde tanımlı.
+Yuva dağıtımı: odayı **açan** Türkiye'yi (`p1`), **katılan** rakip takımı
+(`p2`) sürer. Paket biçimi `src/game/snapshot.js` içinde.
 
 ## Sınırlar
 

@@ -1,14 +1,5 @@
-# Bağımlılıklar imajın içinde yeniden kurulur (npm ci --omit=dev)
-node_modules
-
-# Testler üretim imajında işe yaramaz — üstelik rele.test.js vitest'i
-# içe aktarıyor ve o burada kurulu değil
-*.test.js
-
-# Belgeler ve dağıtım tanımları imajın içinde yer kaplamasın
-README.md
-fly.toml
-docker-compose.yml
-nginx-rele.conf.ornek
-Dockerfile
-.dockerignore
+# Bu dosya artık KÖK bağlam için geçerli değil — kökteki .dockerignore
+# kullanılıyor. Burada bırakılmasının sebebi: silinirse yapı bağlamı
+# değişikliğini fark etmeyen biri eski davranışı arar.
+#
+# Gerçek liste: depo kökündeki .dockerignore

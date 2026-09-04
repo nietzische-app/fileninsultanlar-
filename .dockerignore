@@ -1,0 +1,23 @@
+# Röle imajı için yapı bağlamı depo köküdür (bkz. sunucu/Dockerfile).
+# İmaja yalnızca sunucu/ ve src/game + src/utils giriyor; gerisi
+# bağlamı şişirmesin.
+
+node_modules
+sunucu/node_modules
+dist
+portal
+tests
+public
+scripts
+.git
+.github
+
+# Testler üretim imajında işe yaramaz — üstelik vitest'i içe aktarıyorlar
+**/*.test.js
+**/*.test.jsx
+
+# Belgeler ve dağıtım tanımları
+**/*.md
+sunucu/fly.toml
+sunucu/docker-compose.yml
+sunucu/nginx-rele.conf.ornek

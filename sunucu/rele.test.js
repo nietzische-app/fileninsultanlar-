@@ -84,24 +84,126 @@ describe('röle', () => {
     misafir.kapat();
   });
 
-  it('oyun mesajını karşı tarafa aktarır', async () => {
+  /** Eşleşmiş bir oda kurar ve iki istemciyi döndürür. */
+  async function esliOda() {
     const ev = await istemci();
     ev.yolla({ t: 'oda-ac' });
     const { kod } = await ev.al();
     const misafir = await istemci();
     misafir.yolla({ t: 'oda-gir', kod });
-    await misafir.al();
-    await misafir.al();
-    await ev.al();
+    await misafir.al(); // oda
+    await misafir.al(); // eslesme
+    await ev.al(); // eslesme
+    return { ev, misafir, kod };
+  }
 
-    ev.yolla({ t: 'durum', adim: 42, top: [100, 200] });
-    expect(await misafir.al()).toEqual({ t: 'durum', adim: 42, top: [100, 200] });
+  /** Test maçı için asgari ayar. */
+  const MAC_AYARI = {
+    mode: '1v1',
+    homeIds: ['gizem-orge'],
+    opponentId: 'atlas',
+    format: 'practice',
+    difficulty: 'normal',
+  };
 
-    misafir.yolla({ t: 'girdi', adim: 43, tuslar: { right: true } });
-    expect(await ev.al()).toEqual({ t: 'girdi', adim: 43, tuslar: { right: true } });
+  it('tanımadığı mesajı karşı tarafa aktarır', async () => {
+    const { ev, misafir } = await esliOda();
+
+    // Protokolde olmayan bir mesaj hâlâ ham hâliyle taşınıyor
+    ev.yolla({ t: 'selam', veri: 42 });
+    expect(await misafir.al()).toEqual({ t: 'selam', veri: 42 });
 
     ev.kapat();
     misafir.kapat();
+  });
+
+  it('sunucu maçı kurar ve iki tarafa da yuvasını bildirir', async () => {
+    const { ev, misafir } = await esliOda();
+    ev.yolla({ t: 'mac-basla', cfg: MAC_AYARI });
+
+    const evMac = await ev.al();
+    const misafirMac = await misafir.al();
+
+    expect(evMac.t).toBe('mac');
+    expect(misafirMac.t).toBe('mac');
+    // Odayı açan Türkiye'yi, katılan rakip takımı sürer
+    expect(evMac.yuva).toBe('p1');
+    expect(misafirMac.yuva).toBe('p2');
+    // Ayar İKİSİNDE DE aynı olmalı; yoksa farklı kadro çizerler
+    expect(evMac.cfg).toEqual(misafirMac.cfg);
+
+    ev.kapat();
+    misafir.kapat();
+  });
+
+  it('rakip rastgele istense bile iki tarafa aynı takım gider', async () => {
+    const { ev, misafir } = await esliOda();
+    // opponentId yok: seçimi sunucu yapacak
+    ev.yolla({ t: 'mac-basla', cfg: { ...MAC_AYARI, opponentId: undefined } });
+
+    const evMac = await ev.al();
+    const misafirMac = await misafir.al();
+    expect(evMac.cfg.opponentId).toBeTruthy();
+    expect(evMac.cfg.opponentId).toBe(misafirMac.cfg.opponentId);
+
+    ev.kapat();
+    misafir.kapat();
+  });
+
+  it('maç başlayınca iki tarafa da durum paketi akar', async () => {
+    const { ev, misafir } = await esliOda();
+    ev.yolla({ t: 'mac-basla', cfg: MAC_AYARI });
+    await ev.al(); // mac
+    await misafir.al(); // mac
+
+    const evDurum = await ev.al();
+    const misafirDurum = await misafir.al();
+    expect(evDurum.t).toBe('durum');
+    expect(misafirDurum.t).toBe('durum');
+    // Simülasyon sunucuda koşuyor: adım ilerlemiş olmalı
+    expect(evDurum.n).toBeGreaterThan(0);
+
+    ev.kapat();
+    misafir.kapat();
+  });
+
+  it('girdi maça gider, karşı tarafa aktarılmaz', async () => {
+    const { ev, misafir } = await esliOda();
+    ev.yolla({ t: 'mac-basla', cfg: MAC_AYARI });
+    await ev.al();
+    await misafir.al();
+
+    /*
+     * Eski mimaride girdi karşı tarafa (ev sahibine) aktarılıyordu.
+     * Artık hakem sunucu: girdi maça yazılıyor ve karşı istemciye HİÇ
+     * gitmiyor — gitseydi iki taraf birbirinin tuşlarını da uygulardı.
+     */
+    misafir.yolla({ t: 'girdi', v: 1, k: { right: true }, b: 1 });
+
+    // Ev sahibine gelen bir sonraki mesaj girdi DEĞİL, durum olmalı
+    const gelen = await ev.al();
+    expect(gelen.t).toBe('durum');
+
+    ev.kapat();
+    misafir.kapat();
+  });
+
+  it('maçı yalnızca odayı açan başlatabilir', async () => {
+    const { ev, misafir } = await esliOda();
+    misafir.yolla({ t: 'mac-basla', cfg: MAC_AYARI });
+    expect(await misafir.al()).toEqual({ t: 'hata', sebep: 'yetki-yok' });
+
+    ev.kapat();
+    misafir.kapat();
+  });
+
+  it('rakip yokken maç başlatılamaz', async () => {
+    const ev = await istemci();
+    ev.yolla({ t: 'oda-ac' });
+    await ev.al();
+    ev.yolla({ t: 'mac-basla', cfg: MAC_AYARI });
+    expect(await ev.al()).toEqual({ t: 'hata', sebep: 'rakip-yok' });
+    ev.kapat();
   });
 
   it('odası olmayanın oyun mesajı hata döner', async () => {

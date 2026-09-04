@@ -190,8 +190,24 @@ export default class Game {
    * @param {(result: object) => void} [options.onFinish]
    */
   constructor(canvas, options = {}) {
-    this.canvas = canvas;
-    this.ctx = canvas.getContext('2d');
+    /**
+     * Başsız mod — motor sunucuda, tarayıcısız çalışır.
+     *
+     * Simülasyonun kendisi (fizik, yapay zekâ, kurallar, servis) zaten
+     * DOM'a dokunmuyor; tarayıcıya bağlı olan üç şey var ve üçü de
+     * `update()` dışında: arka plan önbelleği (canvas), klavye
+     * dinleyicileri ve `requestAnimationFrame` döngüsü. Başsız modda
+     * üçü de atlanır, döngüyü çağıran taraf sürer (bkz. `ilerlet`).
+     *
+     * Sunucunun maçı koşturması bunun için gerekli: ev sahibi
+     * yetkili mimaride maçı bir oyuncunun cihazı yönetiyor — arkadaş
+     * maçında sorun değil, yabancıyla oynarken hem hile açık hem de
+     * gecikme avantajı tamamen ev sahibinde.
+     */
+    this.bassiz = Boolean(options.bassiz);
+
+    this.canvas = canvas ?? null;
+    this.ctx = this.bassiz ? null : canvas.getContext('2d');
 
     this.playMode = ['solo', 'coop', 'vs'].includes(options.playMode)
       ? options.playMode
@@ -258,6 +274,15 @@ export default class Game {
      * çizer ve tuşlarını yollar. `null` çevrimdışı oyun.
      */
     this.agRol = options.agRol ?? null;
+    /**
+     * Çevrimiçi maçta BU istemcinin sürdüğü yuva ('p1' | 'p2').
+     *
+     * Sahada iki oyuncu da "kontrol ediliyor" (ikisi de insan), yani
+     * ok göstergesi ikisinin üstünde birden çıkıyordu ve oyuncu hangisi
+     * olduğunu ayırt edemiyordu. Bu alan doluysa yalnız kendi
+     * oyuncusunun üstüne çiziliyor.
+     */
+    this.agYuvam = options.agYuvam ?? null;
     this.agGonder = options.agGonder ?? null;
     /** Bir sonraki pakete binecek efekt/ses olayları. */
     this.agOlaylar = [];
@@ -301,7 +326,8 @@ export default class Game {
       {
         get: (_hedef, ad) => (...args) => {
           if (this.agRol === 'ev') this.agOlay('ses', ad, args);
-          Sfx[ad]?.(...args);
+          // Sunucuda hoparlör yok; olay yine de misafirlere gidiyor
+          if (!this.bassiz) Sfx[ad]?.(...args);
         },
       },
     );
@@ -399,10 +425,13 @@ export default class Game {
      * Arka plan önbelleği. Ayrı bir yüzeye çizilip her karede tek
      * `drawImage` ile kopyalanır.
      */
-    this.bgCanvas = document.createElement('canvas');
-    this.bgCanvas.width = GAME_WIDTH;
-    this.bgCanvas.height = GAME_HEIGHT;
-    this.bgCtx = this.bgCanvas.getContext('2d');
+    // Başsızda çizim yok — önbelleğe de gerek yok (document da yok)
+    this.bgCanvas = this.bassiz ? null : document.createElement('canvas');
+    if (this.bgCanvas) {
+      this.bgCanvas.width = GAME_WIDTH;
+      this.bgCanvas.height = GAME_HEIGHT;
+    }
+    this.bgCtx = this.bgCanvas ? this.bgCanvas.getContext('2d') : null;
     this.bgTime = -Infinity;
     this.bgKey = '';
   }
@@ -419,11 +448,17 @@ export default class Game {
     // Duraklatmada biriken artık, dönüşte tek karede boşalmasın
     this.accumulator = 0;
 
-    window.addEventListener('keydown', this.handleKeyDown);
-    window.addEventListener('keyup', this.handleKeyUp);
-    window.addEventListener('blur', this.handleWindowBlur);
+    /*
+     * Başsızda klavye ve rAF yok: girdi ağdan geliyor, döngüyü de
+     * çağıran taraf (sunucu) `ilerlet` ile sürüyor.
+     */
+    if (!this.bassiz) {
+      window.addEventListener('keydown', this.handleKeyDown);
+      window.addEventListener('keyup', this.handleKeyUp);
+      window.addEventListener('blur', this.handleWindowBlur);
+      this.rafId = requestAnimationFrame(this.loop);
+    }
 
-    this.rafId = requestAnimationFrame(this.loop);
     this.emitState(true);
   }
 
@@ -436,25 +471,29 @@ export default class Game {
       this.rafId = null;
     }
 
-    window.removeEventListener('keydown', this.handleKeyDown);
-    window.removeEventListener('keyup', this.handleKeyUp);
-    window.removeEventListener('blur', this.handleWindowBlur);
+    if (!this.bassiz) {
+      window.removeEventListener('keydown', this.handleKeyDown);
+      window.removeEventListener('keyup', this.handleKeyUp);
+      window.removeEventListener('blur', this.handleWindowBlur);
+    }
 
     // Duraklatınca basılı kalan tuş/dokunuş devam etmesin
     this.clearInput();
 
-    // Duraklatınca tribün de sussun
-    Sfx.hushAtmosphere();
+    if (!this.bassiz) {
+      // Duraklatınca tribün de sussun
+      Sfx.hushAtmosphere();
+      // Duraklatınca son kare ekranda kalsın
+      this.render();
+    }
 
-    // Duraklatınca son kare ekranda kalsın
-    this.render();
     this.emitState(true);
   }
 
   destroy() {
     this.stop();
     this.clearInput();
-    Sfx.hushAtmosphere();
+    if (!this.bassiz) Sfx.hushAtmosphere();
     this.particles.length = 0;
     this.rings.length = 0;
     this.ballTrail.length = 0;
@@ -798,7 +837,7 @@ export default class Game {
    *
    * @returns {boolean} Paket tanındıysa true
    */
-  agPaketAl(paket) {
+  agPaketAl(paket, yuva = 'p2') {
     if (!paket || typeof paket !== 'object') return false;
 
     if (paket.t === 'durum' && this.agRol === 'misafir') {
@@ -809,7 +848,13 @@ export default class Game {
     }
 
     if (paket.t === 'girdi' && this.agRol === 'ev') {
-      this.agGirdiUygula(paket);
+      /*
+       * Yuva parametre: ev sahibi bir oyuncunun cihazıyken tek bir
+       * karşı taraf vardı ve p2 sabitti. Sunucu maçı koştururken İKİ
+       * istemciden de girdi geliyor — hangisinin hangi yuvaya
+       * yazılacağını çağıran biliyor (soket başına).
+       */
+      this.agGirdiUygula(paket, yuva);
       return true;
     }
 
@@ -825,14 +870,15 @@ export default class Game {
    * arasına sıkışan hızlı bir vuruşun ağ üzerinden de kaybolmamasını
    * sağlıyor — yerel oyunda bu sorunu çözen mekanizmanın aynısı.
    */
-  agGirdiUygula(paket) {
+  agGirdiUygula(paket, yuvaAdi = 'p2') {
     const gelen = paket.k ?? {};
-    const yuva = this.inputs.p2;
+    const yuva = this.inputs[yuvaAdi];
+    if (!yuva) return;
     Object.keys(yuva).forEach((ad) => {
       yuva[ad] = Boolean(gelen[ad]);
     });
-    if (typeof paket.b === 'number' && paket.b >= this.actionPresses.p2) {
-      this.actionPresses.p2 = paket.b;
+    if (typeof paket.b === 'number' && paket.b >= this.actionPresses[yuvaAdi]) {
+      this.actionPresses[yuvaAdi] = paket.b;
     }
   }
 
@@ -852,8 +898,30 @@ export default class Game {
   loop(timestamp) {
     if (!this.running) return;
 
-    const elapsed = Math.min((timestamp - this.lastTime) / 1000, PHYSICS.maxCatchUp);
+    const elapsed = (timestamp - this.lastTime) / 1000;
     this.lastTime = timestamp;
+
+    this.ilerlet(elapsed);
+
+    this.render();
+    this.emitState();
+    this.agAkis();
+
+    this.rafId = requestAnimationFrame(this.loop);
+  }
+
+  /**
+   * Geçen gerçek zamanı sabit adımlara çevirip simülasyonu ilerletir.
+   *
+   * Çizimden ayrı durması gerekiyor: sunucuda çizim yok ama zaman
+   * aynı şekilde ilerlemeli. Tarayıcı `loop`tan, sunucu kendi
+   * zamanlayıcısından çağırıyor — ikisi de aynı adım mantığını
+   * kullanıyor, yani sahadaki fizik iki yerde de birebir aynı.
+   *
+   * @param {number} gercekSure Son çağrıdan bu yana geçen süre (sn)
+   */
+  ilerlet(gercekSure) {
+    const elapsed = Math.min(gercekSure, PHYSICS.maxCatchUp);
 
     /*
      * Eşik tam adım değil, adım eksi tolerans — gerekçe ve ölçüm
@@ -866,20 +934,14 @@ export default class Game {
     while (this.accumulator >= PHYSICS.step - PHYSICS.stepSlack) {
       this.accumulator -= PHYSICS.step;
       /*
-       * Misafir simüle etmez. Fizik ev sahibinde koşuyor; burada
-       * çalıştırmak iki farklı maç üretirdi ve gelen her paket topu
-       * geri zıplatırdı. Yalnızca süslemeler (parçacık, iz, uğultu)
-       * yerel akar — onlar sonucu değiştirmiyor.
+       * Misafir simüle etmez. Fizik ev sahibinde (ya da sunucuda)
+       * koşuyor; burada çalıştırmak iki farklı maç üretirdi ve gelen
+       * her paket topu geri zıplatırdı. Yalnızca süslemeler (parçacık,
+       * iz, uğultu) yerel akar — onlar sonucu değiştirmiyor.
        */
       if (this.agRol === 'misafir') this.misafirGuncelle(PHYSICS.step);
       else this.update(PHYSICS.step);
     }
-
-    this.render();
-    this.emitState();
-    this.agAkis();
-
-    this.rafId = requestAnimationFrame(this.loop);
   }
 
   /**
@@ -2278,7 +2340,7 @@ export default class Game {
     else if (this.phase === PHASE.MATCH_END) level = this.hype * 0.4;
     else level = Math.max(level, 0.08);
 
-    Sfx.setAtmosphere(level);
+    if (!this.bassiz) Sfx.setAtmosphere(level);
   }
 
   // ===================================================================
@@ -2562,7 +2624,14 @@ export default class Game {
     const servingNow =
       this.phase === PHASE.SERVE && this.serve?.serverId === player.id;
 
-    if (player.controlled && !servingNow) {
+    /*
+     * Çevrimiçide iki oyuncu da insan: gösterge ikisinin üstünde
+     * birden çıkarsa oyuncu hangisi olduğunu bilemez. Yuva biliniyorsa
+     * yalnız kendi oyuncusuna çiziliyor.
+     */
+    const benim = this.agYuvam ? player.controlSlot === this.agYuvam : player.controlled;
+
+    if (benim && !servingNow) {
       const top = player.y - 22 * PLAYER.spriteScale;
       const bounce = Math.sin(this.time * 6) * 3;
 

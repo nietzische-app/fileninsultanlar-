@@ -11,7 +11,11 @@ app = 'fileninsultanlar-rele'
 primary_region = 'fra'   # Frankfurt — Türkiye'ye en yakın Fly bölgesi
 
 [build]
-  dockerfile = 'Dockerfile'
+  # DİKKAT: yapı bağlamı depo KÖKÜ olmalı — sunucu maçı koşturuyor ve
+  # oyun motorunu (src/game) içe aktarıyor. Fly, fly.toml'un bulunduğu
+  # dizini bağlam alır, o yüzden kökten dağıt:
+  #   fly deploy --config sunucu/fly.toml --dockerfile sunucu/Dockerfile .
+  dockerfile = 'sunucu/Dockerfile'
 
 [env]
   # Dockerfile ve internal_port ile aynı olmalı

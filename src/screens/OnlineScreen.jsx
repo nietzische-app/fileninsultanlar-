@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Sfx from '../game/audio.js';
 import { Baglanti, hataMetni } from '../net/baglanti.js';
 import { KOD_UZUNLUK } from '../../sunucu/protokol.js';
-import { pickRandomOpponent } from '../game/opponents.js';
 import { upper } from '../utils/text.js';
 
 /**
@@ -56,36 +55,42 @@ export default function OnlineScreen({ config, onStart, onBack }) {
     });
 
     /*
-     * Eşleşme. Ev sahibi maç ayarlarını yollar ve maçı başlatır;
-     * misafir ayarları bekler. Misafirin kendi seçimini kullanması
-     * cazip görünüyor ama iki taraf farklı kadro kurarsa anlık
-     * görüntüdeki oyuncu sırası tutmaz ve yanlış sultanlar çizilir.
+     * Eşleşince odayı açan taraf maçı İSTER, ama kurmaz — maçı sunucu
+     * koşturuyor. Ayarlar yine açanın seçimi (kadro, rakip, format);
+     * sunucu bunları kesinleştirip iki tarafa da aynısını yolluyor.
      */
     baglanti.on('eslesme', (mesaj) => {
       if (mesaj.rol !== 'ev') return;
       const c = configRef.current;
-      const macAyari = {
-        mode: c.mode,
-        homeIds: c.homeIds,
-        /*
-         * Rakip takım burada kesinleşiyor. "Rastgele" seçilmişse
-         * `opponentId` boş geliyor ve iki motor kendi rastgelesini
-         * çekerdi — misafirin ekranında başka bir takım oynardı.
-         */
-        opponentId: c.opponentId ?? pickRandomOpponent().id,
-        format: c.format,
-        difficulty: c.difficulty,
-      };
-      baglanti.yolla({ t: 'mac', cfg: macAyari });
-      // Bağlantı maça devrediliyor; bu ekran kapanırken kapatmamalı
-      baglanti.devredildi = true;
-      onStartRef.current({ ...macAyari, playMode: 'vs', agRol: 'ev', baglanti });
+      baglanti.yolla({
+        t: 'mac-basla',
+        cfg: {
+          mode: c.mode,
+          homeIds: c.homeIds,
+          // Boşsa rakibi sunucu seçer ve ikimize de aynısını bildirir
+          opponentId: c.opponentId,
+          format: c.format,
+          difficulty: c.difficulty,
+        },
+      });
     });
 
+    /*
+     * Maç kuruldu. Artık İKİ taraf da misafir: simülasyon sunucuda,
+     * ikimiz de çiziyor ve tuşlarımızı yolluyoruz. `yuva` hangi
+     * oyuncuyu sürdüğümüzü söylüyor — sahada kimin biz olduğunu
+     * göstermek için gerekli.
+     */
     baglanti.on('mac', (mesaj) => {
       const c = mesaj.cfg ?? {};
       baglanti.devredildi = true;
-      onStartRef.current({ ...c, playMode: 'vs', agRol: 'misafir', baglanti });
+      onStartRef.current({
+        ...c,
+        playMode: 'vs',
+        agRol: 'misafir',
+        agYuvam: mesaj.yuva ?? 'p1',
+        baglanti,
+      });
     });
 
     await baglanti.baglan();

@@ -96,17 +96,15 @@ export default function MatchScreen({
       roundCount: config.roundCount,
       onState: setHud,
       /*
-       * Maçın bittiğini yalnız ev sahibi bilir — misafir simüle
-       * etmiyor, dolayısıyla kendi `onFinish`i hiç tetiklenmez.
-       * Sonuç olduğu gibi aktarılıyor: iki taraf aynı sahayı
-       * izlediği için sonuç ekranı da ikisinde aynı olmalı.
+       * Çevrimiçide bu HİÇ tetiklenmez: maçı sunucu koşturuyor, iki
+       * istemci de simüle etmiyor. Bitişi sunucunun `bitis` mesajı
+       * bildiriyor (aşağıda). Tek kişilik ve yerel maçlarda ise
+       * normal yol burası.
        */
-      onFinish: (result) => {
-        if (config.agRol === 'ev') config.baglanti?.yolla({ t: 'bitis', sonuc: result });
-        onFinishRef.current(result);
-      },
+      onFinish: (result) => onFinishRef.current(result),
       // Çevrimiçi maçta rol ve gönderim kapısı
       agRol: config.agRol ?? null,
+      agYuvam: config.agYuvam ?? null,
       agGonder: config.baglanti ? (paket) => config.baglanti.yolla(paket) : null,
     });
 
@@ -122,7 +120,7 @@ export default function MatchScreen({
       cozucular.push(config.baglanti.on('mesaj', (paket) => game.agPaketAl(paket)));
       cozucular.push(
         config.baglanti.on('bitis', (paket) => {
-          if (config.agRol === 'misafir' && paket.sonuc) onFinishRef.current(paket.sonuc);
+          if (paket.sonuc) onFinishRef.current(paket.sonuc);
         }),
       );
       // Karşı taraf gidince maç donup kalmasın — sebebi söylenmeli
