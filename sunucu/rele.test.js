@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import WebSocket from 'ws';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { baslat } from './rele.js';
 
 /**
@@ -11,6 +14,12 @@ import { baslat } from './rele.js';
  */
 
 let sunucu;
+/*
+ * Veri dizini GEÇİCİ. Verilmezse depo `./veri` altına yazıyor ve
+ * testler depoyu kirletiyor — ilk koşumda tam bu oldu, çalışma
+ * ağacında bir `veri/oyuncular.jsonl` belirdi.
+ */
+let veriDizini;
 
 /** Bağlanmış bir istemci; gelen mesajları kuyruğa yazar. */
 async function istemci() {
@@ -48,13 +57,23 @@ async function istemci() {
   };
 }
 
+
+/** Sunucudan kimlik alır — adım 4'ten sonra kimliği sunucu veriyor. */
+async function kimlikAl(k, ad) {
+  k.yolla({ t: 'kimlik', ad });
+  const cevap = await k.al();
+  return cevap;
+}
+
 beforeAll(async () => {
   // Port 0: işletim sistemi boş port seçsin, testler çakışmasın
-  sunucu = await baslat({ port: 0, nabiz: 60_000 });
+  veriDizini = mkdtempSync(join(tmpdir(), 'rele-veri-'));
+  sunucu = await baslat({ port: 0, nabiz: 60_000, veriDizini });
 });
 
 afterAll(async () => {
   await sunucu.kapat();
+  rmSync(veriDizini, { recursive: true, force: true });
 });
 
 describe('röle', () => {
@@ -335,9 +354,12 @@ describe('hızlı eşleşme', () => {
     const a = await istemci();
     const b = await istemci();
 
-    a.yolla({ t: 'hizli-esles', kimlik: { id: 'k1', ad: 'ATEŞLİ SMAÇ' } });
+    await kimlikAl(a, 'ATEŞLİ SMAÇ');
+    await kimlikAl(b, 'ÇELİK BLOK');
+
+    a.yolla({ t: 'hizli-esles' });
     await a.al();
-    b.yolla({ t: 'hizli-esles', kimlik: { id: 'k2', ad: 'ÇELİK BLOK' } });
+    b.yolla({ t: 'hizli-esles' });
 
     const macA = await a.al();
     const macB = await b.al();
@@ -356,18 +378,17 @@ describe('hızlı eşleşme', () => {
     const a = await istemci();
     const b = await istemci();
 
-    a.yolla({
-      t: 'hizli-esles',
-      kimlik: { id: 'x'.repeat(500), ad: `AAAAAAAAAAAAAAAAAAAAAAAA\u0000\u0007` },
-    });
+    await kimlikAl(a, `AAAAAAAAAAAAAAAAAAAAAAAA\u0000\u0007`);
+    await kimlikAl(b, 'ÇELİK BLOK');
+
+    a.yolla({ t: 'hizli-esles' });
     await a.al();
-    b.yolla({ t: 'hizli-esles', kimlik: { id: 'k2', ad: 'ÇELİK BLOK' } });
+    b.yolla({ t: 'hizli-esles' });
 
     await a.al();
     const macB = await b.al();
     expect(macB.rakip.ad.length).toBeLessThanOrEqual(12);
     expect([...macB.rakip.ad].every((c) => c.codePointAt(0) >= 0x20)).toBe(true);
-    expect(macB.rakip.id.length).toBeLessThanOrEqual(64);
 
     a.kapat();
     b.kapat();
@@ -417,7 +438,9 @@ describe('hızlı eşleşme', () => {
 
   it('rakip gelmezse "rakip yok" der ama sıradan atmaz', async () => {
     // Kısa bekleme sınırlı ayrı bir sunucu — 20 saniye beklemeyelim
-    const kisa = await baslat({ port: 0, nabiz: 60_000, beklemeSiniri: 30 });
+    const kisa = await baslat({
+      port: 0, nabiz: 60_000, beklemeSiniri: 30, veriDizini,
+    });
     const soket = new WebSocket(`ws://localhost:${kisa.port}`);
     const gelen = [];
     soket.on('message', (ham) => gelen.push(JSON.parse(ham.toString())));
@@ -435,5 +458,200 @@ describe('hızlı eşleşme', () => {
 
     soket.close();
     await kisa.kapat();
+  });
+});
+
+describe('kimlik ve skor tablosu', () => {
+  it('sunucu kimlik ve gizli anahtar veriyor', async () => {
+    const a = await istemci();
+    const kimlik = await kimlikAl(a, 'ATEŞLİ SMAÇ');
+
+    expect(kimlik.t).toBe('kimlik');
+    expect(kimlik.id).toBeTruthy();
+    expect(kimlik.gizli).toBeTruthy();
+    expect(kimlik.ad).toBe('ATEŞLİ SMAÇ');
+    expect(kimlik.ben.puan).toBe(1000);
+    a.kapat();
+  });
+
+  it('anahtarla dönen oyuncu AYNI kimliği alıyor', async () => {
+    const a = await istemci();
+    const ilk = await kimlikAl(a, 'DÖNEN');
+    a.kapat();
+
+    const b = await istemci();
+    b.yolla({ t: 'kimlik', id: ilk.id, gizli: ilk.gizli, ad: 'DÖNEN' });
+    const ikinci = await b.al();
+
+    expect(ikinci.id).toBe(ilk.id);
+    // Anahtar zaten onda; yeniden yollanmıyor
+    expect(ikinci.gizli).toBeUndefined();
+    b.kapat();
+  });
+
+  it('YANLIŞ anahtarla başkasının kimliği ELE GEÇİRİLEMİYOR', async () => {
+    /*
+     * Adım 3'te kimliği istemci üretiyordu ve skor tablosu yokken
+     * zararsızdı. Tablo gelince aynı tasarım "başkasının kimliğini
+     * yaz, puanını al" demeye dönüşüyordu.
+     */
+    const a = await istemci();
+    const kurban = await kimlikAl(a, 'KURBAN');
+    a.kapat();
+
+    const saldirgan = await istemci();
+    saldirgan.yolla({ t: 'kimlik', id: kurban.id, gizli: 'tahmin', ad: 'SALDIRGAN' });
+    const cevap = await saldirgan.al();
+
+    expect(cevap.id).not.toBe(kurban.id);
+    // Kurbanın adı da değişmemiş olmalı
+    expect(cevap.ad).toBe('SALDIRGAN');
+    saldirgan.kapat();
+  });
+
+  it('ad değişikliği anahtarı korur', async () => {
+    const a = await istemci();
+    const ilk = await kimlikAl(a, 'ESKİ AD');
+    a.yolla({ t: 'kimlik', id: ilk.id, gizli: ilk.gizli, ad: 'YENİ AD' });
+    const ikinci = await a.al();
+
+    expect(ikinci.id).toBe(ilk.id);
+    expect(ikinci.ad).toBe('YENİ AD');
+    a.kapat();
+  });
+
+  it('sıralama gizli anahtar ya da özet SIZDIRMIYOR', async () => {
+    const a = await istemci();
+    const kimlik = await kimlikAl(a, 'GİZLİLİK');
+    a.yolla({ t: 'siralama' });
+    const cevap = await a.al();
+
+    const metin = JSON.stringify(cevap);
+    expect(metin).not.toContain(kimlik.gizli);
+    expect(metin).not.toContain('ozet');
+    expect(Array.isArray(cevap.liste)).toBe(true);
+    a.kapat();
+  });
+
+  it('istemci "kazandım" diyerek puan alamıyor', async () => {
+    /*
+     * Skor tablosunun tek dayanağı bu: sonucu SUNUCU koyuyor, çünkü
+     * maçı sunucu koşturuyor. İstemcinin uydurabileceği bir "sonuç
+     * bildir" mesajı yok — olmadığını sınıyoruz.
+     */
+    const a = await istemci();
+    const kimlik = await kimlikAl(a, 'HİLECİ');
+
+    a.yolla({ t: 'sonuc', kazandim: true, puan: 9999 });
+    a.yolla({ t: 'puan', ben: { puan: 9999 } });
+    // Sunucunun bunları yok saydığını görmek için durumu geri sor
+    a.yolla({ t: 'siralama' });
+    let cevap = await a.al();
+    while (cevap.t !== 'siralama') cevap = await a.al();
+
+    expect(cevap.ben.puan).toBe(1000);
+    expect(cevap.ben.mac).toBe(0);
+    expect(kimlik.ben.puan).toBe(1000);
+    a.kapat();
+  });
+
+  it('maçı SUNUCU bitirince puanlar işleniyor', async () => {
+    /*
+     * Üstteki test yalnız "şu mesaj adları bir işe yaramıyor" diyor —
+     * zayıf bir iddia. Asıl kanıt bu: gerçek bir hızlı eşleşme maçı
+     * kuruluyor ve motorun kendi bitiş yolu tetikleniyor. Puanı yazan
+     * el, maçı koşturan elin ta kendisi.
+     */
+    const a = await istemci();
+    const b = await istemci();
+    const kimlikA = await kimlikAl(a, 'KAZANAN');
+    const kimlikB = await kimlikAl(b, 'KAYBEDEN');
+
+    a.yolla({ t: 'hizli-esles' });
+    await a.al();
+    b.yolla({ t: 'hizli-esles' });
+    const macA = await a.al();
+    await b.al();
+
+    // Odayı bul ve motorun kendi bitiş yolunu tetikle
+    const oda = [...sunucu.defter.odalar.values()].find((o) => o.mac);
+    expect(oda).toBeTruthy();
+    // p1 ev sahibi tarafını sürüyor: 'home' kazanınca p1 kazanır
+    oda.mac.oyun.emitFinish('home');
+
+    // p1 hangi soketse o kazanmış olmalı
+    const p1Kimlik = macA.yuva === 'p1' ? kimlikA : kimlikB;
+    const p2Kimlik = macA.yuva === 'p1' ? kimlikB : kimlikA;
+
+    const okuA = macA.yuva === 'p1' ? a : b;
+    const okuB = macA.yuva === 'p1' ? b : a;
+
+    let puanP1 = await okuA.al();
+    while (puanP1.t !== 'puan') puanP1 = await okuA.al();
+    let puanP2 = await okuB.al();
+    while (puanP2.t !== 'puan') puanP2 = await okuB.al();
+
+    expect(puanP1.ben.galibiyet).toBe(1);
+    expect(puanP1.ben.puan).toBeGreaterThan(1000);
+    expect(puanP1.degisim).toBeGreaterThan(0);
+    expect(puanP2.ben.maglubiyet).toBe(1);
+    expect(puanP2.ben.puan).toBeLessThan(1000);
+    expect(puanP2.degisim).toBeLessThan(0);
+
+    // Ve tablo bunu gösteriyor
+    okuA.yolla({ t: 'siralama' });
+    let tablo = await okuA.al();
+    while (tablo.t !== 'siralama') tablo = await okuA.al();
+    expect(tablo.liste[0].id).toBe(p1Kimlik.id);
+    expect(tablo.liste.map((k) => k.id)).toContain(p2Kimlik.id);
+
+    a.kapat();
+    b.kapat();
+  });
+
+  it('arkadaş maçı tabloya YAZILMIYOR', async () => {
+    /*
+     * Arkadaş maçında ayarları odayı açan seçiyor (kadro, zorluk,
+     * format). Tabloya yazsaydık sıralama ayarlanabilir olurdu:
+     * "en kolay rakip, en kısa format" seçip puan toplamak.
+     */
+    const ev = await istemci();
+    const mis = await istemci();
+    const kimlikEv = await kimlikAl(ev, 'EV SAHİBİ');
+    await kimlikAl(mis, 'KATILAN');
+
+    ev.yolla({ t: 'oda-ac' });
+    const oda1 = await ev.al();
+    mis.yolla({ t: 'oda-gir', kod: oda1.kod });
+    await mis.al();
+    await mis.al();
+    await ev.al();
+
+    ev.yolla({ t: 'mac-basla', cfg: { mode: '1v1', format: 'single' } });
+    await ev.al();
+    await mis.al();
+
+    const oda = sunucu.defter.odalar.get(oda1.kod);
+    oda.mac.oyun.emitFinish('home');
+
+    ev.yolla({ t: 'siralama' });
+    let tablo = await ev.al();
+    while (tablo.t !== 'siralama') tablo = await ev.al();
+
+    const bizim = tablo.liste.find((k) => k.id === kimlikEv.id);
+    expect(bizim).toBeUndefined();
+    expect(tablo.ben.mac).toBe(0);
+
+    ev.kapat();
+    mis.kapat();
+  });
+
+  it('sağlık ucu oyuncu sayısını veriyor', async () => {
+    const a = await istemci();
+    await kimlikAl(a, 'SAYIM');
+
+    const veri = await (await fetch(`http://localhost:${sunucu.port}/saglik`)).json();
+    expect(veri.oyuncu).toBeGreaterThanOrEqual(1);
+    a.kapat();
   });
 });

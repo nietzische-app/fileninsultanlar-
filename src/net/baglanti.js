@@ -138,24 +138,39 @@ export class Baglanti {
     return this.yolla({ t: 'oda-gir', kod });
   }
 
-  /**
-   * Hızlı eşleşme sırasına girer.
-   *
-   * Kimlik burada gidiyor çünkü sunucu maçı kurarken karşı tarafın
-   * adına ihtiyaç duyuyor ve o an elinde yalnız soket var. Her girdi
-   * paketine ad eklemek (saniyede 60) anlamsız olurdu.
-   */
-  hizliEsles(kimlik) {
-    return this.yolla({ t: 'hizli-esles', kimlik });
+  /** Hızlı eşleşme sırasına girer. Kimlik önceden bildirilmiş olmalı. */
+  hizliEsles() {
+    return this.yolla({ t: 'hizli-esles' });
   }
 
   siradanCik() {
     return this.yolla({ t: 'siradan-cik' });
   }
 
-  /** Kimliği bağlantıya yapıştırır — arkadaş maçı yolu için. */
-  kimlikBildir(kimlik) {
-    return this.yolla({ t: 'kimlik', kimlik });
+  /**
+   * Kimliği sunucuya bildirir ve cevabını bekler.
+   *
+   * Anahtar varsa sunucu aynı kimliği geri veriyor; yoksa (ya da
+   * anahtar tutmuyorsa) yenisini açıyor. Kimlik bağlantıya yapışıyor,
+   * mesajlarla taşınmıyor: maç kurulurken karşı tarafın adı gerekiyor
+   * ve o an sunucunun elinde yalnız soket var. Saniyede 60 girdi
+   * paketinin her birine ad eklemek anlamsız olurdu.
+   *
+   * @returns {Promise<object>} Sunucunun kimlik cevabı
+   */
+  kimlikBildir({ id, gizli, ad }) {
+    return new Promise((coz) => {
+      const cozul = this.on('kimlik', (mesaj) => {
+        cozul();
+        coz(mesaj);
+      });
+      this.yolla({ t: 'kimlik', id, gizli, ad });
+    });
+  }
+
+  /** Skor tablosunu ister; cevap `siralama` olayıyla gelir. */
+  siralamaIste() {
+    return this.yolla({ t: 'siralama' });
   }
 
   ayril() {

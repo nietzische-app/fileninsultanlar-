@@ -119,9 +119,20 @@ export default function MatchScreen({
     const cozucular = [];
     if (config.baglanti) {
       cozucular.push(config.baglanti.on('mesaj', (paket) => game.agPaketAl(paket)));
+      /*
+       * Puan mesajı `bitis`ten ÖNCE geliyor (bkz. sunucu/mac.js) ve
+       * burada bekletiliyor: sonuç ekranına maçla birlikte gitmesi
+       * gerekiyor, ayrı bir yolla gönderilirse ekran onu kaçırır.
+       */
+      let puanBilgisi = null;
+      cozucular.push(
+        config.baglanti.on('puan', (paket) => {
+          puanBilgisi = { ben: paket.ben, sira: paket.sira, degisim: paket.degisim };
+        }),
+      );
       cozucular.push(
         config.baglanti.on('bitis', (paket) => {
-          if (paket.sonuc) onFinishRef.current(paket.sonuc);
+          if (paket.sonuc) onFinishRef.current({ ...paket.sonuc, puan: puanBilgisi });
         }),
       );
       // Karşı taraf gidince maç donup kalmasın — sebebi söylenmeli

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Sfx from '../game/audio.js';
 import { Baglanti, hataMetni } from '../net/baglanti.js';
-import { kimlikYukle, adDegistir, adUret, AD_UZUNLUK } from '../net/kimlik.js';
+import { kimlikYukle, kimlikSunucudan, adDegistir, adUret, AD_UZUNLUK } from '../net/kimlik.js';
 import { KOD_UZUNLUK } from '../../sunucu/protokol.js';
 import { upper } from '../utils/text.js';
 
@@ -31,6 +31,7 @@ const DURUM = {
   sirada: 'sirada',
   bekliyor: 'bekliyor',
   kodGir: 'kod-gir',
+  tablo: 'tablo',
   hata: 'hata',
 };
 
@@ -45,6 +46,10 @@ export default function OnlineScreen({ config, onStart, onBack }) {
   const [gecen, setGecen] = useState(0);
   /** Sunucu "rakip yok" dedi mi — yapay zekâ teklifi bunda çıkıyor. */
   const [rakipYok, setRakipYok] = useState(false);
+  /** Kendi puan/galibiyet durumun — sunucudan gelir. */
+  const [istatistik, setIstatistik] = useState(null);
+  /** Skor tablosu: { liste, ben, sira }. */
+  const [tablo, setTablo] = useState(null);
 
   const baglantiRef = useRef(null);
   const configRef = useRef(config);
@@ -83,6 +88,20 @@ export default function OnlineScreen({ config, onStart, onBack }) {
      * çıkış yolu daha açıyor.
      */
     baglanti.on('rakip-yok', () => setRakipYok(true));
+
+    /*
+     * Kimlik cevabı: sunucu kimlik ve (ilk seferinde) gizli anahtar
+     * veriyor. Yerelde saklanıyor, yoksa her açılışta yeni oyuncu
+     * olur ve puan geçmişi hiç birikmez.
+     */
+    baglanti.on('kimlik', (mesaj) => {
+      setKimlik(kimlikSunucudan(mesaj));
+      if (mesaj.ben) setIstatistik({ ...mesaj.ben, sira: mesaj.sira });
+    });
+
+    baglanti.on('siralama', (mesaj) => {
+      setTablo({ liste: mesaj.liste ?? [], ben: mesaj.ben, sira: mesaj.sira });
+    });
 
     /*
      * Eşleşince odayı açan taraf maçı İSTER, ama kurmaz — maçı sunucu
@@ -154,7 +173,29 @@ export default function OnlineScreen({ config, onStart, onBack }) {
     setDurum(DURUM.baglaniyor);
     try {
       const baglanti = await baglan();
-      baglanti.hizliEsles(kimlikRef.current);
+      /*
+       * Kimlik ÖNCE bildiriliyor ve cevabı bekleniyor: sıraya kimliksiz
+       * girersek sunucu maç sonunda kimin kazandığını yazamaz. Kimlik
+       * mesajı bağlantıya yapıştığı için bir kez yeterli.
+       */
+      await baglanti.kimlikBildir(kimlikRef.current);
+      baglanti.hizliEsles();
+    } catch {
+      setHata(hataMetni('baglanti'));
+      setDurum(DURUM.hata);
+    }
+  }, [baglan]);
+
+  /** Skor tablosunu açar. */
+  const tabloAc = useCallback(async () => {
+    Sfx.select();
+    setDurum(DURUM.baglaniyor);
+    setTablo(null);
+    try {
+      const baglanti = await baglan();
+      await baglanti.kimlikBildir(kimlikRef.current);
+      baglanti.siralamaIste();
+      setDurum(DURUM.tablo);
     } catch {
       setHata(hataMetni('baglanti'));
       setDurum(DURUM.hata);
@@ -166,7 +207,7 @@ export default function OnlineScreen({ config, onStart, onBack }) {
     setDurum(DURUM.baglaniyor);
     try {
       const baglanti = await baglan();
-      baglanti.kimlikBildir(kimlikRef.current);
+      await baglanti.kimlikBildir(kimlikRef.current);
       const cozul = baglanti.on('oda', (mesaj) => {
         setKod(mesaj.kod);
         setDurum(DURUM.bekliyor);
@@ -184,7 +225,7 @@ export default function OnlineScreen({ config, onStart, onBack }) {
     setDurum(DURUM.baglaniyor);
     try {
       const baglanti = await baglan();
-      baglanti.kimlikBildir(kimlikRef.current);
+      await baglanti.kimlikBildir(kimlikRef.current);
       baglanti.odaGir(girilenKod);
     } catch {
       setHata(hataMetni('baglanti'));
@@ -261,6 +302,18 @@ export default function OnlineScreen({ config, onStart, onBack }) {
           </button>
         )}
 
+        {/*
+          Kendi puanın. Yalnız maç oynadıysan çıkıyor: herkes 1000
+          puanla başlıyor ve hiç oynamamışa "1000 PUAN · 0 MAÇ"
+          göstermek bir başarı gibi görünürdü.
+        */}
+        {durum === DURUM.secim && !adDuzenle && istatistik?.mac > 0 && (
+          <p className="mt-1 text-center text-[7px] text-white/40">
+            {istatistik.puan} PUAN · {istatistik.galibiyet}G {istatistik.maglubiyet}M
+            {istatistik.sira ? ` · ${istatistik.sira}. SIRA` : ''}
+          </p>
+        )}
+
         {durum === DURUM.secim && adDuzenle && (
           <AdKutusu
             baslangic={kimlik.ad}
@@ -306,7 +359,19 @@ export default function OnlineScreen({ config, onStart, onBack }) {
                 </button>
               </div>
             </div>
+
+            <button
+              type="button"
+              className="retro-button-ghost mt-1 w-full py-2 text-[8px]"
+              onClick={tabloAc}
+            >
+              SKOR TABLOSU
+            </button>
           </div>
+        )}
+
+        {durum === DURUM.tablo && (
+          <SkorTablosu tablo={tablo} onGeri={() => setDurum(DURUM.secim)} />
         )}
 
         {durum === DURUM.kodGir && (
@@ -409,6 +474,85 @@ export default function OnlineScreen({ config, onStart, onBack }) {
       </div>
 
       <button type="button" className="retro-button-ghost px-6 py-2 text-[8px]" onClick={onBack}>
+        GERİ
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Skor tablosu.
+ *
+ * Sıralama Elo puanına göre; galibiyet SAYISINA göre değil. Galibiyet
+ * sayısı beceriyi değil boş zamanı ölçüyor — yüz maç oynayıp yarısını
+ * kazanan, on maç oynayıp dokuzunu kazananın üstünde çıkardı
+ * (bkz. sunucu/puan.js).
+ *
+ * Hiç maç oynamamışlar listede yok: herkes 1000 puanla başlıyor ve
+ * girselerdi tablo, oyunu açıp hiç oynamamış kişilerle dolardı.
+ */
+function SkorTablosu({ tablo, onGeri }) {
+  const liste = tablo?.liste ?? [];
+  const benimId = tablo?.ben?.id;
+
+  return (
+    <div className="mt-6">
+      {!tablo && <p className="text-center text-[9px] text-retro-accent">YÜKLENİYOR…</p>}
+
+      {tablo && liste.length === 0 && (
+        <p className="text-center text-[7px] leading-relaxed text-white/50">
+          {upper('Henüz kimse maç oynamamış. İlk sen ol.')}
+        </p>
+      )}
+
+      {liste.length > 0 && (
+        <ol className="flex flex-col gap-1">
+          {liste.map((oyuncu, i) => (
+            <li
+              key={oyuncu.id}
+              className={`flex items-center gap-2 border-4 px-2 py-2 text-[8px] ${
+                oyuncu.id === benimId
+                  ? 'border-retro-accent/60 bg-retro-accent/10 text-white'
+                  : 'border-white/10 bg-black/30 text-white/75'
+              }`}
+            >
+              <span className="w-5 shrink-0 text-white/45">{i + 1}.</span>
+              <span className="min-w-0 flex-1 truncate">{oyuncu.ad}</span>
+              <span className="shrink-0 text-white/40">
+                {oyuncu.galibiyet}G {oyuncu.maglubiyet}M
+              </span>
+              <span className="w-9 shrink-0 text-right text-retro-accent">{oyuncu.puan}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {/*
+        Kendisi ilk 20'de değilse kendi satırını ayrıca göster —
+        yoksa tabloya bakan oyuncu kendini hiç bulamıyor.
+      */}
+      {tablo?.ben?.mac > 0 && !liste.some((o) => o.id === benimId) && (
+        <div className="mt-2 border-t-4 border-white/10 pt-2">
+          <div className="flex items-center gap-2 border-4 border-retro-accent/60 bg-retro-accent/10 px-2 py-2 text-[8px] text-white">
+            <span className="w-5 shrink-0 text-white/45">{tablo.sira ?? '–'}.</span>
+            <span className="min-w-0 flex-1 truncate">{tablo.ben.ad}</span>
+            <span className="shrink-0 text-white/40">
+              {tablo.ben.galibiyet}G {tablo.ben.maglubiyet}M
+            </span>
+            <span className="w-9 shrink-0 text-right text-retro-accent">{tablo.ben.puan}</span>
+          </div>
+        </div>
+      )}
+
+      <p className="mt-3 text-center text-[6px] leading-relaxed text-white/30">
+        {upper('Yalnız hızlı eşleşme maçları sayılır. Sonucu sunucu yazar.')}
+      </p>
+
+      <button
+        type="button"
+        className="retro-button-ghost mt-4 w-full py-2 text-[8px]"
+        onClick={onGeri}
+      >
         GERİ
       </button>
     </div>

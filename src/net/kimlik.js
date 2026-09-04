@@ -3,16 +3,24 @@
  *
  * Neden gerekli: hızlı eşleşmede rakip bir yabancı. Ekranda "RAKİP"
  * yazdığında maç kişisiz kalıyor; ad olunca kazanmak da kaybetmek de
- * birine karşı oluyor. Sıradaki adımda (skor tablosu) da anahtar bu
- * olacak.
+ * birine karşı oluyor. Skor tablosunun anahtarı da bu.
  *
- * Hesap YOK ve olmayacak: şifre, e-posta, doğrulama hiçbiri yok. Kimlik
- * yalnızca tarayıcıda duran rastgele bir kimlik numarası ve bir takma
- * ad. Bunun bedeli açık — kimlik taklit edilebilir, tarayıcı verisi
- * silinince kaybolur. Karşılığı da açık: oyuna girmek için form
- * doldurmak gerekmiyor ve kimseden kişisel veri toplamıyoruz. Bir
- * dostluk maçı oyunu için doğru takas bu; gerçek hesap ancak
- * sıralamaya ödül bağlandığında gerekir.
+ * KİMLİĞİ ARTIK SUNUCU VERİYOR
+ * ----------------------------
+ * İlk sürümde kimlik numarasını istemci üretiyordu. Skor tablosu
+ * yokken zararsızdı — kimse kimsenin takma adını çalmak istemez.
+ * Tablo gelince aynı tasarım "başkasının kimliğini yaz, puanını al"
+ * demeye dönüştü. Şimdi sunucu bir kimlik ve GİZLİ ANAHTAR veriyor;
+ * anahtarı bilen kişi o kimliğin sahibi sayılıyor. Bu dosya artık
+ * yalnız o ikisini saklıyor.
+ *
+ * Hesap YOK ve olmayacak: şifre, e-posta, doğrulama hiçbiri yok.
+ * Bedeli açık — anahtar taşıyıcı bir jeton, kopyalanırsa kimlik de
+ * kopyalanır; tarayıcı verisi silinirse geçmiş kaybolur ve "şifremi
+ * unuttum" diye bir şey yok, çünkü kime ait olduğunu doğrulayacak bir
+ * e-posta da yok. Karşılığı: oyuna girmek için form doldurmak
+ * gerekmiyor ve kimseden kişisel veri toplamıyoruz. Gerçek hesap
+ * ancak sıralamaya ödül bağlandığında gerekir.
  */
 
 import { AD_UZUNLUK, adTemizle } from '../../sunucu/protokol.js';
@@ -54,26 +62,15 @@ export function adUret() {
 }
 
 /**
- * Kimlik numarası üretir.
+ * Yerel kimliği okur.
  *
- * `crypto.randomUUID` varsa o, yoksa elle. Yedek yol gerçekten
- * gerekiyor: `randomUUID` yalnız güvenli bağlamda (https ya da
- * localhost) tanımlı ve geliştirmede oyun ağdaki telefondan
- * `http://192.168.x.x` ile açılıyor — orada tanımsız olup kimliği
- * çökertirdi.
- */
-function kimlikUret() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `k-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-/**
- * Kimliği okur; yoksa üretip saklar.
+ * `id` ve `gizli` SUNUCUDAN gelmiş olabilir ya da hiç olmayabilir —
+ * ilk açılışta yalnız bir takma ad var ve sunucu kimliği bağlanınca
+ * veriyor. Ad her zaman dolu dönüyor: lobide bir şey göstermek
+ * gerekiyor ve boş kutu "adım yok mu" diye düşündürüyor.
  *
- * Saklama başarısız olursa (gizli sekme, dolu depo) yine de geçerli bir
- * kimlik dönüyor — yalnız kalıcı olmuyor. Oyunun çalışmaması için sebep
+ * Depo okunamıyorsa (gizli sekme, kapalı çerezler) yine geçerli bir
+ * nesne dönüyor — yalnız kalıcı olmuyor. Oyunun açılmaması için sebep
  * değil.
  */
 export function kimlikYukle() {
@@ -84,25 +81,45 @@ export function kimlikYukle() {
     kayitli = null;
   }
 
-  const id = typeof kayitli?.id === 'string' && kayitli.id ? kayitli.id : kimlikUret();
-  const ad = adTemizle(kayitli?.ad) || adUret();
-
-  const kimlik = { id, ad };
-  if (kayitli?.id !== id || kayitli?.ad !== ad) kimlikKaydet(kimlik);
+  const kimlik = {
+    id: typeof kayitli?.id === 'string' ? kayitli.id : null,
+    gizli: typeof kayitli?.gizli === 'string' ? kayitli.gizli : null,
+    ad: adTemizle(kayitli?.ad) || adUret(),
+  };
+  if (kayitli?.ad !== kimlik.ad) kimlikKaydet(kimlik);
   return kimlik;
 }
 
 /** Kimliği saklar; başarısızlığı sessizce yutar. */
 export function kimlikKaydet(kimlik) {
   try {
-    localStorage.setItem(KIMLIK_KEY, JSON.stringify({ id: kimlik.id, ad: kimlik.ad }));
+    localStorage.setItem(
+      KIMLIK_KEY,
+      JSON.stringify({ id: kimlik.id ?? null, gizli: kimlik.gizli ?? null, ad: kimlik.ad }),
+    );
   } catch {
     /* gizli sekme ya da dolu depo — oyun yine çalışır */
   }
   return kimlik;
 }
 
-/** Yalnız adı değiştirir, kimlik numarasını korur. */
+/**
+ * Sunucudan gelen kimlik cevabını saklar.
+ *
+ * `gizli` YALNIZ ilk açılışta geliyor; sonraki cevaplarda yok, çünkü
+ * istemci onu zaten biliyor. Bu yüzden eskisi korunuyor — cevapta yok
+ * diye silseydik oyuncu bir dahaki açılışta kimliğini kaybederdi.
+ */
+export function kimlikSunucudan(mesaj) {
+  const onceki = kimlikYukle();
+  return kimlikKaydet({
+    id: mesaj.id ?? onceki.id,
+    gizli: mesaj.gizli ?? onceki.gizli,
+    ad: adTemizle(mesaj.ad) || onceki.ad,
+  });
+}
+
+/** Yalnız adı değiştirir, kimlik ve anahtarı korur. */
 export function adDegistir(yeniAd) {
   const kimlik = kimlikYukle();
   const ad = adTemizle(yeniAd) || kimlik.ad;

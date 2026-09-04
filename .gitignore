@@ -42,3 +42,8 @@ pnpm-debug.log*
 # Portal dağıtım paketi
 /portal/
 *.zip
+
+# Röle veri dizini — oyuncu kayıtları. Depoya GİRMEZ: kişisel takma
+# adlar ve gizli anahtar özetleri içeriyor, üstelik her sunucunun
+# kendi verisi. Yedeği `cp veri/oyuncular.jsonl` ile alınır.
+veri/

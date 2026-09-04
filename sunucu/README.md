@@ -230,13 +230,36 @@ Yeniden yayın bitince ana menüde **ÇEVRİMİÇİ** düğmesi görünür.
 
 ### Güncelleme
 
-Kod değiştiğinde sunucuda:
+Kod değiştiğinde sunucuda (zaten `sunucu/` dizinindeysen `cd`'yi atla):
 
 ```bash
 cd fileninsultanlar-/sunucu
 git pull
 docker compose up -d --build
 ```
+
+Doğrulama — `/saglik` yeni alanları göstermeli:
+
+```bash
+curl http://127.0.0.1:8787/saglik
+# {"durum":"ayakta","oda":0,"sira":0,"oyuncu":0,...}
+```
+
+`oyuncu` alanı **yoksa** eski imaj hâlâ ayakta demektir;
+`docker compose logs --tail 30` ile yapı hatasına bak.
+
+**Oyuncu kayıtları güncellemede SİLİNMEZ** — `docker-compose.yml`
+adlandırılmış bir birim tanımlıyor ve veri konteynerin dışında
+duruyor. Birimin gerçekten bağlandığını bir kez doğrula:
+
+```bash
+docker compose exec rele ls -la /veri
+docker volume ls | grep filenin
+```
+
+Boş çıkıyorsa (henüz kimse oynamadıysa dosya olmayabilir) ilk
+çevrimiçi maçtan sonra tekrar bak. `/veri` diye bir dizin HİÇ yoksa
+birim bağlanmamıştır ve tablo her dağıtımda sıfırlanır.
 
 ### nip.io/sslip.io yerine gerçek domain
 
@@ -370,14 +393,18 @@ kaçınılmaz. Tanımadığı mesajlar hâlâ karşı tarafa ham hâliyle aktar�
 
 | Yön | Mesaj | Anlam |
 |---|---|---|
-| → | `{t:'hizli-esles', kimlik}` | Eşleşme sırasına gir |
+| → | `{t:'kimlik', id?, gizli?, ad}` | Kimlik al / doğrula |
+| → | `{t:'hizli-esles'}` | Eşleşme sırasına gir |
 | → | `{t:'siradan-cik'}` | Sıradan çık |
-| → | `{t:'kimlik', kimlik}` | Takma adı bağlantıya yapıştır |
+| → | `{t:'siralama'}` | Skor tablosunu iste |
 | → | `{t:'oda-ac'}` | Yeni oda aç |
 | → | `{t:'oda-gir', kod}` | Odaya katıl |
 | → | `{t:'mac-basla', cfg}` | Maçı başlat (yalnız odayı açan) |
 | → | `{t:'girdi', k, b, z}` | Tuş durumu — kendi yuvana yazılır; `z` istemci saati |
 | → | `{t:'ayril'}` | Odadan çık |
+| ← | `{t:'kimlik', id, gizli?, ad, ben, sira}` | Kimlik; `gizli` yalnız ilk açılışta |
+| ← | `{t:'siralama', liste, ben, sira}` | Skor tablosu |
+| ← | `{t:'puan', ben, sira, degisim}` | Maç sonrası kendi yeni durumun |
 | ← | `{t:'sirada', sira}` | Sıraya girildi |
 | ← | `{t:'rakip-yok'}` | Uzun bekleme; sıradan ATILMADIN |
 | ← | `{t:'sira-bitti'}` | Sıradan çıkıldı |
@@ -395,6 +422,55 @@ Yuva dağıtımı arkadaş maçında sabit: odayı **açan** Türkiye'yi (`p1`),
 iki yabancının ikisi de Türkiye'yi oynamak ister ve tercih soracak bir
 "ev sahibi" yoktur. Paket biçimi `src/game/snapshot.js` içinde.
 
+## Kimlik ve skor tablosu
+
+Kimliği **sunucu** veriyor. İlk `kimlik` mesajında bir kimlik numarası
+ve bir **gizli anahtar** üretiliyor; anahtarı bilen kişi o kimliğin
+sahibi sayılıyor. Anahtar düz saklanmıyor, SHA-256 özeti tutuluyor —
+veri dosyası sızsa bile jetonlar kullanılamaz.
+
+Bu hesap **değil**: şifre, e-posta, doğrulama yok ve kimseden kişisel
+veri toplanmıyor. Bedeli açık — anahtar kopyalanırsa kimlik de
+kopyalanır, tarayıcı verisi silinirse geçmiş kaybolur ve "şifremi
+unuttum" diye bir şey yok. Karşılığı: oyuna girmek için form doldurmak
+gerekmiyor.
+
+İlk sürümde kimliği istemci üretiyordu. Skor tablosu yokken zararsızdı;
+tablo gelince aynı tasarım "başkasının kimliğini yaz, puanını al"
+demeye dönüştü. Anahtar tutmayan eski kimlikler **reddedilmiyor**,
+sessizce yenisi veriliyor — reddetmek oyuncuya "çevrimiçi bozuldu"
+gibi görünürdü.
+
+**Sonucu istemci bildirmiyor.** Maçı sunucu koşturuyor ve kazananı
+kendi simülasyonundan biliyor; uydurulabilecek bir "sonuç bildir"
+mesajı yok. Adım 1'deki "sunucu hakem" kararının doğrudan getirisi bu.
+
+Sıralama **Elo** puanına göre (`puan.js`), galibiyet sayısına göre
+değil: galibiyet sayısı beceriyi değil boş zamanı ölçüyor. Tabloya
+yalnız **hızlı eşleşme** maçları yazılıyor — arkadaş maçında ayarları
+odayı açan seçiyor (kadro, zorluk, format) ve tablo ayarlanabilir
+olurdu.
+
+### Veri nerede duruyor
+
+`VERI_DIZINI` (varsayılan `./veri`) altında `oyuncular.jsonl` —
+ekleme günlüğü. SQLite değil, gerekçesi `depo.js` başında yazılı.
+
+**Kalıcı birim şart.** Konteyner her dağıtımda yeniden kuruluyor;
+`docker-compose.yml`'deki birim olmadan tablo her `up --build` ile
+sıfırlanırdı. Fly'da `[[mounts]]` aynı işi yapıyor ve birimi bir kez
+elle oluşturmak gerekiyor:
+
+```bash
+fly volumes create filenin_veri --size 1 --region fra
+```
+
+Yedek (kendi sunucunda):
+
+```bash
+docker compose cp rele:/veri/oyuncular.jsonl ./yedek.jsonl
+```
+
 ## Sınırlar
 
 - Tek mesaj en fazla 16 KB (`maxPayload`).
@@ -403,13 +479,19 @@ iki yabancının ikisi de Türkiye'yi oynamak ister ve tercih soracak bir
   Damga, girdi değişmese de gidiyor: tahmin penceresi onun tazeliğine
   bağlı, durursa istemci kendini gitgide daha ileri sürerdi.
 - Aynı anda 500 oda, sırada 500 kişi.
-- **Kendi kendiyle eşleşme engellenmiyor.** İki sekme açan biri
-  kendisiyle eşleşebilir. Kimlik numarasına bakıp engellemek tek satır
-  ama bilerek yapılmadı: aynı numara iki gerçek cihazda bulunursa
-  (depo kopyalanmışsa) o iki kişi *hiç* eşleşemez ve sebebini de
-  göremezdi — sessiz bir arıza, görünür bir zarardan kötü. Skor
-  tablosu geldiğinde (kendine karşı kazanç çiftçiliği) yeniden
-  bakılmalı.
+- **Kendi kendiyle eşleşme engellenmiyor**, ama artık PUANA
+  YAZILMIYOR: `depo.sonucIsle` iki taraf aynı kimlikse sonucu atıyor.
+  Eşleşmenin kendisi serbest kalmaya devam ediyor, çünkü engellemek
+  aynı kimliğin iki gerçek cihazda bulunduğu durumda o iki kişiyi
+  *hiç* eşleştirmezdi ve sebebi görünmezdi — sessiz bir arıza,
+  görünür bir zarardan kötü.
+- **İki ayrı kimlikle çiftçilik hâlâ mümkün.** İki tarayıcı profili
+  açıp birbirine karşı oynayan biri puan biriktirebilir. Bunun bedeli
+  gerçek zaman (maçı oynamak gerekiyor) ve şu an daha ileri gitmenin
+  yolu gerçek hesap açmaktan geçiyor. Ödüle bağlanmadıkça bu takas
+  doğru.
+- **Bütün oyuncu kayıtları bellekte.** Binlerce oyuncu birkaç MB; yüz
+  binlerde bu depolama yolu bırakılmalı (bkz. `depo.js`).
 - 30 saniyede bir ping/pong; yanıtsız soket düşürülür. Mobilde ağ
   değişince soket "açık" görünüp hiçbir şey taşımayabiliyor; bu
   olmadan oda sonsuza kadar dolu kalır ve kimse o koda katılamaz.
@@ -424,6 +506,12 @@ iki yabancının ikisi de Türkiye'yi oynamak ister ve tercih soracak bir
 - `sira.test.js` — eşleşme sırası. Tek eşleşmeye bakan testler iki
   sessiz arızayı kaçırıyor (biri iki maça birden girer, biri sırada
   unutulur), o yüzden 200 istemcilik bir koşum da var.
+- `depo.test.js` — kalıcılık. İddiaların çoğu "çökme olsa bile veri
+  durur" türünden; testler onları gerçekten kırmaya çalışıyor (dosya
+  yarım bırakılıyor, günlük elle bozuluyor, depo sıfırdan açılıyor).
+- `puan.test.js` — Elo. Testler mutasyonla doğrulandı ve biri adının
+  vaat ettiğini ölçmüyor; hangisinin neyi yakaladığı dosya başında
+  yazılı.
 - `src/game/tahmin.test.js` — tahmin, uzlaştırma ve düzeltmenin
   yedirilmesi. Testlerin bir kısmı tahmin KAPALIYKEN de geçiyor; onlar
   ölçüm aracının kendisini doğruluyor.
@@ -433,3 +521,6 @@ Uçtan uca sınama iki dosyada, çünkü iki ayrı yol var:
 - `npm run e2e online` — oda koduyla buluşan iki arkadaş.
 - `npm run e2e eslesme` — birbirini tanımayan iki yabancı: sıra, takma
   adın karşıya ulaşması, ve rakip yokken yapay zekâ teklifi.
+- `npm run e2e tablo` — skor tablosu: kimliği sunucunun vermesi, maç
+  sonucunun tabloya yazılması, ve röle yeniden başlatıldığında
+  verinin durması.

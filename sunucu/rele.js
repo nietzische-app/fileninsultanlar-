@@ -28,6 +28,8 @@ import { WebSocketServer } from 'ws';
 import { OdaDefteri, HATA } from './oda.js';
 import { EslesmeSirasi } from './sira.js';
 import { AD_UZUNLUK, adTemizle } from './protokol.js';
+import { Depo, genelGorunum } from './depo.js';
+import { puanDegisimi } from './puan.js';
 import { Mac } from './mac.js';
 
 /** Tek mesajın azami boyu (bayt). Anlık görüntü ~300 bayt; 16 KB fazlasıyla yeter. */
@@ -47,27 +49,6 @@ const SANIYEDE_MESAJ = 150;
 
 /** Sıradakilerin bekleme süresinin denetlenme aralığı (ms). */
 const SIRA_TIK = 1000;
-
-/**
- * İstemciden gelen kimliği temizler.
- *
- * Bu ad KARŞI OYUNCUNUN ekranında görünüyor, yani istemciden gelen
- * metin başka birinin arayüzüne giriyor. React metni kaçırıyor (XSS
- * yok) ama uzunluk ve görünmez karakter sınırı burada olmak zorunda:
- * istemcideki temizlik yalnız kolaylık, protokolü konuşan herkes onu
- * atlayabilir.
- */
-function temizleKimlik(ham = {}) {
-  return {
-    /*
-     * Kimlik numarası ada göre daha gevşek: ekranda görünmüyor, yalnız
-     * eşleştirme/sıralama anahtarı. Yine de sınırsız değil — 500 KB'lık
-     * bir kimlik sunucuda saklanırdı.
-     */
-    id: typeof ham.id === 'string' ? ham.id.replace(/\s+/g, '').slice(0, 64) : '',
-    ad: adTemizle(ham.ad, AD_UZUNLUK),
-  };
-}
 
 /** Tek istemciye yollar — soket kapanmışsa sessizce geçer. */
 function yolla(soket, veri) {
@@ -102,9 +83,12 @@ export async function baslat({
    * testleri yazı-tura atmış olurdu.
    */
   yaziTura = () => Math.random() < 0.5,
+  /** Veri dizini — testte geçici bir dizine yönlendiriliyor. */
+  veriDizini,
 } = {}) {
   const defter = new OdaDefteri();
   const sira = new EslesmeSirasi({ beklemeSiniri });
+  const depo = new Depo(veriDizini ? { dizin: veriDizini } : {});
 
   const http = createServer((istek, cevap) => {
     /*
@@ -120,6 +104,7 @@ export async function baslat({
           durum: 'ayakta',
           oda: defter.sayi,
           sira: sira.sayi,
+          oyuncu: depo.sayi,
           istemci: wss.clients.size,
           /*
            * Makine kimliği teşhis için. Röle durum tutuyor: bir odanın
@@ -146,12 +131,64 @@ export async function baslat({
     yolla(oda.misafir, metin);
   }
 
-  /** Odada maçı kurar ve iki istemciye de rolünü bildirir. */
-  function macKur(oda, ayar) {
+  /**
+   * Biten maçı skor tablosuna işler.
+   *
+   * Sonucu İSTEMCİ BİLDİRMİYOR: maçı sunucu koşturuyor ve kazananı
+   * kendi simülasyonundan biliyor. Adım 1'deki "sunucu hakem"
+   * kararının doğrudan getirisi bu — istemci "kazandım" diyemediği
+   * için skor tablosu uydurulamıyor. Tablo eklerken bu mimariyi
+   * kurmuş olmasaydık, ilk iş bir "sonuç bildir" mesajı yazmak ve
+   * onun yalan söylenebileceğini kabul etmek olurdu.
+   *
+   * Sıralamaya YALNIZ hızlı eşleşme maçları yazılıyor: arkadaş maçında
+   * ayarları odayı açan seçiyor (kadro, zorluk, format) ve bu tabloyu
+   * ayarlanabilir kılardı.
+   */
+  function sonucIsle(oda, sonuc) {
+    if (!oda.siralamali) return;
+    const evKimlik = oda.ev?.kimlik?.id;
+    const misafirKimlik = oda.misafir?.kimlik?.id;
+    if (!evKimlik || !misafirKimlik) return;
+    // Beraberlik ya da yarım kalan maç: `winner` null gelir
+    if (sonuc?.winner !== 'home' && sonuc?.winner !== 'away') return;
+
+    // p1 ev sahibi tarafı ('home'), p2 rakip tarafı ('away') sürüyor
+    const kazanan = sonuc.winner === 'home' ? evKimlik : misafirKimlik;
+    const kaybeden = sonuc.winner === 'home' ? misafirKimlik : evKimlik;
+
+    const islenen = depo.sonucIsle(kazanan, kaybeden, puanDegisimi);
+    if (!islenen) return;
+
+    /*
+     * Her iki tarafa da KENDİ yeni durumunu yolla — maç sonu ekranı
+     * puanın nasıl değiştiğini gösterebilsin. Karşı tarafın kaydı
+     * gitmiyor; sıralama zaten ayrı bir uçtan okunuyor.
+     */
+    [oda.ev, oda.misafir].forEach((soket) => {
+      const kimlik = soket?.kimlik?.id;
+      if (!kimlik) return;
+      yolla(soket, {
+        t: 'puan',
+        ben: genelGorunum(depo.oyuncu(kimlik)),
+        sira: depo.sira(kimlik),
+        degisim: kimlik === kazanan ? islenen.degisim : -islenen.degisim,
+      });
+    });
+  }
+
+  /**
+   * Odada maçı kurar ve iki istemciye de rolünü bildirir.
+   *
+   * @param {boolean} [siralamali] Sonuç skor tablosuna yazılsın mı
+   */
+  function macKur(oda, ayar, siralamali = false) {
+    oda.siralamali = siralamali;
     oda.mac = new Mac({
       ayar,
       yolla: (paket) => odayaYolla(oda, paket),
-      bitince: () => {
+      bitince: (sonuc) => {
+        sonucIsle(oda, sonuc);
         oda.mac = null;
       },
     });
@@ -207,7 +244,7 @@ export async function baslat({
      * değilsin; iki taraf da aynı standart maçı oynuyor. Kadro boş
      * bırakılıyor, motor varsayılanını kuruyor.
      */
-    macKur(oda, { mode: '1v1', format: 'single', difficulty: 'normal' });
+    macKur(oda, { mode: '1v1', format: 'single', difficulty: 'normal' }, true);
     return true;
   }
 
@@ -283,13 +320,64 @@ export async function baslat({
 
         case 'kimlik': {
           /*
-           * Kimlik bağlantıya yapışıyor, mesajla birlikte taşınmıyor.
-           * Sebebi: maç kurulurken karşı tarafın adı gerekiyor ve o an
-           * elimizde yalnız soket var. Kimliği her mesajda taşımak da
-           * olurdu ama saniyede 60 girdi paketinin her birine ad
-           * eklemek anlamsız.
+           * Kimlik artık SUNUCU tarafından veriliyor.
+           *
+           * Adım 3'te istemci kendi kimliğini üretiyordu ve bu, skor
+           * tablosu gelene kadar zararsızdı: kimse kimsenin adını
+           * çalmak istemez. Tablo gelince aynı tasarım "başkasının
+           * kimliğini yaz, puanını al" demeye dönüşüyor. Şimdi sunucu
+           * bir kimlik ve GİZLİ ANAHTAR veriyor; sonraki bağlantılarda
+           * anahtarı bilen kişi o kimliğin sahibi sayılıyor.
+           *
+           * Bu hesap DEĞİL — anahtar taşıyıcı bir jeton, kopyalanırsa
+           * kimlik de kopyalanır. Ama artık başkasının kimliğini
+           * TAHMİN ederek ele geçirmek mümkün değil.
            */
-          soket.kimlik = temizleKimlik(mesaj.kimlik);
+          const ad = adTemizle(mesaj.ad, AD_UZUNLUK);
+          const kayitli = mesaj.id && mesaj.gizli ? depo.dogrula(mesaj.id, mesaj.gizli) : null;
+
+          if (kayitli) {
+            // Ad değiştiyse güncelle; anahtar aynı kalıyor
+            const guncel = ad && ad !== kayitli.ad ? depo.adDegistir(kayitli.id, ad) : kayitli;
+            soket.kimlik = { id: guncel.id, ad: guncel.ad };
+            yolla(soket, {
+              t: 'kimlik',
+              id: guncel.id,
+              ad: guncel.ad,
+              ben: genelGorunum(guncel),
+              sira: depo.sira(guncel.id),
+            });
+            break;
+          }
+
+          /*
+           * Anahtar yok ya da tutmuyor: yeni kimlik. Tutmadığında
+           * hata dönmüyoruz — eski sürümden gelen (istemcinin kendi
+           * ürettiği) kimlikler de buraya düşüyor ve onların
+           * reddedilmesi oyuncuya "çevrimiçi bozuldu" gibi görünürdü.
+           * Sessizce yeni kimlik vermek, geçmişini kaybetmek pahasına
+           * oynamaya devam etmesini sağlıyor.
+           */
+          const { kayit, gizli } = depo.oyuncuAc(ad || 'İSİMSİZ');
+          soket.kimlik = { id: kayit.id, ad: kayit.ad };
+          yolla(soket, {
+            t: 'kimlik',
+            id: kayit.id,
+            gizli,
+            ad: kayit.ad,
+            ben: genelGorunum(kayit),
+            sira: null,
+          });
+          break;
+        }
+
+        case 'siralama': {
+          yolla(soket, {
+            t: 'siralama',
+            liste: depo.siralama(20),
+            ben: soket.kimlik?.id ? genelGorunum(depo.oyuncu(soket.kimlik.id)) : null,
+            sira: soket.kimlik?.id ? depo.sira(soket.kimlik.id) : null,
+          });
           break;
         }
 
@@ -298,8 +386,12 @@ export async function baslat({
             hataYolla(soket, HATA.zatenOdada);
             break;
           }
-          if (mesaj.kimlik) soket.kimlik = temizleKimlik(mesaj.kimlik);
-
+          /*
+           * Kimlik burada ARTIK KURULMUYOR: `kimlik` mesajıyla
+           * sunucudan alınmış olmalı. Kimliksiz sıraya girmek serbest
+           * (oynayabilir) ama sonucu tabloya yazılmaz — `sonucIsle`
+           * iki tarafın da kimliğini arıyor.
+           */
           const sonuc = sira.katil(soket, soket.kimlik ?? {});
           if (sonuc.hata) {
             hataYolla(soket, sonuc.hata);

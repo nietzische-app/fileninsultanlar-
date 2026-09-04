@@ -28,6 +28,12 @@ export default function ResultScreen({
   freshAchievements = [],
 }) {
   const survival = result.campaign === 'survival' ? result.survival : null;
+  /*
+   * Çevrimiçi sıralamalı maçın puan sonucu. Sunucudan geliyor —
+   * istemci hesaplamıyor, çünkü hesaplasa uydurabilirdi. Yalnız hızlı
+   * eşleşme maçlarında dolu.
+   */
+  const puan = result.puan ?? null;
   const tournament = useMemo(
     () => (tournamentState ? tournamentSummary(tournamentState) : null),
     [tournamentState]
@@ -100,6 +106,32 @@ export default function ResultScreen({
       )}
 
       <div className="relative z-10 flex w-full max-w-2xl flex-col items-center gap-7">
+        {/*
+          Çevrimiçi puan değişimi. Sunucu maçı koşturduğu ve kazananı
+          kendi bildiği için bu sayı uydurulamıyor; ekranda göstermek
+          de o yüzden anlamlı.
+        */}
+        {puan && (
+          <div className="order-first w-full max-w-xs border-4 border-retro-accent/40 bg-black/50 px-4 py-3 text-center">
+            <p className="text-[7px] tracking-widest text-white/45">ÇEVRİMİÇİ PUAN</p>
+            <p className="mt-2 text-[18px] text-retro-accent">
+              {puan.ben?.puan}
+              <span
+                className={`ml-2 text-[10px] ${
+                  puan.degisim >= 0 ? 'text-retro-accent' : 'text-turkiye-red'
+                }`}
+              >
+                {puan.degisim >= 0 ? '+' : ''}
+                {puan.degisim}
+              </span>
+            </p>
+            <p className="mt-2 text-[7px] text-white/45">
+              {puan.ben?.galibiyet}G {puan.ben?.maglubiyet}M
+              {puan.sira ? ` · ${puan.sira}. SIRA` : ''}
+            </p>
+          </div>
+        )}
+
         {/* Başlık */}
         <div className="text-center">
           <h2

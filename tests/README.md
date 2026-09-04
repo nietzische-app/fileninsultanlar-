@@ -27,6 +27,7 @@ aldım — Tailwind yapılandırması güncellenmemişti ve test yeşil görün�
 | `kanat` | Sahanın yanındaki bantlar salon katmanıyla dolu; masaüstünde katman gizli ve çizim yapmıyor |
 | `online` | İki gerçek tarayıcı, gerçek röle: oda kur, katıl, aynı maçı gör, tuş geçir |
 | `eslesme` | Birbirini tanımayan iki oyuncu: hızlı eşleşme sırası, takma adın karşıya ulaşması, rakip yokken yapay zekâ teklifi |
+| `tablo` | Skor tablosu: sunucunun verdiği kimlik, maç sonucunun tabloya yazılması, röle yeniden başlayınca verinin durması |
 | `masa-duzen` | Masaüstünde sayfa taşmıyor, oran 9:5, çerçeve sahayı sarıyor, skor tablosu ekranda |
 | `masaustu` | Masaüstünde dokunmatik tuş yok, klavye çalışıyor |
 | `mobil` | Altı cihazda sahne tam ekran ve saha ortalı |
@@ -109,6 +110,14 @@ ederken yanlış şeyi ölçmeye başlıyor.
   gelen ya bekleyenle eşleşiyor ya tek bekleyen oluyor, sırada aynı
   anda iki kişi bulunamıyor. Aynı testler doluluk sınırında gerçek bir
   hata da buldu — sınır, sırayı BOŞALTACAK kişiyi geri çeviriyordu.
+- **`/i` bayrağı Türkçe bilmiyor.** `İ` (U+0130) ile `i` birbirine
+  eşleşmiyor, `I` ile `ı` da öyle. Arayüz metni `upper()` ile Türkçe
+  büyük harfe çevrildiği için `/Henüz kimse/i` ekranda yazı DURURKEN
+  eşleşmiyor. Metni ekranda göründüğü hâliyle arayın.
+- **Motoru maç bitmeden okuyun.** Maç bitince `MatchScreen` sonuç
+  ekranına geçiyor ve `window.__game` yok oluyor; bitişten sonra
+  okunan her alan `undefined` geliyor. Aynı sebeple maç sonrası sayfa
+  menüye dönmüyor — lobiye gitmek için önce yeniden yükleyin.
 - Ekranda ne görünüyorsa **onu** okuyun. Uzlaştırma düzeltmesi çizim
   sırasında yediriliyor, yani `player.x` ile çizilen konum bir süre farklı.
   Ölçüm çizim kodunun okuduğu fonksiyonun aynısını (`agCizimKaydirma`)

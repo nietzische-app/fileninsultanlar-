@@ -20,6 +20,18 @@ primary_region = 'fra'   # Frankfurt — Türkiye'ye en yakın Fly bölgesi
 [env]
   # Dockerfile ve internal_port ile aynı olmalı
   PORT = '8787'
+  VERI_DIZINI = '/veri'
+
+# Oyuncu kayıtları kalıcı diskte. Fly'da makine dosya sistemi her
+# dağıtımda sıfırlanıyor; bu birim olmadan skor tablosu her `fly deploy`
+# ile silinirdi. Birimi bir kez elle oluşturmak gerekiyor:
+#   fly volumes create filenin_veri --size 1 --region fra
+#
+# DİKKAT: birim TEK makineye bağlı. `--ha=false` zaten şart (bkz.
+# aşağıdaki concurrency notu); birim bu şartı daha da kesinleştiriyor.
+[[mounts]]
+  source = 'filenin_veri'
+  destination = '/veri'
 
 [http_service]
   internal_port = 8787

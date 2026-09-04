@@ -73,9 +73,18 @@ export class Mac {
       agGonder: (paket) => this.yolla(paket),
       onFinish: (sonuc) => {
         this.bittiMi = true;
+        /*
+         * SIRA ÖNEMLİ: önce `bitince` (skor tablosuna yazan ve `puan`
+         * mesajını yollayan yol), sonra `bitis`.
+         *
+         * Ters sırada yazılmıştı ve puan mesajı kayboluyordu: istemci
+         * `bitis`i alınca maç bitiyor ve App soketi KAPATIYOR; hemen
+         * ardından yollanan `puan` yarı yolda kalıyordu. Belirtisi
+         * "puanım değişmedi" olurdu — oysa sunucuda değişmişti.
+         */
+        this.bitince(sonuc);
         this.yolla({ t: 'bitis', sonuc });
         this.durdur();
-        this.bitince(sonuc);
       },
     });
   }
