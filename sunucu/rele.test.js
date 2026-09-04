@@ -294,3 +294,146 @@ describe('röle', () => {
     ev.kapat();
   });
 });
+
+describe('hızlı eşleşme', () => {
+  it('ilk giren sırada bekler', async () => {
+    const a = await istemci();
+    a.yolla({ t: 'hizli-esles', kimlik: { id: 'k1', ad: 'ATEŞLİ SMAÇ' } });
+
+    const cevap = await a.al();
+    expect(cevap.t).toBe('sirada');
+    expect(cevap.sira).toBe(1);
+
+    a.yolla({ t: 'siradan-cik' });
+    await a.al();
+    a.kapat();
+  });
+
+  it('ikinci giren maçı başlatır ve iki tarafa da yuva gider', async () => {
+    const a = await istemci();
+    const b = await istemci();
+
+    a.yolla({ t: 'hizli-esles', kimlik: { id: 'k1', ad: 'ATEŞLİ SMAÇ' } });
+    expect((await a.al()).t).toBe('sirada');
+
+    b.yolla({ t: 'hizli-esles', kimlik: { id: 'k2', ad: 'ÇELİK BLOK' } });
+
+    const macA = await a.al();
+    const macB = await b.al();
+    expect(macA.t).toBe('mac');
+    expect(macB.t).toBe('mac');
+    // Yuvalar AYRI olmalı — ikisi de p1 olsaydı aynı oyuncuyu sürerlerdi
+    expect([macA.yuva, macB.yuva].sort()).toEqual(['p1', 'p2']);
+    // İki taraf da aynı maçı kurmalı
+    expect(macA.cfg.opponentId).toBe(macB.cfg.opponentId);
+
+    a.kapat();
+    b.kapat();
+  });
+
+  it('her oyuncu KARŞISININ adını görür', async () => {
+    const a = await istemci();
+    const b = await istemci();
+
+    a.yolla({ t: 'hizli-esles', kimlik: { id: 'k1', ad: 'ATEŞLİ SMAÇ' } });
+    await a.al();
+    b.yolla({ t: 'hizli-esles', kimlik: { id: 'k2', ad: 'ÇELİK BLOK' } });
+
+    const macA = await a.al();
+    const macB = await b.al();
+    expect(macA.rakip.ad).toBe('ÇELİK BLOK');
+    expect(macB.rakip.ad).toBe('ATEŞLİ SMAÇ');
+
+    a.kapat();
+    b.kapat();
+  });
+
+  it('uzun ad ve görünmez karakterler sunucuda kırpılır', async () => {
+    /*
+     * Ad KARŞI OYUNCUNUN ekranında görünüyor: istemcideki kırpma
+     * yalnız kolaylık, protokolü konuşan herkes onu atlayabilir.
+     */
+    const a = await istemci();
+    const b = await istemci();
+
+    a.yolla({
+      t: 'hizli-esles',
+      kimlik: { id: 'x'.repeat(500), ad: `AAAAAAAAAAAAAAAAAAAAAAAA\u0000\u0007` },
+    });
+    await a.al();
+    b.yolla({ t: 'hizli-esles', kimlik: { id: 'k2', ad: 'ÇELİK BLOK' } });
+
+    await a.al();
+    const macB = await b.al();
+    expect(macB.rakip.ad.length).toBeLessThanOrEqual(12);
+    expect([...macB.rakip.ad].every((c) => c.codePointAt(0) >= 0x20)).toBe(true);
+    expect(macB.rakip.id.length).toBeLessThanOrEqual(64);
+
+    a.kapat();
+    b.kapat();
+  });
+
+  it('aynı bağlantı iki kez sıraya giremez', async () => {
+    const a = await istemci();
+    a.yolla({ t: 'hizli-esles' });
+    expect((await a.al()).t).toBe('sirada');
+
+    a.yolla({ t: 'hizli-esles' });
+    const cevap = await a.al();
+    expect(cevap.t).toBe('hata');
+    expect(cevap.sebep).toBe('zaten-sirada');
+
+    a.kapat();
+  });
+
+  it('odadayken sıraya girilemez', async () => {
+    const a = await istemci();
+    a.yolla({ t: 'oda-ac' });
+    await a.al();
+
+    a.yolla({ t: 'hizli-esles' });
+    const cevap = await a.al();
+    expect(cevap.t).toBe('hata');
+    expect(cevap.sebep).toBe('zaten-odada');
+
+    a.kapat();
+  });
+
+  it('kopan bağlantı sıradan düşer', async () => {
+    /*
+     * Düşmezse sonraki oyuncu kapanmış bir soketle "eşleşir": maç
+     * kurulur, karşı taraf hiç oynamaz ve oyuncu donmuş bir sahaya
+     * bakar. Belirtisi teşhis edilemez bir şey olurdu.
+     */
+    const a = await istemci();
+    a.yolla({ t: 'hizli-esles' });
+    await a.al();
+    expect(sunucu.sira.sayi).toBe(1);
+
+    a.kapat();
+    await new Promise((coz) => { setTimeout(coz, 120); });
+    expect(sunucu.sira.sayi).toBe(0);
+  });
+
+  it('rakip gelmezse "rakip yok" der ama sıradan atmaz', async () => {
+    // Kısa bekleme sınırlı ayrı bir sunucu — 20 saniye beklemeyelim
+    const kisa = await baslat({ port: 0, nabiz: 60_000, beklemeSiniri: 30 });
+    const soket = new WebSocket(`ws://localhost:${kisa.port}`);
+    const gelen = [];
+    soket.on('message', (ham) => gelen.push(JSON.parse(ham.toString())));
+    await new Promise((coz) => soket.once('open', coz));
+
+    soket.send(JSON.stringify({ t: 'hizli-esles' }));
+    await new Promise((coz) => { setTimeout(coz, 1300); });
+
+    expect(gelen.some((m) => m.t === 'sirada')).toBe(true);
+    expect(gelen.some((m) => m.t === 'rakip-yok')).toBe(true);
+    // Uyarı bir kez gelmeli, saniyede bir değil
+    expect(gelen.filter((m) => m.t === 'rakip-yok')).toHaveLength(1);
+    // Ve oyuncu HÂLÂ sırada — bekleyip gerçek rakip bulabilmeli
+    expect(kisa.sira.sayi).toBe(1);
+
+    soket.close();
+    await kisa.kapat();
+  });
+});

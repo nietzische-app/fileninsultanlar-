@@ -325,6 +325,12 @@ export default class Game {
      * oyuncusunun üstüne çiziliyor.
      */
     this.agYuvam = options.agYuvam ?? null;
+    /**
+     * Karşı oyuncunun takma adı — çevrimiçide sahada onun üstünde
+     * yazıyor. Hızlı eşleşmede rakip bir yabancı; adsız bir sprite'a
+     * karşı oynamak maçı kişisiz bırakıyordu.
+     */
+    this.agRakipAd = options.agRakipAd ?? null;
     this.agGonder = options.agGonder ?? null;
     /** Bir sonraki pakete binecek efekt/ses olayları. */
     this.agOlaylar = [];
@@ -3006,23 +3012,42 @@ export default class Game {
      */
     const benim = this.agYuvam ? player.controlSlot === this.agYuvam : player.controlled;
 
-    if (benim && !servingNow) {
+    /*
+     * Çevrimiçide karşıdaki oyuncunun TAKMA ADI da yazılıyor.
+     *
+     * Hızlı eşleşmede rakip bir yabancı: "RAKİP" yazan bir sprite'a
+     * karşı oynamak kişisiz kalıyordu. Ok işareti yalnız kendi
+     * oyuncunda kalıyor (o "sen buradasın" demek), rakibin adı ise
+     * daha sönük yazılıyor — ikisi karışmasın.
+     */
+    const rakipAdi =
+      !benim && this.agRakipAd && player.controlSlot && player.controlSlot !== this.agYuvam
+        ? this.agRakipAd
+        : null;
+
+    if ((benim || rakipAdi) && !servingNow) {
       const top = player.y - 22 * PLAYER.spriteScale;
-      const bounce = Math.sin(this.time * 6) * 3;
+      const bounce = benim ? Math.sin(this.time * 6) * 3 : 0;
 
-      ctx.fillStyle = PALETTE.gold;
-      ctx.beginPath();
-      ctx.moveTo(player.x, top - 12 + bounce);
-      ctx.lineTo(player.x - 7, top - 24 + bounce);
-      ctx.lineTo(player.x + 7, top - 24 + bounce);
-      ctx.closePath();
-      ctx.fill();
+      if (benim) {
+        ctx.fillStyle = PALETTE.gold;
+        ctx.beginPath();
+        ctx.moveTo(player.x, top - 12 + bounce);
+        ctx.lineTo(player.x - 7, top - 24 + bounce);
+        ctx.lineTo(player.x + 7, top - 24 + bounce);
+        ctx.closePath();
+        ctx.fill();
+      }
 
-      ctx.fillStyle = '#FFFFFF';
+      ctx.fillStyle = benim ? '#FFFFFF' : 'rgba(255,255,255,0.6)';
       ctx.font = '7px "Press Start 2P", monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(upper(player.data.name), player.x, top - 34 + bounce);
+      ctx.fillText(
+        upper(rakipAdi ?? player.data.name),
+        player.x,
+        top - (benim ? 34 : 24) + bounce,
+      );
     }
 
     if (kaydir) ctx.restore();

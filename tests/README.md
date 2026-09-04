@@ -26,6 +26,7 @@ aldım — Tailwind yapılandırması güncellenmemişti ve test yeşil görün�
 | `multitouch` | İki tuşa aynı anda basılabiliyor, tuşlar takılı kalmıyor, pinch sahayı yakınlaştırmıyor |
 | `kanat` | Sahanın yanındaki bantlar salon katmanıyla dolu; masaüstünde katman gizli ve çizim yapmıyor |
 | `online` | İki gerçek tarayıcı, gerçek röle: oda kur, katıl, aynı maçı gör, tuş geçir |
+| `eslesme` | Birbirini tanımayan iki oyuncu: hızlı eşleşme sırası, takma adın karşıya ulaşması, rakip yokken yapay zekâ teklifi |
 | `masa-duzen` | Masaüstünde sayfa taşmıyor, oran 9:5, çerçeve sahayı sarıyor, skor tablosu ekranda |
 | `masaustu` | Masaüstünde dokunmatik tuş yok, klavye çalışıyor |
 | `mobil` | Altı cihazda sahne tam ekran ve saha ortalı |
@@ -98,6 +99,16 @@ ederken yanlış şeyi ölçmeye başlıyor.
   olmak. Doğru karşılaştırma, istemcinin çizdiği konum ile sunucunun BİR
   GİDİŞ YOLU SONRA ürettiği konum arasında. Yanlış eksende ölçülen bir
   sayı, doğru çalışan bir düzeltmeyi bozukmuş gibi gösteriyor.
+- **Tek örneğe bakan test iki sessiz arızayı kaçırır.** Eşleşme
+  sırasında korkulan şey birinin iki maça birden girmesi ya da sırada
+  unutulması; ikisi de tek bir eşleşmeye bakarak görünmüyor.
+  `sira.test.js` bu yüzden 200 istemciyi karışık sırayla girip
+  çıkartıyor ve sonunda sayım tutturuyor.
+- **Doğru sandığınız kuralı sınayın.** Sıraya "en uzun bekleyen ilk
+  eşleşir" testi yazdım ve o kural bu tasarımda hiç çalışmıyordu:
+  gelen ya bekleyenle eşleşiyor ya tek bekleyen oluyor, sırada aynı
+  anda iki kişi bulunamıyor. Aynı testler doluluk sınırında gerçek bir
+  hata da buldu — sınır, sırayı BOŞALTACAK kişiyi geri çeviriyordu.
 - Ekranda ne görünüyorsa **onu** okuyun. Uzlaştırma düzeltmesi çizim
   sırasında yediriliyor, yani `player.x` ile çizilen konum bir süre farklı.
   Ölçüm çizim kodunun okuduğu fonksiyonun aynısını (`agCizimKaydirma`)

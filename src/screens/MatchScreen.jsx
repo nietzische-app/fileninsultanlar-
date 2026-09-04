@@ -105,6 +105,7 @@ export default function MatchScreen({
       // Çevrimiçi maçta rol ve gönderim kapısı
       agRol: config.agRol ?? null,
       agYuvam: config.agYuvam ?? null,
+      agRakipAd: config.agRakipAd ?? null,
       agGonder: config.baglanti ? (paket) => config.baglanti.yolla(paket) : null,
     });
 

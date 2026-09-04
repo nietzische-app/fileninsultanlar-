@@ -370,22 +370,30 @@ kaçınılmaz. Tanımadığı mesajlar hâlâ karşı tarafa ham hâliyle aktar�
 
 | Yön | Mesaj | Anlam |
 |---|---|---|
+| → | `{t:'hizli-esles', kimlik}` | Eşleşme sırasına gir |
+| → | `{t:'siradan-cik'}` | Sıradan çık |
+| → | `{t:'kimlik', kimlik}` | Takma adı bağlantıya yapıştır |
 | → | `{t:'oda-ac'}` | Yeni oda aç |
 | → | `{t:'oda-gir', kod}` | Odaya katıl |
 | → | `{t:'mac-basla', cfg}` | Maçı başlat (yalnız odayı açan) |
 | → | `{t:'girdi', k, b, z}` | Tuş durumu — kendi yuvana yazılır; `z` istemci saati |
 | → | `{t:'ayril'}` | Odadan çık |
+| ← | `{t:'sirada', sira}` | Sıraya girildi |
+| ← | `{t:'rakip-yok'}` | Uzun bekleme; sıradan ATILMADIN |
+| ← | `{t:'sira-bitti'}` | Sıradan çıkıldı |
 | ← | `{t:'oda', kod, rol}` | Oda kuruldu / katılındı |
 | ← | `{t:'eslesme', rol}` | İki taraf da hazır |
-| ← | `{t:'mac', cfg, yuva}` | Maç kuruldu; `yuva` seni söyler ('p1'/'p2') |
+| ← | `{t:'mac', cfg, yuva, rakip}` | Maç kuruldu; `yuva` seni, `rakip` karşındakini söyler |
 | ← | `{t:'durum', ...}` | Anlık görüntü (~20 Hz); `az`/`ay` girdi onayı |
 | ← | `{t:'bitis', sonuc}` | Maç bitti |
 | ← | `{t:'ayrildi', kapandi}` | Karşı taraf gitti |
 | ← | `{t:'hata', sebep}` | İstek reddedildi |
 | ↔ | diğer her şey | Karşı tarafa aktarılır |
 
-Yuva dağıtımı: odayı **açan** Türkiye'yi (`p1`), **katılan** rakip takımı
-(`p2`) sürer. Paket biçimi `src/game/snapshot.js` içinde.
+Yuva dağıtımı arkadaş maçında sabit: odayı **açan** Türkiye'yi (`p1`),
+**katılan** rakip takımı (`p2`) sürer. Hızlı eşleşmede **yazı-tura**:
+iki yabancının ikisi de Türkiye'yi oynamak ister ve tercih soracak bir
+"ev sahibi" yoktur. Paket biçimi `src/game/snapshot.js` içinde.
 
 ## Sınırlar
 
@@ -394,7 +402,14 @@ Yuva dağıtımı: odayı **açan** Türkiye'yi (`p1`), **katılan** rakip takı
   (sunucu 20 durum, istemci tuş değiştikçe + saniyede 20 saat damgası).
   Damga, girdi değişmese de gidiyor: tahmin penceresi onun tazeliğine
   bağlı, durursa istemci kendini gitgide daha ileri sürerdi.
-- Aynı anda 500 oda.
+- Aynı anda 500 oda, sırada 500 kişi.
+- **Kendi kendiyle eşleşme engellenmiyor.** İki sekme açan biri
+  kendisiyle eşleşebilir. Kimlik numarasına bakıp engellemek tek satır
+  ama bilerek yapılmadı: aynı numara iki gerçek cihazda bulunursa
+  (depo kopyalanmışsa) o iki kişi *hiç* eşleşemez ve sebebini de
+  göremezdi — sessiz bir arıza, görünür bir zarardan kötü. Skor
+  tablosu geldiğinde (kendine karşı kazanç çiftçiliği) yeniden
+  bakılmalı.
 - 30 saniyede bir ping/pong; yanıtsız soket düşürülür. Mobilde ağ
   değişince soket "açık" görünüp hiçbir şey taşımayabiliyor; bu
   olmadan oda sonsuza kadar dolu kalır ve kimse o koda katılamaz.
@@ -406,9 +421,15 @@ Yuva dağıtımı: odayı **açan** Türkiye'yi (`p1`), **katılan** rakip takı
 
 - `oda.test.js` — eşleşme mantığı, soketsiz.
 - `rele.test.js` — gerçek WebSocket'lerle tel üzerindeki davranış.
+- `sira.test.js` — eşleşme sırası. Tek eşleşmeye bakan testler iki
+  sessiz arızayı kaçırıyor (biri iki maça birden girer, biri sırada
+  unutulur), o yüzden 200 istemcilik bir koşum da var.
 - `src/game/tahmin.test.js` — tahmin, uzlaştırma ve düzeltmenin
   yedirilmesi. Testlerin bir kısmı tahmin KAPALIYKEN de geçiyor; onlar
   ölçüm aracının kendisini doğruluyor.
 
-Uçtan uca sınamayı `npm run e2e online` yapıyor: iki gerçek tarayıcı,
-bu sunucunun bir örneği, menüden sahaya kadar tam yol.
+Uçtan uca sınama iki dosyada, çünkü iki ayrı yol var:
+
+- `npm run e2e online` — oda koduyla buluşan iki arkadaş.
+- `npm run e2e eslesme` — birbirini tanımayan iki yabancı: sıra, takma
+  adın karşıya ulaşması, ve rakip yokken yapay zekâ teklifi.

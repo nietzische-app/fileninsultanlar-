@@ -26,6 +26,8 @@
 import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
 import { OdaDefteri, HATA } from './oda.js';
+import { EslesmeSirasi } from './sira.js';
+import { AD_UZUNLUK, adTemizle } from './protokol.js';
 import { Mac } from './mac.js';
 
 /** Tek mesajın azami boyu (bayt). Anlık görüntü ~300 bayt; 16 KB fazlasıyla yeter. */
@@ -42,6 +44,30 @@ const NABIZ = 30_000;
  * açık röleyi bedava mesaj kanalına çevirmeye çalışan birini durdurmak.
  */
 const SANIYEDE_MESAJ = 150;
+
+/** Sıradakilerin bekleme süresinin denetlenme aralığı (ms). */
+const SIRA_TIK = 1000;
+
+/**
+ * İstemciden gelen kimliği temizler.
+ *
+ * Bu ad KARŞI OYUNCUNUN ekranında görünüyor, yani istemciden gelen
+ * metin başka birinin arayüzüne giriyor. React metni kaçırıyor (XSS
+ * yok) ama uzunluk ve görünmez karakter sınırı burada olmak zorunda:
+ * istemcideki temizlik yalnız kolaylık, protokolü konuşan herkes onu
+ * atlayabilir.
+ */
+function temizleKimlik(ham = {}) {
+  return {
+    /*
+     * Kimlik numarası ada göre daha gevşek: ekranda görünmüyor, yalnız
+     * eşleştirme/sıralama anahtarı. Yine de sınırsız değil — 500 KB'lık
+     * bir kimlik sunucuda saklanırdı.
+     */
+    id: typeof ham.id === 'string' ? ham.id.replace(/\s+/g, '').slice(0, 64) : '',
+    ad: adTemizle(ham.ad, AD_UZUNLUK),
+  };
+}
 
 /** Tek istemciye yollar — soket kapanmışsa sessizce geçer. */
 function yolla(soket, veri) {
@@ -63,8 +89,22 @@ function hataYolla(soket, sebep) {
  * @param {number} [ayar.port] 0 verilirse işletim sistemi boş port seçer.
  * @param {number} [ayar.nabiz] Kalp atışı aralığı (ms).
  */
-export async function baslat({ port = 8787, nabiz: nabizAraligi = NABIZ } = {}) {
+export async function baslat({
+  port = 8787,
+  nabiz: nabizAraligi = NABIZ,
+  beklemeSiniri,
+  /**
+   * Hızlı eşleşmede Filenin Sultanları'nı kim oynayacak.
+   *
+   * Rastgele, çünkü iki yabancının ikisi de Türkiye'yi oynamak
+   * istiyor ve tercih soracak bir "ev sahibi" yok. Testte
+   * sabitlenebilsin diye dışarıdan verilebiliyor — yoksa eşleşme
+   * testleri yazı-tura atmış olurdu.
+   */
+  yaziTura = () => Math.random() < 0.5,
+} = {}) {
   const defter = new OdaDefteri();
+  const sira = new EslesmeSirasi({ beklemeSiniri });
 
   const http = createServer((istek, cevap) => {
     /*
@@ -79,6 +119,7 @@ export async function baslat({ port = 8787, nabiz: nabizAraligi = NABIZ } = {}) 
         JSON.stringify({
           durum: 'ayakta',
           oda: defter.sayi,
+          sira: sira.sayi,
           istemci: wss.clients.size,
           /*
            * Makine kimliği teşhis için. Röle durum tutuyor: bir odanın
@@ -122,10 +163,52 @@ export async function baslat({ port = 8787, nabiz: nabizAraligi = NABIZ } = {}) 
      * her istemci hangi oyuncuyu sürdüğünü böyle öğreniyor.
      */
     const gercek = oda.mac.gercekAyar;
-    yolla(oda.ev, { t: 'mac', cfg: gercek, yuva: 'p1' });
-    yolla(oda.misafir, { t: 'mac', cfg: gercek, yuva: 'p2' });
+    /*
+     * Her istemciye KARŞISINDAKİNİN adı gidiyor, kendi adı değil:
+     * kendi adını zaten biliyor, ekranda göreceği isim rakibinki.
+     */
+    yolla(oda.ev, { t: 'mac', cfg: gercek, yuva: 'p1', rakip: oda.misafir?.kimlik ?? null });
+    yolla(oda.misafir, { t: 'mac', cfg: gercek, yuva: 'p2', rakip: oda.ev?.kimlik ?? null });
 
     oda.mac.baslat();
+  }
+
+  /**
+   * Sıradan eşleşen iki soketi bir odaya koyup maçı başlatır.
+   *
+   * Oda kodu üretiliyor ama kimseye SÖYLENMİYOR — hızlı eşleşmede
+   * kodun bir işi yok. Yine de oda kuruluyor, çünkü maçın koştuğu,
+   * ayrılmanın ve kopmanın işlendiği yer o; ayrı bir yol açmak aynı
+   * mantığı ikinci kez yazmak olurdu.
+   *
+   * @returns {boolean} Maç kurulduysa true
+   */
+  function siradanEslestir(a, b) {
+    const acilis = defter.ac(a);
+    if (acilis.hata) {
+      hataYolla(a, acilis.hata);
+      // Eşi boşta bırakma: sıraya geri koy, yoksa sessizce kaybolurdu
+      sira.katil(b, b.kimlik ?? {});
+      return false;
+    }
+
+    const katilim = defter.gir(acilis.kod, b);
+    if (katilim.hata) {
+      defter.ayril(a);
+      hataYolla(b, katilim.hata);
+      sira.katil(a, a.kimlik ?? {});
+      return false;
+    }
+
+    const oda = defter.odalar.get(acilis.kod);
+    /*
+     * Ayar sıraya girenin değil SUNUCUNUN seçimi. Hızlı eşleşmede
+     * karşındaki yabancının kadro tercihini kabul etmek zorunda
+     * değilsin; iki taraf da aynı standart maçı oynuyor. Kadro boş
+     * bırakılıyor, motor varsayılanını kuruyor.
+     */
+    macKur(oda, { mode: '1v1', format: 'single', difficulty: 'normal' });
+    return true;
   }
 
   /** Oda kapanır ya da biri ayrılırsa maçı da durdur — sunucuda sürmesin. */
@@ -191,9 +274,57 @@ export async function baslat({ port = 8787, nabiz: nabizAraligi = NABIZ } = {}) 
         }
 
         case 'ayril': {
+          sira.cik(soket);
           const sonuc = defter.ayril(soket);
           if (sonuc?.es) yolla(sonuc.es, { t: 'ayrildi', kapandi: sonuc.kapandi });
           if (sonuc?.kod) macBitir(sonuc.kod);
+          break;
+        }
+
+        case 'kimlik': {
+          /*
+           * Kimlik bağlantıya yapışıyor, mesajla birlikte taşınmıyor.
+           * Sebebi: maç kurulurken karşı tarafın adı gerekiyor ve o an
+           * elimizde yalnız soket var. Kimliği her mesajda taşımak da
+           * olurdu ama saniyede 60 girdi paketinin her birine ad
+           * eklemek anlamsız.
+           */
+          soket.kimlik = temizleKimlik(mesaj.kimlik);
+          break;
+        }
+
+        case 'hizli-esles': {
+          if (defter.odaOf(soket)) {
+            hataYolla(soket, HATA.zatenOdada);
+            break;
+          }
+          if (mesaj.kimlik) soket.kimlik = temizleKimlik(mesaj.kimlik);
+
+          const sonuc = sira.katil(soket, soket.kimlik ?? {});
+          if (sonuc.hata) {
+            hataYolla(soket, sonuc.hata);
+            break;
+          }
+          if (sonuc.es) {
+            /*
+             * Kim Türkiye'yi (p1) oynayacak: yazı-tura. Sırada uzun
+             * bekleyene vermek "önce gelen kazanır" gibi görünürdü ama
+             * bekleme süresi oyuncunun elinde değil — sunucuda kaç
+             * kişi olduğuna bağlı. Rastgele olan, adil olan.
+             */
+            const [ilk, ikinci] = yaziTura()
+              ? [sonuc.es.istemci, soket]
+              : [soket, sonuc.es.istemci];
+            siradanEslestir(ilk, ikinci);
+            break;
+          }
+          yolla(soket, { t: 'sirada', sira: sonuc.sira });
+          break;
+        }
+
+        case 'siradan-cik': {
+          sira.cik(soket);
+          yolla(soket, { t: 'sira-bitti' });
           break;
         }
 
@@ -250,6 +381,8 @@ export async function baslat({ port = 8787, nabiz: nabizAraligi = NABIZ } = {}) 
     });
 
     const kapanis = () => {
+      // Sıradaysa da çıkar: yoksa kapanmış bir soketle eşleşme denenir
+      sira.cik(soket);
       const oda = defter.odaOf(soket);
       const sonuc = defter.ayril(soket);
       if (sonuc?.es) yolla(sonuc.es, { t: 'ayrildi', kapandi: sonuc.kapandi });
@@ -285,14 +418,28 @@ export async function baslat({ port = 8787, nabiz: nabizAraligi = NABIZ } = {}) 
   }, nabizAraligi);
   nabiz.unref?.();
 
+  /*
+   * Uzun bekleyene haber ver: "rakip yok, istersen yapay zekâya karşı
+   * oyna". SIRADAN ÇIKARMIYORUZ — oyuncu beklemeye devam edebilir ve
+   * tam o sırada biri gelirse gerçek maç olur. Çıkarsaydık iki kişinin
+   * birbirini birer saniye farkla kaçırması mümkün olurdu.
+   */
+  const siraSaati = setInterval(() => {
+    sira.uyarilacaklar().forEach((kayit) => {
+      yolla(kayit.istemci, { t: 'rakip-yok' });
+    });
+  }, SIRA_TIK);
+  siraSaati.unref?.();
+
   await new Promise((coz) => http.listen(port, coz));
 
   const kapat = () =>
     new Promise((coz) => {
       clearInterval(nabiz);
+      clearInterval(siraSaati);
       wss.clients.forEach((soket) => soket.terminate());
       wss.close(() => http.close(coz));
     });
 
-  return { http, wss, defter, port: http.address().port, kapat };
+  return { http, wss, defter, sira, port: http.address().port, kapat };
 }

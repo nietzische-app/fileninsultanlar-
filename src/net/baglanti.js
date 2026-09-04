@@ -38,6 +38,7 @@ export const HATA_METNI = {
   'oda-yok': 'Böyle bir oda yok. Kodu kontrol edin.',
   'oda-dolu': 'Bu odada maç zaten başlamış.',
   'zaten-odada': 'Zaten bir odadasınız.',
+  'zaten-sirada': 'Zaten sıradasınız.',
   'sunucu-dolu': 'Sunucu şu an dolu, biraz sonra deneyin.',
   'kod-uretilemedi': 'Oda açılamadı, tekrar deneyin.',
   'cok-hizli': 'Bağlantı çok fazla mesaj gönderdi.',
@@ -135,6 +136,26 @@ export class Baglanti {
 
   odaGir(kod) {
     return this.yolla({ t: 'oda-gir', kod });
+  }
+
+  /**
+   * Hızlı eşleşme sırasına girer.
+   *
+   * Kimlik burada gidiyor çünkü sunucu maçı kurarken karşı tarafın
+   * adına ihtiyaç duyuyor ve o an elinde yalnız soket var. Her girdi
+   * paketine ad eklemek (saniyede 60) anlamsız olurdu.
+   */
+  hizliEsles(kimlik) {
+    return this.yolla({ t: 'hizli-esles', kimlik });
+  }
+
+  siradanCik() {
+    return this.yolla({ t: 'siradan-cik' });
+  }
+
+  /** Kimliği bağlantıya yapıştırır — arkadaş maçı yolu için. */
+  kimlikBildir(kimlik) {
+    return this.yolla({ t: 'kimlik', kimlik });
   }
 
   ayril() {

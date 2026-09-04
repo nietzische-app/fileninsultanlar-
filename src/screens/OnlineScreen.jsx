@@ -1,25 +1,34 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Sfx from '../game/audio.js';
 import { Baglanti, hataMetni } from '../net/baglanti.js';
+import { kimlikYukle, adDegistir, adUret, AD_UZUNLUK } from '../net/kimlik.js';
 import { KOD_UZUNLUK } from '../../sunucu/protokol.js';
 import { upper } from '../utils/text.js';
 
 /**
- * Çevrimiçi lobi — oda aç ya da koda gir.
+ * Çevrimiçi lobi.
  *
- * Maçı odayı AÇAN taraf simüle eder; katılan taraf onun ürettiği
- * durumu çizer ve tuşlarını yollar. Bu yüzden maç ayarları (sultan,
- * rakip takım, format) açanın seçimidir ve eşleşme anında karşıya
- * gönderilir — iki taraf aynı kadroyu kurmazsa aynı maçı çizemezler.
+ * İki yol var ve ikisi farklı ihtiyaca cevap veriyor:
  *
- * Ekran üç durumdan birinde: seçim, bekleme, hata. Ayrı bir "bağlanıyor"
- * durumu var çünkü ücretsiz barındırmada ilk bağlantı uykudan uyanmayı
- * bekleyebiliyor ve donmuş bir ekran gibi görünüyordu.
+ *   - HIZLI EŞLEŞ: kimseyi tanımıyorsan. Sunucu seni bekleyen biriyle
+ *     buluşturur. Oyunu ilk açan kişinin elinde kod verecek kimse yok;
+ *     bu düğme olmadan "ÇEVRİMİÇİ" onun için boş bir odaya açılıyordu.
+ *   - ARKADAŞINLA: tanıdığın biriyle. Oda kodu paylaşılır, maç ayarları
+ *     (kadro, rakip, format) odayı açanın seçimi olur.
+ *
+ * Maçı iki yolda da SUNUCU koşturuyor; iki istemci de yalnızca çiziyor
+ * ve tuşlarını yolluyor.
+ *
+ * Rakip bulunamazsa oyuncu çıkmaza sokulmuyor: yapay zekâya karşı
+ * oynama teklifi açıkça yapılıyor. Sessizce bot koymak (sektörde
+ * yaygın) daha "akıcı" görünürdü ama oyuncuya insanla oynadığını
+ * söylemek yalan olurdu.
  */
 
 const DURUM = {
   secim: 'secim',
   baglaniyor: 'baglaniyor',
+  sirada: 'sirada',
   bekliyor: 'bekliyor',
   kodGir: 'kod-gir',
   hata: 'hata',
@@ -30,14 +39,22 @@ export default function OnlineScreen({ config, onStart, onBack }) {
   const [kod, setKod] = useState('');
   const [girilenKod, setGirilenKod] = useState('');
   const [hata, setHata] = useState(null);
+  const [kimlik, setKimlik] = useState(() => kimlikYukle());
+  const [adDuzenle, setAdDuzenle] = useState(false);
+  /** Sırada geçen süre (sn) — bekleyene bir şeyin aktığını göstermek için. */
+  const [gecen, setGecen] = useState(0);
+  /** Sunucu "rakip yok" dedi mi — yapay zekâ teklifi bunda çıkıyor. */
+  const [rakipYok, setRakipYok] = useState(false);
 
   const baglantiRef = useRef(null);
   const configRef = useRef(config);
   configRef.current = config;
   const onStartRef = useRef(onStart);
   onStartRef.current = onStart;
+  const kimlikRef = useRef(kimlik);
+  kimlikRef.current = kimlik;
 
-  /** Bağlantıyı kur ve olayları bağla — iki yol da (aç/gir) buradan geçer. */
+  /** Bağlantıyı kur ve olayları bağla — üç yol da (hızlı/aç/gir) buradan geçer. */
   const baglan = useCallback(async () => {
     if (baglantiRef.current) return baglantiRef.current;
     const baglanti = new Baglanti();
@@ -54,10 +71,23 @@ export default function OnlineScreen({ config, onStart, onBack }) {
       setDurum((onceki) => (onceki === DURUM.secim ? onceki : DURUM.hata));
     });
 
+    baglanti.on('sirada', () => {
+      setRakipYok(false);
+      setGecen(0);
+      setDurum(DURUM.sirada);
+    });
+
+    /*
+     * "Rakip yok" sıradan ATILDIN demek değil: sunucu bekletmeye devam
+     * ediyor. Bu yüzden ekran da beklemeyi bırakmıyor, yalnızca bir
+     * çıkış yolu daha açıyor.
+     */
+    baglanti.on('rakip-yok', () => setRakipYok(true));
+
     /*
      * Eşleşince odayı açan taraf maçı İSTER, ama kurmaz — maçı sunucu
-     * koşturuyor. Ayarlar yine açanın seçimi (kadro, rakip, format);
-     * sunucu bunları kesinleştirip iki tarafa da aynısını yolluyor.
+     * koşturuyor. Bu yalnız ARKADAŞ maçında geçerli; hızlı eşleşmede
+     * maçı sunucu kendiliğinden kuruyor.
      */
     baglanti.on('eslesme', (mesaj) => {
       if (mesaj.rol !== 'ev') return;
@@ -89,6 +119,7 @@ export default function OnlineScreen({ config, onStart, onBack }) {
         playMode: 'vs',
         agRol: 'misafir',
         agYuvam: mesaj.yuva ?? 'p1',
+        agRakipAd: mesaj.rakip?.ad ?? null,
         baglanti,
       });
     });
@@ -107,11 +138,35 @@ export default function OnlineScreen({ config, onStart, onBack }) {
     [],
   );
 
+  /*
+   * Sıradaki saniye sayacı. Yalnız süsleme değil: bekleyen oyuncunun
+   * ekranı hiç değişmezse "takıldı mı" diye çıkıyor. Akan bir sayı,
+   * hiçbir şey olmadığını da bir şeyin çalıştığını da gösteriyor.
+   */
+  useEffect(() => {
+    if (durum !== DURUM.sirada) return undefined;
+    const sayac = setInterval(() => setGecen((s) => s + 1), 1000);
+    return () => clearInterval(sayac);
+  }, [durum]);
+
+  const hizliEsles = useCallback(async () => {
+    Sfx.select();
+    setDurum(DURUM.baglaniyor);
+    try {
+      const baglanti = await baglan();
+      baglanti.hizliEsles(kimlikRef.current);
+    } catch {
+      setHata(hataMetni('baglanti'));
+      setDurum(DURUM.hata);
+    }
+  }, [baglan]);
+
   const odaAc = useCallback(async () => {
     Sfx.select();
     setDurum(DURUM.baglaniyor);
     try {
       const baglanti = await baglan();
+      baglanti.kimlikBildir(kimlikRef.current);
       const cozul = baglanti.on('oda', (mesaj) => {
         setKod(mesaj.kod);
         setDurum(DURUM.bekliyor);
@@ -129,6 +184,7 @@ export default function OnlineScreen({ config, onStart, onBack }) {
     setDurum(DURUM.baglaniyor);
     try {
       const baglanti = await baglan();
+      baglanti.kimlikBildir(kimlikRef.current);
       baglanti.odaGir(girilenKod);
     } catch {
       setHata(hataMetni('baglanti'));
@@ -136,38 +192,120 @@ export default function OnlineScreen({ config, onStart, onBack }) {
     }
   }, [baglan, girilenKod]);
 
+  /**
+   * Yapay zekâya karşı oyna — sıradan çıkıp YEREL maç başlatır.
+   *
+   * Maç sunucuda koşturulmuyor: rakip bot olduğuna göre sunucuya
+   * gitmenin tek getirisi gecikme olurdu. Yerel maç hem sıfır
+   * gecikmeli hem de sunucuyu boşuna meşgul etmiyor.
+   */
+  const botaKarsi = useCallback(() => {
+    Sfx.select();
+    baglantiRef.current?.siradanCik();
+    baglantiRef.current?.kapat();
+    baglantiRef.current = null;
+    const c = configRef.current;
+    onStartRef.current({
+      mode: c.mode,
+      homeIds: c.homeIds,
+      opponentId: c.opponentId,
+      format: c.format,
+      difficulty: c.difficulty,
+      playMode: 'solo',
+      /*
+       * Ağ alanları AÇIKÇA boşaltılıyor. App bu nesneyi mevcut maç
+       * ayarının ÜSTÜNE yayıyor; yazmasaydık daha önce çevrimiçi
+       * oynanmış bir oturumda eski `agRol` sızabilir ve bot maçı
+       * kendini çevrimiçi sanardı — sunucudan hiç paket gelmediği
+       * için de "rakip bekleniyor" diye donardı.
+       */
+      agRol: null,
+      agYuvam: null,
+      agRakipAd: null,
+      baglanti: null,
+    });
+  }, []);
+
   const bastanBasla = useCallback(() => {
     baglantiRef.current?.kapat();
     baglantiRef.current = null;
     setHata(null);
     setKod('');
     setGirilenKod('');
+    setRakipYok(false);
     setDurum(DURUM.secim);
+  }, []);
+
+  const adKaydet = useCallback((yeni) => {
+    setKimlik(adDegistir(yeni));
+    setAdDuzenle(false);
   }, []);
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-6 px-4 py-8">
       <div className="w-full max-w-md border-4 border-white/20 bg-retro-panel/85 p-5">
         <p className="text-center text-[11px] text-white">ÇEVRİMİÇİ MAÇ</p>
-        <p className="mt-2 text-center text-[7px] leading-relaxed text-white/50">
-          {upper('Biri oda açar, diğeri kodu girer')}
-        </p>
+
+        {/* Takma ad — rakibin ekranında bu görünüyor */}
+        {durum === DURUM.secim && !adDuzenle && (
+          <button
+            type="button"
+            className="mt-3 block w-full text-center text-[7px] leading-relaxed text-white/50 hover:text-white/80"
+            onClick={() => {
+              Sfx.select();
+              setAdDuzenle(true);
+            }}
+          >
+            {upper('Adın')}: <span className="text-retro-accent">{kimlik.ad}</span>
+            <span className="ml-2 text-white/35">{upper('(değiştir)')}</span>
+          </button>
+        )}
+
+        {durum === DURUM.secim && adDuzenle && (
+          <AdKutusu
+            baslangic={kimlik.ad}
+            onKaydet={adKaydet}
+            onVazgec={() => setAdDuzenle(false)}
+          />
+        )}
 
         {durum === DURUM.secim && (
           <div className="mt-6 flex flex-col gap-3">
-            <button type="button" className="retro-button w-full py-3 text-[9px]" onClick={odaAc}>
-              ODA AÇ
-            </button>
             <button
               type="button"
-              className="retro-button-ghost w-full py-3 text-[9px]"
-              onClick={() => {
-                Sfx.select();
-                setDurum(DURUM.kodGir);
-              }}
+              className="retro-button w-full py-3 text-[9px]"
+              onClick={hizliEsles}
             >
-              KODLA KATIL
+              HIZLI EŞLEŞ
             </button>
+            <p className="text-center text-[7px] leading-relaxed text-white/40">
+              {upper('Sunucu seni bekleyen bir oyuncuyla buluşturur')}
+            </p>
+
+            <div className="mt-2 border-t-4 border-white/10 pt-4">
+              <p className="mb-3 text-center text-[7px] text-white/40">
+                {upper('Ya da tanıdığın biriyle')}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="retro-button-ghost flex-1 py-3 text-[8px]"
+                  onClick={odaAc}
+                >
+                  ODA AÇ
+                </button>
+                <button
+                  type="button"
+                  className="retro-button-ghost flex-1 py-3 text-[8px]"
+                  onClick={() => {
+                    Sfx.select();
+                    setDurum(DURUM.kodGir);
+                  }}
+                >
+                  KODLA KATIL
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -204,11 +342,55 @@ export default function OnlineScreen({ config, onStart, onBack }) {
           <p className="mt-8 text-center text-[9px] text-retro-accent">BAĞLANIYOR…</p>
         )}
 
+        {durum === DURUM.sirada && (
+          <div className="mt-6 text-center">
+            <p className="text-[9px] text-retro-accent">RAKİP ARANIYOR…</p>
+            <p className="mt-2 text-[8px] text-white/45" aria-live="off">
+              {gecen} SANİYE
+            </p>
+
+            {/*
+              Rakip yoksa çıkmaz yok: teklif açıkça yapılıyor ve sıra
+              da bozulmuyor — tam bu sırada biri gelirse gerçek maç
+              olur.
+            */}
+            {rakipYok && (
+              <div className="mt-5 border-4 border-white/15 bg-black/40 p-4">
+                <p className="text-[7px] leading-relaxed text-white/65">
+                  {upper('Şu an bekleyen başka oyuncu yok. Beklemeye devam edebilir ya da yapay zekâya karşı oynayabilirsin.')}
+                </p>
+                <button
+                  type="button"
+                  className="retro-button mt-3 w-full py-3 text-[8px]"
+                  onClick={botaKarsi}
+                >
+                  YAPAY ZEKÂYA KARŞI OYNA
+                </button>
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="retro-button-ghost mt-4 w-full py-2 text-[8px]"
+              onClick={bastanBasla}
+            >
+              VAZGEÇ
+            </button>
+          </div>
+        )}
+
         {durum === DURUM.bekliyor && (
           <div className="mt-6 text-center">
             <p className="text-[7px] text-white/55">ARKADAŞINA BU KODU SÖYLE</p>
             <p className="mt-3 text-[28px] tracking-[0.3em] text-retro-accent">{kod}</p>
             <p className="mt-4 text-[8px] text-white/70">RAKİP BEKLENİYOR…</p>
+            <button
+              type="button"
+              className="retro-button-ghost mt-5 w-full py-2 text-[8px]"
+              onClick={bastanBasla}
+            >
+              VAZGEÇ
+            </button>
           </div>
         )}
 
@@ -229,6 +411,48 @@ export default function OnlineScreen({ config, onStart, onBack }) {
       <button type="button" className="retro-button-ghost px-6 py-2 text-[8px]" onClick={onBack}>
         GERİ
       </button>
+    </div>
+  );
+}
+
+/** Takma ad düzenleme kutusu. */
+function AdKutusu({ baslangic, onKaydet, onVazgec }) {
+  const [taslak, setTaslak] = useState(baslangic);
+
+  return (
+    <div className="mt-4 flex flex-col gap-2">
+      <label className="text-[7px] text-white/55" htmlFor="takma-ad">
+        {upper('Takma adın — rakibin bunu görecek')}
+      </label>
+      <input
+        id="takma-ad"
+        className="w-full border-4 border-white/25 bg-black/40 px-3 py-2 text-center text-[10px] text-white outline-none focus:border-retro-accent"
+        value={taslak}
+        maxLength={AD_UZUNLUK}
+        autoComplete="off"
+        spellCheck={false}
+        onChange={(e) => setTaslak(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') onKaydet(taslak);
+          if (e.key === 'Escape') onVazgec();
+        }}
+      />
+      <div className="flex gap-2">
+        <button
+          type="button"
+          className="retro-button-ghost flex-1 py-2 text-[7px]"
+          onClick={() => setTaslak(adUret())}
+        >
+          RASTGELE
+        </button>
+        <button
+          type="button"
+          className="retro-button flex-1 py-2 text-[7px]"
+          onClick={() => onKaydet(taslak)}
+        >
+          KAYDET
+        </button>
+      </div>
     </div>
   );
 }
