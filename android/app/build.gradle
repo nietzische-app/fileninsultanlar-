@@ -1,5 +1,52 @@
 apply plugin: 'com.android.application'
 
+/*
+ * YAYIN İMZASI.
+ *
+ * Capacitor şablonunda imza yapılandırması yok: `bundleRelease`
+ * imzasız bir dosya üretiyor ve Play Store onu kabul etmiyor.
+ * Android Studio'nun arayüzünden elle imzalamak da mümkün ama o yol
+ * her seferinde tekrarlanan, adımı atlanabilen ve sürüm kontrolüne
+ * girmeyen bir iş.
+ *
+ * Anahtar bilgileri `android/keystore.properties` dosyasından
+ * okunuyor ve o dosya `.gitignore`'da — parolalar depoya girmemeli.
+ * Dosya yoksa yapı yine çalışıyor (imzasız): geliştirme ve CI
+ * derlemeleri anahtar olmadan da tamamlansın diye.
+ *
+ * Dosyanın biçimi (bkz. keystore.properties.ornek):
+ *   storeFile=/mutlak/yol/sultanlar.jks
+ *   storePassword=...
+ *   keyAlias=sultanlar
+ *   keyPassword=...
+ */
+/*
+ * SÜRÜM NUMARASI — tek kaynaktan.
+ *
+ * Şablonda `versionCode 1` ve `versionName "1.0"` sabit yazılıydı.
+ * İkinci yükleme "bu sürüm kodu zaten kullanıldı" diye REDDEDİLİRDİ ve
+ * bunu ancak Play Console'a dosyayı yükledikten sonra görürdük.
+ *
+ * Kaynak `package.json`: web sürümü ile mağaza sürümü ayrışmasın.
+ * `versionCode` sürüm dizesinden türetiliyor (1.2.3 → 10203), yani
+ * elle artırmak gerekmiyor ve iki kişi aynı anda çalışsa bile aynı
+ * sürümden aynı sayı çıkıyor.
+ *
+ * Sınır: her parça 0-99 arası olmalı. 1.0.100 gibi bir sürüm
+ * numaralandırmayı bozardı; bu oyunda öyle bir şeye ihtiyaç yok.
+ */
+def paket = new groovy.json.JsonSlurper().parseText(file('../../package.json').text)
+def surumAdi = paket.version
+def surumParcalari = surumAdi.tokenize('.').collect { it.toInteger() }
+def surumKodu = surumParcalari[0] * 10000 + surumParcalari[1] * 100 + (surumParcalari[2] ?: 0)
+
+def imzaAyar = file('../keystore.properties')
+def imzaVar = imzaAyar.exists()
+def imza = new Properties()
+if (imzaVar) {
+    imzaAyar.withInputStream { imza.load(it) }
+}
+
 android {
     namespace "app.fileninsultanlari.oyun"
     compileSdk rootProject.ext.compileSdkVersion
@@ -7,8 +54,8 @@ android {
         applicationId "app.fileninsultanlari.oyun"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode surumKodu
+        versionName surumAdi
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,10 +63,30 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (imzaVar) {
+            release {
+                storeFile file(imza['storeFile'])
+                storePassword imza['storePassword']
+                keyAlias imza['keyAlias']
+                keyPassword imza['keyPassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            /*
+             * Anahtar yoksa imzasız üretiliyor. Sessizce debug
+             * anahtarıyla imzalamak DAHA KÖTÜ olurdu: dosya geçerli
+             * görünür, Play Store yükleme anında reddeder ve sebebi
+             * "yanlış anahtar" gibi anlaşılmaz bir mesaj olur.
+             */
+            if (imzaVar) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

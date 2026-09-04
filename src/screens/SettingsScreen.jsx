@@ -1,5 +1,6 @@
 import { AudioSettings, ControlSettings } from '../components/SettingsPanels.jsx';
 import Sfx from '../game/audio.js';
+import { gizlilikBaglantisi, yerelKabukMu } from '../utils/gizlilik.js';
 
 /**
  * Ayarlar ekranı — menüden açılan tam sayfa hâli.
@@ -76,6 +77,24 @@ export default function SettingsScreen({
           </button>
         </div>
       </section>
+
+      {/*
+        Gizlilik politikası bağlantısı.
+
+        Mağazalar politikanın hem listelemede hem UYGULAMA İÇİNDE
+        erişilebilir olmasını bekliyor. Ayrı bir statik sayfa
+        (`public/gizlilik.html`) — oyunun paketini yüklemesi
+        gerekmiyor ve oyunda bir hata olsa bile açılıyor.
+
+        Nasıl açılacağı platforma göre değişiyor; sebebi
+        `src/utils/gizlilik.js` başında yazılı (kısaca: WebView yeni
+        sekme açamıyor ve `_blank` orada ölü bir düğme olurdu).
+      */}
+      <p className="text-center text-[7px] leading-relaxed text-white/35">
+        <a className="underline hover:text-white/70" {...gizlilikBaglantisi(yerelKabukMu())}>
+          GİZLİLİK POLİTİKASI
+        </a>
+      </p>
     </div>
   );
 }

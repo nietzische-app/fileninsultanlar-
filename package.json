@@ -19,7 +19,8 @@
     "paket": "node scripts/paket-onkontrol.mjs && npm run build && npx cap sync",
     "paket:android": "npm run paket && npx cap open android",
     "e2e:paket": "node tests/e2e/paket.mjs",
-    "ikon": "node scripts/ikon-uret.mjs"
+    "ikon": "node scripts/ikon-uret.mjs",
+    "magaza-gorsel": "node scripts/magaza-gorsel.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.2",

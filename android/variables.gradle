@@ -1,7 +1,25 @@
 ext {
+    /*
+     * minSdk 22 = Android 5.1. Capacitor'ın varsayılanı; oyunun
+     * ihtiyacı olan tek şey WebView ve o çok daha eskisinde de var.
+     * Yükseltmenin bir kazancı yok, düşürmenin de.
+     */
     minSdkVersion = 22
-    compileSdkVersion = 34
-    targetSdkVersion = 34
+
+    /*
+     * targetSdk: Google Play'in DAYATTIĞI sayı, bizim tercihimiz değil.
+     *
+     * Capacitor şablonu 34 ile geliyordu ve Play Store 34 hedefleyen
+     * yeni yüklemeleri REDDEDİYOR — kural her yıl bir seviye
+     * yükseliyor ve şablon geride kalmış. Reddi ancak yükleme anında
+     * görürdük.
+     *
+     * DİKKAT: bu sayı zamanla eskiyor. Yüklemeden önce Play Console'un
+     * söylediği güncel asgariyi doğrula; reddedilirse tek yapılacak
+     * şey bu satırı yükseltip yeniden derlemek.
+     */
+    compileSdkVersion = 35
+    targetSdkVersion = 35
     androidxActivityVersion = '1.8.0'
     androidxAppCompatVersion = '1.6.1'
     androidxCoordinatorLayoutVersion = '1.2.0'

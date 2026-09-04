@@ -205,6 +205,59 @@ kontrol(
 );
 await ctx2.close();
 
+// --- Gizlilik politikası ---
+/*
+ * Mağazalar politikanın uygulama İÇİNDEN de erişilebilir olmasını
+ * istiyor ve bu, paketleme sırasında sessizce bozulabilen bir şey:
+ * sayfa `public/` altında duruyor, oraya konmasaydı ya da bağlantı
+ * mutlak bir yol (`/gizlilik.html`) olsaydı WebView'de 404 verirdi.
+ * Bunu ancak inceleme reddiyle öğrenirdik.
+ *
+ * Üç ayrı şey ölçülüyor: sayfa PAKETTE var mı, ayarlardaki bağlantı
+ * ona mı gidiyor, ve açıldığında gerçekten politika mı geliyor.
+ */
+const ctx3 = await mobilBaglam(browser);
+const gizPage = await ctx3.newPage();
+await gizPage.goto(URL, { waitUntil: 'load' });
+await gizPage.evaluate(
+  (t) => localStorage.setItem('filenin-sultanlari-prefs', JSON.stringify(t)),
+  VARSAYILAN_TERCIH,
+);
+await gizPage.reload({ waitUntil: 'load' });
+await gizPage.waitForTimeout(1000);
+
+await gizPage.getByRole('button', { name: /AYARLAR/ }).click();
+await gizPage.waitForTimeout(300);
+
+const gizBag = gizPage.getByRole('link', { name: /GİZLİLİK/ });
+kontrol('ayarlarda gizlilik politikası bağlantısı var', (await gizBag.count()) > 0);
+
+if ((await gizBag.count()) > 0) {
+  const href = await gizBag.first().getAttribute('href');
+  /*
+   * GÖRELİ olmalı. Mutlak (`/gizlilik.html`) yol WebView'de kökten
+   * çözülür ve varlıklar alt klasördeyse 404 gelir — `base: './'`
+   * kararının aynı sebebi.
+   */
+  kontrol('bağlantı göreli (mutlak yol WebView’de 404 verir)', href === 'gizlilik.html', href);
+
+  // Bağlantının gösterdiği yer PAKETTE gerçekten var mı
+  const yanit = await gizPage.request.get(new global.URL(href, URL).href);
+  kontrol('gizlilik.html pakette var', yanit.status() === 200, `HTTP ${yanit.status()}`);
+
+  await gizPage.goto(new global.URL(href, URL).href, { waitUntil: 'load' });
+  kontrol(
+    'politika sayfası açılıyor',
+    (await gizPage.getByRole('heading', { name: /Gizlilik Politikası/i }).count()) > 0,
+  );
+  /*
+   * Dönüş yolu: yerel kabukta sayfa aynı pencerede açılıyor, oyuncunun
+   * görünür bir çıkışı olmalı. Geçmiş varken görünmesi gerekiyor.
+   */
+  kontrol('geri bağlantısı görünür', await gizPage.getByRole('link', { name: /Geri/ }).isVisible());
+}
+await ctx3.close();
+
 await browser.close();
 await new Promise((coz) => sunucu.close(coz));
 await rele.kapat();

@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="index, follow" />
+    <title>Gizlilik Politikası — Filenin Sultanları</title>
+    <!--
+      TEK BAŞINA duran statik sayfa, oyunun içinde bir ekran değil.
+
+      Sebebi somut: bu adres mağaza listelemesine yazılıyor ve
+      inceleyen kişi, kullanıcı ya da bir kurum oraya doğrudan
+      tıklıyor. Oyunun React paketini yüklemesi gerekmemeli — hem
+      yavaş olurdu hem de oyunda bir hata olursa politika da
+      erişilemez hâle gelirdi. Burada yalnız HTML ve gömülü stil var.
+    -->
+    <style>
+      :root {
+        color-scheme: dark;
+        --kirmizi: #e30a17;
+        --zemin: #0e0e1a;
+        --panel: #1b1b2e;
+        --metin: #e8e8f0;
+        --sonuk: #a0a0b8;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--zemin);
+        color: var(--metin);
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        line-height: 1.7;
+      }
+      .kap { max-width: 720px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+      header { border-bottom: 4px solid var(--kirmizi); padding-bottom: 1rem; margin-bottom: 2rem; }
+      h1 { font-size: 1.5rem; margin: 0 0 .35rem; }
+      h2 { font-size: 1.05rem; margin: 2.25rem 0 .6rem; color: #fff; }
+      h3 { font-size: .95rem; margin: 1.5rem 0 .4rem; color: var(--sonuk); }
+      p, li { color: var(--metin); }
+      .tarih { color: var(--sonuk); font-size: .85rem; margin: 0; }
+      table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: .9rem; }
+      th, td { text-align: left; padding: .6rem .5rem; border-bottom: 1px solid #ffffff22; vertical-align: top; }
+      th { color: var(--sonuk); font-weight: 600; }
+      .kutu { background: var(--panel); border-left: 4px solid var(--kirmizi); padding: 1rem 1.1rem; margin: 1.5rem 0; }
+      .kutu p:first-child { margin-top: 0; }
+      .kutu p:last-child { margin-bottom: 0; }
+      ul { padding-left: 1.2rem; }
+      a { color: #ffd24a; }
+      code { background: #ffffff14; padding: .1rem .35rem; border-radius: 3px; font-size: .85em; }
+      footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #ffffff22; color: var(--sonuk); font-size: .85rem; }
+      .geri { display: inline-block; margin-bottom: 1.25rem; font-size: .9rem; text-decoration: none; }
+      .geri:hover { text-decoration: underline; }
+    </style>
+  </head>
+  <body>
+    <div class="kap">
+      <!--
+        GERİ bağlantısı. Yerel kabukta (Android) sayfa AYNI pencerede
+        açılıyor — WebView yeni sekme açamıyor — ve oyuncunun dönecek
+        görünür bir yolu olmalı. Donanım geri tuşu da çalışıyor ama
+        ona güvenmek yetmez: iOS'ta öyle bir tuş yok.
+
+        Geçmiş yoksa (bağlantı doğrudan mağaza listelemesinden
+        açıldıysa) gizleniyor — hiçbir yere gitmeyen bir düğme,
+        basılana kadar süren bir yalan.
+      -->
+      <a class="geri" id="geri" href="./" hidden>← Geri</a>
+      <script>
+        (function () {
+          var g = document.getElementById('geri');
+          if (window.history.length > 1) {
+            g.hidden = false;
+            g.addEventListener('click', function (e) {
+              e.preventDefault();
+              window.history.back();
+            });
+          }
+        })();
+      </script>
+      <header>
+        <h1>Gizlilik Politikası</h1>
+        <p class="tarih">Filenin Sultanları — Retro Voleybol · Son güncelleme: 4 Eylül 2026</p>
+      </header>
+
+      <div class="kutu">
+        <p>
+          <strong>Kısa hâli:</strong> Oyunu oynamak için hesap açmıyorsun.
+          Ad-soyad, e-posta, telefon, konum istemiyoruz. Reklam yok,
+          analitik yok, üçüncü taraf takip yok. Yalnız çevrimiçi maç
+          oynarsan senin yazdığın <strong>takma ad</strong> ve maç
+          sonuçların sunucumuzda tutulur — skor tablosu bunun için var.
+        </p>
+      </div>
+
+      <h2>1. Kim topluyor</h2>
+      <p>
+        Bu oyun bağımsız bir geliştirici tarafından yapılmıştır.
+        Aşağıdaki verileri işleyen taraf yalnızca oyunun kendisi ve
+        oyunun çevrimiçi maç sunucusudur. Verilerin satıldığı,
+        kiralandığı ya da reklam amacıyla paylaşıldığı bir taraf
+        <strong>yoktur</strong>.
+      </p>
+
+      <h2>2. Cihazında saklananlar</h2>
+      <p>
+        Aşağıdakiler yalnızca senin cihazında (tarayıcı deposunda)
+        durur, hiçbir sunucuya gönderilmez:
+      </p>
+      <table>
+        <thead>
+          <tr><th>Ne</th><th>Ne için</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Oyun tercihleri (ses, zorluk, kontrol ayarları, kadro)</td><td>Ayarların açılışta hatırlansın</td></tr>
+          <tr><td>Kişisel rekorlar (galibiyet, en uzun ralli, en çok smaç…)</td><td>İstatistik ekranı</td></tr>
+          <tr><td>Yarım kalan turnuva durumu</td><td>Turnuvaya kaldığın yerden devam</td></tr>
+          <tr><td>Kazanılan rozetler</td><td>Başarım listesi</td></tr>
+        </tbody>
+      </table>
+      <p>
+        Bunları silmek için uygulamanın verilerini temizlemen (ya da
+        tarayıcıda site verilerini silmen) yeterli. Silindiğinde geri
+        getirilemezler.
+      </p>
+
+      <h2>3. Çevrimiçi maç oynarsan sunucuda saklananlar</h2>
+      <p>
+        <strong>Yalnız çevrimiçi maça girersen.</strong> Oyunu tek
+        başına oynarsan sunucuyla hiçbir iletişim kurulmaz ve aşağıdaki
+        kayıtlardan hiçbiri oluşmaz.
+      </p>
+      <table>
+        <thead>
+          <tr><th>Ne</th><th>Ne için</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Takma ad</strong> — senin yazdığın ad</td>
+            <td>Rakibinin ekranında ve skor tablosunda görünsün</td>
+          </tr>
+          <tr>
+            <td><strong>Rastgele kimlik numarası</strong> — sunucunun ürettiği</td>
+            <td>Maçlarını ve puanını birbirine bağlamak</td>
+          </tr>
+          <tr>
+            <td><strong>Gizli anahtar özeti</strong> — anahtarın kendisi değil, tek yönlü özeti</td>
+            <td>Başkasının senin kimliğini kullanmasını engellemek</td>
+          </tr>
+          <tr>
+            <td><strong>Maç sonuçları</strong> — galibiyet, mağlubiyet, puan, maç sayısı, ilk kayıt ve son maç zamanı</td>
+            <td>Skor tablosu</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="kutu">
+        <p>
+          <strong>Takma ad senin seçimin.</strong> Oyun sana rastgele bir
+          ad öneriyor (örneğin "ATEŞLİ SMAÇ") ve bunu değiştirebilirsin.
+          <strong>Gerçek adını yazmak zorunda değilsin ve yazmamanı
+          öneririz</strong> — bu ad karşı oyuncunun ekranında ve herkese
+          açık skor tablosunda görünür.
+        </p>
+      </div>
+
+      <h3>Hesap yok</h3>
+      <p>
+        Şifre, e-posta doğrulaması ya da kimlik doğrulaması yok. Kimliğin
+        cihazında saklanan bir anahtardan ibaret. Bunun iki sonucu var ve
+        ikisini de açıkça söylemek gerekiyor:
+      </p>
+      <ul>
+        <li>Uygulamanın verilerini silersen ya da cihazını değiştirirsen <strong>skor tablosundaki geçmişini kaybedersin</strong> — "şifremi unuttum" diye bir kurtarma yolu yok, çünkü seni doğrulayacak bir e-posta da yok.</li>
+        <li>Buna karşılık senden hiçbir kişisel bilgi istemiyoruz.</li>
+      </ul>
+
+      <h3>IP adresi</h3>
+      <p>
+        Her internet bağlantısında olduğu gibi, sunucuya bağlandığında IP
+        adresin teknik olarak görülür. Bu adres <strong>kalıcı olarak
+        saklanmaz ve bir dosyaya yazılmaz</strong>. Yalnızca aynı adresten
+        aynı anda açılan bağlantı sayısı, kötüye kullanımı engellemek için
+        sunucunun belleğinde tutulur ve bağlantı kapandığında silinir.
+      </p>
+
+      <h2>4. Toplamadıklarımız</h2>
+      <p>
+        Mağaza formlarında tek tek sorulduğu için açıkça yazıyoruz.
+        Aşağıdakilerin hiçbiri toplanmıyor, işlenmiyor ve saklanmıyor:
+      </p>
+      <ul>
+        <li>Ad, soyad, doğum tarihi, cinsiyet</li>
+        <li>E-posta adresi, telefon numarası</li>
+        <li>Konum bilgisi (kaba ya da kesin)</li>
+        <li>Rehber, fotoğraflar, dosyalar, mikrofon, kamera</li>
+        <li>Reklam kimliği, cihaz parmak izi</li>
+        <li>Ödeme bilgisi (uygulama içi satın alma yok)</li>
+        <li>Çökme raporu, kullanım analitiği, ısı haritası</li>
+      </ul>
+      <p>
+        Uygulama <strong>üçüncü taraf</strong> bir analitik, reklam ya da
+        takip aracı içermiyor. Oyun açıldığında yalnızca kendi
+        sunucumuza (çevrimiçi maç için) bağlanır.
+      </p>
+
+      <h2>5. Çocuklar</h2>
+      <p>
+        Oyunda şiddet, kumar, satın alma ya da reklam yok. Yalnızca tek
+        bir kullanıcı etkileşimi var: çevrimiçi maçta karşı oyuncunun
+        <strong>takma adını görmek</strong>. Sohbet, mesajlaşma, ses ya
+        da görüntü paylaşımı <strong>yoktur</strong>.
+      </p>
+      <p>
+        Takma ad serbest metin olduğu için uygunsuz bir ad yazılabilir.
+        Böyle bir adla karşılaşırsan aşağıdaki adresten bildir; ilgili
+        kaydı siliyoruz.
+      </p>
+
+      <h2>6. Verinin saklanma süresi ve silinmesi</h2>
+      <p>
+        Skor tablosu kayıtları, silinmesini isteyene kadar saklanır.
+        Kaydının silinmesini istiyorsan aşağıdaki adrese oyundaki takma
+        adını yazarak ulaş — kaydı (takma ad, kimlik numarası, maç
+        sonuçları) tamamen sileriz.
+      </p>
+      <p>
+        Cihazındaki veriler için bize başvurmana gerek yok: uygulamanın
+        verilerini temizlemen yeterli.
+      </p>
+
+      <h2>7. Veri nerede tutuluyor</h2>
+      <p>
+        Çevrimiçi maç sunucusu Almanya'da barındırılmaktadır. Veriler
+        şifreli bağlantı (<code>wss://</code> — TLS) üzerinden taşınır.
+      </p>
+
+      <h2>8. Bu politika değişirse</h2>
+      <p>
+        Değişiklik olursa bu sayfadaki tarih güncellenir. Topladığımız
+        veri türünde bir genişleme olursa bunu uygulama içinde de
+        duyururuz.
+      </p>
+
+      <h2>9. İletişim</h2>
+      <p>
+        Soru, silme talebi ya da şikâyet için:
+        <a href="mailto:niyazionderr@gmail.com">niyazionderr@gmail.com</a>
+      </p>
+
+      <footer>
+        <p>
+          Filenin Sultanları — Türkiye Kadın Millî Voleybol Takımı'na
+          adanmış, kâr amacı gütmeyen bir hayran projesidir. Türkiye
+          Voleybol Federasyonu ile resmî bir bağı yoktur.
+        </p>
+      </footer>
+    </div>
+  </body>
+</html>

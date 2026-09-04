@@ -24,9 +24,11 @@ kullanıyor. İkisi de mağaza incelemesinde ve sonrasında sorun çıkarabilir
 — Apple ve Google, telif sahibinin şikâyetiyle uygulamayı yayından
 kaldırıyor ve hesaba yaptırım uygulayabiliyor.
 
-TVF'den cevap gelmeden **yayınlama.** Aşağıdaki hazırlıkların hepsi bu
-cevaptan bağımsız yapılabilir; yalnız "yayınla" düğmesine basmak
-bekliyor.
+TVF'den cevap gelmeden **herkese açık yayınlama.** Aşağıdaki
+hazırlıkların hepsi bu cevaptan bağımsız yapılabilir — **kapalı test**
+kanalına yükleme dahil, çünkü orada uygulama mağazada listelenmiyor,
+yalnız senin davet ettiğin hesaplar kurabiliyor. Bekleyen tek şey
+"üretime çıkar" düğmesi.
 
 ---
 
@@ -57,105 +59,176 @@ bekliyor.
   - `?rele=` ezmesinin üretimde çalışmadığı.
 - **Paketleme ön denetimi.** `npm run paket`, röle adresi eksik, yerel
   ya da şifresizse yapıyı durduruyor.
+- **Sürüm numarası tek kaynaktan.** `android/app/build.gradle` sürümü
+  `package.json`'dan okuyor (1.2.3 → `versionCode 10203`). Şablondaki
+  sabit `versionCode 1` ikinci yüklemede reddedilirdi ve bunu ancak
+  dosyayı Play Console'a yükledikten sonra görürdük.
+- **Yayın imzası yapılandırması.** `android/keystore.properties` varsa
+  `bundleRelease` imzalı üretiyor, yoksa imzasız. Anahtar ve parolalar
+  `.gitignore`'da.
+- **`targetSdk 35`.** Şablon 34 ile geliyordu; Play Store 2025'ten beri
+  34'ü reddediyor.
+- **Gizlilik politikası** — `public/gizlilik.html`, ayarlar ekranından
+  bağlantılı. Aşağıda ayrıntısı var.
+- **Mağaza ekran görüntüsü betiği** — `npm run magaza-gorsel`.
+- **`.aab` üreten CI işi** — `.github/workflows/aab.yml`. Aşağıda.
 
 ---
 
 ## 🔧 Sende olanlar
 
-### 1. Geliştirme ortamı
+### 1. `.aab` üretimi — Android Studio kurmadan
 
-Android için:
+**Önce dürüst olan kısım:** bu paketi ben bu ortamda üretemedim.
+Kaptaki ağ vekili `dl.google.com`'a 403 dönüyor, yani Android SDK
+indirilemiyor. JDK ve Gradle var, Gradle dosyalarının sözdizimini
+doğruladım (üçü de temiz), ama `bundleRelease` SDK olmadan çalışmıyor.
 
-| Gereken | Neden |
-|---|---|
-| **JDK 17** | Gradle bunu istiyor |
-| **Android Studio** | SDK, emülatör ve imzalama arayüzü |
+Bunun yerine işi **GitHub Actions**'a taşıdım: GitHub'ın ubuntu
+koşucularında Android SDK **kurulu geliyor**. Sonuç olarak senin
+makinene Android Studio kurman `.aab` almak için **gerekmiyor**.
+(Emülatörde denemek istersen yine kurabilirsin, ama yayın dosyası için
+şart değil.)
 
-iOS için **Mac ve Xcode şart.** Apple başka yol bırakmıyor. Elinde Mac
-yoksa seçenekler: bir Mac ödünç almak, bulut Mac kiralamak (MacStadium,
-MacinCloud — aylık ücretli), ya da **önce yalnız Android'e çıkmak.**
-Android'den başlamak makul: hem ücret bir kereye mahsus hem de inceleme
-süreci daha hızlı.
+#### Bir kerelik kurulum
 
-### 2. Android yapısı
+**1) İmza anahtarını üret** — kendi makinende, JDK ile gelen `keytool`:
+
+```bash
+keytool -genkey -v -keystore sultanlar.jks \
+  -keyalg RSA -keysize 2048 -validity 10000 -alias sultanlar
+```
+
+**Bu dosyayı kaybetme.** Kaybedersen uygulamayı bir daha
+güncelleyemezsin — Google yeni anahtarla yüklemeyi kabul etmiyor,
+uygulamayı sıfırdan yayınlamak zorunda kalırsın ve mevcut kullanıcılar
+güncelleme alamaz. Depoya da koyma (`.gitignore`'da dışlı; Capacitor'ın
+şablonunda bu satırlar yorumdaydı, açtım): anahtara erişen herkes senin
+adına güncelleme imzalayabilir.
+
+Sakla: parola yöneticisi + şifreli ayrı bir yedek.
+
+**2) Anahtarı base64'e çevir** (dosya doğrudan secret olamıyor):
+
+```bash
+base64 -w0 sultanlar.jks > sultanlar.b64      # Linux
+base64 -i sultanlar.jks | tr -d '\n'          # macOS
+```
+
+**3) GitHub → Settings → Secrets and variables → Actions:**
+
+| Tür | Ad | Değer |
+|---|---|---|
+| Secret | `KEYSTORE_BASE64` | 2. adımdaki uzun metin |
+| Secret | `KEYSTORE_PASSWORD` | anahtar deposu parolası |
+| Secret | `KEY_ALIAS` | `sultanlar` |
+| Secret | `KEY_PASSWORD` | anahtar parolası |
+| Variable | `VITE_RELE_URL` | `wss://rele-178-104-2-249.sslip.io` |
+
+Röle adresi neden secret **değil**: zaten istemci paketinin içinde,
+herkes görebiliyor. Secret'a koymak gizlilik değil, yanlış bir güven
+duygusu verirdi.
+
+#### Kullanım
+
+GitHub → **Actions** → **android aab** → **Run workflow**.
+
+Bittiğinde koşumun altındaki **Artifacts** bölümünden `.aab` iniyor;
+doğrudan Play Console'a yükleniyor.
+
+İş yalnız elle tetikleniyor. Her push'ta paket üretmek gereksiz olurdu:
+sürüm numarası değişmediği sürece aynı dosya üst üste yığılırdı.
+
+İçindeki iki denetim, mağazaya yükledikten sonra öğrenilecek iki şeyi
+önden yakalıyor:
+- `npm run paket` ön denetimi — röle adresi eksik/yerel/şifresizse durur.
+- İmza denetimi — Gradle imzasız paketi de sessizce üretiyor; iş
+  bitmeden `unzip -l` ile imza var mı diye bakıyoruz.
+
+#### Yerelde yapmak istersen
+
+Android Studio (ya da yalnız `cmdline-tools` + JDK 17) kuruluysa:
 
 ```bash
 npm ci
 VITE_RELE_URL=wss://rele-178-104-2-249.sslip.io npm run paket
-npx cap open android
+cp android/keystore.properties.ornek android/keystore.properties  # doldur
+cd android && ./gradlew bundleRelease
+# → android/app/build/outputs/bundle/release/app-release.aab
 ```
 
-Son komut Android Studio'yu açıyor. Oradan:
-- **Deneme:** Run → bağlı cihaz/emülatör.
-- **Yayın:** Build → Generate Signed Bundle / APK → **Android App Bundle (.aab)**.
-  Play Store artık APK değil AAB istiyor.
+`npx cap open android` ile Android Studio'da açıp emülatörde de
+deneyebilirsin.
 
-`VITE_RELE_URL` **şart** ve `npm run paket` bunu artık denetliyor:
-adres verilmezse, yerel (`localhost`) bir adres verilirse ya da
-şifresiz (`ws://`) verilirse yapı **durur** ve sebebini söyler.
-
-Denetim eklenmeden önce bu gerçekten yaşandı: paket testinin bıraktığı
+`VITE_RELE_URL` **şart** ve `npm run paket` bunu denetliyor. Denetim
+eklenmeden önce bu gerçekten yaşandı: paket testinin bıraktığı
 `ws://localhost:8805` hem `dist/` hem Android kopyasında duruyordu.
 Öyle paketlenseydi uygulama telefonda kendi kendine bağlanmaya
 çalışırdı ve oyuncu "çevrimiçi çalışmıyor" derdi — hiçbir hata mesajı
 olmadan.
 
-### 3. İmza anahtarı
+### 2. Mağaza hesapları
 
-İlk yayında Android Studio bir anahtar (`.jks`) üretmeni isteyecek.
-
-**Bu dosyayı kaybetme.** Kaybedersen uygulamayı bir daha
-güncelleyemezsin — Google yeni anahtarla yüklemeyi kabul etmiyor,
-uygulamayı sıfırdan yayınlamak zorunda kalırsın ve mevcut kullanıcılar
-güncelleme alamaz. Depoya da koyma (`.gitignore`'da zaten dışlı):
-anahtara erişen herkes senin adına güncelleme imzalayabilir.
-
-Sakla: parola yöneticisi, şifreli yedek, ya da fiziksel bir kopya.
-
-### 4. Mağaza hesapları
-
-| Mağaza | Ücret |
-|---|---|
-| Google Play Console | 25 USD (bir kereye mahsus) |
-| Apple Developer | 99 USD / yıl |
-
-### 5. Gizlilik politikası — **zorunlu**
-
-İki mağaza da istiyor ve bizim durumumuzda gerçekten gerekli, çünkü
-veri topluyoruz. Politikada dürüstçe yazılması gerekenler:
-
-| Ne topluyoruz | Nerede duruyor | Neden |
+| Mağaza | Ücret | Durum |
 |---|---|---|
-| Takma ad (oyuncunun yazdığı) | Sunucuda + cihazda | Rakibin ekranında görünsün |
-| Rastgele kimlik numarası | Sunucuda + cihazda | Skor tablosu anahtarı |
-| Maç sonuçları (galibiyet/mağlubiyet/puan) | Sunucuda | Skor tablosu |
-| Oyun tercihleri, rekorlar | Yalnız cihazda | Ayarlar |
+| Google Play Console | 25 USD (bir kereye mahsus) | ✅ sende var |
+| Apple Developer | 99 USD / yıl | — (iOS sonraya) |
 
-**Toplamadığımız** şeyler de yazılmalı, çünkü mağaza formunda tek tek
-soruluyor: ad-soyad yok, e-posta yok, telefon yok, konum yok, reklam
-kimliği yok, üçüncü taraf analitik yok, reklam yok.
+iOS için **Mac ve Xcode şart.** Apple başka yol bırakmıyor — GitHub
+Actions'ın macOS koşucuları teoride çözer ama sertifika/provisioning
+kurulumu Android'dekinden çok daha uzun bir iş. Önce Android'e çıkmak
+makul: ücret bir kereye mahsus ve inceleme daha hızlı.
 
-IP adresi bağlantı sırasında zorunlu olarak görülüyor (her sunucuda
-öyle) ve kalıcı olarak saklanmıyor — yalnız aynı IP'den açılan
-bağlantı sayısı, kötüye kullanımı engellemek için bellekte tutuluyor.
+### 3. Gizlilik politikası — ✅ hazır
 
-Politikanın herkese açık bir adreste durması gerekiyor. Oyunun kendi
-sitesinde bir sayfa yeterli.
+`public/gizlilik.html` → yayında `https://<site>/gizlilik.html`.
+Ayarlar ekranına da bağlantı kondu.
 
-### 6. Mağaza görselleri
+Oyunun React paketinden bağımsız, tek başına duran statik bir sayfa:
+mağaza incelemecisi doğrudan tıklıyor ve oyunda bir hata olsa bile
+politikanın erişilebilir kalması gerekiyor.
+
+İçerik **koddan doğrulanarak** yazıldı, tahminle değil:
+
+| Ne | Nerede | Kod |
+|---|---|---|
+| Tercihler, rekorlar, turnuva, rozetler | Yalnız cihazda | 4 `localStorage` anahtarı |
+| Takma ad, kimlik no, anahtar özeti, maç sonuçları | Sunucuda | `sunucu/depo.js` |
+| IP adresi | Yalnız bellekte, bağlantı kapanınca siliniyor | `sunucu/rele.js` |
+
+Üçüncü taraf analitik/reklam/takip **yok** — kodda `fetch` yalnız bir
+yerde geçiyor (`src/game/audio.js`, kendi paketimizdeki müzik dosyası).
+
+Mağaza formunu doldururken **"Kullanıcılar arası etkileşim var"** ve
+**"Kullanıcı adı toplanıyor"** kutularını işaretle; ikisi de doğru.
+
+### 4. Mağaza görselleri
 
 | Ne | Boyut | Durum |
 |---|---|---|
-| Uygulama ikonu | 512×512 | ✅ `npm run ikon` üretiyor → `tests/ciktilar/play-store-ikon-512.png` |
-| Öne çıkan görsel | 1024×500 | ❌ gerekli |
-| Ekran görüntüsü (telefon) | en az 2 adet | ❌ gerekli |
-| Ekran görüntüsü (tablet) | isteğe bağlı | — |
+| Uygulama ikonu | 512×512 | ✅ `npm run ikon` → `tests/ciktilar/play-store-ikon-512.png` |
+| Ekran görüntüsü (telefon) | 2732×1536, en az 2 adet | ✅ `npm run magaza-gorsel` |
+| Ekran görüntüsü (tablet) | 2560×1600 | ✅ aynı betik |
+| Öne çıkan görsel | 1024×500 | 🔸 **sende** |
 
-Ekran görüntülerini elle almana gerek yok: tarayıcı testleri zaten
-`tests/ciktilar/` altına gerçek cihaz boyutlarında görüntü yazıyor.
-İstersen bunları mağaza boyutlarında üretecek bir betik yazabilirim.
+```bash
+npm run dev            # bir uçbirimde açık kalsın
+npm run magaza-gorsel  # başka uçbirimde
+# → tests/ciktilar/magaza/
+```
 
-### 7. İçerik derecelendirmesi
+Menü, kadro seçimi, maç ve (röle adresi tanımlıysa) çevrimiçi ekranı
+için ayrı ayrı kare üretiyor. Maç karesi **kuruluyor**, rastgele
+yakalanmıyor: skor 22–20, top havada, bir oyuncu smaçta. Rastgele bir
+an çoğu zaman topun aut olduğu, kimsenin bir şey yapmadığı sıkıcı bir
+kare oluyor.
+
+Boyutlar ölçülerek seçildi. İlk denemede 1920×1080 kullandım ve
+görüntünün alt %22'si boş siyah bant çıktı — oyun kendini ~1148×638'de
+sınırlıyor. Pencere/saha doldurma oranını ölçüp 1366×768'i seçtim (%71,
+ölçülen en iyisi), `deviceScaleFactor: 2` ile çıktı 2732×1536.
+
+### 5. İçerik derecelendirmesi
 
 İki mağazada da bir anket dolduruluyor. Bu oyun için cevaplar sade:
 şiddet yok, ürkütücü içerik yok, kumar yok, satın alma yok, reklam yok.
@@ -181,10 +254,16 @@ görünüyor. Bunu belirtmemek sonradan sorun çıkarır.
 
 ## Sırada ne var
 
-1. **Telif cevabı** — her şeyin önünde. (TVF'den bekleniyor.)
-2. Google Play Console hesabı (25 USD).
-3. Gizlilik politikası sayfası.
-4. Mağaza görselleri (öne çıkan görsel + ekran görüntüleri).
-5. İlk imzalı `.aab` ve **kapalı test** kanalına yükleme — kendi
-   telefonunda gerçek mağaza kurulumuyla denemek için.
-6. iOS: Mac erişimi çözülünce.
+1. ~~Google Play Console hesabı~~ ✅
+2. ~~Gizlilik politikası~~ ✅ `public/gizlilik.html`
+3. ~~Ekran görüntüsü üretimi~~ ✅ `npm run magaza-gorsel`
+4. **İmza anahtarını üret ve GitHub secret'larını gir** (yukarıda,
+   bölüm 1). Bundan sonrası tek tık.
+5. **Öne çıkan görsel** (1024×500) — sende.
+6. **İlk imzalı `.aab`** → Play Console **kapalı test** kanalı. Yayın
+   değil: kendi telefonunda gerçek mağaza kurulumuyla denemek için.
+   Kapalı test telif cevabından bağımsız yapılabilir — uygulama
+   herkese açık listelenmiyor.
+7. **Telif cevabı** — herkese açık yayının önünde duran tek şey.
+   (TVF'den bekleniyor.)
+8. iOS: Mac erişimi çözülünce.

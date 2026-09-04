@@ -402,6 +402,19 @@ npm run e2e      # Tarayıcı testleri — düzen, dokunmatik girdi, masaüstü
 npm run olcum    # Denge ölçümü (sayı üretir, geçti/kaldı değil)
 ```
 
+Mağaza (Android) tarafı:
+
+```bash
+npm run paket          # ön denetim + build + Capacitor eşitleme
+npm run e2e:paket      # dist'i düz dosya sunucusundan aç — WebView gibi
+npm run ikon           # uygulama ikonu (oyunun kendi çizim koduyla)
+npm run magaza-gorsel  # mağaza ekran görüntüleri (önce `npm run dev`)
+```
+
+İmzalı `.aab` GitHub Actions'ta üretiliyor
+(`.github/workflows/aab.yml`, elle tetikleniyor) — yerel Android SDK
+kurulumu gerekmiyor. Ayrıntı: [`MAGAZA.md`](MAGAZA.md).
+
 `npm run e2e` kendi geliştirme sunucusunu açar ve gerçek tarayıcıda,
 gerçek dokunuş olaylarıyla çalışır. Ayrıntı ve yazım notları:
 [`tests/README.md`](tests/README.md).
