@@ -985,14 +985,37 @@ export default class Game {
   /**
    * Misafirde son durum paketinden bu yana geçen süre (sn).
    *
-   * Ev sahibinin sekmesi arka plana geçerse ya da bağlantısı takılırsa
-   * paketler durur ama soket açık kalır: misafirin ekranı donar ve
-   * hiçbir açıklama görünmez. Maç ekranı bu değere bakıp "rakip
-   * bekleniyor" diyor.
+   * Sunucunun akışı durursa paketler kesilir ama soket açık kalır:
+   * ekran donar ve hiçbir açıklama görünmez. Maç ekranı bu değere
+   * bakıp "rakip bekleniyor" diyor.
+   *
+   * HİÇ PAKET GELMEDİYSE de sayaç işliyor. Önce `agSonPaketAn === null`
+   * durumunda 0 dönüyordu ve bunun bedeli ağırdı: maç kuruluyor,
+   * sunucudan tek bir durum paketi gelmiyor, ekran ilk karede donuyor
+   * ve bekçi HİÇBİR ŞEY söylemiyordu — çünkü "son paketten beri geçen
+   * süre" diye bir şey yoktu. Yani bekçinin var olma sebebi olan
+   * senaryonun en kötü hâli, tam da göremediği hâliydi. Gerçekte
+   * yaşandı: iki oyuncu "HAZIR OL 2" ekranında kaldı ve oyun onlara
+   * neyin yanlış olduğunu söylemedi.
+   *
+   * Hiç paket gelmemişse ölçü maçın başlangıcından alınıyor: misafirde
+   * `time` sıfırdan başlıyor ve `misafirGuncelle` ile akıyor.
    */
   agSessizlik() {
-    if (this.agRol !== 'misafir' || this.agSonPaketAn === null) return 0;
-    return Math.max(0, this.time - this.agSonPaketAn);
+    if (this.agRol !== 'misafir') return 0;
+    return Math.max(0, this.time - (this.agSonPaketAn ?? 0));
+  }
+
+  /**
+   * Sunucudan hiç durum paketi geldi mi?
+   *
+   * Sessizliğin İKİ ayrı sebebi var ve çareleri de ayrı:
+   *   • Akış başladı, sonra kesildi → geçici; beklemek çoğu zaman yeter.
+   *   • Akış hiç başlamadı → maç sunucuda koşmuyor; beklemek çare değil.
+   * Ekran ikisini aynı cümleyle geçiştirirse oyuncu boşuna bekler.
+   */
+  agAkisBasladiMi() {
+    return this.agSonPaketAn !== null;
   }
 
   /**

@@ -11,6 +11,8 @@
  */
 
 import { baslat } from '../../sunucu/rele.js';
+// Akışı hiç başlatmayan bir maç kurabilmek için — aşağıda gerekçesi var
+import { Mac } from '../../sunucu/mac.js';
 import {
   tarayiciAc, masaustuBaglam, mobilBaglam, URL, VARSAYILAN_TERCIH, kontrolcu, tusKutulari,
 } from './yardim.mjs';
@@ -293,6 +295,65 @@ kontrol(
   'akış dönünce uyarı kayboluyor',
   !(await misafir.page.getByText('RAKİP BEKLENİYOR').isVisible().catch(() => false)),
 );
+
+// --- Akış HİÇ başlamazsa ---
+/*
+ * Gerçekten yaşandı: oda kuruldu, misafir katıldı, iki taraf da maç
+ * ekranına geçti ve orada DONDU — "HAZIR OL 2" karesinde, top ilk
+ * konumunda. Sunucudan tek bir durum paketi gelmemişti.
+ *
+ * Asıl kötü olan sessizlikti. Bekçi "son paketten beri geçen süre"ye
+ * bakıyordu; son paket hiç olmadığı için sıfır dönüyor ve hiçbir uyarı
+ * çıkmıyordu. Yani bekçinin var olma sebebi olan durumun en ağır hâli,
+ * tam da göremediği hâliydi.
+ *
+ * Burada maçın akışını hiç başlatmıyoruz: `Mac` kuruluyor, iki
+ * istemciye `mac` mesajı gidiyor, ama motor hiç dönmüyor.
+ */
+const asilBaslat = Mac.prototype.baslat;
+Mac.prototype.baslat = function sessiz() {};
+
+const sessizEv = await oyuncuAc('SESSIZ-EV');
+const sessizMisafir = await oyuncuAc('SESSIZ-MISAFIR');
+await lobiyeGit(sessizEv.page);
+await sessizEv.page.getByRole('button', { name: /^ODA AÇ$/ }).click();
+await sessizEv.page.waitForTimeout(900);
+const sessizKod = (
+  await sessizEv.page.locator('.tracking-\\[0\\.3em\\]').first().textContent()
+)?.trim();
+await lobiyeGit(sessizMisafir.page);
+await sessizMisafir.page.getByRole('button', { name: /KODLA KATIL/ }).click();
+await sessizMisafir.page.waitForTimeout(300);
+await sessizMisafir.page.getByLabel('ODA KODU').fill(sessizKod);
+await sessizMisafir.page.getByRole('button', { name: /^KATIL$/ }).click();
+await sessizMisafir.page.waitForTimeout(3000);
+
+kontrol(
+  'akış hiç başlamazsa maç ekranına geçiliyor (arızanın koşulu)',
+  (await sessizMisafir.page.locator('canvas').count()) > 0,
+);
+kontrol(
+  'akış hiç başlamazsa ekran sebebini SÖYLÜYOR',
+  await sessizMisafir.page
+    .getByText('MAÇ SUNUCUDA BAŞLAMADI')
+    .isVisible()
+    .catch(() => false),
+);
+/*
+ * "Rakip bekleniyor" DEMEMELİ: rakip orada ve beklemek çare değil.
+ * Yanlış cümle oyuncuyu boşuna bekletir, üstelik rakibini suçlar.
+ */
+kontrol(
+  'yanlış sebebi göstermiyor ("rakip bekleniyor" değil)',
+  !(await sessizMisafir.page
+    .getByText('RAKİP BEKLENİYOR')
+    .isVisible()
+    .catch(() => false)),
+);
+
+await sessizEv.ctx.close();
+await sessizMisafir.ctx.close();
+Mac.prototype.baslat = asilBaslat;
 
 // --- Ayrılınca karşı taraf haber alıyor mu ---
 await misafir.page.close();

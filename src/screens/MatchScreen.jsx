@@ -299,6 +299,12 @@ export default function MatchScreen({
    * söylemek gerekiyor, çünkü çaresi de oyuncuda: sayfayı yenilemek.
    */
   const [agSurumSorunu, setAgSurumSorunu] = useState(false);
+  /*
+   * Akış hiç başlamadı mı, yoksa başlayıp mı kesildi — ayrı tutuluyor
+   * çünkü oyuncunun yapacağı şey ayrı. Kesilen akış çoğu zaman geri
+   * geliyor; hiç başlamayan akış beklemekle düzelmiyor.
+   */
+  const [agHicBaslamadi, setAgHicBaslamadi] = useState(false);
   useEffect(() => {
     if (config.agRol !== 'misafir') return undefined;
     const sayac = setInterval(() => {
@@ -306,6 +312,7 @@ export default function MatchScreen({
       if (!game) return;
       setAgBekliyor(game.agSessizlik() > AG_SESSIZLIK_SINIRI);
       setAgSurumSorunu(game.agSurumUyusmazligi);
+      setAgHicBaslamadi(!game.agAkisBasladiMi());
     }, 400);
     return () => clearInterval(sayac);
   }, [config.agRol]);
@@ -731,14 +738,30 @@ export default function MatchScreen({
             className="pointer-events-none absolute inset-x-0 top-1/2 z-20 -translate-y-1/2 text-center"
             role="status"
           >
-            {agSurumSorunu ? (
+            {agSurumSorunu && (
               <p className="mx-auto inline-block max-w-xs border-4 border-white/25 bg-black/85 px-4 py-2 text-[9px] leading-relaxed text-turkiye-red">
                 SÜRÜM UYUŞMUYOR
                 <span className="mt-2 block text-[7px] text-white/60">
                   Sayfayı yenile. Sorun sürerse iki taraf da yenilesin.
                 </span>
               </p>
-            ) : (
+            )}
+            {/*
+              Akış hiç başlamadı: maç kuruldu ama sunucudan tek bir
+              durum paketi gelmedi. Beklemenin faydası yok, o yüzden
+              "rakip bekleniyor" demek yanıltıcı olurdu — oyuncu
+              rakibini suçlar ve oturup bekler.
+            */}
+            {!agSurumSorunu && agHicBaslamadi && (
+              <p className="mx-auto inline-block max-w-xs border-4 border-white/25 bg-black/85 px-4 py-2 text-[9px] leading-relaxed text-turkiye-red">
+                MAÇ SUNUCUDA BAŞLAMADI
+                <span className="mt-2 block text-[7px] text-white/60">
+                  Bağlantı ayakta ama oyun durumu gelmiyor. Menüye dönüp
+                  yeniden dene; sürerse sunucu güncellenmeli.
+                </span>
+              </p>
+            )}
+            {!agSurumSorunu && !agHicBaslamadi && (
               <p className="mx-auto inline-block border-4 border-white/25 bg-black/85 px-4 py-2 text-[9px] text-retro-accent">
                 RAKİP BEKLENİYOR…
               </p>
