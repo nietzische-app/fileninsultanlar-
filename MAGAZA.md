@@ -92,14 +92,28 @@ makinene Android Studio kurman `.aab` almak için **gerekmiyor**.
 
 #### Bir kerelik kurulum
 
-**1) İmza anahtarını üret** — kendi makinende, JDK ile gelen `keytool`:
+**1) Anahtarı üret — tek komut:**
 
 ```bash
-keytool -genkey -v -keystore sultanlar.jks \
-  -keyalg RSA -keysize 2048 -validity 10000 -alias sultanlar
+bash scripts/imza-uret.sh
 ```
 
-**Bu dosyayı kaybetme.** Kaybedersen uygulamayı bir daha
+Betik ne yapıyor: `keytool`u doğru argümanlarla çağırıyor, hangi
+sorunun ne olduğunu önceden yazıyor, parolada ters bölü olmaması
+gerektiğini hatırlatıyor, base64'ü üretiyor ve **geri çözüp bayt bayta
+karşılaştırarak** doğruluyor. Sonunda GitHub'a girilecek beş değeri
+adıyla listeliyor.
+
+Makinende `keytool` yoksa (JDK kurulu değilse) betik Docker'la geçici
+bir JDK kabı kullanıyor — kalıcı bir kurulum gerekmiyor.
+
+Çıktı `~/filenin-imza/` altına yazılıyor; **bilerek depo dizinine
+değil**, yanlışlıkla commit edilmesin diye.
+
+`keytool` sırayla soracak: parola (iki kez) → ad → kurum/şehir/ülke
+(hepsi Enter'la geçilebilir) → `yes` → anahtar parolası (Enter = aynısı).
+
+**Anahtar dosyasını kaybetme.** Kaybedersen uygulamayı bir daha
 güncelleyemezsin — Google yeni anahtarla yüklemeyi kabul etmiyor,
 uygulamayı sıfırdan yayınlamak zorunda kalırsın ve mevcut kullanıcılar
 güncelleme alamaz. Depoya da koyma (`.gitignore`'da dışlı; Capacitor'ın
@@ -108,22 +122,23 @@ adına güncelleme imzalayabilir.
 
 Sakla: parola yöneticisi + şifreli ayrı bir yedek.
 
-**2) Anahtarı base64'e çevir** (dosya doğrudan secret olamıyor):
-
-```bash
-base64 -w0 sultanlar.jks > sultanlar.b64      # Linux
-base64 -i sultanlar.jks | tr -d '\n'          # macOS
-```
-
-**3) GitHub → Settings → Secrets and variables → Actions:**
+**2) GitHub → Settings → Secrets and variables → Actions:**
 
 | Tür | Ad | Değer |
 |---|---|---|
-| Secret | `KEYSTORE_BASE64` | 2. adımdaki uzun metin |
-| Secret | `KEYSTORE_PASSWORD` | anahtar deposu parolası |
+| Secret | `KEYSTORE_BASE64` | `~/filenin-imza/sultanlar.b64` dosyasının içeriği |
+| Secret | `KEYSTORE_PASSWORD` | belirlediğin parola |
 | Secret | `KEY_ALIAS` | `sultanlar` |
-| Secret | `KEY_PASSWORD` | anahtar parolası |
+| Secret | `KEY_PASSWORD` | aynı parola (Enter'la aynısını seçtiysen) |
 | Variable | `VITE_RELE_URL` | `wss://rele-178-104-2-249.sslip.io` |
+
+Secret'lar **Secrets** sekmesinde ("New repository secret"),
+`VITE_RELE_URL` ise **Variables** sekmesinde ("New repository
+variable") — ikisi ayrı sekme, karıştırılması kolay.
+
+Uzun metni panoya almak: `xclip -sel clip < ~/filenin-imza/sultanlar.b64`
+(Linux) ya da `pbcopy < ~/filenin-imza/sultanlar.b64` (macOS).
+Yapıştırdıktan sonra `.b64` dosyasını sil — anahtarın kendisini **değil**.
 
 Röle adresi neden secret **değil**: zaten istemci paketinin içinde,
 herkes görebiliyor. Secret'a koymak gizlilik değil, yanlış bir güven
