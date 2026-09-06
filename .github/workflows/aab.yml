@@ -12,10 +12,10 @@
 #
 # ── ÖNCE YAPILACAKLAR (bir kez) ────────────────────────────────────
 #
-# 1) İmza anahtarını üret (kendi makinende, JDK ile gelen keytool):
+# 1) İmza anahtarını üret — KENDİ MAKİNENDE, sunucuda değil:
 #
-#      keytool -genkey -v -keystore sultanlar.jks \
-#        -keyalg RSA -keysize 2048 -validity 10000 -alias sultanlar
+#      Windows : .\scripts\imza-uret.ps1
+#      mac/Linux: bash scripts/imza-uret.sh
 #
 #    ANAHTARI KAYBETME. Kaybedersen uygulamayı bir daha
 #    güncelleyemezsin — Google yeni anahtarla yüklemeyi kabul etmiyor.
@@ -60,6 +60,11 @@ on:
         description: 'İmzalı paket üret (anahtar secret olarak tanımlıysa)'
         type: boolean
         default: true
+
+# En az yetki: bu iş yalnızca kodu OKUYOR. Varsayılan jeton yazma
+# yetkisiyle geliyor ve bir adımın kaçak kullanması için sebep yok.
+permissions:
+  contents: read
 
 jobs:
   aab:
