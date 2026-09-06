@@ -60,6 +60,23 @@ on:
         description: 'İmzalı paket üret (anahtar secret olarak tanımlıysa)'
         type: boolean
         default: true
+  #
+  # BU TETİK İŞ YAPMAZ — yalnızca GitHub'ın bu dosyayı TANIMASI için.
+  #
+  # Sorun şuydu: yalnız `workflow_dispatch` taşıyan bir iş, Actions
+  # listesinde hiç görünmedi. Dosya iki dalda da duruyordu, YAML
+  # kusursuzdu, ama GitHub API'si dosya adıyla sorulduğunda 404
+  # döndürüyordu — yani iş hiç kaydedilmemişti ve "Run workflow"
+  # düğmesi de doğal olarak yoktu. Dosyaya dokunmak da yeniden
+  # adlandırmak da işe yaramadı.
+  #
+  # GitHub bir işi, ona KOŞUM ürettiğinde de kaydediyor. Bu tetik tam
+  # olarak bunun için var: yalnızca bu dosya değiştiğinde ateşleniyor
+  # ve aşağıdaki `if` sayesinde iş ATLANIYOR. Yani koşum oluşuyor
+  # (kayıt için yeter), dakika harcanmıyor, imzasız paket üretilmiyor.
+  push:
+    paths:
+      - '.github/workflows/android-aab.yml'
 
 # En az yetki: bu iş yalnızca kodu OKUYOR. Varsayılan jeton yazma
 # yetkisiyle geliyor ve bir adımın kaçak kullanması için sebep yok.
@@ -68,6 +85,9 @@ permissions:
 
 jobs:
   aab:
+    # Gerçek iş YALNIZCA elle tetiklenince koşuyor. Yukarıdaki push
+    # tetiği kayıt içindi; onun ürettiği koşumda bu iş atlanıyor.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
