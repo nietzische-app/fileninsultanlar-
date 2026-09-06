@@ -82,7 +82,12 @@ keytool simdi sirayla sunlari soracak:
      -> hepsi BOS birakilabilir, Enter'a basip gec
   5. Is CN=... correct?       -> "yes" yaz (sadece "y" yetmiyor)
   6. key password (RETURN if same as keystore password)
-     -> Enter'a bas, ayni parola kullanilsin
+     -> Enter'a bas, ayni parola kullanilsin.
+
+     BU ADIM CIKMAYABILIR ve cikmamasi normal: JDK 9'dan beri
+     varsayilan depo bicimi PKCS12 ve orada ayri bir anahtar parolasi
+     yok. Sormadiysa anahtar parolasi = depo parolasidir; GitHub'da
+     KEY_PASSWORD alanina da ayni parolayi yaz.
 
 PAROLA KURALI: icinde ters bolu (\) OLMASIN.
 Parola Java'nin Properties biciminde saklaniyor ve orada "\" kacis

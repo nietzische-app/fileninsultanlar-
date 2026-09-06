@@ -88,8 +88,12 @@ keytool şimdi sırayla şunları soracak:
        sertifikanın içinde durur, mağazada kimseye gösterilmez.
   5. Is CN=... correct?         → "yes" yaz (sadece "y" yetmiyor)
   6. key password (RETURN if same as keystore password)
-     → Enter'a bas, aynı parolayı kullansın. İki ayrı parola tutmanın
-       bu projede bir faydası yok, karıştırma riski var.
+     → Enter'a bas, aynı parolayı kullansın.
+
+     BU ADIM ÇIKMAYABİLİR ve çıkmaması normal: JDK 9'dan beri
+     varsayılan depo biçimi PKCS12 ve orada ayrı bir anahtar parolası
+     yok. Sormadıysa anahtar parolası = depo parolasıdır; GitHub'da
+     KEY_PASSWORD alanına da aynı parolayı yaz.
 
 PAROLA KURALI: içinde ters bölü (\) OLMASIN.
 Sebebi: parola Java'nın Properties biçiminde yazılıyor ve orada "\"
