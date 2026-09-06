@@ -18,6 +18,7 @@
     "olcum:ilerleme": "node tests/olcum/ilerleme.mjs",
     "olcum:top": "node tests/olcum/top.mjs",
     "olcum:ping": "node tests/olcum/ping.mjs",
+    "olcum:hissedilen": "node tests/olcum/hissedilen.mjs",
     "vercel-build": "vite build",
     "build:portal": "node scripts/build-portal.mjs",
     "rele": "node sunucu/index.js",

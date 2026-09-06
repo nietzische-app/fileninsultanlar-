@@ -4,8 +4,8 @@
  * README'de duran bilinen eksik şu: kendi oyuncumuz TAHMİN edildiği
  * için ekranda "şimdi"yi gösteriyor (ölçüldü: tepki 17 ms), top ise
  * anlık görüntülerden ARA DEĞERLENİYOR ve bilerek geçmişten çiziliyor
- * (`AG.aradegerlemeGecikmesi` = 100 ms). Yani ekranda oyuncu ile top
- * FARKLI ANLARDA duruyor.
+ * (`agTamponBoyu`; sabit 100 ms idi, artık ölçülen seğirmeye göre
+ * ~50-200 ms). Yani ekranda oyuncu ile top FARKLI ANLARDA duruyor.
  *
  * Bu dosya "ne kadar" sorusunu yanıtlıyor. Telafi yazmadan önce bunu
  * bilmek şart: eksik birkaç piksel ise dokunmaya değmez, çünkü

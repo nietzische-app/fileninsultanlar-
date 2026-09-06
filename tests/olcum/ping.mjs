@@ -85,5 +85,5 @@ console.log(
 console.log(
   'Sapmanın SİSTEMATİK olmaması önemli: hep aynı yöne kayan bir gösterge'
   + '\ngüvenilmez olur. Kalan salınım adım kuantizasyonu (60 Hz döngü,'
-  + '\n20 Hz anlık görüntü).',
+  + '\n30 Hz anlık görüntü).',
 );

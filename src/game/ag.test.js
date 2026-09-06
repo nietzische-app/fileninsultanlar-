@@ -302,8 +302,8 @@ describe('topu ileri sarma', () => {
     /*
      * İlk yazışta ufku kuşatan çiftin yenisinden hesaplamıştım ve
      * ölçüm yakaladı: o an çizim saatinin en fazla bir paket aralığı
-     * (0.05 sn) ötesinde, oysa telafi edilecek şey ara değerleme
-     * gecikmesinin TAMAMI (0.1 sn) artı ağ yolu.
+     * ötesinde, oysa telafi edilecek şey ara değerleme tamponunun
+     * TAMAMI artı ağ yolu.
      *
      * Bu testi ilk yazışımda iki paket besliyordum; iki pakette
      * kuşatan çiftin yenisi ZATEN en yeni pakettir, yani test yanlış
@@ -321,6 +321,15 @@ describe('topu ileri sarma', () => {
      * düşemediği için test kendi sorusunu soramıyordu.
      */
     const ARALIK = 3;
+    /*
+     * Tampon boyu ELLE sabitleniyor. Tampon artık ölçülen seğirmeye
+     * göre uyarlanıyor (bkz. `agSegirmeOlc`) ve bu test tampon
+     * boyutlandırmasını değil UFUK hesabını sınıyor: ikisi karışırsa
+     * tampon küçüldüğünde test, kod doğruyken de kırılır (tam olarak
+     * bu oldu). Bir paket aralığından belirgin biçimde büyük bir
+     * tampon, iki ufuk hesabını ayırt edebilmenin ön koşulu.
+     */
+    g.agTamponBoyu = 2 * ARALIK * PHYSICS.step;
     for (let i = 0; i < 8; i += 1) {
       const t = i * ARALIK * PHYSICS.step;
       g.agPaketAl(topluPaket(
@@ -337,7 +346,10 @@ describe('topu ileri sarma', () => {
      */
     const cizimSaati = g.agCizimSaati;
     const sonZaman = g.agTampon[g.agTampon.length - 1].zaman;
-    expect(sonZaman - cizimSaati).toBeGreaterThan(0.05);
+    expect(
+      sonZaman - cizimSaati,
+      'ön koşul: çizim saati en yeni paketten BİR ARALIKTAN fazla geride olmalı',
+    ).toBeGreaterThan(ARALIK * PHYSICS.step);
 
     /*
      * Topun x'i sunucu saatiyle doğrusal: x(t) = 300 + 400*(t - t0).
@@ -420,8 +432,25 @@ describe('topu ileri sarma', () => {
     oyunculariUzaklastir(g);
     akit(g, 0.05);
 
-    // 5 sn ileri sarsaydı x binleri bulurdu; tavan 0.3 sn
-    expect(g.ball.x).toBeLessThan(300 + 400 * 0.45);
+    /*
+     * Sınır EN YENİ PAKETE göre kuruluyor, paket dizisinin başına
+     * göre değil. İlk yazışta başlangıca göreydi ve tampon küçülünce
+     * (uyarlanan tampon) çizim saati ileri kaydığı için test, tavan
+     * çalışırken de kırıldı — sınırın kendisi yanlış yerdeydi.
+     *
+     * Top yörüngesi sunucu saatiyle doğrusal: x(T) = 300 + 400*(T-t0).
+     */
+    const sonZaman = g.agTampon[g.agTampon.length - 1].zaman;
+    const xSon = 300 + 400 * (sonZaman - 20 * PHYSICS.step);
+
+    // 5 sn ileri sarsaydı x 2000'i aşardı; tavan 0.3 sn = 120 px
+    expect(g.ball.x).toBeLessThan(xSon + 400 * 0.3 + 10);
+    /*
+     * Alt sınır da gerekli: tavan "hiç ileri sarma" demek değil.
+     * Yalnız üst sınır olsaydı ileri sarmayı tamamen kapatan bir
+     * mutasyon da testi geçerdi.
+     */
+    expect(g.ball.x).toBeGreaterThan(xSon);
   });
 
   it('ev sahibi tarafta ileri sarma HİÇ çalışmıyor', () => {
@@ -667,5 +696,218 @@ describe('bağlantı gecikmesi ölçümü', () => {
     const aiAdi = oku(null);
     expect(aiAdi).toBeTruthy();
     expect(oku('ŞİMŞEK FİLE')).toBe('ŞİMŞEK FİLE');
+  });
+});
+
+describe('ara değerleme tamponu — ölçülen seğirmeye göre', () => {
+  /*
+   * Tampon 0.1 sn SABİTTİ. Ölçüm (npm run olcum:hissedilen) bunun
+   * oyuncunun hissettiği gecikmenin en büyük kalemi olduğunu gösterdi:
+   * ağda hiç gecikme yokken bile rakip ekrana 117 ms geç geliyordu.
+   *
+   * Sabit sayının asıl sorunu şuydu: herkese EN KÖTÜ bağlantının
+   * bedelini ödetiyordu. Bu testlerin sorduğu soru da o — "iyi
+   * bağlantıda tampon gerçekten küçülüyor mu, kötüde büyüyor mu".
+   */
+
+  /** Tohumlu üreteç — koşumlar arasında karşılaştırılabilir olsun. */
+  function uretec(tohum = 20260906) {
+    let s = tohum;
+    return () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+  }
+
+  /**
+   * Bilinen seğirmeyle paket varışını taklit eder.
+   *
+   * `saatFarki`, istemci ile sunucu saatleri arasındaki kayma. Sıfır
+   * DEĞİL, çünkü gerçekte de sıfır değil ve ölçümün onu soğurması
+   * gerekiyor — testin sorularından biri tam olarak bu.
+   */
+  function segirmeAkit(g, { segirmeSn, saatFarki = 0.5, paket = 400, hz = 30 }) {
+    const rast = uretec();
+    const aralik = 1 / hz;
+    for (let i = 0; i < paket; i += 1) {
+      const zaman = i * aralik;
+      const sapma = segirmeSn ? (rast() * 2 - 1) * segirmeSn : 0;
+      g.time = zaman + saatFarki + sapma;
+      g.agSegirmeOlc(zaman);
+    }
+    return g.agTamponBoyu;
+  }
+
+  it('seğirme yoksa tampon TABANA iniyor', () => {
+    /*
+     * Düzeltmenin bütün amacı bu satır: seğirmesi olmayan bir oyuncu
+     * artık 100 ms değil bir buçuk paket aralığı (~50 ms) bekliyor.
+     */
+    const boyu = segirmeAkit(misafirKur(), { segirmeSn: 0 });
+    expect(boyu).toBeGreaterThan(0.045);
+    expect(boyu).toBeLessThan(0.056);
+  });
+
+  it('SAAT FARKI tamponu şişirmiyor', () => {
+    /*
+     * Varış ölçüsünün içinde iki saatin bilinmeyen kayması ve tek yön
+     * gecikme de var; tampona girmesi gereken yalnız OYNAMA payı.
+     * Farkın mutlak değerini kullanan bir kod bu testte patlar:
+     * 5 saniyelik kayma tamponu tavana yapıştırırdı.
+     */
+    const yakin = segirmeAkit(misafirKur(), { segirmeSn: 0, saatFarki: 0.02 });
+    const uzak = segirmeAkit(misafirKur(), { segirmeSn: 0, saatFarki: 5 });
+    expect(Math.abs(uzak - yakin)).toBeLessThan(0.002);
+  });
+
+  it('seğirme büyüdükçe tampon büyüyor', () => {
+    const olc = (s) => segirmeAkit(misafirKur(), { segirmeSn: s });
+    const boylar = [0, 0.01, 0.03, 0.06].map(olc);
+    for (let i = 1; i < boylar.length; i += 1) {
+      expect(boylar[i]).toBeGreaterThan(boylar[i - 1]);
+    }
+    // Ve fark GÖRÜLECEK kadar büyük olmalı; sıfıra yakın bir eğim
+    // "uyarlanıyor" demek değil.
+    expect(boylar[boylar.length - 1] - boylar[0]).toBeGreaterThan(0.03);
+  });
+
+  it('tampon TAVANLI — kopuk bağlantıda saniyelere çıkmıyor', () => {
+    /*
+     * Tavansız bırakılsaydı kopmuş bir bağlantıda tampon büyüdükçe
+     * büyür, ekran akıcı ama gerçekle alakasız hâle gelirdi.
+     */
+    const boyu = segirmeAkit(misafirKur(), { segirmeSn: 2 });
+    expect(boyu).toBeLessThanOrEqual(0.2);
+    // Tavana gerçekten DAYANMIŞ olmalı — yoksa test tavanı sınamıyor
+    expect(boyu).toBeGreaterThan(0.19);
+  });
+
+  it('seğirme geçince tampon GERİ ÇEKİLİYOR', () => {
+    /*
+     * Tek yönlü büyüyen bir tampon, bir anlık ağ tökezlemesinden sonra
+     * maçın geri kalanını ağır çekim yapardı.
+     */
+    const g = misafirKur();
+    segirmeAkit(g, { segirmeSn: 0.06 });
+    const kotu = g.agTamponBoyu;
+    expect(kotu).toBeGreaterThan(0.08);
+
+    // Aynı motora bu kez düzgün akış ver
+    segirmeAkit(g, { segirmeSn: 0 });
+    expect(g.agTamponBoyu).toBeLessThan(0.06);
+  });
+
+  it('paket aralığı ÖLÇÜLÜYOR — karşı taraf yavaş gönderiyorsa taban büyüyor', () => {
+    /*
+     * `AG.durumHz` BİZİM gönderme sıklığımız; karşı taraf başka bir
+     * sürümde olabilir (dağıtımlar arasındaki pencere). Taban sabit
+     * varsayımla hesaplansaydı, 10 Hz gönderen bir röleyle konuşan
+     * istemcinin tamponu bir paket aralığının bile altında kalır ve
+     * her karede kururdu — akıcılık için yazılmış kod tam tersini
+     * yapardı.
+     */
+    const hizli = segirmeAkit(misafirKur(), { segirmeSn: 0, hz: 30 });
+    const yavas = segirmeAkit(misafirKur(), { segirmeSn: 0, hz: 10 });
+
+    // Taban aralığın 1.5 katı: 30 Hz'de ~0.05, 10 Hz'de ~0.15
+    expect(hizli).toBeLessThan(0.06);
+    expect(yavas).toBeGreaterThan(0.13);
+  });
+
+  it('SIRASI BOZUK paket aralık ölçümünü bozmuyor', () => {
+    /*
+     * Seğirme paketlerin sırasını bozabiliyor (gerçek ağda da bozuyor).
+     * Geriye giden bir damga negatif aralık verirdi; korumasız bir
+     * ölçüm bunu ortalamaya katıp tabanı çökertirdi.
+     */
+    const g = misafirKur();
+    segirmeAkit(g, { segirmeSn: 0, paket: 200 });
+    const duzgun = g.agPaketAralik;
+
+    // Aynı motora geriye giden damgalar ver
+    for (let i = 0; i < 50; i += 1) {
+      g.time += 1 / 30;
+      g.agSegirmeOlc(g.agSonPaketZaman - 0.5);
+    }
+    expect(g.agPaketAralik).toBeCloseTo(duzgun, 3);
+    expect(g.agPaketAralik).toBeGreaterThan(0);
+  });
+
+  it('tampon PAKET YOLUNDAN besleniyor', () => {
+    /*
+     * Yukarıdaki testler ölçüm fonksiyonunu doğrudan çağırıyor. Bu
+     * test onun gerçekten paket alma yoluna BAĞLI olduğunu soruyor;
+     * bağlantı kopsa hepsi geçmeye devam ederdi.
+     */
+    const g = misafirKur();
+    const s = sunucuKur();
+    const baslangic = g.agTamponBoyu;
+    for (let i = 0; i < 40; i += 1) {
+      s.ball.x = 300; s.ball.y = 200; s.ball.vx = 0; s.ball.vy = 0;
+      s.adim = 20 + i * 2;
+      g.agPaketAl(paketle(s));
+      akit(g, 6 / 60); // paket aralığından çok daha yavaş varış = seğirme
+    }
+    expect(g.agTamponBoyu).not.toBe(baslangic);
+    expect(g.agVarisOrt).not.toBeNull();
+  });
+
+  it('ÇİZİM SAATİ tampon boyu kadar geride kalıyor', () => {
+    /*
+     * Tamponun ölçülmesi tek başına bir şey değiştirmez; ekranın
+     * çizildiği anı gerçekten o sayının belirlemesi gerekiyor.
+     * Sabit 0.1'e geri dönen bir mutasyon burada yakalanır.
+     */
+    const oku = (boyu) => {
+      const g = misafirKur();
+      const s = sunucuKur();
+      for (let i = 0; i < 12; i += 1) {
+        s.ball.x = 300; s.ball.y = 200; s.ball.vx = 0; s.ball.vy = 0;
+        s.adim = 20 + i * 2;
+        g.agPaketAl(paketle(s));
+        g.agTamponBoyu = boyu; // ölçümün üstüne yaz — sınanan şey KULLANIM
+        akit(g, 2 / 60);
+      }
+      const son = g.agTampon[g.agTampon.length - 1].zaman;
+      return son - g.agCizimSaati;
+    };
+
+    const kucuk = oku(0.04);
+    const buyuk = oku(0.16);
+    expect(buyuk).toBeGreaterThan(kucuk + 0.08);
+  });
+});
+
+describe('durum gönderme sıklığı', () => {
+  /*
+   * Bu testin sebebi ölçülmüş bir arıza: kapı `this.time - agSonDurum`
+   * ile karşılaştırıyordu ve `this.time` sabit adımların toplamı olduğu
+   * için kayan nokta artığı biriktiriyordu. 30 Hz ayarında gerçek hız
+   * 22.5 Hz'e düşüyor, aralıkların üçte ikisi 2 yerine 3 adım oluyordu.
+   *
+   * İki ayrı zarar: ayar yalan söylüyordu VE aralık düzensizdi.
+   * İkincisi daha sinsi — istemcinin tamponu düzensizliği seğirme
+   * sanıp kendini gereksiz yere büyütüyordu, yani "akıcılık" ayarı
+   * gecikmeyi artırıyordu.
+   */
+  it('aralık TAM ve DÜZENLİ — kayan nokta artığı biriktirmiyor', () => {
+    const araliklar = [];
+    let son = null;
+    const g = new Game(null, {
+      mode: '1v1', format: 'single', difficulty: 'normal', playMode: 'vs',
+      bassiz: true, agRol: 'ev',
+      agGonder: () => { if (son !== null) araliklar.push(g.adim - son); son = g.adim; },
+    });
+    g.start();
+    for (let i = 0; i < 600; i += 1) { g.ilerlet(PHYSICS.step); g.agAkis(); }
+
+    expect(araliklar.length).toBeGreaterThan(100);
+    // Tek bir farklı aralık bile olmamalı
+    expect([...new Set(araliklar)]).toHaveLength(1);
+
+    /*
+     * Ve gerçek hız ayarla uyuşmalı. Aralık sayısını kontrol etmek tek
+     * başına yetmez: her karede gönderen bir kod da "düzenli" olurdu.
+     */
+    const hz = araliklar.length / (600 * PHYSICS.step);
+    expect(hz).toBeGreaterThan(29);
+    expect(hz).toBeLessThan(31);
   });
 });

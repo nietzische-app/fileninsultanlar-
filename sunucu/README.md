@@ -187,7 +187,7 @@ görüyordu. `npm run olcum:ping` hatayı yeniden üretti:
 | 400 ms | — | 400 ms |
 
 Önce **sistematik olarak eksik**; sonra ±2 adım salınım, ortalama sapma
-+6 ms. Kalan salınım kuantizasyon (60 Hz döngü, 20 Hz anlık görüntü).
++6 ms. Kalan salınım kuantizasyon (60 Hz döngü, 30 Hz anlık görüntü).
 
 Gösterge artık `agDongu`yu okuyor — `agPencere` tahminde kalıyor. İki
 alan bilerek ayrı; bir birim testi ikisine FARKLI değer atayıp
@@ -196,6 +196,79 @@ gerçek iki motorlu döngüde sapmanın 25 ms'i aşmadığını.
 
 Sayı da yazılıyor, yalnız çubuk değil — "kötü" derken suçu oyuncunun
 internetine atıyormuş gibi olmasın, kendi durumunu doğrulayabilsin.
+
+## Gösterge doğruydu ama oyuncu da haklıydı
+
+Ping düzeltildikten sonra aynı oyuncu şunu söyledi: *"bence ping
+gözüktüğünden çok daha yüksek, bu şekilde oynanılacak vaziyette
+değil"*. İki ihtimal vardı ve karıştırılmamaları gerekiyordu: gösterge
+hâlâ yanlış olabilirdi, ya da gösterge doğru olup gecikme başka bir
+yerden geliyor olabilirdi.
+
+`npm run olcum:hissedilen` bu soruyu ayırmak için yazıldı. Göstergenin
+ölçtüğü şey **kendi girdimin gidiş-dönüşü**; oyuncunun hissettiği şey
+ise **rakibin ekrana ne kadar geç geldiği** ve o yol daha uzun:
+
+```
+sunucuda olay → anlık görüntü kuyruğu → ağ (tek yön)
+              → ara değerleme tamponu → ekran
+```
+
+Ölçüm rakibi sunucuda bilinen bir adımda yürütüp istemcinin ÇİZDİĞİ
+rakibin kaç ms sonra kıpırdadığına bakıyor. Bulgu:
+
+| ağ RTT | gösterge | rakip ekranıma kaç ms sonra geliyor |
+| --- | --- | --- |
+| 0 ms | 67 ms | **117 ms** |
+| 67 ms | 83 ms | 133 ms |
+| 200 ms | 217 ms | 200 ms |
+
+**Ağda hiç gecikme yokken bile 117 ms.** Yani baskın kalem ağ değil,
+kendi kodumuzdu. Üç ayrı sebep çıktı:
+
+**1. Gönderme kapısı süre karşılaştırıyordu.** `this.time` sabit
+adımların toplamı olduğu için kayan nokta artığı biriktiriyor ve
+eşiğin altında kalan kareler bir adım daha bekliyordu. 30 Hz ayarı
+gerçekte **22.5 Hz**'di, aralıkların üçte ikisi 2 değil 3 adımdı.
+Ayarın yalan söylemesinden kötüsü aralığın DÜZENSİZ olmasıydı:
+istemcinin tamponu bu düzensizliği seğirme sanıp kendini gereksiz yere
+büyütüyordu. Kapı artık adım sayıyor.
+
+**2. Ara değerleme tamponu sabit 100 ms'ti.** Tampon ağ seğirmesini
+yutmak için var, ama sabit sayı **herkese en kötü bağlantının bedelini
+ödetiyordu** — seğirmesi 5 ms olan bir oyuncu, 40 ms seğiren biri için
+ayrılmış payı taşıyordu. Artık seğirme ölçülüyor (paket damgası ile
+kendi saatimiz arasındaki farkın kendi ortalamasından sapması) ve
+tampon `1.5 × paket aralığı + 2.5 × seğirme` oluyor, 200 ms tavanla.
+Mutlak gecikme değil SAPMA kullanılıyor, çünkü farkın içinde iki saat
+arasındaki bilinmeyen kayma da var; ortalama onu soğuruyor.
+
+Paket aralığı da `durumHz`den okunmuyor, **ölçülüyor**: o sabit karşı
+tarafın gönderme hızını belirler, bizimkini değil. Yeni bir istemci
+eski bir röleyle konuşurken sabit varsayım tabanı gerçek aralığın
+altına düşürür ve tampon her karede kururdu.
+
+**3. Anlık görüntü 20 → 30 Hz.** Hem kuyruk beklemesini hem de
+aralıkla ölçeklenen tamponu küçültüyor.
+
+Sonuç (`olcum:hissedilen`, `olcum:top`, `olcum:akicilik`):
+
+| ölçüt | önce | sonra |
+| --- | --- | --- |
+| hissedilen gecikme (ağ 0 ms) | 117 ms | **67 ms** |
+| hissedilen gecikme (ağ 200 ms) | 200 ms | **150 ms** |
+| top sapması p50 / p95 (ağ 0 ms) | 25.8 / 64.7 px | **10.2 / 37.2 px** |
+| top sapması p95 (tek yön 100 ms) | 119 px | **74 px** |
+| dalgalanma (dört durum) | 0.12-0.14 | **0.07-0.08** |
+| duraklama | %0 | %0 |
+| tepki (kendi oyuncum) | 17 ms | 17 ms |
+
+Bedeli bant genişliği ve o da ölçüldü (`olcum:kapasite`, 32 eşzamanlı
+maç): 472 → 702 KB/sn, %49 artış. Karşılığını verip vermediği
+varsayılmadı, ölçüldü: uyarlanan tamponla 20 Hz'de kalınsaydı
+hissedilen gecikme 83 ms, top sapması p50/p95 14.9/48.4 px, dalgalanma
+0.11-0.15 olurdu — yani fazladan paketin karşılığı her üç ölçütte de
+görünüyor.
 
 ## Rakip adı ve taraf etiketleri
 
@@ -683,7 +756,7 @@ kaçınılmaz. Tanımadığı mesajlar hâlâ karşı tarafa ham hâliyle aktar�
 | ← | `{t:'oda', kod, rol}` | Oda kuruldu / katılındı |
 | ← | `{t:'eslesme', rol}` | İki taraf da hazır |
 | ← | `{t:'mac', cfg, yuva, rakip}` | Maç kuruldu; `yuva` seni, `rakip` karşındakini söyler |
-| ← | `{t:'durum', ...}` | Anlık görüntü (~20 Hz); `az`/`ay` girdi onayı |
+| ← | `{t:'durum', ...}` | Anlık görüntü (30 Hz); `az`/`ay` girdi onayı |
 | ← | `{t:'bitis', sonuc}` | Maç bitti |
 | ← | `{t:'ayrildi', kapandi}` | Karşı taraf gitti |
 | ← | `{t:'hata', sebep}` | İstek reddedildi |

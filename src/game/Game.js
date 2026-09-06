@@ -115,31 +115,97 @@ const BG_REFRESH = 1 / 10;
 /**
  * Ağ ayarları.
  *
- * 20 Hz durum: 60 Hz göndermek bant genişliğini üç katına çıkarıp
+ * 30 Hz durum: 60 Hz göndermek bant genişliğini iki katına çıkarıp
  * hissedilir bir şey kazandırmıyor — top zaten karelerin arasında
  * yumuşak görünecek kadar yavaş yer değiştiriyor. Tuşlar ise
  * değiştiği anda gidiyor, orada gecikme doğrudan hissediliyor.
  */
 const AG = {
-  durumHz: 20,
+  /**
+   * Anlık görüntü sıklığı (Hz).
+   *
+   * 20 idi, 30'a çıkarıldı ve gerekçesi ÖLÇÜM (olcum:hissedilen):
+   * rakip sunucuda kıpırdadıktan sonra ekranıma gelene kadar geçen süre
+   * ağda hiç gecikme yokken bile 117 ms çıktı. O sürenin iki bileşeni
+   * var ve ikisi de bu sayıya bağlı:
+   *   · kuyruk — sunucuda olay olduktan sonra bir sonraki pakete kadar
+   *     beklenen süre, ortalama yarım aralık (20 Hz'de 25 ms)
+   *   · tampon — ara değerlemenin ihtiyacı olan pay, aralık cinsinden
+   *     ölçülüyor (aşağıda), yani aralık küçülünce o da küçülüyor
+   *
+   * Bedeli bant genişliği ve ölçüldü (olcum:kapasite, 32 eşzamanlı maç):
+   * 472 → 702 KB/sn, paket 1279 → 1913/sn, yani %49. Röle darboğazı
+   * zaten işlemci değil paket, o yüzden ciddiye alınacak bir sayı —
+   * 60 Hz'e çıkmamanın sebebi de bu.
+   *
+   * KARŞILIĞINI VERİYOR MU diye ölçüldü, varsayılmadı. Uyarlanan
+   * tamponla birlikte 20 Hz'de kalınsaydı: hissedilen gecikme 83 ms
+   * (30 Hz'de 67), top sapması p50 14.9 / p95 48.4 px (30 Hz'de
+   * 10.2 / 37.2), dalgalanma 0.11-0.15 (30 Hz'de 0.07-0.08). Yani
+   * fazladan paketin karşılığı her üç ölçütte de görünüyor.
+   *
+   * 60 Hz seçilemezdi ayrıca: adım sayısı tam bölünmeli (bkz.
+   * `durumAdim`) ve 60 Hz her karede paket demekti.
+   */
+  durumHz: 30,
 
   /**
-   * Ekranın GEÇMİŞTEN çizilme miktarı (sn).
+   * Kaç ADIMDA bir durum yollanacağı — `durumHz`den türetiliyor.
+   *
+   * Süre karşılaştırmak yerine adım saymanın sebebi ölçümle bulundu:
+   * kayan nokta artığı yüzünden 30 Hz ayarı gerçekte 22.5 Hz'e
+   * düşüyordu ve aralıklar 2-3 adım arasında oynuyordu. Adım sayınca
+   * aralık TAM 2 adım ve düzenli.
+   */
+  get durumAdim() {
+    return Math.max(1, Math.round(1 / (this.durumHz * PHYSICS.step)));
+  },
+
+  /**
+   * Ara değerleme tamponunun TABANI — paket aralığı cinsinden.
    *
    * Ara değerleme, çizilecek anın elimizdeki iki paketin arasında
-   * kalmasını gerektiriyor. Paketler 1/20 sn arayla geliyor ama ağ
-   * seğirdiği için eşit aralıklarla gelmiyor; bu pay seğirmeyi yutan
-   * tampon.
+   * kalmasını gerektiriyor. Bir tam aralık matematiksel asgari ama
+   * pratikte yetmez: çizim saati tam en yeni paketin üstünde yürür ve
+   * en ufak sapmada tampon kurur. 1.5 aralık, kuruma ile karşılıksız
+   * gecikme arasındaki denge (ölçüm: olcum:akicilik, duraklama %0).
    *
-   * 0.1 sn = iki paket aralığı. Ölçümle seçildi (akicilik.mjs):
-   * 1 aralıkta (0.05) tipik seğirmede tampon hâlâ kuruyordu,
-   * 3 aralıkta (0.15) akıcılık artmıyor ama rakip daha da geride
-   * kalıyordu — karşılıksız gecikme.
-   *
-   * Kendi oyuncumuz tahmin edildiği için bu gecikmeyi HİSSETMİYORUZ;
-   * yalnız rakip ve top ~100 ms geçmişte çiziliyor.
+   * Bu sayı SABİT DEĞİL, tabanı: seğirme payı üstüne biniyor.
    */
-  aradegerlemeGecikmesi: 0.1,
+  tamponTaban: 1.5,
+
+  /**
+   * Ölçülen seğirmenin tampona kaç katı ekleneceği.
+   *
+   * Tampon seğirmeyi yutmak için var, yani gerçekten ölçülen seğirmeyle
+   * ölçeklenmesi gerekir. Sabit 100 ms, kötü bağlantıda yetersiz ve iyi
+   * bağlantıda GEREKSİZDİ — herkese en kötü durumun bedelini ödetiyordu.
+   *
+   * 2.5, ortalama mutlak sapmadan yaklaşık üç standart sapmalık bir pay
+   * demek (normal dağılımda σ ≈ 1.25·OMS): paketlerin ezici çoğunluğu
+   * tamponun içinde kalıyor, kalan tek tük gecikeni de "tampon kurudu"
+   * dalı son kareyi tutarak karşılıyor.
+   */
+  tamponSegirmeKat: 2.5,
+
+  /**
+   * Tamponun tavanı (sn).
+   *
+   * Seğirme payı sınırsız büyüyebilseydi kopmuş bir bağlantıda tampon
+   * saniyelere çıkar, oyun "akıcı ama alakasız" hâle gelirdi. 0.2 sn'nin
+   * ötesindeki seğirmede zaten oynanabilir bir maç yok.
+   */
+  tamponAzami: 0.2,
+
+  /**
+   * Seğirme ölçümünün uyum hızı (paket başına EWMA katsayısı).
+   *
+   * Yavaş olmalı: tek bir geciken paket tamponu şişirmemeli. 0.05 ≈
+   * son 20 pakete bakıyor (30 Hz'de ~0.7 sn) — bağlantı bozulduğunda
+   * bir saniye içinde tepki veriyor, düzeldiğinde de aynı hızda geri
+   * çekiliyor.
+   */
+  tamponUyum: 0.05,
 
   /**
    * Çizim saatinin hedefe çekilme oranı (kare başına).
@@ -393,6 +459,7 @@ export default class Game {
     this.agGonder = options.agGonder ?? null;
     /** Bir sonraki pakete binecek efekt/ses olayları. */
     this.agOlaylar = [];
+    /** Son durum paketinin ADIM numarası (süre değil — bkz. `agAkis`). */
     this.agSonDurum = -Infinity;
     this.agSonGirdi = '';
     /** Uygulanan son paketin adım numarası; -1 = henüz paket gelmedi. */
@@ -448,6 +515,33 @@ export default class Game {
     this.agSonOnay = null;
     /** Ekranın çizildiği an, SUNUCU saatinde. İlk pakette kuruluyor. */
     this.agCizimSaati = null;
+    /**
+     * Ara değerleme tamponunun O ANKİ boyu (sn) — seğirmeye göre uyarlanan.
+     *
+     * Sabit 0.1 idi ve ölçüm (olcum:hissedilen) bunun oyuncunun
+     * hissettiği gecikmenin en büyük kalemi olduğunu gösterdi: ağda
+     * hiç gecikme yokken bile rakip ekrana 117 ms geç geliyordu.
+     * Sabit sayının sorunu, herkese EN KÖTÜ bağlantının bedelini
+     * ödetmesiydi. Artık taban + ölçülen seğirme payı.
+     */
+    this.agTamponBoyu = AG.tamponTaban / AG.durumHz;
+    /**
+     * Paket varış gecikmesinin ortalaması ve ortalama mutlak sapması (sn).
+     *
+     * Ortalamanın kendisi ANLAMSIZ — içinde istemci ile sunucu saatleri
+     * arasındaki bilinmeyen fark da var. İşimize yarayan SAPMA; o farkı
+     * ortalama soğuruyor. Bu yüzden ikisi birlikte tutuluyor.
+     */
+    this.agVarisOrt = null;
+    this.agVarisSapma = 0;
+    /**
+     * ÖLÇÜLEN paket aralığı (sn) ve son paketin damgası.
+     *
+     * `AG.durumHz` bizim GÖNDERME sıklığımız; karşı taraf başka bir
+     * sürümde olabilir. Tamponun tabanı gerçek aralığa dayanmalı.
+     */
+    this.agPaketAralik = 1 / AG.durumHz;
+    this.agSonPaketZaman = null;
 
     /**
      * Gecikme telafisi açık mı (istemci tarafı tahmin).
@@ -990,16 +1084,25 @@ export default class Game {
    * Her karenin sonundaki ağ işi.
    *
    * Ev sahibi durum yollar, misafir tuş yollar. İkisinin de hızı
-   * ayrı ayarlanıyor: durum saniyede ~20 kez yeter (çizim arada
+   * ayrı ayarlanıyor: durum `AG.durumHz` sıklığında yeter (çizim arada
    * yumuşatılıyor), tuş ise değiştiği anda gitmeli — gecikme oradan
    * hissediliyor.
+   *
+   * KAPI ADIM SAYAR, SÜRE DEĞİL. Eskiden `this.time - agSonDurum` ile
+   * karşılaştırılıyordu ve ölçüm bunu ele verdi: `this.time` sabit
+   * adımların toplanmasıyla yürüdüğü için kayan nokta artığı biriktiriyor,
+   * eşiğin altında kalan kareler bir adım daha bekletiliyordu. Sonuç,
+   * 30 Hz ayarında GERÇEKTE 22.5 Hz — aralıkların üçte ikisi 2 değil
+   * 3 adımdı. Ayarın yalan söylemesinden kötüsü, aralığın DÜZENSİZ
+   * olmasıydı: istemcinin tamponu o düzensizliği seğirme sanıp
+   * kendini gereksiz yere büyütüyordu.
    */
   agAkis() {
     if (!this.agRol || !this.agGonder) return;
 
     if (this.agRol === 'ev') {
-      if (this.time - this.agSonDurum < 1 / AG.durumHz) return;
-      this.agSonDurum = this.time;
+      if (this.adim - this.agSonDurum < AG.durumAdim) return;
+      this.agSonDurum = this.adim;
       this.agGonder(paketle(this, this.agOlaylar));
       this.agOlaylar = [];
       return;
@@ -1498,7 +1601,7 @@ export default class Game {
      * doğrudan tampona giriyordu (aralıklar 35-75 ms arası oynuyordu),
      * yani tampon seğirmeyi yutmuyor, saklıyordu — dalgalanma 0.31'de
      * takılı kalmıştı. Sunucu saatiyle damgalanınca aralıklar tam
-     * 1/20 sn oluyor ve ara değerleme düzgün bir zaman çizgisi üstünde
+     * 1/durumHz sn oluyor ve ara değerleme düzgün bir zaman çizgisi üstünde
      * çalışıyor; seğirme yalnız paketin NE ZAMAN elimize geçtiğini
      * etkiliyor, çizilen zamanı değil.
      */
@@ -1520,6 +1623,8 @@ export default class Game {
       this.agTampon.push(kayit);
     }
 
+    this.agSegirmeOlc(zaman);
+
     /*
      * Çizim saati sunucu zamanında yürüyor ve her pakette en yeni
      * paketin bir tampon gerisine doğru yumuşakça çekiliyor. Doğrudan
@@ -1527,7 +1632,7 @@ export default class Game {
      * DÜZGÜN akmasını, çekişin de yavaşça hizalanmasını sağlıyor.
      */
     if (this.agCizimSaati === null) {
-      this.agCizimSaati = zaman - AG.aradegerlemeGecikmesi;
+      this.agCizimSaati = zaman - this.agTamponBoyu;
     }
     /*
      * ELİMİZDEKİNDEN ESKİYE bakma. Saat tamponun en eskisinin gerisine
@@ -1546,13 +1651,79 @@ export default class Game {
      * işi bitmiş. Bir paket aralığı pay bırakılıyor — kuşatan çiftin
      * ESKİ ucu hâlâ gerekli.
      */
-    const enEski = this.agCizimSaati - 2 / AG.durumHz;
+    const enEski = this.agCizimSaati - 2 * this.agPaketAralik;
     while (this.agTampon.length > 2 && this.agTampon[1].zaman < enEski) {
       this.agTampon.shift();
     }
 
     // İlk pakette geçmiş yok — beklemeden yerleş
     if (this.agTampon.length === 1) this.agKareYaz(this.agTampon[0], this.agTampon[0], 1);
+  }
+
+  /**
+   * SEĞİRMEYİ ÖLÇ ve ara değerleme tamponunu ona göre boyutlandır.
+   *
+   * NEDEN VAR: tampon 0.1 sn sabitti ve ölçüm (olcum:hissedilen) bunun
+   * hissedilen gecikmenin en büyük kalemi olduğunu gösterdi — ağda hiç
+   * gecikme yokken bile rakip ekrana 117 ms geç geliyordu. Sabit sayı
+   * herkese EN KÖTÜ bağlantının bedelini ödetiyor: seğirmesi 5 ms olan
+   * bir oyuncu, 40 ms seğiren biri için ayrılmış payı taşıyordu.
+   *
+   * NASIL ÖLÇÜLÜYOR: paketin sunucu damgası ile bizim saatimiz
+   * arasındaki fark. Bu farkın MUTLAK değeri işe yaramaz — içinde iki
+   * saatin bilinmeyen kayması ve tek yön gecikme var. İşimize yarayan,
+   * farkın kendi ortalamasından ne kadar OYNADIĞI; tam olarak tamponun
+   * yutması gereken şey o.
+   *
+   * ÖLÇÜMÜN SINIRI, dürüstçe: bizim saatimiz sabit adımlarla yürüdüğü
+   * için ölçüye bir adımlık (16.7 ms) kuantalama gürültüsü karışıyor.
+   * Yani tahmin seğirmeyi biraz FAZLA gösteriyor — tamponu gereğinden
+   * biraz büyük tutuyor. Yanılma yönü bilerek bu tarafta: eksik tampon
+   * ekranda duraklama demek, fazlası yalnız birkaç ms gecikme.
+   *
+   * PAKET ARALIĞI DA ÖLÇÜLÜYOR, `AG.durumHz`den okunmuyor. Sebebi
+   * dağıtım: `durumHz` KARŞI TARAFIN ne sıklıkta gönderdiğini belirler,
+   * bizim tarafımızın değil. Yeni bir istemci eski bir röleyle
+   * konuşurken (dağıtımlar arasındaki pencere) sabit varsayım tabanı
+   * gerçek aralığın altına düşürür ve tampon her karede kurur —
+   * "akıcılık için" yazılan kod tam tersini yapardı. Aralık sunucu
+   * damgasından ölçülüyor, yani seğirmeden etkilenmiyor.
+   *
+   * @param {number} zaman Paketin sunucu damgası (sn)
+   */
+  agSegirmeOlc(zaman) {
+    const fark = this.time - zaman;
+    if (this.agVarisOrt === null) {
+      this.agVarisOrt = fark;
+    } else {
+      const sapma = Math.abs(fark - this.agVarisOrt);
+      this.agVarisOrt += (fark - this.agVarisOrt) * AG.tamponUyum;
+      this.agVarisSapma += (sapma - this.agVarisSapma) * AG.tamponUyum;
+    }
+
+    /*
+     * Sırası bozulmuş paket aralığı ölçmez (fark ≤ 0). Sınırlar,
+     * kesilmiş bir akışın tek bir dev aralıkla tabanı şişirmesini
+     * engelliyor.
+     */
+    if (this.agSonPaketZaman !== null && zaman > this.agSonPaketZaman) {
+      const aralik = Math.min(0.2, Math.max(PHYSICS.step, zaman - this.agSonPaketZaman));
+      this.agPaketAralik += (aralik - this.agPaketAralik) * AG.tamponUyum;
+    }
+    if (this.agSonPaketZaman === null || zaman > this.agSonPaketZaman) {
+      this.agSonPaketZaman = zaman;
+    }
+
+    const hedef = Math.min(
+      AG.tamponAzami,
+      AG.tamponTaban * this.agPaketAralik + this.agVarisSapma * AG.tamponSegirmeKat,
+    );
+    /*
+     * Tampon boyu da yumuşak değişiyor. Sıçrasaydı çizim saatinin
+     * hedefi kare ortasında yer değiştirir, ekranda ani bir hızlanma
+     * ya da yavaşlama olurdu — kaçındığımız şeyin ta kendisi.
+     */
+    this.agTamponBoyu += (hedef - this.agTamponBoyu) * AG.tamponUyum;
   }
 
   /**
@@ -1569,14 +1740,16 @@ export default class Game {
    * denen şey buydu; sunucunun gücüyle ilgisi yok.
    *
    * Yeni yöntem: gelen paketler tamponda tutuluyor ve ekran BİLEREK
-   * geçmişten çiziliyor (`aradegerlemeGecikmesi`). Çizilecek an her
-   * zaman elimizdeki iki paketin ARASINDA kaldığı için ara değerleme
-   * hiç hedefe varıp beklemiyor — seğirmeyi tampon yutuyor.
+   * geçmişten çiziliyor (`agTamponBoyu`). Çizilecek an her zaman
+   * elimizdeki iki paketin ARASINDA kaldığı için ara değerleme hiç
+   * hedefe varıp beklemiyor — seğirmeyi tampon yutuyor.
    *
-   * Bedeli dürüstçe: rakip ve top ekranda ~100 ms geçmişte. Kendi
-   * oyuncumuz TAHMİN edildiği için bundan etkilenmiyor (ölçüm: tepki
-   * 17 ms, bkz. tests/olcum/gecikme.mjs) — yani tuş hissi aynı kalıyor,
-   * yalnız karşı tarafın hareketi yumuşuyor.
+   * Bedeli dürüstçe: rakip ve top ekranda tampon kadar geçmişte. O pay
+   * artık sabit değil, ÖLÇÜLEN seğirmeye göre (bkz. `agSegirmeOlc`):
+   * iyi bağlantıda ~50 ms, kötüde 200 ms'e kadar. Kendi oyuncumuz
+   * TAHMİN edildiği için bundan etkilenmiyor (ölçüm: tepki 17 ms, bkz.
+   * tests/olcum/gecikme.mjs) — yani tuş hissi aynı kalıyor, yalnız
+   * karşı tarafın hareketi yumuşuyor.
    */
   agAradegerle(dt = 0) {
     const tampon = this.agTampon;
@@ -1591,13 +1764,13 @@ export default class Game {
      * doğrudan ekrana geçerdi.
      */
     this.agCizimSaati += dt;
-    const hedefNokta = son.zaman - AG.aradegerlemeGecikmesi;
+    const hedefNokta = son.zaman - this.agTamponBoyu;
     const sapma = hedefNokta - this.agCizimSaati;
     /*
      * Çok uzaksa (maç başı, uzun donma) yumuşak çekiş dakikalar sürer;
      * o durumda saat doğrudan hizalanıyor. Sınır bir tampon boyu.
      */
-    if (Math.abs(sapma) > AG.aradegerlemeGecikmesi * 2) this.agCizimSaati = hedefNokta;
+    if (Math.abs(sapma) > this.agTamponBoyu * 2) this.agCizimSaati = hedefNokta;
     else this.agCizimSaati += sapma * AG.saatCekisi;
 
     const hedefZaman = this.agCizimSaati;
@@ -1672,9 +1845,9 @@ export default class Game {
      * Ufuk EN YENİ pakete göre ölçülüyor, kuşatan çifte göre değil.
      * İlk yazışta `sonraki.zaman` kullanmıştım ve ölçüm yakaladı: o an
      * kuşatan çiftin yenisi, çizim saatinin en fazla bir paket
-     * aralığı (0.05 sn) ötesinde. Oysa telafi edilmesi gereken şey
-     * ara değerleme gecikmesinin TAMAMI (0.1 sn) artı ağ gidiş yolu.
-     * Yanlış ufukla ileri sarma sapmayı düşürmüyordu.
+     * aralığı ötesinde. Oysa telafi edilmesi gereken şey ara değerleme
+     * TAMPONUNUN TAMAMI artı ağ gidiş yolu. Yanlış ufukla ileri sarma
+     * sapmayı düşürmüyordu.
      */
     let ileriSure = Math.min(
       AG.azamiTopIleri,
