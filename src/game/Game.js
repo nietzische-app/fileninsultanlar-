@@ -427,8 +427,16 @@ export default class Game {
     this.agTopSapma = { x: 0, y: 0 };
     /** İleri sarmanın bir önceki karedeki HEDEFİ — süreksizliği görmek için. */
     this.agTopSonHedef = null;
-    /** Uzlaştırmadan öğrenilen gidiş-dönüş penceresi (sn), yumuşatılmış. */
-    this.agPencere = 0;
+    /**
+     * Uzlaştırmadan öğrenilen gidiş-dönüş penceresi (sn), yumuşatılmış.
+     *
+     * Başlangıçta `null` — "HENÜZ ÖLÇÜLMEDİ" ile "sıfır gecikme" aynı
+     * şey değil. Sayı olarak sıfırla başlatmıştım ve bağlantı
+     * göstergesi `!agPencere` diye baktığı için kusursuz bir
+     * bağlantıda (yerel ağ, aynı makine) gösterge tamamen kayboluyordu
+     * — yani en iyi durum, ölçüm yokmuş gibi görünüyordu.
+     */
+    this.agPencere = null;
     /** Ekranın çizildiği an, SUNUCU saatinde. İlk pakette kuruluyor. */
     this.agCizimSaati = null;
 
@@ -1096,6 +1104,50 @@ export default class Game {
    *   • Akış hiç başlamadı → maç sunucuda koşmuyor; beklemek çare değil.
    * Ekran ikisini aynı cümleyle geçiştirirse oyuncu boşuna bekler.
    */
+  /**
+   * Ölçülen gidiş-dönüş süresi (ms) — yoksa null.
+   *
+   * `agPencere` uzlaştırmadan öğreniliyor ve zaten yumuşatılmış.
+   * Göstergenin okuyacağı tek sayı bu; ayrı bir yoklama (ping/pong)
+   * mesajı EKLENMEDİ çünkü gereksiz olurdu: bilgi her pakette zaten
+   * geliyor, fazladan mesaj hem bant hem de yeni bir arıza yüzeyi.
+   */
+  /**
+   * Skorbordun İKİ etiketi — çevrimiçide taraf değişebiliyor.
+   *
+   * Ev etiketi sabit 'TÜRKİYE' idi ve bu çevrimdışında doğru: oyuncu
+   * her zaman ev sahibi. Çevrimiçide değil — hızlı eşleşmede Türkiye'yi
+   * kimin oynayacağına sunucu yazı-tura ile karar veriyor ve
+   * deplasmana düşen oyuncu KENDİ TARAFINDA rakibinin adını görüyordu.
+   *
+   * Ölçerek bulundu (iki tarayıcı, gerçek maç):
+   *   ev sahibi oyuncu:   TÜRKİYE ... OYUNCU-B   doğru
+   *   deplasman oyuncu:   TÜRKİYE ... OYUNCU-A   YANLIŞ — kendi tarafı
+   *
+   * Kural basit: KARŞI taraf rakibin takma adını taşır, KENDİ tarafın
+   * oynadığın takımın adını.
+   */
+  agTakimEtiketleri() {
+    const evAdi = 'TÜRKİYE';
+    const rakip = this.agRakipAd;
+
+    if (!rakip) {
+      return { homeName: evAdi, opponentName: this.opponent.shortName };
+    }
+
+    const ben = this.players.find((p) => p.controlSlot === this.agYuvam);
+    if (ben?.side === 'away') {
+      // Ben deplasmandayım: ev sahibi rakibim, deplasman benim takımım
+      return { homeName: rakip, opponentName: this.opponent.shortName };
+    }
+    return { homeName: evAdi, opponentName: rakip };
+  }
+
+  agGidisDonus() {
+    if (this.agRol !== 'misafir' || this.agPencere === null) return null;
+    return Math.round(this.agPencere * 1000);
+  }
+
   agAkisBasladiMi() {
     return this.agSonPaketAn !== null;
   }
@@ -1203,7 +1255,7 @@ export default class Game {
        * belirliyor. Yumuşatılıyor çünkü ham değer pakete göre
        * seğiriyor ve top o seğirmeyi doğrudan gösterirdi.
        */
-      this.agPencere = this.agPencere * 0.85 + pencere * 0.15;
+      this.agPencere = (this.agPencere ?? pencere) * 0.85 + pencere * 0.15;
       const adet = Math.round(pencere / PHYSICS.step);
       /*
        * Aşama pakettekinden okunuyor: girdinin işlenip işlenmediğini
@@ -1581,7 +1633,7 @@ export default class Game {
      */
     let ileriSure = Math.min(
       AG.azamiTopIleri,
-      Math.max(0, (sonZaman - hedefZaman) + this.agPencere),
+      Math.max(0, (sonZaman - hedefZaman) + (this.agPencere ?? 0)),
     );
 
     /*
@@ -3206,7 +3258,20 @@ export default class Game {
             wave: this.wave,
           }
         : null,
-      opponentName: this.opponent.shortName,
+      /*
+       * Çevrimiçide skorbordda RAKİBİN TAKMA ADI yazıyor, yapay zekâ
+       * takımının adı değil. Karşındaki bir insanken skorbordda
+       * "NORDİK" görmek maçı kişisizleştiriyordu — üstelik sprite'ın
+       * üstünde zaten oyuncunun adı yazıyor, yani ekran kendi kendine
+       * iki farklı isim söylüyordu.
+       */
+      ...this.agTakimEtiketleri(),
+      /*
+       * Bağlantı göstergesi bunu okuyor. Ayrı bir yoklama mesajı
+       * eklemek yerine zaten hesaplanan uzlaştırma penceresi
+       * kullanılıyor — bkz. `agGidisDonus`.
+       */
+      gidisDonus: this.agGidisDonus(),
       opponentAccent: this.opponent.colors.accent,
     });
   }

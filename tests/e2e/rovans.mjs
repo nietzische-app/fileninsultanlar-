@@ -92,6 +92,69 @@ const ilkB = await durum(b.page);
 kontrol('iki oyuncu EŞLEŞTİ ve maç kuruldu', Boolean(ilkA && ilkB), JSON.stringify({ ilkA, ilkB }));
 
 // ===================================================================
+// 1b) Maç içi: rakip adı ve bağlantı göstergesi
+// ===================================================================
+/*
+ * İkisi de sessizce eksik kalabilir: gösterge hiç çıkmaz, skorbordda
+ * yapay zekâ takımının adı kalır. Hata vermezler, yalnız bilgi
+ * ulaşmaz.
+ */
+const macMetni = await a.page.evaluate(() => document.body.innerText);
+const rakipAdi = await b.page.evaluate(() => {
+  const k = JSON.parse(localStorage.getItem('retro-voleybol-kimlik') ?? 'null');
+  return k?.ad ?? null;
+});
+kontrol(
+  'skorbordda RAKİBİN TAKMA ADI yazıyor (AI takımı değil)',
+  Boolean(rakipAdi) && macMetni.includes(rakipAdi.toUpperCase()),
+  `rakip=${rakipAdi}`,
+);
+
+const gosterge = await a.page.evaluate(() => {
+  const el = [...document.querySelectorAll('div[title]')]
+    .find((d) => d.getAttribute('title')?.startsWith('Bağlantı:'));
+  return el ? { baslik: el.getAttribute('title'), metin: el.innerText.trim() } : null;
+});
+kontrol(
+  'bağlantı göstergesi çevrimiçi maçta GÖRÜNÜYOR',
+  Boolean(gosterge),
+  gosterge ? gosterge.baslik : 'gösterge yok',
+);
+kontrol(
+  'gösterge gerçek bir ms değeri yazıyor',
+  gosterge ? /^\d+ms$/.test(gosterge.metin) : false,
+  gosterge?.metin ?? '',
+);
+
+/*
+ * DEPLASMANDAKİ oyuncuda etiketler ters olmamalı — ölçerek bulunmuş
+ * bir hata. Skorbordun ev etiketi sabit 'TÜRKİYE' idi ve deplasmana
+ * düşen oyuncu KENDİ tarafında rakibinin adını görüyordu. Birim testi
+ * motoru sınıyor; burada sınanan şey ekrana ne yazıldığı.
+ */
+const etiketler = async (p) => p.evaluate(() => {
+  const g = window.__game;
+  const ben = g.players.find((x) => x.controlSlot === g.agYuvam);
+  const el = [...document.querySelectorAll('div')]
+    .find((d) => d.className.includes('retro-panel') && /SET\s+1/.test(d.innerText));
+  return { taraf: ben?.side, rakip: g.agRakipAd, metin: el?.innerText ?? '' };
+});
+
+for (const [ad, sayfa] of [['A', a.page], ['B', b.page]]) {
+  const e = await etiketler(sayfa);
+  const kendiTarafiRakipAdi = e.taraf === 'away'
+    // Deplasmandaysam sağdaki (away) etiket BENİM tarafım
+    ? e.metin.split('\n').slice(-3).join(' ').includes(e.rakip)
+    // Ev sahibiysem soldaki (home) etiket benim tarafım
+    : e.metin.split('\n').slice(0, 3).join(' ').includes(e.rakip);
+  kontrol(
+    `${ad} (${e.taraf}) kendi tarafında RAKİBİNİN adını görmüyor`,
+    !kendiTarafiRakipAdi,
+    `rakip=${e.rakip}`,
+  );
+}
+
+// ===================================================================
 // 2) Maçı bitir → rövanş düğmesi çıkıyor mu?
 // ===================================================================
 /*

@@ -138,6 +138,58 @@ oyuncu ikinci kez kadro/format seçmiyor.
 Ekran hangi aşamada olduğunu söylüyor ("RAKİP BEKLENİYOR", "SIRA
 SENDE"), çünkü "bastım ve bir şey olmadı" en kötü hâl.
 
+## Bağlantı göstergesi
+
+Maç ekranında skorbordun yanında üç çubuk ve milisaniye. Eşikler
+**uydurulmadı, ölçüldü** — genel ağ sezgisiyle ("100 ms iyidir") eşik
+seçmek burada yanlış olurdu, çünkü önemli olan gecikmenin kendisi değil
+BU OYUNDA neyi bozduğu.
+
+Ölçüt topun temas penceresi: `hitRadius` 40 + salınım payı 12 + top
+yarıçapı 13 = **~65 px**. Görsel sapma bunu aştığında oyuncu ekranda
+gördüğü topa nişan alıyor ama gerçek temas alanının dışında kalıyor.
+`npm run olcum:top` ile ölçülen p95 sapma:
+
+| gidiş-dönüş | p95 sapma | pencereye oranı | kademe |
+| --- | --- | --- | --- |
+| 0 ms | 65 px | ~1x | **İYİ** |
+| 100 ms | 69 px | ~1x | **İYİ** |
+| 200 ms | 119 px | ~2x | **ORTA** |
+| 300 ms | 170 px | ~3x | **KÖTÜ** |
+| 600 ms | 245 px | ~4x (medyan bile 66 px) | **KÖTÜ** |
+
+Kademeler `src/game/baglantiKalite.js` içinde ve testleri temas
+penceresini KODDAN hesaplayıp doğruluyor: biri `hitRadius`ı
+değiştirirse test durup ölçümün tazelenmesi gerektiğini söylüyor.
+
+Ayrı bir yoklama (ping/pong) mesajı **eklenmedi**: gidiş-dönüş bilgisi
+uzlaştırma penceresinden zaten her pakette geliyor, fazladan mesaj hem
+bant hem yeni bir arıza yüzeyi olurdu.
+
+Sayı da yazılıyor, yalnız çubuk değil — "kötü" derken suçu oyuncunun
+internetine atıyormuş gibi olmasın, kendi durumunu doğrulayabilsin.
+
+## Rakip adı ve taraf etiketleri
+
+Çevrimiçide skorbordda artık rakibin TAKMA ADI yazıyor, yapay zekâ
+takımının adı değil. Karşındaki insanken "NORDİK" görmek maçı
+kişisizleştiriyordu — üstelik sprite'ın üstünde zaten oyuncunun adı
+yazıyordu, yani ekran iki farklı isim söylüyordu.
+
+Bunu yaparken **ölçüm bir hata buldu**: skorbordun ev etiketi sabit
+'TÜRKİYE' idi. Çevrimdışında doğru (oyuncu her zaman ev sahibi) ama
+çevrimiçide değil — hızlı eşleşmede Türkiye'yi kimin oynayacağına
+sunucu karar veriyor ve deplasmana düşen oyuncu KENDİ TARAFINDA
+rakibinin adını görüyordu:
+
+```
+ev sahibi oyuncu:   TÜRKİYE  ...  OYUNCU-B      doğru
+deplasman oyuncu:   TÜRKİYE  ...  OYUNCU-A      YANLIŞ — kendi tarafı
+```
+
+Kural artık şu: karşı taraf rakibin adını, kendi tarafın oynadığın
+takımın adını taşıyor (`Game.agTakimEtiketleri`).
+
 ## Çalıştırma
 
 ```bash

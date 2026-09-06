@@ -8,6 +8,15 @@ export default function Scoreboard({
   sets,
   setNumber,
   setHistory,
+  /**
+   * Ev sahibi etiketi.
+   *
+   * Sabit 'TÜRKİYE' idi ve çevrimiçide YANLIŞTI: yerel oyuncu iki
+   * taraftan birinde olabiliyor ve deplasmandaki oyuncu kendi tarafında
+   * rakibinin adını görüyordu. Motor artık iki etiketi de kendisi
+   * hesaplıyor (bkz. Game `emitState`).
+   */
+  homeName = 'TÜRKİYE',
   awayName = 'RAKİP',
   awayAccent = 'text-[#9BB0FF]',
   pointsPerSet = RULES.pointsPerSet,
@@ -34,7 +43,7 @@ export default function Scoreboard({
     >
       <div className="flex items-center justify-between gap-2">
         <TeamBlock
-          name="TÜRKİYE"
+          name={homeName}
           flag
           points={survival ? survival.points : score.home}
           sets={sets.home}

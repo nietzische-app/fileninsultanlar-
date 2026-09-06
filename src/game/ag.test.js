@@ -439,3 +439,95 @@ describe('topu ileri sarma', () => {
     expect(ev.ball.x).toBe(oncekiX);
   });
 });
+
+describe('bağlantı gecikmesi ölçümü', () => {
+  it('ölçüm yokken null, SIFIR gecikmeyle null DEĞİL', () => {
+    /*
+     * "Henüz ölçülmedi" ile "sıfır gecikme" farklı şeyler. İlk yazışta
+     * `agPencere`yi 0 ile başlatıp `!agPencere` diye bakmıştım; kusursuz
+     * bir bağlantıda (yerel ağ, aynı makine) gösterge tamamen
+     * kayboluyordu — yani EN İYİ durum, ölçüm yokmuş gibi görünüyordu.
+     */
+    const g = misafirKur();
+    expect(g.agGidisDonus()).toBeNull();
+
+    g.agPencere = 0;
+    expect(g.agGidisDonus()).toBe(0);
+
+    g.agPencere = 0.12;
+    expect(g.agGidisDonus()).toBe(120);
+  });
+
+  it('ev sahibi tarafta gecikme ölçülmüyor', () => {
+    // Sunucu kendi kendine gecikmiyor; orada gösterge anlamsız olurdu
+    const ev = sunucuKur();
+    ev.agPencere = 0.2;
+    expect(ev.agGidisDonus()).toBeNull();
+  });
+
+  it('DEPLASMANDAKİ oyuncuda etiketler ters DEĞİL', () => {
+    /*
+     * Ölçerek bulunmuş bir hata. Skorbordun ev etiketi sabit
+     * 'TÜRKİYE' idi; çevrimdışında doğru (oyuncu her zaman ev sahibi)
+     * ama çevrimiçide değil — hızlı eşleşmede Türkiye'yi kimin
+     * oynayacağına sunucu karar veriyor.
+     *
+     * İki tarayıcıyla ölçüldüğünde deplasmana düşen oyuncu KENDİ
+     * TARAFINDA rakibinin adını görüyordu:
+     *   ev sahibi:  TÜRKİYE ... OYUNCU-B   doğru
+     *   deplasman:  TÜRKİYE ... OYUNCU-A   YANLIŞ
+     *
+     * Kural: karşı taraf rakibin adını, kendi tarafın oynadığın
+     * takımın adını taşır.
+     */
+    const etiketler = (yuva) => {
+      let yakalanan = null;
+      const g = new Game(null, {
+        mode: '1v1', format: 'single', difficulty: 'normal', playMode: 'vs',
+        bassiz: true, agRol: 'misafir', agYuvam: yuva, agRakipAd: 'RAKİBİM',
+        onState: (durum) => { yakalanan = durum; },
+      });
+      g.emitState(true);
+      const ben = g.players.find((p) => p.controlSlot === yuva);
+      return { taraf: ben?.side, ...yakalanan };
+    };
+
+    const ev = etiketler('p1');
+    expect(ev.taraf).toBe('home');
+    expect(ev.homeName).toBe('TÜRKİYE');
+    expect(ev.opponentName).toBe('RAKİBİM');
+
+    const dep = etiketler('p2');
+    expect(dep.taraf).toBe('away');
+    // Rakip KARŞI tarafta; kendi tarafında rakibin adı OLMAMALI
+    expect(dep.homeName).toBe('RAKİBİM');
+    expect(dep.opponentName).not.toBe('RAKİBİM');
+  });
+
+  it('çevrimiçi skorbordda RAKİBİN adı yazıyor', () => {
+    /*
+     * Karşındaki insanken skorbordda yapay zekâ takımının adını
+     * ("NORDİK") görmek maçı kişisizleştiriyordu — üstelik sprite'ın
+     * üstünde zaten oyuncunun adı yazıyor, yani ekran iki farklı isim
+     * söylüyordu.
+     *
+     * Test motorun GERÇEK yolundan geçiyor (`emitState` → `onState`).
+     * İlk yazışımda ifadeyi test içinde tekrar etmiştim; öyle bir test
+     * üretim kodu değişse de geçerdi, yani hiçbir şey sormuyordu.
+     */
+    const oku = (agRakipAd) => {
+      let yakalanan = null;
+      const g = new Game(null, {
+        mode: '1v1', format: 'single', difficulty: 'normal', playMode: 'vs',
+        bassiz: true, agRol: 'misafir', agYuvam: 'p1', agRakipAd,
+        onState: (durum) => { yakalanan = durum; },
+      });
+      g.emitState(true);
+      return yakalanan?.opponentName ?? null;
+    };
+
+    const aiAdi = oku(null);
+    expect(aiAdi).toBeTruthy();
+    expect(oku('ŞİMŞEK FİLE')).toBe('ŞİMŞEK FİLE');
+  });
+});

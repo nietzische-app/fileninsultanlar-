@@ -3,6 +3,7 @@ import Game from '../game/Game.js';
 import { FORMATS, GAME_HEIGHT, GAME_WIDTH, PHASE } from '../game/constants.js';
 import { getPlayerById } from '../game/players.js';
 import Scoreboard from '../components/Scoreboard.jsx';
+import BaglantiGostergesi from '../components/BaglantiGostergesi.jsx';
 import TouchControls from '../components/TouchControls.jsx';
 import ArenaWings from '../components/ArenaWings.jsx';
 import MuteButton from '../components/MuteButton.jsx';
@@ -37,6 +38,9 @@ const INITIAL_HUD = {
   survival: null,
   combo: 0,
   comboTier: null,
+  homeName: 'TÜRKİYE',
+  /** Çevrimiçi gidiş-dönüş (ms); çevrimdışında null kalır. */
+  gidisDonus: null,
   opponentName: 'RAKİP',
   opponentAccent: '#9BB0FF',
 };
@@ -481,6 +485,7 @@ export default function MatchScreen({
             sets={hud.sets}
             setNumber={hud.setNumber}
             setHistory={hud.setHistory}
+            homeName={hud.homeName}
             awayName={hud.opponentName}
             awayAccent={hud.opponentAccent}
             pointsPerSet={hud.pointsPerSet}
@@ -489,6 +494,18 @@ export default function MatchScreen({
             compact
             overlay={coarse}
           />
+
+          {/*
+            BAĞLANTI GÖSTERGESİ — yalnız çevrimiçi maçta.
+            Skorbordun yanında duruyor çünkü oyuncu maç sırasında zaten
+            oraya bakıyor; ayrı bir köşeye koymak, sorun yaşandığı anda
+            gözün gitmediği bir yere koymak olurdu.
+          */}
+          {hud.gidisDonus !== null && hud.gidisDonus !== undefined && (
+            <div className="pointer-events-none flex shrink-0 items-center pt-1">
+              <BaglantiGostergesi ms={hud.gidisDonus} />
+            </div>
+          )}
 
           {/* Duraklat / tam ekran / çık — yalnızca mobil */}
           <div className="pointer-events-auto flex shrink-0 gap-1 pr-[env(safe-area-inset-right)] fine:hidden">
