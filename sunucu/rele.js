@@ -31,6 +31,7 @@ import { AD_UZUNLUK, adTemizle } from './protokol.js';
 import { Depo, genelGorunum } from './depo.js';
 import { puanDegisimi } from './puan.js';
 import { Mac } from './mac.js';
+import { PAKET_SURUM } from '../src/game/snapshot.js';
 
 /** Tek mesajın azami boyu (bayt). Anlık görüntü ~300 bayt; 16 KB fazlasıyla yeter. */
 const AZAMI_MESAJ = 16 * 1024;
@@ -233,7 +234,55 @@ export async function baslat({
    *
    * @param {boolean} [siralamali] Sonuç skor tablosuna yazılsın mı
    */
+  /**
+   * İki taraf da maçı ÇİZEBİLECEK sürümde mi?
+   *
+   * Bu denetim bir arızanın bedeli. Site (Vercel) ile röle ayrı
+   * dağıtılıyor ve site geride kaldı: sunucu `v:2` yolluyor, istemci
+   * `v:1` bekliyor ve gelen HER paketi sessizce atıyordu. İki oyuncu
+   * da maçın ilk karesinde dondu; ne ekranda ne günlükte tek satır iz
+   * vardı, çünkü uyuşmazlığı görecek bir yer yoktu.
+   *
+   * Sürüm bildirmeyen istemci ESKİ sayılıyor: alan sonradan eklendi,
+   * yani yokluğu "bilmiyorum" değil "bu istemci o kadar eski" demek.
+   *
+   * DÖNÜŞ TİPİ dikkatli seçildi. Önce "uyuşmayan sürümü döndür, uygunsa
+   * null" diye yazmıştım ve denetim en önemli durumda ÇALIŞMIYORDU:
+   * sürüm bildirmeyen eski istemcide `surum` zaten null olduğu için
+   * dönüş "sorun yok" ile aynı değere düşüyordu. Yani tam da yakalamak
+   * için yazdığım istemciyi geçiriyordu. Mevcut testlerin hepsinin
+   * geçmesi bunu ele verdi — hiçbiri sürüm bildirmiyor, hepsinin
+   * reddedilmesi gerekirdi.
+   *
+   * @returns {{bildirilen: number|null}|null} Sorun varsa nesne, yoksa null
+   */
+  function surumSorunu(oda) {
+    for (const soket of [oda.ev, oda.misafir]) {
+      const surum = soket?.paketSurum ?? null;
+      if (surum !== PAKET_SURUM) return { bildirilen: surum };
+    }
+    return null;
+  }
+
   function macKur(oda, ayar, siralamali = false) {
+    /*
+     * Uyuşmuyorsa maç HİÇ kurulmuyor. Çizilemeyecek bir maçı başlatmak,
+     * iki oyuncuyu da sebebini bilmedikleri bir donmayla baş başa
+     * bırakmak demekti; sebebini söyleyip başlatmamak daha iyi.
+     */
+    const uyusmaz = surumSorunu(oda);
+    if (uyusmaz) {
+      console.warn(
+        `SÜRÜM UYUŞMUYOR — oda=${oda.kod}: istemci paket sürümü`
+        + ` ${uyusmaz.bildirilen ?? 'bildirilmedi (eski istemci)'},`
+        + ` sunucu ${PAKET_SURUM}. Maç başlatılmadı.`
+        + ' Site ve röle aynı sürümden dağıtılmalı.',
+      );
+      hataYolla(oda.ev, 'surum-uyusmuyor');
+      hataYolla(oda.misafir, 'surum-uyusmuyor');
+      return;
+    }
+
     oda.siralamali = siralamali;
     oda.mac = new Mac({
       ayar,
@@ -432,6 +481,17 @@ export async function baslat({
            * kimlik de kopyalanır. Ama artık başkasının kimliğini
            * TAHMİN ederek ele geçirmek mümkün değil.
            */
+          /*
+           * İstemcinin paket sürümü sokete yapıştırılıyor. Maç
+           * kurulurken `surumSorunu` buna bakıyor: uyuşmayan bir
+           * istemci maçı çizemez ve maç hiç başlatılmaz.
+           *
+           * Sayı olmayan bir değer (eski istemci, bozuk mesaj) null
+           * kalıyor — "bildirmedi" ile "yanlış bildirdi" aynı sonuca
+           * varıyor, ikisinde de maç çizilemez.
+           */
+          soket.paketSurum = typeof mesaj.surum === 'number' ? mesaj.surum : null;
+
           const ad = adTemizle(mesaj.ad, AD_UZUNLUK);
           const kayitli = mesaj.id && mesaj.gizli ? depo.dogrula(mesaj.id, mesaj.gizli) : null;
 

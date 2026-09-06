@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { baslat } from './rele.js';
+import { PAKET_SURUM } from '../src/game/snapshot.js';
 
 /**
  * Röle testleri — gerçek soketlerle.
@@ -39,6 +40,19 @@ async function istemci() {
     soket.once('error', red);
   });
 
+  /*
+   * Sürüm el sıkışması. Gerçek istemci her yolda (oda aç, odaya gir,
+   * hızlı eşleş, skor tablosu) kimliği İLK iş olarak bildiriyor ve
+   * sürüm o mesajda gidiyor; sunucu da uyuşmayan istemciyle maç
+   * kurmuyor. Testin bunu atlaması, testi eski bir istemci yapardı.
+   *
+   * Kimlik cevabı kuyruğa girmesin diye burada tüketiliyor.
+   */
+  soket.send(JSON.stringify({ t: 'kimlik', surum: PAKET_SURUM }));
+  await new Promise((coz) => {
+    bekleyenler.push(coz);
+  });
+
   return {
     soket,
     yolla: (veri) => soket.send(JSON.stringify(veri)),
@@ -60,7 +74,7 @@ async function istemci() {
 
 /** Sunucudan kimlik alır — adım 4'ten sonra kimliği sunucu veriyor. */
 async function kimlikAl(k, ad) {
-  k.yolla({ t: 'kimlik', ad });
+  k.yolla({ t: 'kimlik', ad, surum: PAKET_SURUM });
   const cevap = await k.al();
   return cevap;
 }
@@ -150,6 +164,39 @@ describe('röle', () => {
     expect(misafirMac.yuva).toBe('p2');
     // Ayar İKİSİNDE DE aynı olmalı; yoksa farklı kadro çizerler
     expect(evMac.cfg).toEqual(misafirMac.cfg);
+
+    ev.kapat();
+    misafir.kapat();
+  });
+
+  /*
+   * ESKİ İSTEMCİ. Yaşanmış arıza: site (Vercel) `PAKET_SURUM = 1` ile
+   * yayındaydı, röle 2 ile koşuyordu. Sunucu maçı kurdu, saniyede 20
+   * paket yolladı, istemci sürüm tutmadığı için HEPSİNİ sessizce attı.
+   * İki oyuncu da maçın ilk karesinde dondu — ekranda tek kelime,
+   * günlükte tek satır yoktu. Eski istemci uyuşmazlığı gösterecek
+   * koda da sahip değildi, yani çare istemci tarafında yoktu.
+   *
+   * Artık maç HİÇ kurulmuyor: çizilemeyecek bir maçı başlatmaktansa
+   * sebebini söyleyip başlatmamak daha iyi.
+   */
+  it('sürüm bildirmeyen (eski) istemciyle maç kurulmuyor', async () => {
+    const { ev, misafir } = await esliOda();
+    // Eski istemciyi taklit et: sürüm bilgisini geri al
+    [ev, misafir].forEach((k) => k.yolla({ t: 'kimlik', ad: 'ESKİ' }));
+    await ev.al();
+    await misafir.al();
+
+    ev.yolla({ t: 'mac-basla', cfg: MAC_AYARI });
+
+    const evCevap = await ev.al();
+    const misafirCevap = await misafir.al();
+
+    // Maç mesajı DEĞİL, sebebi söyleyen bir hata gelmeli
+    expect(evCevap.t).toBe('hata');
+    expect(evCevap.sebep).toBe('surum-uyusmuyor');
+    expect(misafirCevap.t).toBe('hata');
+    expect(misafirCevap.sebep).toBe('surum-uyusmuyor');
 
     ev.kapat();
     misafir.kapat();
@@ -480,7 +527,7 @@ describe('kimlik ve skor tablosu', () => {
     a.kapat();
 
     const b = await istemci();
-    b.yolla({ t: 'kimlik', id: ilk.id, gizli: ilk.gizli, ad: 'DÖNEN' });
+    b.yolla({ t: 'kimlik', id: ilk.id, gizli: ilk.gizli, ad: 'DÖNEN', surum: PAKET_SURUM });
     const ikinci = await b.al();
 
     expect(ikinci.id).toBe(ilk.id);
@@ -500,7 +547,9 @@ describe('kimlik ve skor tablosu', () => {
     a.kapat();
 
     const saldirgan = await istemci();
-    saldirgan.yolla({ t: 'kimlik', id: kurban.id, gizli: 'tahmin', ad: 'SALDIRGAN' });
+    saldirgan.yolla({
+      t: 'kimlik', id: kurban.id, gizli: 'tahmin', ad: 'SALDIRGAN', surum: PAKET_SURUM,
+    });
     const cevap = await saldirgan.al();
 
     expect(cevap.id).not.toBe(kurban.id);
@@ -512,7 +561,7 @@ describe('kimlik ve skor tablosu', () => {
   it('ad değişikliği anahtarı korur', async () => {
     const a = await istemci();
     const ilk = await kimlikAl(a, 'ESKİ AD');
-    a.yolla({ t: 'kimlik', id: ilk.id, gizli: ilk.gizli, ad: 'YENİ AD' });
+    a.yolla({ t: 'kimlik', id: ilk.id, gizli: ilk.gizli, ad: 'YENİ AD', surum: PAKET_SURUM });
     const ikinci = await a.al();
 
     expect(ikinci.id).toBe(ilk.id);

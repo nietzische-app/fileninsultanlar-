@@ -10,6 +10,8 @@
  * düğmesi, basana kadar çalışıyormuş gibi görünen bir yalandır.
  */
 
+import { PAKET_SURUM } from '../game/snapshot.js';
+
 /**
  * Röle adresi; yapı sırasında gömülür.
  *
@@ -44,6 +46,9 @@ export const HATA_METNI = {
   'cok-hizli': 'Bağlantı çok fazla mesaj gönderdi.',
   'cok-baglanti': 'Bu ağdan çok fazla bağlantı açık. Diğer sekmeleri kapatıp deneyin.',
   'bozuk-mesaj': 'Sunucu mesajı anlamadı.',
+  'surum-uyusmuyor':
+    'Oyunun sürümü sunucununkiyle uyuşmuyor. Sayfayı yenile (gerekirse '
+    + 'önbelleği temizle); sorun sürerse site güncellenmemiş demektir.',
   baglanti: 'Sunucuya ulaşılamadı.',
   koptu: 'Bağlantı koptu.',
 };
@@ -165,7 +170,19 @@ export class Baglanti {
         cozul();
         coz(mesaj);
       });
-      this.yolla({ t: 'kimlik', id, gizli, ad });
+      /*
+       * Paket sürümü de bildiriliyor. Sebebi yaşanmış bir arıza: site
+       * ile röle AYRI dağıtılıyor ve site geride kaldığında sunucu
+       * `v:2` yolluyor, istemci `v:1` bekliyor, gelen her paketi
+       * sessizce atıyordu. Görünen tek şey ilk karede donmuş bir maçtı;
+       * ne istemcide ne sunucuda tek satır iz vardı.
+       *
+       * Sürümü EL SIKIŞMADA söylemek, uyuşmazlığı maç kurulmadan ÖNCE
+       * yakalatıyor. Sunucu bunu hem günlüğe yazıyor hem de oyuncuya
+       * söylüyor — çizilemeyecek bir maçı başlatmaktansa sebebini
+       * söyleyip başlatmamak daha iyi.
+       */
+      this.yolla({ t: 'kimlik', id, gizli, ad, surum: PAKET_SURUM });
     });
   }
 
