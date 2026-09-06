@@ -10,6 +10,14 @@
  * iniyor). Görsel sapma bu pencereyi aştığında oyuncu ekranda gördüğü
  * topa nişan alıyor ama gerçek temas alanının dışında kalıyor.
  *
+ * GÖSTERİLEN SAYI NE ÖLÇÜYOR: tuşa bastığın andan sonucu gördüğün ana
+ * kadar geçen tam döngü — sunucunun anlık görüntü kuyruğu dahil. Bir
+ * ara sürümde bu kuyruk düşülüyordu ve gösterge gerçek gidiş-dönüşü
+ * ~34 ms EKSİK veriyordu (bir oyuncu "2 ms yazıyor ama inandırıcı
+ * değil" diye bildirdi ve haklıydı). `npm run olcum:ping` bu sayının
+ * gerçek gecikmeyle örtüştüğünü doğruluyor; kalan salınım ±2 adım ve
+ * sistematik değil.
+ *
  * `npm run olcum:top` ile ölçülen (p95 sapma, ileri sarma açık):
  *
  *   tek yön   gidiş-dönüş   p95 sapma   pencereye oranı

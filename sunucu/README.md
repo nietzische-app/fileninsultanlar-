@@ -163,8 +163,36 @@ penceresini KODDAN hesaplayıp doğruluyor: biri `hitRadius`ı
 değiştirirse test durup ölçümün tazelenmesi gerektiğini söylüyor.
 
 Ayrı bir yoklama (ping/pong) mesajı **eklenmedi**: gidiş-dönüş bilgisi
-uzlaştırma penceresinden zaten her pakette geliyor, fazladan mesaj hem
-bant hem yeni bir arıza yüzeyi olurdu.
+uzlaştırmadan zaten her pakette geliyor, fazladan mesaj hem bant hem
+yeni bir arıza yüzeyi olurdu.
+
+### Gösterge neyi ölçüyor — ve bir düzeltme
+
+İlk sürüm `agPencere`yi okuyordu ve o değerden **sunucudaki bekleme
+düşülüyor**. Çıkarma TAHMİN için doğru (sunucu o süreyi zaten bu
+girdiyle ilerletmiş) ama oyuncunun HİSSETTİĞİ gecikme beklemeyi
+içeriyor. Sunucu 20 Hz gönderdiği için kuyruk ortalama ~34 ms ve
+göstergeden tam o kadar eksiliyordu.
+
+Bir oyuncu bildirdi: *"online oynarken 2 ms yazıyor ama inandırıcı
+değil"*. Haklıydı — gerçek gidiş-dönüşü ~36 ms olan biri ekranda 2 ms
+görüyordu. `npm run olcum:ping` hatayı yeniden üretti:
+
+| gerçek RTT | önce | sonra |
+| --- | --- | --- |
+| 67 ms | 33 ms | 100 ms |
+| 100 ms | 67 ms | 117 ms |
+| 200 ms | 166 ms | 233 ms |
+| 300 ms | 266 ms | 283 ms |
+| 400 ms | — | 400 ms |
+
+Önce **sistematik olarak eksik**; sonra ±2 adım salınım, ortalama sapma
++6 ms. Kalan salınım kuantizasyon (60 Hz döngü, 20 Hz anlık görüntü).
+
+Gösterge artık `agDongu`yu okuyor — `agPencere` tahminde kalıyor. İki
+alan bilerek ayrı; bir birim testi ikisine FARKLI değer atayıp
+göstergenin doğru olanı okuduğunu sınıyor, bir entegrasyon testi de
+gerçek iki motorlu döngüde sapmanın 25 ms'i aşmadığını.
 
 Sayı da yazılıyor, yalnız çubuk değil — "kötü" derken suçu oyuncunun
 internetine atıyormuş gibi olmasın, kendi durumunu doğrulayabilsin.

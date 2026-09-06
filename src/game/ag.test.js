@@ -451,17 +451,155 @@ describe('bağlantı gecikmesi ölçümü', () => {
     const g = misafirKur();
     expect(g.agGidisDonus()).toBeNull();
 
-    g.agPencere = 0;
+    g.agDongu = 0;
     expect(g.agGidisDonus()).toBe(0);
 
-    g.agPencere = 0.12;
+    g.agDongu = 0.12;
     expect(g.agGidisDonus()).toBe(120);
+  });
+
+  it('gösterge TAHMİN penceresini değil DÖNGÜ süresini okuyor', () => {
+    /*
+     * Bu ayrım bir kullanıcı bildiriminden doğdu: "2 ms yazıyor ama
+     * inandırıcı değil". Haklıydı — gösterge `agPencere`yi okuyordu ve
+     * o değerden sunucudaki bekleme DÜŞÜLÜYOR. Çıkarma tahmin için
+     * doğru (sunucu o süreyi zaten ilerletmiş) ama oyuncunun
+     * hissettiği gecikme beklemeyi içeriyor; sunucu 20 Hz gönderdiği
+     * için gösterge gerçek gidiş-dönüşü ~34 ms eksik veriyordu.
+     *
+     * İki alan bilerek FARKLI değerlerle sınanıyor: gösterge yanlış
+     * olanı okursa test düşer.
+     */
+    const g = misafirKur();
+    g.agPencere = 0.002;  // tahminin penceresi — küçük
+    g.agDongu = 0.086;    // oyuncunun hissettiği — gerçek
+    expect(g.agGidisDonus()).toBe(86);
+  });
+
+  it('GERÇEK döngüde gecikmeyi sistematik olarak EKSİK göstermiyor', () => {
+    /*
+     * Kullanıcının bildirdiği hata tam olarak buydu ve yalnız bu test
+     * yakalayabilir: alanları elle atayan testler tam döngüyü hiç
+     * çalıştırmıyor, dolayısıyla "bekleme düşülüyor mu" sorusunu
+     * soramıyorlar. Mutasyon bunu gösterdi — çıkarmayı geri koyduğumda
+     * bütün birim testleri geçiyordu.
+     *
+     * Burada iki motor yapay gecikmeyle bağlanıyor ve göstergenin
+     * GERÇEK gidiş-dönüşün altında kalmadığı sınanıyor.
+     */
+    const MS = PHYSICS.step * 1000;
+    const gecikmeAdim = 6; // ~100 ms tek yön → ~200 ms gidiş-dönüş
+    const gercekRtt = gecikmeAdim * MS * 2;
+
+    const kuyruk = { yukari: [], asagi: [] };
+    let adim = 0;
+    const yolla = (ad) => (paket) => kuyruk[ad].push({
+      varis: adim + gecikmeAdim, veri: JSON.stringify(paket),
+    });
+    const al = (ad) => {
+      const cikan = [];
+      while (kuyruk[ad].length && kuyruk[ad][0].varis <= adim) {
+        cikan.push(JSON.parse(kuyruk[ad].shift().veri));
+      }
+      return cikan;
+    };
+
+    const ortak = {
+      mode: '1v1', format: 'single', difficulty: 'normal', playMode: 'vs', bassiz: true,
+    };
+    const sunucu = new Game(null, { ...ortak, agRol: 'ev', agGonder: yolla('asagi') });
+    sunucu.start();
+    const istemci = new Game(null, {
+      ...ortak,
+      opponentId: sunucu.opponent.id,
+      homeIds: [...sunucu.homeIds],
+      agRol: 'misafir',
+      agYuvam: 'p1',
+      agGonder: yolla('yukari'),
+    });
+    istemci.start();
+
+    for (adim = 0; adim < 300; adim += 1) {
+      al('yukari').forEach((p) => sunucu.agPaketAl(p, 'p1'));
+      al('asagi').forEach((p) => istemci.agPaketAl(p, 'p2'));
+      if (adim % 30 === 0) istemci.inputs.p1.right = !istemci.inputs.p1.right;
+      sunucu.ilerlet(PHYSICS.step);
+      sunucu.agAkis();
+      istemci.ilerlet(PHYSICS.step);
+      istemci.agAkis();
+    }
+
+    const gosterilen = istemci.agGidisDonus();
+    expect(gosterilen).not.toBeNull();
+
+    /*
+     * TOLERANS ÖLÇÜLEREK KONDU, tahminle değil.
+     *
+     * İlk yazışta 3 adım (50 ms) paya izin verdim ve mutasyon hayatta
+     * kaldı: bekleme çıkarılınca sapma 33 ms oluyor, yani payın
+     * altında kalıyordu — test adını taşıdığı şeyi sormuyordu.
+     *
+     * Aynı düzenekte ölçülen:
+     *   doğru hâl        → 211 ms (gerçek 200, sapma +11)
+     *   bekleme düşülmüş → 167 ms (gerçek 200, sapma -33)
+     *
+     * 25 ms eşiği ikisini kesin ayırıyor.
+     */
+    expect(
+      Math.abs(gosterilen - gercekRtt),
+      `gösterilen ${gosterilen}ms, gerçek ${gercekRtt}ms`,
+    ).toBeLessThan(25);
+  });
+
+  it('AYNI damga tekrar gelirse ölçüm ŞİŞMİYOR', () => {
+    /*
+     * Sunucu 20 Hz anlık görüntü gönderiyor, istemci 20 Hz damga —
+     * ikisi tam örtüşmediği için sunucu iki ardışık görüntüde AYNI
+     * damgayı geri yollayabiliyor. O damgayla tekrar ölçmek süreyi
+     * şişirir: ölçülen şey gidiş-dönüş değil, damganın yaşı olur.
+     *
+     * Bu testi mutasyon istedi: korumayı kaldırdığımda hiçbir test
+     * düşmüyordu, yani kod doğrulanmamış duruyordu.
+     */
+    const g = misafirKur();
+    const s2 = sunucuKur();
+
+    /*
+     * Sunucu adımı her pakette ilerliyor: aynı adımla gelen paket
+     * yok sayılıyor (tampon sıralaması buna dayanıyor) ve test sessizce
+     * hiçbir şey ölçmemiş olurdu — ilk yazışta tam bu oldu.
+     */
+    let adim = 100;
+    const paketYap = (damga, bekleme) => {
+      adim += 3;
+      s2.adim = adim;
+      const p = paketle(s2);
+      p.az = [damga, null];
+      p.ay = [bekleme, 0];
+      return p;
+    };
+
+    // İlk ölçüm: damga 1.0, istemci saati ilerledi
+    g.time = 1.2;
+    g.agPaketAl(paketYap(1.0, 0), 'p2');
+    const ilk = g.agDongu;
+    expect(ilk).toBeGreaterThan(0);
+
+    // AYNI damga, ama istemci saati epey ilerledi
+    g.time = 1.6;
+    g.agPaketAl(paketYap(1.0, 0), 'p2');
+    expect(g.agDongu).toBe(ilk);
+
+    // Yeni damga gelince ölçüm yeniden işliyor
+    g.time = 1.7;
+    g.agPaketAl(paketYap(1.6, 0), 'p2');
+    expect(g.agDongu).not.toBe(ilk);
   });
 
   it('ev sahibi tarafta gecikme ölçülmüyor', () => {
     // Sunucu kendi kendine gecikmiyor; orada gösterge anlamsız olurdu
     const ev = sunucuKur();
-    ev.agPencere = 0.2;
+    ev.agDongu = 0.2;
     expect(ev.agGidisDonus()).toBeNull();
   });
 

@@ -17,6 +17,7 @@
     "olcum:gecikme": "node tests/olcum/gecikme.mjs",
     "olcum:ilerleme": "node tests/olcum/ilerleme.mjs",
     "olcum:top": "node tests/olcum/top.mjs",
+    "olcum:ping": "node tests/olcum/ping.mjs",
     "vercel-build": "vite build",
     "build:portal": "node scripts/build-portal.mjs",
     "rele": "node sunucu/index.js",

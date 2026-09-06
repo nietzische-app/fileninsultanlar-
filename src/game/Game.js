@@ -437,6 +437,15 @@ export default class Game {
      * — yani en iyi durum, ölçüm yokmuş gibi görünüyordu.
      */
     this.agPencere = null;
+    /**
+     * Oyuncunun hissettiği tam döngü süresi (sn) — gösterge için.
+     *
+     * `agPencere`den farkı: sunucudaki bekleme DÜŞÜLMÜYOR. Ayrıntılı
+     * gerekçe uzlaştırma yolunda.
+     */
+    this.agDongu = null;
+    /** Son ölçülen onay damgası — aynısıyla tekrar ölçmemek için. */
+    this.agSonOnay = null;
     /** Ekranın çizildiği an, SUNUCU saatinde. İlk pakette kuruluyor. */
     this.agCizimSaati = null;
 
@@ -1107,10 +1116,14 @@ export default class Game {
   /**
    * Ölçülen gidiş-dönüş süresi (ms) — yoksa null.
    *
-   * `agPencere` uzlaştırmadan öğreniliyor ve zaten yumuşatılmış.
-   * Göstergenin okuyacağı tek sayı bu; ayrı bir yoklama (ping/pong)
-   * mesajı EKLENMEDİ çünkü gereksiz olurdu: bilgi her pakette zaten
-   * geliyor, fazladan mesaj hem bant hem de yeni bir arıza yüzeyi.
+   * `agDongu` uzlaştırmadan öğreniliyor ve zaten yumuşatılmış.
+   * `agPencere` DEĞİL: o tahminin ihtiyacı ve sunucudaki beklemeyi
+   * düşüyor; oyuncunun hissettiği gecikme o beklemeyi içeriyor.
+   * Ayrım konmadan önce gösterge gerçek gidiş-dönüşü ~34 ms eksik
+   * gösteriyordu.
+   *
+   * Ayrı bir yoklama (ping/pong) mesajı EKLENMEDİ: bilgi her pakette
+   * zaten geliyor, fazladan mesaj hem bant hem yeni bir arıza yüzeyi.
    */
   /**
    * Skorbordun İKİ etiketi — çevrimiçide taraf değişebiliyor.
@@ -1144,8 +1157,8 @@ export default class Game {
   }
 
   agGidisDonus() {
-    if (this.agRol !== 'misafir' || this.agPencere === null) return null;
-    return Math.round(this.agPencere * 1000);
+    if (this.agRol !== 'misafir' || this.agDongu === null) return null;
+    return Math.round(this.agDongu * 1000);
   }
 
   agAkisBasladiMi() {
@@ -1256,6 +1269,38 @@ export default class Game {
        * seğiriyor ve top o seğirmeyi doğrudan gösterirdi.
        */
       this.agPencere = (this.agPencere ?? pencere) * 0.85 + pencere * 0.15;
+
+      /*
+       * GÖSTERGE İÇİN AYRI ÖLÇÜM — `bekleme` DÜŞÜLMÜYOR.
+       *
+       * `pencere` tahminin ihtiyacı: kaç adım geri sarılacak. Orada
+       * `bekleme`yi düşmek doğru, çünkü sunucu o süreyi zaten bu
+       * girdiyle ilerletmiş.
+       *
+       * Ama oyuncunun HİSSETTİĞİ gecikme o beklemeyi İÇERİYOR: tuşa
+       * bastığı andan sonucu gördüğü ana kadar geçen süre. Sunucu 20 Hz
+       * gönderdiği için kuyruk ortalama ~34 ms ve göstergeden tam o
+       * kadar eksiliyordu — gerçek gidiş-dönüşü 36 ms olan bir oyuncu
+       * ekranda "2 ms" görüyordu. Sayı inandırıcı değildi çünkü yanlıştı.
+       *
+       * Ölçümle doğrulandı (yapay gecikmeli iki motor):
+       *   gerçek RTT  50ms → gösterilen  33ms
+       *   gerçek RTT 100ms → gösterilen  67ms
+       *   gerçek RTT 300ms → gösterilen 266ms
+       */
+      /*
+       * YALNIZ DAMGA DEĞİŞTİĞİNDE ölçülüyor.
+       *
+       * Girdi değişmese de 20 Hz damga gidiyor ama sunucu iki anlık
+       * görüntüde AYNI damgayı geri yollayabiliyor. Aynı damgayla
+       * tekrar ölçmek süreyi şişiriyordu: ölçüm gerçek gidiş-dönüşü
+       * 50 ms'e kadar fazla gösteriyordu. Ölçüm bunu yakaladı.
+       */
+      if (onay !== this.agSonOnay) {
+        this.agSonOnay = onay;
+        const dongu = Math.max(0, this.time - onay);
+        this.agDongu = (this.agDongu ?? dongu) * 0.85 + dongu * 0.15;
+      }
       const adet = Math.round(pencere / PHYSICS.step);
       /*
        * Aşama pakettekinden okunuyor: girdinin işlenip işlenmediğini
