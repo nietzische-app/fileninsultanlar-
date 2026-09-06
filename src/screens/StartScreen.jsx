@@ -34,6 +34,7 @@ export default function StartScreen({
   musicVolume = 0.55,
   onMusicVolume,
   onSettings,
+  onCollection,
 }) {
   const [messageIndex, setMessageIndex] = useState(0);
   /*
@@ -271,6 +272,13 @@ export default function StartScreen({
             onClick={onTutorial}
           >
             NASIL OYNANIR
+          </button>
+          <button
+            type="button"
+            className="retro-button-ghost px-5 py-2 text-[8px]"
+            onClick={onCollection}
+          >
+            KOLEKSİYON
           </button>
           <button
             type="button"

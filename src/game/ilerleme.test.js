@@ -12,6 +12,8 @@ import {
   ac,
   bedel,
   vitrinKadro,
+  kademeGruplari,
+  koleksiyonOzeti,
   BEDELLER,
   BASLANGIC_KADRO,
   KAZANC,
@@ -370,6 +372,68 @@ describe('kilitler', () => {
     const enUcuz = Math.min(...Object.values(BEDELLER));
     expect(acilabilirler(enUcuz, []).length).toBeGreaterThan(0);
     expect(acilabilirler(1e9, []).length).toBe(Object.keys(BEDELLER).length);
+  });
+});
+
+describe('koleksiyon görünümü', () => {
+  it('her oyuncu TAM BİR kademede', () => {
+    /*
+     * Ekran kademeleri olduğu gibi çiziyor. Bir oyuncu iki kademede
+     * birden olsa iki kez görünürdü; hiçbirinde olmasa koleksiyondan
+     * sessizce düşerdi ve "17 oyuncu" sayan başlık yalan söylerdi.
+     */
+    const hepsi = kademeGruplari([]).flatMap((g) => g.oyuncular.map((p) => p.id));
+    expect(hepsi.length).toBe(ROSTER.length);
+    expect(new Set(hepsi).size).toBe(ROSTER.length);
+  });
+
+  it('kademe bedelleri fiyat listesiyle tutuyor', () => {
+    kademeGruplari([]).forEach((g) => {
+      g.oyuncular.forEach((p) => {
+        expect(bedel(p.id), `${p.id} yanlış kademede`).toBe(g.bedel);
+      });
+    });
+  });
+
+  it('kademeler ucuzdan pahalıya, başlangıç en başta', () => {
+    const bedeller = kademeGruplari([]).map((g) => g.bedel);
+    expect(bedeller[0]).toBe(0);
+    expect(bedeller).toEqual([...bedeller].sort((a, b) => a - b));
+  });
+
+  it('açık sayaçları AÇILANLARA göre değişiyor', () => {
+    const bos = kademeGruplari([]);
+    // Kayıt boşken yalnız başlangıç kademesi dolu
+    expect(bos[0].acik).toBe(bos[0].toplam);
+    expect(bos.slice(1).every((g) => g.acik === 0)).toBe(true);
+
+    const bir = kademeGruplari(['salise-sanli']);
+    const kademe150 = bir.find((g) => g.bedel === 150);
+    expect(kademe150.acik).toBe(1);
+    expect(kademe150.toplam).toBe(4);
+  });
+
+  it('özet kadroyla tutuyor', () => {
+    const bos = koleksiyonOzeti([]);
+    expect(bos.toplam).toBe(ROSTER.length);
+    expect(bos.acik).toBe(BASLANGIC_KADRO.length);
+    expect(bos.tamam).toBe(false);
+    expect(bos.oran).toBeCloseTo(BASLANGIC_KADRO.length / ROSTER.length, 5);
+
+    const hepsi = koleksiyonOzeti(Object.keys(BEDELLER));
+    expect(hepsi.acik).toBe(ROSTER.length);
+    expect(hepsi.tamam).toBe(true);
+    expect(hepsi.oran).toBe(1);
+  });
+
+  it('özet kayıttaki ÇÖP id ile şişmiyor', () => {
+    /*
+     * Elle kurcalanmış ya da eski bir kayıt var olmayan id taşıyabilir.
+     * Sayaç onu da sayarsa "18/17 açık" gibi imkânsız bir başlık çıkar.
+     */
+    const ozet = koleksiyonOzeti(['yok-boyle-biri', 'baska-bir-hayalet']);
+    expect(ozet.acik).toBe(BASLANGIC_KADRO.length);
+    expect(ozet.acik).toBeLessThanOrEqual(ozet.toplam);
   });
 });
 

@@ -248,6 +248,66 @@ const kadroda = await page.evaluate((ad) => {
 }, hedefAd);
 kontrol('alınan oyuncu KADROYA da katıldı', kadroda, hedefAd);
 
+// ===================================================================
+// 4) Koleksiyon ekranı
+// ===================================================================
+await page.getByRole('button', { name: /← GERİ/ }).first().click();
+await page.waitForTimeout(500);
+await page.getByRole('button', { name: /KOLEKSİYON/ }).first().click();
+await page.waitForTimeout(600);
+
+const kol = await page.evaluate(() => document.body.innerText);
+kontrol('koleksiyon ekranı açılıyor', kol.includes('KOLEKSİYON'));
+
+/*
+ * Sayaç KADRONUN TAMAMINI kapsamalı. Bir kademe unutulsa ekran
+ * sorunsuz çizilir ve yalnız sayı yanlış olur — gözle yakalanmaz.
+ */
+const sayac = kol.match(/(\d+)\s*\/\s*(\d+)\s*OYUNCU AÇIK/);
+kontrol(
+  'sayaç kadronun tamamını kapsıyor',
+  sayac && Number(sayac[2]) === 17,
+  sayac ? `${sayac[1]}/${sayac[2]}` : 'okunamadı',
+);
+kontrol(
+  'açık sayısı satın almayı yansıtıyor',
+  sayac && Number(sayac[1]) === 4,   // 3 başlangıç + 1 satın alınan
+  sayac ? sayac[1] : '?',
+);
+
+/*
+ * Her oyuncu ekranda TAM BİR KEZ. Kademe listeleri çakışsa bir oyuncu
+ * iki kez görünür; bir kademe düşse hiç görünmez.
+ */
+const kartSayisi = await page.evaluate(() => {
+  const idler = [...document.querySelectorAll('[data-oyuncu]')]
+    .map((e) => e.getAttribute('data-oyuncu'));
+  return { toplam: idler.length, benzersiz: new Set(idler).size };
+});
+kontrol(
+  'her oyuncu koleksiyonda TEK KEZ ve kadronun tamamı var',
+  kartSayisi.toplam === 17 && kartSayisi.benzersiz === 17,
+  JSON.stringify(kartSayisi),
+);
+
+// Kilitli oyuncunun BONUSU görünüyor mu — "neyi kaçırıyorum" sorusu
+kontrol(
+  'kilitli oyuncunun yeteneği gizlenmiyor',
+  kol.includes('ÇAPRAZ PLASE') || kol.includes('SERİ REFLEKS'),
+);
+
+// Koleksiyondan satın alma
+const acDugmesi = page.getByRole('button', { name: /^AÇ$/ }).first();
+const acVar = await acDugmesi.isVisible().catch(() => false);
+kontrol('koleksiyondan satın alma düğmesi var', acVar);
+if (acVar) {
+  const once = (await depo(page))?.acilanlar?.length ?? 0;
+  await acDugmesi.click();
+  await page.waitForTimeout(600);
+  const sonra = (await depo(page))?.acilanlar?.length ?? 0;
+  kontrol('koleksiyondan satın alma İŞLİYOR', sonra === once + 1, `${once} → ${sonra}`);
+}
+
 kontrol('konsol hatası yok', page.hatalar.length === 0, page.hatalar.slice(0, 2).join(' | '));
 
 await ctx.close();

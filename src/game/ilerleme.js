@@ -471,5 +471,56 @@ export function gecmisKazanci(records = {}, rozetler = [], kullanilan = []) {
   return { puan, acilanlar: Array.from(new Set(acilanlar)) };
 }
 
+// =====================================================================
+// Koleksiyon görünümü
+// =====================================================================
+
+/**
+ * Kadronun kademe kademe dökümü — koleksiyon ekranı için.
+ *
+ * Ekranın kendisi bu listeyi HESAPLAMIYOR, yalnız çiziyor. Gruplama
+ * mantığı burada durunca sınanabiliyor: "her oyuncu tam bir kademede
+ * mi", "sayaçlar kadroyla tutuyor mu" gibi sorular React'in içinde
+ * sorulamazdı.
+ *
+ * Kademeler ucuzdan pahalıya; başlangıç kadrosu en başta, bedelsiz.
+ *
+ * @param {string[]} acilanlar
+ * @returns {Array<{bedel: number, ad: string, oyuncular: Array<object>,
+ *   acik: number, toplam: number}>}
+ */
+export function kademeGruplari(acilanlar = []) {
+  const bul = (id) => ROSTER.find((p) => p.id === id);
+  const grup = (bedelDeger, ad, idler) => {
+    const oyuncular = idler.map(bul).filter(Boolean);
+    return {
+      bedel: bedelDeger,
+      ad,
+      oyuncular,
+      acik: oyuncular.filter((p) => acikMi(p.id, acilanlar)).length,
+      toplam: oyuncular.length,
+    };
+  };
+
+  return [
+    grup(0, 'BAŞLANGIÇ KADROSU', BASLANGIC_KADRO),
+    ...KADEMELER.map(({ bedel: b, ids }) => grup(b, `${b} FP`, ids)),
+  ];
+}
+
+/**
+ * Koleksiyonun özeti — "5 / 17 açık".
+ *
+ * `oran` çubuk için; kadro büyürse ekranda bir şey değiştirmek
+ * gerekmesin diye burada hesaplanıyor.
+ *
+ * @param {string[]} acilanlar
+ */
+export function koleksiyonOzeti(acilanlar = []) {
+  const acik = ROSTER.filter((p) => acikMi(p.id, acilanlar)).length;
+  const toplam = ROSTER.length;
+  return { acik, toplam, oran: toplam > 0 ? acik / toplam : 0, tamam: acik === toplam };
+}
+
 /** Tüm kadronun açılması için gereken toplam — ölçüm ve test için. */
 export const TOPLAM_BEDEL = Object.values(BEDELLER).reduce((a, b) => a + b, 0);

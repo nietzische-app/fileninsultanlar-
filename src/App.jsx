@@ -3,6 +3,7 @@ import StartScreen from './screens/StartScreen.jsx';
 import TutorialScreen from './screens/TutorialScreen.jsx';
 import SettingsScreen from './screens/SettingsScreen.jsx';
 import CharacterSelect from './screens/CharacterSelect.jsx';
+import CollectionScreen from './screens/CollectionScreen.jsx';
 import TournamentScreen from './screens/TournamentScreen.jsx';
 import MatchScreen from './screens/MatchScreen.jsx';
 import OnlineScreen from './screens/OnlineScreen.jsx';
@@ -162,6 +163,12 @@ export default function App() {
     Sfx.setMuted(false);
     Sfx.setMusicVolume(saved.musicVolume);
     Sfx.setSfxVolume(saved.sfxVolume);
+  }, []);
+
+  const openCollection = useCallback(() => {
+    Sfx.unlock();
+    Sfx.select();
+    setScreen('collection');
   }, []);
 
   const openSettings = useCallback(() => {
@@ -551,6 +558,17 @@ export default function App() {
           onResumeTournament={resumeSavedTournament}
           achievements={achievements}
           ilerleme={ilerleme}
+          onCollection={openCollection}
+        />
+      )}
+
+      {screen === 'collection' && (
+        <CollectionScreen
+          onBack={goHome}
+          muted={muted}
+          onToggleMute={toggleMute}
+          ilerleme={ilerleme}
+          onUnlock={oyuncuAc}
         />
       )}
 

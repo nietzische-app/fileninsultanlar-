@@ -389,6 +389,29 @@ profili benzetip kaçıncı maçta kaç kilidin açıldığını yazdırıyor:
 | ortalama | 3 | 7 | 24 | 100 |
 | usta | 2 | 5 | 16 | 61 |
 
+**Koleksiyon ekranı** (menüden **KOLEKSİYON**) kadronun tamamını kademe
+kademe gösteriyor. Ayrı bir ekran, çünkü kadro seçim ekranı maça
+HAZIRLANMA ekranı — mod, zorluk, format, rakip ve kadro zaten orada; bir
+de koleksiyon dökümü sıkıştırmak ikisini birden okunmaz yapardı.
+
+Dekoratif olmasın diye dört somut soruya cevap verecek şekilde kuruldu:
+
+| Soru | Nerede |
+| --- | --- |
+| Ne kadar yol aldım? | Üstteki `5 / 17` sayacı ve çubuk |
+| Sırada ne var? | Hedef satırı ve kalan FP |
+| Neyi kaçırıyorum? | Kilitli kartlarda bonus metni ve istatistikler AÇIK |
+| Nasıl alırım? | Kartın üstündeki satın alma düğmesi |
+
+Üçüncüsü bilinçli bir karar: kilitli oyuncunun yeteneğini gizlemek merak
+değil kayıtsızlık üretiyor. Neyi kaçırdığını gören oyuncu onu istiyor.
+
+**Sonuç ekranı eşiği duyuruyor.** Maçtan sonra kazanç bir bedeli
+geçtiyse "YENİ OYUNCU AÇABİLİRSİN" satırı çıkıyor. FARK alınıyor, mevcut
+durum değil (`yeniAcilabilirler`): bakiyesi zaten yetenleri her maç
+tekrarlamak uyarıyı gürültüye çevirirdi — oyuncu bilerek biriktiriyor
+olabilir ve aynı cümleyi on maç üst üste görmek onu görünmez yapar.
+
 **Sürüm geçişi.** Kilitler sonradan geldi, o yüzden eski kayıtlar
 cezalandırılmıyor: ilk açılışta geçmiş rekorlar FP'ye çevriliyor ve
 oyuncunun ZATEN KULLANDIĞI kadro bedelsiz açılıyor. İkincisi olmasa
@@ -535,6 +558,7 @@ src/
 │   ├── StartScreen.jsx       Giriş, mod seçimi, Gurur Tablosu (rekorlar)
 │   ├── TutorialScreen.jsx    Nasıl oynanır rehberi
 │   ├── CharacterSelect.jsx   Diziliş, zorluk ve kadro seçimi
+│   ├── CollectionScreen.jsx  Koleksiyon — kadronun tamamı, kademeler, satın alma
 │   ├── TournamentScreen.jsx  Kupa yolu bracket'i — turlar arası ekran
 │   ├── MatchScreen.jsx       Canvas + skor tablosu + dokunmatik
 │   └── ResultScreen.jsx      Kupa, konfeti, istatistikler, yeni rekorlar
@@ -556,7 +580,7 @@ src/
 │   ├── serve.js              Servis metresi, güç/nişan, sonuç tahmini
 │   ├── ballstep.js           Topun serbest uçuşu — motor ve tahmin ortak
 │   ├── achievements.js       Rozet tanımları ve değerlendirme
-│   ├── ilerleme.js           Forma Puanı kazancı, kilit bedelleri, satın alma
+│   ├── ilerleme.js           Forma Puanı kazancı, kilit bedelleri, satın alma, koleksiyon
 │   ├── modes.js              Oyun modu tanımları (hızlı maç / turnuva / hayatta kalma)
 │   ├── tournament.js         Kupa yolu turları ve saf durum makinesi
 │   ├── survival.js           Dalga hesabı, zorluk rampası, rütbeler
