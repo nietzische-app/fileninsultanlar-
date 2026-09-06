@@ -124,6 +124,34 @@ const AG = {
   durumHz: 20,
 
   /**
+   * Ekranın GEÇMİŞTEN çizilme miktarı (sn).
+   *
+   * Ara değerleme, çizilecek anın elimizdeki iki paketin arasında
+   * kalmasını gerektiriyor. Paketler 1/20 sn arayla geliyor ama ağ
+   * seğirdiği için eşit aralıklarla gelmiyor; bu pay seğirmeyi yutan
+   * tampon.
+   *
+   * 0.1 sn = iki paket aralığı. Ölçümle seçildi (akicilik.mjs):
+   * 1 aralıkta (0.05) tipik seğirmede tampon hâlâ kuruyordu,
+   * 3 aralıkta (0.15) akıcılık artmıyor ama rakip daha da geride
+   * kalıyordu — karşılıksız gecikme.
+   *
+   * Kendi oyuncumuz tahmin edildiği için bu gecikmeyi HİSSETMİYORUZ;
+   * yalnız rakip ve top ~100 ms geçmişte çiziliyor.
+   */
+  aradegerlemeGecikmesi: 0.1,
+
+  /**
+   * Çizim saatinin hedefe çekilme oranı (kare başına).
+   *
+   * Doğrudan atama seğirmeyi ekrana geçirir, hiç çekmemek saatin
+   * sunucudan kopmasına yol açar. 0.05 ≈ yarım saniyede hizalanıyor:
+   * seğirmeyi süzecek kadar yavaş, gecikme değişince geride kalmayacak
+   * kadar hızlı.
+   */
+  saatCekisi: 0.05,
+
+  /**
    * Girdinin EN AZ bu sıklıkta yollanması (Hz).
    *
    * Girdi normalde yalnız değiştiğinde gidiyor. Tahmin gelince bu tek
@@ -354,7 +382,13 @@ export default class Game {
      * geriden gelir. Takas bilinçli — sıçrayan ama "anlık" bir görüntü,
      * akan ama 50 ms geriden gelen görüntüden daha kötü oynanıyor.
      */
-    this.agAra = null;
+    /*
+     * Gelen anlık görüntü tamponu. Ekran bilerek geçmişten çiziliyor;
+     * gerekçesi `agAradegerle`de.
+     */
+    this.agTampon = [];
+    /** Ekranın çizildiği an, SUNUCU saatinde. İlk pakette kuruluyor. */
+    this.agCizimSaati = null;
 
     /**
      * Gecikme telafisi açık mı (istemci tarafı tahmin).
@@ -1304,56 +1338,168 @@ export default class Game {
    *   sırası — tahmin edilen kendi oyuncumuz. Onu da yumuşatsaydık
    *   tahmin her pakette geri çekilir, tuş yine geç cevap verirdi.
    */
-  agKonumHedefle(top, oyuncular, disarida = null) {
-    const simdi = this.time;
+  agKonumHedefle(top, oyuncular, disarida = null, sunucuAdim = null) {
     /*
-     * Süre ölçülüyor, sabit 1/20 varsayılmıyor: ağ gecikmesi oynuyor ve
-     * sabit varsayımda paket geç kalınca ara değerleme hedefe erken
-     * varıp donuyordu. Alt sınır bir kare (aynı karede iki paket gelirse
-     * sıfıra bölme olmasın), üst sınır 0.25 sn (bağlantı kopukluğunda
-     * saatlerce sürecek bir ara değerlemeye düşmeyelim).
+     * Damga VARIŞ anı değil, SUNUCUNUN adım sayacı.
+     *
+     * Varış anıyla damgalamıştım ve ölçüm onu ele verdi: seğirme
+     * doğrudan tampona giriyordu (aralıklar 35-75 ms arası oynuyordu),
+     * yani tampon seğirmeyi yutmuyor, saklıyordu — dalgalanma 0.31'de
+     * takılı kalmıştı. Sunucu saatiyle damgalanınca aralıklar tam
+     * 1/20 sn oluyor ve ara değerleme düzgün bir zaman çizgisi üstünde
+     * çalışıyor; seğirme yalnız paketin NE ZAMAN elimize geçtiğini
+     * etkiliyor, çizilen zamanı değil.
      */
-    const olculen = this.agAra ? simdi - this.agAra.baslangic : 1 / AG.durumHz;
-    const sure = Math.max(PHYSICS.step, Math.min(0.25, olculen));
+    const zaman = sunucuAdim !== null
+      ? sunucuAdim * PHYSICS.step
+      : this.time; // sunucu adım bildirmediyse (eski paket) varışa düş
 
-    this.agAra = {
-      baslangic: simdi,
-      t: 0,
-      sure,
-      // Nereden: şu an çizilen konum
-      oncekiTop: [this.ball.x, this.ball.y, this.ball.rotation],
-      oncekiOyuncu: this.players.map((p) => [p.x, p.y, p.vy, p.runFrame, p.squash]),
-      // Nereye: pakettekiler
-      hedefTop: top,
-      hedefOyuncu: oyuncular.map((d, i) => (i === disarida ? null : d)),
-    };
+    // Sıra bozulmuşsa yerleştirerek ekle — tampon her zaman sıralı kalmalı
+    const kayit = { zaman, top, oyuncular: oyuncular.map((d, i) => (i === disarida ? null : d)) };
+    if (this.agTampon.length && zaman < this.agTampon[this.agTampon.length - 1].zaman) {
+      const yer = this.agTampon.findIndex((k) => k.zaman > zaman);
+      this.agTampon.splice(yer < 0 ? this.agTampon.length : yer, 0, kayit);
+    } else {
+      this.agTampon.push(kayit);
+    }
 
-    // İlk pakette geçiş yapacak bir "önceki" yok — anında yerleş
-    if (this.agSonAdim <= 0) this.agAradegerle(sure);
+    /*
+     * Çizim saati sunucu zamanında yürüyor ve her pakette en yeni
+     * paketin bir tampon gerisine doğru yumuşakça çekiliyor. Doğrudan
+     * atansaydı seğirme yine ekrana geçerdi; yumuşak çekiş saatin
+     * DÜZGÜN akmasını, çekişin de yavaşça hizalanmasını sağlıyor.
+     */
+    if (this.agCizimSaati === null) {
+      this.agCizimSaati = zaman - AG.aradegerlemeGecikmesi;
+    }
+    /*
+     * ELİMİZDEKİNDEN ESKİYE bakma. Saat tamponun en eskisinin gerisine
+     * düşerse ara değerleme her karede aynı kareyi yazar ve ekran
+     * DURUR — maçın ilk saniyesinde tam da bu oluyordu (paketler
+     * arasında hareket kalmıyordu, bir test bunu yakaladı). Bu kıstas
+     * yalnız paket GELİRKEN uygulanıyor: her karede uygulasaydık
+     * karışım oranı sürekli sıfıra çakılır, hareket yine dururdu.
+     */
+    if (this.agCizimSaati < this.agTampon[0].zaman) {
+      this.agCizimSaati = this.agTampon[0].zaman;
+    }
+
+    /*
+     * Tampon budanıyor: geçmişte çizdiğimiz andan daha eski kayıtların
+     * işi bitmiş. Bir paket aralığı pay bırakılıyor — kuşatan çiftin
+     * ESKİ ucu hâlâ gerekli.
+     */
+    const enEski = this.agCizimSaati - 2 / AG.durumHz;
+    while (this.agTampon.length > 2 && this.agTampon[1].zaman < enEski) {
+      this.agTampon.shift();
+    }
+
+    // İlk pakette geçmiş yok — beklemeden yerleş
+    if (this.agTampon.length === 1) this.agKareYaz(this.agTampon[0], this.agTampon[0], 1);
   }
 
-  /** Ara değerlemeyi bir kare ilerletir. */
-  agAradegerle(dt) {
-    const ara = this.agAra;
-    if (!ara) return;
+  /**
+   * Ara değerleme — GEÇMİŞTEN çizerek.
+   *
+   * Eski yöntem "gelen son pakete doğru ilerle" idi ve geçiş süresini
+   * BİR ÖNCEKİ paket aralığından tahmin ediyordu. Ağ seğirdiğinde bu
+   * yöntem kaçınılmaz olarak kasıyor: önceki aralık 35 ms, sonraki
+   * paket 75 ms sonra geliyorsa ara değerleme 35 ms'de hedefe varıp
+   * 40 ms boyunca DURUYOR, sonra gelen paketle sıçrıyor.
+   *
+   * Ölçüldü (tests/olcum/akicilik.mjs, tipik bağlantı 60 ms ±15):
+   * karelerin %21'i duraklama, sıçrama ortalamanın 3,5 katı. "Kasma"
+   * denen şey buydu; sunucunun gücüyle ilgisi yok.
+   *
+   * Yeni yöntem: gelen paketler tamponda tutuluyor ve ekran BİLEREK
+   * geçmişten çiziliyor (`aradegerlemeGecikmesi`). Çizilecek an her
+   * zaman elimizdeki iki paketin ARASINDA kaldığı için ara değerleme
+   * hiç hedefe varıp beklemiyor — seğirmeyi tampon yutuyor.
+   *
+   * Bedeli dürüstçe: rakip ve top ekranda ~100 ms geçmişte. Kendi
+   * oyuncumuz TAHMİN edildiği için bundan etkilenmiyor (ölçüm: tepki
+   * 17 ms, bkz. tests/olcum/gecikme.mjs) — yani tuş hissi aynı kalıyor,
+   * yalnız karşı tarafın hareketi yumuşuyor.
+   */
+  agAradegerle(dt = 0) {
+    const tampon = this.agTampon;
+    if (!tampon.length || this.agCizimSaati === null) return;
 
-    ara.t = Math.min(ara.sure, ara.t + dt);
-    const a = ara.sure > 0 ? ara.t / ara.sure : 1;
-    const karis = (once, hedef) => once + (hedef - once) * a;
+    const son = tampon[tampon.length - 1];
 
-    this.ball.x = karis(ara.oncekiTop[0], ara.hedefTop[0]);
-    this.ball.y = karis(ara.oncekiTop[1], ara.hedefTop[1]);
-    this.ball.rotation = karis(ara.oncekiTop[2], ara.hedefTop[2]);
+    /*
+     * Çizim saati kendi başına akar (dt) ve en yeni paketin bir tampon
+     * gerisine doğru yumuşakça çekilir. İki parça da gerekli: yalnız
+     * akış olsaydı sunucudan kopardı, yalnız çekiş olsaydı seğirme
+     * doğrudan ekrana geçerdi.
+     */
+    this.agCizimSaati += dt;
+    const hedefNokta = son.zaman - AG.aradegerlemeGecikmesi;
+    const sapma = hedefNokta - this.agCizimSaati;
+    /*
+     * Çok uzaksa (maç başı, uzun donma) yumuşak çekiş dakikalar sürer;
+     * o durumda saat doğrudan hizalanıyor. Sınır bir tampon boyu.
+     */
+    if (Math.abs(sapma) > AG.aradegerlemeGecikmesi * 2) this.agCizimSaati = hedefNokta;
+    else this.agCizimSaati += sapma * AG.saatCekisi;
 
-    ara.hedefOyuncu.forEach((hedef, i) => {
+    const hedefZaman = this.agCizimSaati;
+
+    /*
+     * Tampon kurudu: paketler gecikti ya da durdu. Son bilinen hâlde
+     * kalınıyor. İleri doğru tahmin YÜRÜTÜLMÜYOR — duran bir oyuncuyu
+     * yürütmeye devam etmek, paket gelince onu geri çekmek demek; göze
+     * duraklamadan daha kötü görünüyor.
+     */
+    if (hedefZaman >= son.zaman) {
+      this.agKareYaz(son, son, 1);
+      return;
+    }
+
+    // Kuşatan çifti bul
+    let onceki = tampon[0];
+    let sonraki = tampon[0];
+    for (let i = 0; i < tampon.length - 1; i += 1) {
+      if (tampon[i].zaman <= hedefZaman && tampon[i + 1].zaman >= hedefZaman) {
+        onceki = tampon[i];
+        sonraki = tampon[i + 1];
+        break;
+      }
+      // Hedef en eskiden de geride (tampon henüz dolmadı): en eskiye yaslan
+      sonraki = tampon[i + 1];
+    }
+
+    const aralik = sonraki.zaman - onceki.zaman;
+    const alfa = aralik > 0
+      ? Math.max(0, Math.min(1, (hedefZaman - onceki.zaman) / aralik))
+      : 1;
+    this.agKareYaz(onceki, sonraki, alfa);
+  }
+
+  /**
+   * İki anlık görüntü arasını karıştırıp sahneye yazar.
+   *
+   * Ayrı bir yöntem çünkü üç yerden çağrılıyor (ilk paket, tampon
+   * kuruması, normal akış) ve indis eşlemesi tek yerde dursun:
+   * paketteki oyuncu dizisinde 0=x, 1=y, 2=vy, 5=runFrame, 6=squash.
+   */
+  agKareYaz(onceki, sonraki, alfa) {
+    const karis = (a, b) => a + (b - a) * alfa;
+
+    this.ball.x = karis(onceki.top[0], sonraki.top[0]);
+    this.ball.y = karis(onceki.top[1], sonraki.top[1]);
+    this.ball.rotation = karis(onceki.top[2], sonraki.top[2]);
+
+    sonraki.oyuncular.forEach((hedef, i) => {
       const oyuncu = this.players[i];
-      const once = ara.oncekiOyuncu[i];
-      if (!oyuncu || !once || !hedef) return;
+      const once = onceki.oyuncular[i];
+      // null = tahmin edilen kendi oyuncumuz; ara değerlemeye girmiyor
+      if (!oyuncu || !hedef || !once) return;
       oyuncu.x = karis(once[0], hedef[0]);
       oyuncu.y = karis(once[1], hedef[1]);
       oyuncu.vy = karis(once[2], hedef[2]);
-      oyuncu.runFrame = karis(once[3], hedef[5]);
-      oyuncu.squash = karis(once[4], hedef[6]);
+      oyuncu.runFrame = karis(once[5], hedef[5]);
+      oyuncu.squash = karis(once[6], hedef[6]);
     });
   }
 

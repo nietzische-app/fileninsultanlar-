@@ -263,7 +263,12 @@ export function uygula(oyun, paket) {
    * ilerlediği için oyun "donuyor" gibi görünüyordu. Şimdi iki paket
    * arası ara değerleniyor (Game.agAradegerle).
    */
-  oyun.agKonumHedefle(paket.b, paket.p, tahminIndeksi);
+  /*
+   * Sunucunun adım sayacı da geçiliyor: ara değerleme zaman çizgisini
+   * VARIŞ anına değil sunucu saatine kuruyor, yoksa ağ seğirmesi
+   * doğrudan ekrana geçiyor (bkz. Game.agKonumHedefle).
+   */
+  oyun.agKonumHedefle(paket.b, paket.p, tahminIndeksi, paket.n ?? null);
 
   oyun.combo = paket.ko;
   oyun.perfectFlash = paket.tv;

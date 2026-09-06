@@ -13,6 +13,8 @@
     "test:watch": "vitest",
     "e2e": "node tests/kos.mjs",
     "olcum": "node tests/olcum/oran.mjs",
+    "olcum:akicilik": "node tests/olcum/akicilik.mjs",
+    "olcum:gecikme": "node tests/olcum/gecikme.mjs",
     "vercel-build": "vite build",
     "build:portal": "node scripts/build-portal.mjs",
     "rele": "node sunucu/index.js",

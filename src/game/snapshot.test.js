@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import Game from './Game.js';
 import { PAKET_SURUM, paketle, uygula, girdiPaketle } from './snapshot.js';
-import { PHYSICS } from './constants.js';
+import { PHYSICS, PHASE } from './constants.js';
 
 /**
  * Anlık görüntü testleri.
@@ -165,17 +165,35 @@ describe('anlık görüntü', () => {
   it('paket gelmeyen karelerde de hareket sürer', () => {
     const { ev, misafir } = masaKur();
 
-    // Rallinin ortasına gel, top hareket hâlinde olsun
-    for (let i = 0; i < 200; i += 1) ev.update(PHYSICS.step);
-    ev.inputs.p1.action = true;
-    for (let i = 0; i < 40; i += 1) ev.update(PHYSICS.step);
+    /*
+     * SAHNE ELLE KURULUYOR ve bunun bir sebebi var: bu test önce
+     * "200 adım güncelle, sonra vuruş tuşuna bas" diye yazılmıştı ve
+     * o adımların sonunda oyun SERVİS aşamasında kalıyordu — top da
+     * oyuncular da duruyordu. İki anlık görüntü birebir aynı çıkıyor,
+     * yani test "hareket sürüyor mu" sorusunu hiç soramıyordu.
+     * Geçiyor olması eski ara değerlemenin hedefe henüz varmamış
+     * olmasındandı; ölçtüğü şey adının söylediği şey değildi.
+     */
+    ev.phase = PHASE.RALLY;
+    ev.phaseTimer = 99;
+    ev.ball.x = 300;
+    ev.ball.y = 200;
+    ev.ball.vx = 220;
+    ev.ball.vy = -40;
 
     misafir.agPaketAl(paketle(ev));
     misafirKare(misafir);
 
     // 20 Hz'de paketler arası 3 kare var; sonraki paketi göndermiyoruz
-    for (let i = 0; i < 12; i += 1) ev.update(PHYSICS.step);
+    for (let i = 0; i < 12; i += 1) {
+      ev.phase = PHASE.RALLY;
+      ev.update(PHYSICS.step);
+    }
     misafir.agPaketAl(paketle(ev));
+
+    // İki anlık görüntü GERÇEKTEN farklı olmalı; yoksa test boş döner
+    const [ilk, ikinci] = misafir.agTampon;
+    expect(Math.abs(ikinci.top[0] - ilk.top[0])).toBeGreaterThan(1);
 
     const kareBasi = konum(misafir);
     misafirKare(misafir);

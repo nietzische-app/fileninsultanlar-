@@ -347,10 +347,10 @@ describe('uzlaştırma', () => {
      * her karede sunucunun ESKİ konumuna geri çekseydi tahmin
      * anlamsızlaşır, tuş yine geç cevap verirdi.
      */
-    expect(istemci.agAra.hedefOyuncu[sira]).toBe(null);
-    expect(istemci.agAra.hedefOyuncu.filter(Boolean).length).toBe(
-      istemci.players.length - 1,
-    );
+    // Ara değerleme tamponundaki son kayıt: kendi oyuncumuz null olmalı
+    const son = istemci.agTampon[istemci.agTampon.length - 1];
+    expect(son.oyuncular[sira]).toBe(null);
+    expect(son.oyuncular.filter(Boolean).length).toBe(istemci.players.length - 1);
   });
 
   it('tahmin kapalıyken herkes ara değerlemede kalır', () => {
@@ -362,9 +362,8 @@ describe('uzlaştırma', () => {
     const istemci = istemciKur({ agTahmin: false });
     uygula(istemci, paket);
 
-    expect(istemci.agAra.hedefOyuncu.filter(Boolean).length).toBe(
-      istemci.players.length,
-    );
+    const son = istemci.agTampon[istemci.agTampon.length - 1];
+    expect(son.oyuncular.filter(Boolean).length).toBe(istemci.players.length);
   });
 });
 
