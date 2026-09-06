@@ -1,6 +1,6 @@
-# 🏐 Filenin Sultanları — Retro Volleyball
+# 🏐 Retro Voleybol — Retro Volleyball
 
-Türkiye Kadın Millî Voleybol Takımı'na, yani **Filenin Sultanları**'na saygı
+Türkiye Kadın Millî Voleybol Takımı'na, yani **Retro Voleybol**'na saygı
 duruşu niteliğinde, tarayıcıda oynanan 8-bit piksel voleybol oyunu.
 
 Amaç basit: takımın sahada bıraktığı izi, retro bir arcade oyununa dönüştürmek.
@@ -426,7 +426,7 @@ GitHub Actions (`.github/workflows/ci.yml`) her push/PR'da `lint` + `test` + `bu
 ## Oyun portallarına dağıtım
 
 ```bash
-npm run build:portal   # → filenin-sultanlari-portal.zip (~104 KB)
+npm run build:portal   # → retro-voleybol-portal.zip (~104 KB)
 ```
 
 Portallar (Oyunskor, Y8, CrazyGames vb.) oyunu ya ZIP olarak alıp kendi

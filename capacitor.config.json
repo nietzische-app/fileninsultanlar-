@@ -1,6 +1,6 @@
 {
-  "appId": "app.fileninsultanlari.oyun",
-  "appName": "Filenin Sultanları",
+  "appId": "app.retrovoleybol.oyun",
+  "appName": "Retro Voleybol",
   "webDir": "dist",
   "android": {
     "backgroundColor": "#0E0E1A"

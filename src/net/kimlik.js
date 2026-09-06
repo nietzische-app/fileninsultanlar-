@@ -25,7 +25,7 @@
 
 import { AD_UZUNLUK, adTemizle } from '../../sunucu/protokol.js';
 
-const KIMLIK_KEY = 'filenin-sultanlari-kimlik';
+const KIMLIK_KEY = 'retro-voleybol-kimlik';
 
 /*
  * Ad kuralı (uzunluk + görünmez karakterler) protokol dosyasında,

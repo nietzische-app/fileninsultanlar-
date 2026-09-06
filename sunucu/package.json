@@ -1,7 +1,7 @@
 {
-  "name": "filenin-sultanlari-rele",
+  "name": "retro-voleybol-rele",
   "version": "1.0.0",
-  "description": "Filenin Sultanları çevrimiçi maç rölesi",
+  "description": "Retro Voleybol çevrimiçi maç rölesi",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"

@@ -331,7 +331,7 @@ function drawAdBoards(ctx, time) {
   ctx.font = '10px "Press Start 2P", monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('FİLENİN SULTANLARI', GAME_WIDTH / 2, y + h / 2);
+  ctx.fillText('RETRO VOLEYBOL', GAME_WIDTH / 2, y + h / 2);
 
   // Pano altı gölgesi
   ctx.fillStyle = 'rgba(0,0,0,0.35)';

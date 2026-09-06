@@ -25,7 +25,7 @@ $jks = Join-Path $Dizin "$Alias.jks"
 $b64 = Join-Path $Dizin "$Alias.b64"
 
 Write-Host ''
-Write-Host 'Filenin Sultanlari - yayin imza anahtari' -ForegroundColor White
+Write-Host 'Retro Voleybol - yayin imza anahtari' -ForegroundColor White
 Write-Host ''
 
 if (Test-Path $jks) {
@@ -77,7 +77,7 @@ keytool simdi sirayla sunlari soracak:
 
   1. Enter keystore password  -> YENI bir parola belirle
   2. Re-enter new password    -> ayni parolayi tekrar
-  3. What is your first and last name?  -> adin (ya da Filenin Sultanlari)
+  3. What is your first and last name?  -> adin (ya da Retro Voleybol)
   4. organizational unit / organization / City / State / Country
      -> hepsi BOS birakilabilir, Enter'a basip gec
   5. Is CN=... correct?       -> "yes" yaz (sadece "y" yetmiyor)

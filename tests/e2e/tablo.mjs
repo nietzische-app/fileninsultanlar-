@@ -39,9 +39,9 @@ async function oyuncuAc(ad, { takmaAd = null } = {}) {
   await page.goto(`${URL}?rele=${encodeURIComponent(RELE_URL)}`, { waitUntil: 'load' });
   await page.evaluate(
     ([t, kimlikAd]) => {
-      localStorage.setItem('filenin-sultanlari-prefs', JSON.stringify(t));
+      localStorage.setItem('retro-voleybol-prefs', JSON.stringify(t));
       if (kimlikAd) {
-        localStorage.setItem('filenin-sultanlari-kimlik', JSON.stringify({ ad: kimlikAd }));
+        localStorage.setItem('retro-voleybol-kimlik', JSON.stringify({ ad: kimlikAd }));
       }
     },
     [{ ...VARSAYILAN_TERCIH, format: 'practice' }, takmaAd],
@@ -64,7 +64,7 @@ async function lobiyeGit(page) {
 function yerelKimlik(page) {
   return page.evaluate(() => {
     try {
-      return JSON.parse(localStorage.getItem('filenin-sultanlari-kimlik') ?? 'null');
+      return JSON.parse(localStorage.getItem('retro-voleybol-kimlik') ?? 'null');
     } catch {
       return null;
     }

@@ -37,7 +37,7 @@ const ORTAK = {
   mode: '1v1',
   playMode: 'vs',
   difficulty: 'normal',
-  homeIds: ['gizem-orge'],
+  homeIds: ['nehir-tunca'],
   format: 'single',
   opponentId: 'atlas',
 };

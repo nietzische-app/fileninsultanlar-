@@ -26,9 +26,9 @@ page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
 
 await page.goto(URL, { waitUntil: 'load' });
 await page.waitForTimeout(900);
-await page.evaluate(() => localStorage.setItem('filenin-sultanlari-prefs', JSON.stringify({
+await page.evaluate(() => localStorage.setItem('retro-voleybol-prefs', JSON.stringify({
   tutorialSeen: true, muted: true, mode: '1v1', difficulty: 'kolay',
-  format: 'practice', opponentId: 'atlas', homeIds: ['gizem-orge'] })));
+  format: 'practice', opponentId: 'atlas', homeIds: ['nehir-tunca'] })));
 await page.reload({ waitUntil: 'load' });
 await page.waitForTimeout(1400);
 await page.getByRole('button', { name: /HIZLI MAÇ/ }).first().click();

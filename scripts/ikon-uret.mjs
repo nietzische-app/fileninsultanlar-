@@ -134,7 +134,7 @@ const ciz = async (boyut, { onKatman = false } = {}) => page.evaluate(
      */
     const olcek = Math.round((ana * (on ? 0.68 : 0.98)) / 26);
 
-    const sultan = getPlayerById('gizem-orge') ?? undefined;
+    const sultan = getPlayerById('nehir-tunca') ?? undefined;
     drawSultan(ctx, sultan, {
       x: ana / 2,
       y: ana * (on ? 0.84 : 0.94),

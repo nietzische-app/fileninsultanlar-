@@ -21,7 +21,7 @@ export const VARSAYILAN_TERCIH = {
   difficulty: 'kolay',
   format: 'practice',
   opponentId: 'atlas',
-  homeIds: ['gizem-orge'],
+  homeIds: ['nehir-tunca'],
 };
 
 export async function tarayiciAc() {
@@ -62,7 +62,7 @@ export async function sayfaAc(ctx, tercih = {}) {
   await page.goto(URL, { waitUntil: 'load' });
   await page.waitForTimeout(600);
   await page.evaluate(
-    (t) => localStorage.setItem('filenin-sultanlari-prefs', JSON.stringify(t)),
+    (t) => localStorage.setItem('retro-voleybol-prefs', JSON.stringify(t)),
     { ...VARSAYILAN_TERCIH, ...tercih }
   );
   await page.reload({ waitUntil: 'load' });

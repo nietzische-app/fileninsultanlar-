@@ -43,7 +43,7 @@ const rows = await page.evaluate(async ({ mac, zorluk }) => {
     for (let k = 0; k < mac; k += 1) {
       let done = false, kim = null;
       const g = new Game(canvas, {
-        mode: '1v1', difficulty: zorluk, homeIds: ['gizem-orge'],
+        mode: '1v1', difficulty: zorluk, homeIds: ['nehir-tunca'],
         format: tur.format, opponentId: tur.opponentId,
         rules: { ...tur.rules }, difficultyRamp: tur.ramp,
         campaign: 'tournament', roundLabel: tur.label,

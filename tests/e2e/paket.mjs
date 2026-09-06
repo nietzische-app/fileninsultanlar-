@@ -111,7 +111,7 @@ async function sayfaAc({ mobil = true } = {}) {
 
   await page.goto(URL, { waitUntil: 'load' });
   await page.evaluate(
-    (t) => localStorage.setItem('filenin-sultanlari-prefs', JSON.stringify(t)),
+    (t) => localStorage.setItem('retro-voleybol-prefs', JSON.stringify(t)),
     { ...VARSAYILAN_TERCIH, format: 'practice' },
   );
   await page.reload({ waitUntil: 'load' });
@@ -180,7 +180,7 @@ const ctx2 = await mobilBaglam(browser);
 const sahtePage = await ctx2.newPage();
 await sahtePage.goto(`${URL}?rele=ws://127.0.0.1:1/yabanci`, { waitUntil: 'load' });
 await sahtePage.evaluate(
-  (t) => localStorage.setItem('filenin-sultanlari-prefs', JSON.stringify(t)),
+  (t) => localStorage.setItem('retro-voleybol-prefs', JSON.stringify(t)),
   { ...VARSAYILAN_TERCIH, format: 'practice' },
 );
 await sahtePage.reload({ waitUntil: 'load' });
@@ -220,7 +220,7 @@ const ctx3 = await mobilBaglam(browser);
 const gizPage = await ctx3.newPage();
 await gizPage.goto(URL, { waitUntil: 'load' });
 await gizPage.evaluate(
-  (t) => localStorage.setItem('filenin-sultanlari-prefs', JSON.stringify(t)),
+  (t) => localStorage.setItem('retro-voleybol-prefs', JSON.stringify(t)),
   VARSAYILAN_TERCIH,
 );
 await gizPage.reload({ waitUntil: 'load' });

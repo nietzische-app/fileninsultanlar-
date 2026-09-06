@@ -45,7 +45,7 @@ async function oyuncuAc(ad, { mobil = false } = {}) {
   const adres = `${URL}?rele=${encodeURIComponent(RELE_URL)}`;
   await page.goto(adres, { waitUntil: 'load' });
   await page.evaluate(
-    (t) => localStorage.setItem('filenin-sultanlari-prefs', JSON.stringify(t)),
+    (t) => localStorage.setItem('retro-voleybol-prefs', JSON.stringify(t)),
     { ...VARSAYILAN_TERCIH, format: 'practice' },
   );
   await page.reload({ waitUntil: 'load' });

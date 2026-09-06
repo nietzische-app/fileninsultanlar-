@@ -1,9 +1,9 @@
 {
-  "name": "filenin-sultanlari",
+  "name": "retro-voleybol",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Filenin Sultanları'na adanmış retro piksel voleybol oyunu",
+  "description": "Retro Voleybol'na adanmış retro piksel voleybol oyunu",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

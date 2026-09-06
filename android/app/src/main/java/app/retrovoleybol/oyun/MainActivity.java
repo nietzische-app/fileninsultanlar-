@@ -1,4 +1,4 @@
-package app.fileninsultanlari.oyun;
+package app.retrovoleybol.oyun;
 
 import com.getcapacitor.BridgeActivity;
 

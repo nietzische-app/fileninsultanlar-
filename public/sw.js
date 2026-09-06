@@ -16,7 +16,7 @@
  *   - diğerleri       → önbelleği ver, arkada tazele
  */
 const VERSION = 'v3';
-const CACHE = `filenin-sultanlari-${VERSION}`;
+const CACHE = `retro-voleybol-${VERSION}`;
 
 /** Yalnızca çevrimdışı yedeği: kabuk. */
 const OFFLINE_SHELL = '/index.html';

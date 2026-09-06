@@ -39,7 +39,7 @@ const out = await page.evaluate(async () => {
   const havada = [];
   for (let n = 0; n < 8; n += 1) {
     let done = false;
-    const g = new Game(canvas, { mode:'1v1', difficulty:'normal', homeIds:['gizem-orge'],
+    const g = new Game(canvas, { mode:'1v1', difficulty:'normal', homeIds:['nehir-tunca'],
       format:'single', opponentId:'atlas', onState(){}, onFinish(){ done = true; } });
     g.emitState = () => {};
     const asil = g.hitBall.bind(g);

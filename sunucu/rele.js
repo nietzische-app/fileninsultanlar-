@@ -1,5 +1,5 @@
 /**
- * Filenin Sultanları — röle sunucusu.
+ * Retro Voleybol — röle sunucusu.
  *
  * İki işi var: oda koduyla iki istemciyi buluşturmak, ve MAÇI
  * KOŞTURMAK. Maç `mac.js` içinde, oyun motorunun başsız hâliyle burada
@@ -111,7 +111,7 @@ export async function baslat({
   nabiz: nabizAraligi = NABIZ,
   beklemeSiniri,
   /**
-   * Hızlı eşleşmede Filenin Sultanları'nı kim oynayacak.
+   * Hızlı eşleşmede Retro Voleybol'nı kim oynayacak.
    *
    * Rastgele, çünkü iki yabancının ikisi de Türkiye'yi oynamak
    * istiyor ve tercih soracak bir "ev sahibi" yok. Testte

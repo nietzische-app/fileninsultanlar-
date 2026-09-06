@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_PREFS,
   DEFAULT_RECORDS,
@@ -55,8 +55,8 @@ describe('storage prefs', () => {
 
   it('eski easy/hard anahtarlarını kolay/zor çevirir', () => {
     localStorage.setItem(
-      'filenin-sultanlari-prefs',
-      JSON.stringify({ muted: false, difficulty: 'hard', mode: '1v1', homeIds: ['gizem-orge'] })
+      'retro-voleybol-prefs',
+      JSON.stringify({ muted: false, difficulty: 'hard', mode: '1v1', homeIds: ['nehir-tunca'] })
     );
     expect(loadPrefs().difficulty).toBe('zor');
   });
@@ -68,8 +68,8 @@ describe('storage prefs', () => {
 
   it('müzik sesi alanı olmayan eski kayıtta varsayılana döner', () => {
     localStorage.setItem(
-      'filenin-sultanlari-prefs',
-      JSON.stringify({ muted: false, mode: '1v1', homeIds: ['gizem-orge'] })
+      'retro-voleybol-prefs',
+      JSON.stringify({ muted: false, mode: '1v1', homeIds: ['nehir-tunca'] })
     );
     expect(loadPrefs().musicVolume).toBe(DEFAULT_PREFS.musicVolume);
   });
@@ -107,8 +107,8 @@ describe('storage prefs', () => {
 
   it('tuş ayarı olmayan eski kayıtta varsayılana döner', () => {
     localStorage.setItem(
-      'filenin-sultanlari-prefs',
-      JSON.stringify({ muted: false, homeIds: ['gizem-orge'] })
+      'retro-voleybol-prefs',
+      JSON.stringify({ muted: false, homeIds: ['nehir-tunca'] })
     );
     expect(loadPrefs().controls).toEqual(DEFAULT_PREFS.controls);
   });
@@ -131,8 +131,8 @@ describe('storage prefs', () => {
     ];
     cases.forEach(([given, expected]) => {
       localStorage.setItem(
-        'filenin-sultanlari-prefs',
-        JSON.stringify({ musicVolume: given, homeIds: ['gizem-orge'] })
+        'retro-voleybol-prefs',
+        JSON.stringify({ musicVolume: given, homeIds: ['nehir-tunca'] })
       );
       expect(loadPrefs().musicVolume).toBe(expected);
     });
@@ -201,14 +201,14 @@ describe('storage records', () => {
 describe('players roster', () => {
   it('Gizem Örge kaptandır', () => {
     const captain = getCaptain();
-    expect(captain?.id).toBe('gizem-orge');
+    expect(captain?.id).toBe('nehir-tunca');
     expect(captain?.captain).toBe(true);
   });
 
   it('Eda ve Ebrar asıl kadroda, bonus değil', () => {
     const aktif = getActiveRoster().map((p) => p.id);
-    expect(aktif).toContain('eda-erdem');
-    expect(aktif).toContain('ebrar-karakurt');
+    expect(aktif).toContain('sena-bozkurt');
+    expect(aktif).toContain('doga-simsek');
     // Bonus bölümü boş kalınca seçim ekranında hiç görünmüyor
     expect(getBonusRoster()).toHaveLength(0);
   });
@@ -221,15 +221,16 @@ describe('players roster', () => {
   it('Ebrar sert smaç çarpanı taşır', () => {
     // Sultan Gücü kaldırılınca `charge` bonusu da kalktı; Ebrar'ın
     // kimliği artık smaç gücü ve açısında.
-    const ebrar = getPlayerById('ebrar-karakurt');
+    const ebrar = getPlayerById('doga-simsek');
     expect(getModifier(ebrar, 'spikePower')).toBe(1.22);
     expect(getModifier(ebrar, 'charge')).toBe(1);
   });
 
   it('yaş hesaplar', () => {
-    const gizem = getPlayerById('gizem-orge');
-    const age = getAge(gizem, new Date('2026-08-04'));
-    expect(age).toBe(33);
+    const kaptan = getPlayerById('nehir-tunca');
+    // 1994-03-11 doğumlu; 2026-08-04'te doğum günü geçmiş → 32
+    const age = getAge(kaptan, new Date('2026-08-04'));
+    expect(age).toBe(32);
   });
 });
 
@@ -316,30 +317,30 @@ describe('turnuva rekorları ve kaydı', () => {
   });
 
   it('yarım turnuvayı saklar ve geri okur', () => {
-    const tournament = createTournament({ mode: '2v2', homeIds: ['gizem-orge', 'zehra-gunes'] });
+    const tournament = createTournament({ mode: '2v2', homeIds: ['nehir-tunca', 'ceren-yildirim'] });
     saveTournament(tournament);
     expect(loadTournament()).toMatchObject({ status: 'active', roundIndex: 0 });
   });
 
   it('kapanmış turnuvayı saklamaz', () => {
-    saveTournament(createTournament({ homeIds: ['gizem-orge'] }));
-    saveTournament({ ...createTournament({ homeIds: ['gizem-orge'] }), status: 'won' });
+    saveTournament(createTournament({ homeIds: ['nehir-tunca'] }));
+    saveTournament({ ...createTournament({ homeIds: ['nehir-tunca'] }), status: 'won' });
     expect(loadTournament()).toBeNull();
   });
 
   it('bozuk kayıt null döner', () => {
-    localStorage.setItem('filenin-sultanlari-tournament', '{bozuk');
+    localStorage.setItem('retro-voleybol-tournament', '{bozuk');
     expect(loadTournament()).toBeNull();
 
     localStorage.setItem(
-      'filenin-sultanlari-tournament',
+      'retro-voleybol-tournament',
       JSON.stringify({ status: 'active', homeIds: [], roundIndex: 0 })
     );
     expect(loadTournament()).toBeNull();
   });
 
   it('temizlenen turnuva geri gelmez', () => {
-    saveTournament(createTournament({ homeIds: ['gizem-orge'] }));
+    saveTournament(createTournament({ homeIds: ['nehir-tunca'] }));
     clearTournament();
     expect(loadTournament()).toBeNull();
   });
@@ -352,7 +353,7 @@ describe('eski kayıtlarla uyum', () => {
 
   it('yeni mod alanları olmayan kayıt sıfırla açılır', () => {
     localStorage.setItem(
-      'filenin-sultanlari-records',
+      'retro-voleybol-records',
       JSON.stringify({ wins: 4, losses: 1, matchesPlayed: 5, longestRally: 11 })
     );
     const records = loadRecords();
@@ -360,5 +361,39 @@ describe('eski kayıtlarla uyum', () => {
     expect(records.tournamentsWon).toBe(0);
     expect(records.bestSurvivalPoints).toBe(0);
     expect(records.bestSurvivalWave).toBe(0);
+  });
+});
+
+describe('eski anahtarlardan taşıma', () => {
+  /*
+   * Oyunun adı değişince saklama anahtarları da değişti. Taşıma
+   * olmasaydı güncellemeden sonra oyunu açan herkesin rekorları
+   * SESSİZCE kaybolurdu — veri duruyor ama kimse eski adla aramıyor.
+   */
+  it('eski veri yeni anahtara kopyalanır', async () => {
+    localStorage.clear();
+    localStorage.setItem('filenin-sultanlari-records', JSON.stringify({ wins: 7 }));
+    localStorage.setItem('filenin-sultanlari-kimlik', JSON.stringify({ ad: 'ESKİ AD' }));
+
+    // Modül ilk yüklendiğinde taşıyor; tazeden yükle
+    vi.resetModules();
+    await import('./storage.js');
+
+    expect(JSON.parse(localStorage.getItem('retro-voleybol-records')).wins).toBe(7);
+    expect(JSON.parse(localStorage.getItem('retro-voleybol-kimlik')).ad).toBe('ESKİ AD');
+    // Eski anahtar SİLİNMİYOR: sürüm geri alınırsa oyuncu verisini bulsun
+    expect(localStorage.getItem('filenin-sultanlari-records')).not.toBeNull();
+  });
+
+  it('yeni anahtar doluysa üstüne YAZILMAZ', async () => {
+    localStorage.clear();
+    localStorage.setItem('filenin-sultanlari-records', JSON.stringify({ wins: 7 }));
+    localStorage.setItem('retro-voleybol-records', JSON.stringify({ wins: 99 }));
+
+    vi.resetModules();
+    await import('./storage.js');
+
+    // Üstüne yazsaydı oyuncunun yeni ilerlemesi geri alınırdı
+    expect(JSON.parse(localStorage.getItem('retro-voleybol-records')).wins).toBe(99);
   });
 });

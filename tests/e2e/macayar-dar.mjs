@@ -17,9 +17,9 @@ for (const [name, w, h] of [['iPhone SE', 667, 375], ['Galaxy S20', 800, 360]]) 
   await page.goto(URL, { waitUntil: 'load' });
   await page.waitForTimeout(700);
   // En büyük tuş ayarıyla başla
-  await page.evaluate(() => localStorage.setItem('filenin-sultanlari-prefs', JSON.stringify({
+  await page.evaluate(() => localStorage.setItem('retro-voleybol-prefs', JSON.stringify({
     tutorialSeen: true, muted: true, mode: '1v1', difficulty: 'kolay',
-    format: 'practice', opponentId: 'atlas', homeIds: ['gizem-orge'],
+    format: 'practice', opponentId: 'atlas', homeIds: ['nehir-tunca'],
     controls: { scale: 1.4, opacity: 1, swap: false } })));
   await page.reload({ waitUntil: 'load' });
   await page.waitForTimeout(1300);

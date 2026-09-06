@@ -133,7 +133,7 @@ describe('röle', () => {
   /** Test maçı için asgari ayar. */
   const MAC_AYARI = {
     mode: '1v1',
-    homeIds: ['gizem-orge'],
+    homeIds: ['nehir-tunca'],
     opponentId: 'atlas',
     format: 'practice',
     difficulty: 'normal',

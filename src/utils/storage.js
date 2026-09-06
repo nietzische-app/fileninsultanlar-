@@ -3,10 +3,43 @@
  * Tarayıcı localStorage kullanır; yazma başarısız olursa sessizce yoksayılır.
  */
 
-const PREFS_KEY = 'filenin-sultanlari-prefs';
-const RECORDS_KEY = 'filenin-sultanlari-records';
-const TOURNAMENT_KEY = 'filenin-sultanlari-tournament';
-const ACHIEVEMENTS_KEY = 'filenin-sultanlari-achievements';
+const PREFS_KEY = 'retro-voleybol-prefs';
+const RECORDS_KEY = 'retro-voleybol-records';
+const TOURNAMENT_KEY = 'retro-voleybol-tournament';
+const ACHIEVEMENTS_KEY = 'retro-voleybol-achievements';
+
+/**
+ * ESKİ ANAHTARLARDAN TAŞIMA — tek seferlik.
+ *
+ * Oyunun adı değişince saklama anahtarları da değişti. Taşıma
+ * olmasaydı, güncellemeden sonra oyunu açan herkesin rekorları,
+ * rozetleri ve yarım kalan turnuvası SESSİZCE kaybolurdu: veri
+ * duruyor ama kimse eski adla aramıyor. Kaybın kendisi kadar kötüsü,
+ * sebebinin görünmemesi olurdu.
+ *
+ * Eski anahtar SİLİNMİYOR. Bir sürüm geri alınırsa oyuncu verisini
+ * orada bulsun; birkaç kilobayt için risk almaya değmez.
+ */
+const ESKI_ONEK = 'filenin-sultanlari-';
+const YENI_ONEK = 'retro-voleybol-';
+
+function eskiVeriyiTasi() {
+  if (typeof localStorage === 'undefined') return;
+  ['prefs', 'records', 'tournament', 'achievements', 'kimlik'].forEach((ad) => {
+    try {
+      const yeni = YENI_ONEK + ad;
+      // Yeni anahtar doluysa dokunma: taşıma zaten olmuş ya da oyuncu
+      // yeni sürümde oynamış. Üstüne yazmak ilerlemeyi geri alırdı.
+      if (localStorage.getItem(yeni) !== null) return;
+      const eski = localStorage.getItem(ESKI_ONEK + ad);
+      if (eski !== null) localStorage.setItem(yeni, eski);
+    } catch {
+      /* Kota dolu ya da depo kapalı — taşıma yapılamazsa oyun yine açılır */
+    }
+  });
+}
+
+eskiVeriyiTasi();
 
 /**
  * @typedef {{ scale: number, opacity: number, swap: boolean }} ControlPrefs
@@ -53,7 +86,7 @@ export const DEFAULT_PREFS = {
   difficulty: 'normal',
   format: 'classic',
   opponentId: 'random',
-  homeIds: ['gizem-orge'],
+  homeIds: ['nehir-tunca'],
   tutorialSeen: false,
 };
 

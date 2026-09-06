@@ -1,5 +1,5 @@
 /**
- * Filenin Sultanları — arcade voleybol motoru.
+ * Retro Voleybol — arcade voleybol motoru.
  *
  * Slime Volleyball tarzı akıcı fizik: her oyuncunun bir "temas dairesi"
  * vardır, top bu daireye çarptığı noktanın normaline göre sekerek yön

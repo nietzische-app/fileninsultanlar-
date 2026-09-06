@@ -51,10 +51,10 @@ async function oyuncuAc(ad, { mobil = false, takmaAd = null } = {}) {
   await page.goto(`${URL}?rele=${encodeURIComponent(RELE_URL)}`, { waitUntil: 'load' });
   await page.evaluate(
     ([t, kimlikAd]) => {
-      localStorage.setItem('filenin-sultanlari-prefs', JSON.stringify(t));
+      localStorage.setItem('retro-voleybol-prefs', JSON.stringify(t));
       if (kimlikAd) {
         localStorage.setItem(
-          'filenin-sultanlari-kimlik',
+          'retro-voleybol-kimlik',
           JSON.stringify({ id: `test-${kimlikAd}`, ad: kimlikAd }),
         );
       }

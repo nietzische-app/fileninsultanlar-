@@ -163,7 +163,7 @@ jobs:
       - name: Paketi yükle
         uses: actions/upload-artifact@v5
         with:
-          name: filenin-sultanlari-aab
+          name: retro-voleybol-aab
           path: android/app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
           # 90 gün Play Console'a yüklemek için fazlasıyla yeterli;

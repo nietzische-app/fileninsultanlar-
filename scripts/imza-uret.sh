@@ -34,7 +34,7 @@ yesil()   { printf '\033[32m%s\033[0m\n' "$*"; }
 kalin()   { printf '\033[1m%s\033[0m\n' "$*"; }
 
 echo
-kalin "Filenin Sultanları — yayın imza anahtarı"
+kalin "Retro Voleybol — yayın imza anahtarı"
 echo
 
 if [ -e "$JKS" ]; then
@@ -82,7 +82,7 @@ keytool şimdi sırayla şunları soracak:
 
   1. Enter keystore password    → YENİ bir parola belirle
   2. Re-enter new password      → aynısını tekrar
-  3. What is your first and last name?   → adın (ya da "Filenin Sultanlari")
+  3. What is your first and last name?   → adın (ya da "Retro Voleybol")
   4. organizational unit / organization / City / State / Country
      → hepsi BOŞ bırakılabilir, Enter'a basıp geç. Bu bilgiler
        sertifikanın içinde durur, mağazada kimseye gösterilmez.

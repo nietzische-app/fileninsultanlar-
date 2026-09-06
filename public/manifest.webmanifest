@@ -1,7 +1,7 @@
 {
-  "name": "Filenin Sultanları",
+  "name": "Retro Voleybol",
   "short_name": "Sultanlar",
-  "description": "Filenin Sultanları'na adanmış retro piksel voleybol oyunu.",
+  "description": "Retro Voleybol'na adanmış retro piksel voleybol oyunu.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0b0b12",

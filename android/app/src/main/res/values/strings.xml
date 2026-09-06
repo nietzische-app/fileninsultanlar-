@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Filenin Sultanları</string>
-    <string name="title_activity_main">Filenin Sultanları</string>
-    <string name="package_name">app.fileninsultanlari.oyun</string>
-    <string name="custom_url_scheme">app.fileninsultanlari.oyun</string>
+    <string name="app_name">Retro Voleybol</string>
+    <string name="title_activity_main">Retro Voleybol</string>
+    <string name="package_name">app.retrovoleybol.oyun</string>
+    <string name="custom_url_scheme">app.retrovoleybol.oyun</string>
 </resources>

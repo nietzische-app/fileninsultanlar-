@@ -463,7 +463,7 @@ function drawExtras(px, look, facing, skin) {
 }
 
 /**
- * Filenin Sultanı figürünü çizer.
+ * Oyuncu figürünü çizer.
  *
  * Saç rengi ve modeli, forma numarası, kafa bandı, bileklik, dizlik ve
  * kaptan pazıbandı `players.js` içindeki `colors` / `appearance` /

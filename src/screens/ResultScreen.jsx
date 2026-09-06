@@ -12,7 +12,7 @@ import { upper } from '../utils/text.js';
 const CONFETTI_COLORS = ['#E30A17', '#FFFFFF', '#FFD24A', '#FF7A18', '#9BE7FF'];
 
 /**
- * Maç sonu ekranı — kupa, konfeti ve Filenin Sultanları'na
+ * Maç sonu ekranı — kupa, konfeti ve Retro Voleybol'na
  * onurlandırma mesajı.
  */
 export default function ResultScreen({
@@ -146,10 +146,10 @@ export default function ResultScreen({
               ? `${survivalRank(survival.points)} · ${survival.points} PUAN`
               : tournament
                 ? won
-                  ? 'FİLENİN SULTANLARI KUPAYI KALDIRDI'
+                  ? 'RETRO VOLEYBOL KUPAYI KALDIRDI'
                   : `${tournament.lastRoundLabel} TURUNDA VEDA`
                 : won
-                  ? 'FİLENİN SULTANLARI KAZANDI'
+                  ? 'RETRO VOLEYBOL KAZANDI'
                   : `${result.opponent?.name ?? 'RAKİP'} BU MAÇI ALDI`}
           </p>
           <p className="mt-2 text-[7px] tracking-widest text-white/35">
@@ -339,7 +339,7 @@ export default function ResultScreen({
         {/* Onurlandırma mesajı */}
         <div className="retro-panel w-full px-5 py-5 text-center">
           <p className="mb-3 text-[8px] tracking-widest text-retro-accent">
-            ★ FİLENİN SULTANLARI&apos;NA ★
+            ★ RETRO VOLEYBOL&apos;NA ★
           </p>
           <p className="text-[8px] leading-relaxed text-white/75 sm:text-[9px]">
             Bir topun peşinde koşarken bir milletin umudunu taşıdınız.

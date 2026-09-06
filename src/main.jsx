@@ -45,9 +45,9 @@ function installIcons() {
       const origin = window.location.origin;
 
       const manifest = {
-        name: 'Filenin Sultanları',
+        name: 'Retro Voleybol',
         short_name: 'Sultanlar',
-        description: "Filenin Sultanları'na adanmış retro piksel voleybol oyunu.",
+        description: "Retro Voleybol'na adanmış retro piksel voleybol oyunu.",
         start_url: `${origin}/`,
         scope: `${origin}/`,
         display: 'standalone',

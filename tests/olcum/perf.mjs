@@ -19,9 +19,9 @@ const page = await ctx.newPage();
 const cdp = await ctx.newCDPSession(page);
 await page.goto(URL, { waitUntil: 'load' });
 await page.waitForTimeout(600);
-await page.evaluate(() => localStorage.setItem('filenin-sultanlari-prefs', JSON.stringify({
+await page.evaluate(() => localStorage.setItem('retro-voleybol-prefs', JSON.stringify({
   tutorialSeen: true, muted: true, mode: '1v1', difficulty: 'kolay',
-  format: 'practice', opponentId: 'atlas', homeIds: ['gizem-orge'] })));
+  format: 'practice', opponentId: 'atlas', homeIds: ['nehir-tunca'] })));
 await page.reload({ waitUntil: 'load' });
 await page.waitForTimeout(1200);
 await page.getByRole('button', { name: /HIZLI MAÇ/ }).first().click();

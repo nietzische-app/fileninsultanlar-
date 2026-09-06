@@ -560,7 +560,7 @@ export default function MatchScreen({
           height={GAME_HEIGHT}
           className="pixelated relative z-[1] block h-auto max-h-full w-full touch:stage-canvas touch:w-auto"
           style={{ aspectRatio: `${GAME_WIDTH} / ${GAME_HEIGHT}` }}
-          aria-label="Filenin Sultanları voleybol sahası"
+          aria-label="Retro Voleybol voleybol sahası"
         />
 
         {/*

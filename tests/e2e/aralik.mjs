@@ -14,7 +14,7 @@ page.on('pageerror', (e) => errs.push(String(e)));
 page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
 
 const prefs = () => page.evaluate(() =>
-  JSON.parse(localStorage.getItem('filenin-sultanlari-prefs') || '{}'));
+  JSON.parse(localStorage.getItem('retro-voleybol-prefs') || '{}'));
 
 /** Sol tuşun sağ kenarı ile sağ tuşun sol kenarı arasındaki boşluk. */
 const bosluk = () => page.evaluate(() => {
@@ -27,9 +27,9 @@ const bosluk = () => page.evaluate(() => {
 
 await page.goto(URL, { waitUntil: 'load' });
 await page.waitForTimeout(700);
-await page.evaluate(() => localStorage.setItem('filenin-sultanlari-prefs', JSON.stringify({
+await page.evaluate(() => localStorage.setItem('retro-voleybol-prefs', JSON.stringify({
   tutorialSeen: true, muted: true, mode: '1v1', difficulty: 'kolay',
-  format: 'practice', opponentId: 'atlas', homeIds: ['gizem-orge'] })));
+  format: 'practice', opponentId: 'atlas', homeIds: ['nehir-tunca'] })));
 await page.reload({ waitUntil: 'load' });
 await page.waitForTimeout(1300);
 

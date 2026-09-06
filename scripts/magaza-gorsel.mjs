@@ -62,7 +62,7 @@ const TERCIH = {
   difficulty: 'normal',
   format: 'single',
   opponentId: 'atlas',
-  homeIds: ['gizem-orge'],
+  homeIds: ['nehir-tunca'],
 };
 
 rmSync(CIKTI, { recursive: true, force: true });
@@ -146,7 +146,7 @@ for (const [etiket, en, boy, olcek] of BOYUTLAR) {
 
   await page.goto(URL, { waitUntil: 'load' });
   await page.evaluate(
-    (t) => localStorage.setItem('filenin-sultanlari-prefs', JSON.stringify(t)),
+    (t) => localStorage.setItem('retro-voleybol-prefs', JSON.stringify(t)),
     TERCIH,
   );
   await page.reload({ waitUntil: 'load' });

@@ -48,10 +48,10 @@ if (imzaVar) {
 }
 
 android {
-    namespace "app.fileninsultanlari.oyun"
+    namespace "app.retrovoleybol.oyun"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "app.fileninsultanlari.oyun"
+        applicationId "app.retrovoleybol.oyun"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode surumKodu

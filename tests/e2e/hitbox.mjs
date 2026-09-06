@@ -20,9 +20,9 @@ async function olc(gap) {
   const page = await ctx.newPage();
   await page.goto(URL, { waitUntil: 'load' });
   await page.waitForTimeout(600);
-  await page.evaluate((g) => localStorage.setItem('filenin-sultanlari-prefs', JSON.stringify({
+  await page.evaluate((g) => localStorage.setItem('retro-voleybol-prefs', JSON.stringify({
     tutorialSeen: true, muted: true, mode: '1v1', difficulty: 'kolay', format: 'practice',
-    opponentId: 'atlas', homeIds: ['gizem-orge'], controls: { scale: 1, opacity: 1, gap: g, swap: false } })), gap);
+    opponentId: 'atlas', homeIds: ['nehir-tunca'], controls: { scale: 1, opacity: 1, gap: g, swap: false } })), gap);
   await page.reload({ waitUntil: 'load' });
   await page.waitForTimeout(1200);
   await page.getByRole('button', { name: /HIZLI MAÇ/ }).first().click();

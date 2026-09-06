@@ -14,9 +14,9 @@ const check = (l, ok, d = '') => { if (!ok) fails += 1; console.log(`${ok ? '✓
 
 await page.goto(URL, { waitUntil: 'load' });
 await page.waitForTimeout(800);
-await page.evaluate(() => localStorage.setItem('filenin-sultanlari-prefs', JSON.stringify({
+await page.evaluate(() => localStorage.setItem('retro-voleybol-prefs', JSON.stringify({
   tutorialSeen: true, muted: true, mode: '1v1', difficulty: 'kolay',
-  format: 'practice', opponentId: 'atlas', homeIds: ['gizem-orge'] })));
+  format: 'practice', opponentId: 'atlas', homeIds: ['nehir-tunca'] })));
 await page.reload({ waitUntil: 'load' });
 await page.waitForTimeout(1300);
 await page.getByRole('button', { name: /HIZLI MAÇ/ }).first().click();

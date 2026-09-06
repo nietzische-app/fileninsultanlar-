@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist');
 const out = path.join(root, 'portal');
-const zipName = 'filenin-sultanlari-portal.zip';
+const zipName = 'retro-voleybol-portal.zip';
 
 console.log('Portal paketi hazırlanıyor...\n');
 

@@ -27,7 +27,7 @@ export default function RotateGate() {
           CİHAZI YATAY ÇEVİR
         </h2>
         <p className="mt-4 text-[8px] leading-relaxed text-white/60">
-          Filenin Sultanları yatay ekran için tasarlandı.
+          Retro Voleybol yatay ekran için tasarlandı.
           <br />
           Sahanın tamamını görmek için telefonunu yan çevir.
         </p>

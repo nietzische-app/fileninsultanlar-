@@ -41,7 +41,7 @@ const out = await page.evaluate(async ({ n }) => {
   }
 
   function trial(difficulty, power) {
-    const game = new Game(canvas, { mode: '1v1', difficulty, homeIds: ['gizem-orge'],
+    const game = new Game(canvas, { mode: '1v1', difficulty, homeIds: ['nehir-tunca'],
       format: 'single', opponentId: 'atlas', onState: () => {}, onFinish: () => {} });
     game.emitState = () => {};
     const dt = 1 / 60;

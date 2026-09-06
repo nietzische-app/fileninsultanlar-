@@ -8,7 +8,7 @@ const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_C
 const errors = [];
 const PREFS = {
   tutorialSeen: true, mode: '1v1', difficulty: 'kolay', format: 'classic',
-  opponentId: 'atlas', homeIds: ['gizem-orge'], muted: true,
+  opponentId: 'atlas', homeIds: ['nehir-tunca'], muted: true,
 };
 
 const watch = (page, tag) => {
@@ -68,7 +68,7 @@ const gateState = (page) =>
   const page = await ctx.newPage();
   watch(page, '[çevirme]');
   await page.goto(URL, { waitUntil: 'domcontentloaded' });
-  await page.evaluate((p) => localStorage.setItem('filenin-sultanlari-prefs', JSON.stringify(p)), PREFS);
+  await page.evaluate((p) => localStorage.setItem('retro-voleybol-prefs', JSON.stringify(p)), PREFS);
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(800);
 

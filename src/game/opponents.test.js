@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FORMATS, RULES } from './constants.js';
+import { ROSTER, DEFAULT_PLAYER_ID, SHOWCASE_IDS } from './players.js';
 import { isMatchOver, isSetOver } from './rules.js';
 import {
   OPPONENT_TEAMS,
@@ -47,5 +48,31 @@ describe('opponents', () => {
     expect(roster[0].colors.primary).toBe(team.colors.primary);
     expect(roster[0].name).toBe(team.name);
     expect(roster[0].number).not.toBe(roster[1].number);
+  });
+});
+
+describe('kadro sabitleri kadroyla tutarlı', () => {
+  /*
+   * Bu test bir arızanın bedeli. Kadro yeniden adlandırılırken
+   * `DEFAULT_PLAYER_ID` ve `SHOWCASE_IDS` gözden kaçtı: ikisi de
+   * ROSTER bloklarının DIŞINDA duruyor ve toplu değişimden
+   * etkilenmedi. Sonuç, var olmayan bir oyuncuyu gösteren varsayılan
+   * kadro oldu — çevrimiçi maç kuruluyor ama çizilemiyordu ve arıza
+   * ancak e2e'de, "adım ilerlemiyor" diye ortaya çıktı.
+   *
+   * Bir kimliğin kadroda OLDUĞUNU sınamak bunu kaynağında yakalar.
+   */
+  it('DEFAULT_PLAYER_ID gerçek bir oyuncu', () => {
+    expect(ROSTER.some((p) => p.id === DEFAULT_PLAYER_ID)).toBe(true);
+  });
+
+  it('SHOWCASE_IDS hepsi gerçek oyuncu', () => {
+    const kimlikler = new Set(ROSTER.map((p) => p.id));
+    SHOWCASE_IDS.forEach((id) => expect(kimlikler.has(id)).toBe(true));
+  });
+
+  it('kadroda kimlik ve forma numarası benzersiz', () => {
+    expect(new Set(ROSTER.map((p) => p.id)).size).toBe(ROSTER.length);
+    expect(new Set(ROSTER.map((p) => p.number)).size).toBe(ROSTER.length);
   });
 });

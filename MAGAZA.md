@@ -1,4 +1,4 @@
-# Mağaza yolu — Filenin Sultanları
+# Mağaza yolu — Retro Voleybol
 
 Oyunu Google Play ve App Store'a taşımak için gereken her şey.
 **Hangi adımların bittiğini, hangilerinin sende olduğunu ve neyin
