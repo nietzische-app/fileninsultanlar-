@@ -1338,7 +1338,7 @@ export default class Game {
    *   sırası — tahmin edilen kendi oyuncumuz. Onu da yumuşatsaydık
    *   tahmin her pakette geri çekilir, tuş yine geç cevap verirdi.
    */
-  agKonumHedefle(top, oyuncular, disarida = null, sunucuAdim = null) {
+  agKonumHedefle(top, oyuncular, disarida = null, sunucuAdim = null, servis = null) {
     /*
      * Damga VARIŞ anı değil, SUNUCUNUN adım sayacı.
      *
@@ -1355,7 +1355,12 @@ export default class Game {
       : this.time; // sunucu adım bildirmediyse (eski paket) varışa düş
 
     // Sıra bozulmuşsa yerleştirerek ekle — tampon her zaman sıralı kalmalı
-    const kayit = { zaman, top, oyuncular: oyuncular.map((d, i) => (i === disarida ? null : d)) };
+    const kayit = {
+      zaman,
+      top,
+      oyuncular: oyuncular.map((d, i) => (i === disarida ? null : d)),
+      servis,
+    };
     if (this.agTampon.length && zaman < this.agTampon[this.agTampon.length - 1].zaman) {
       const yer = this.agTampon.findIndex((k) => k.zaman > zaman);
       this.agTampon.splice(yer < 0 ? this.agTampon.length : yer, 0, kayit);
@@ -1490,6 +1495,8 @@ export default class Game {
     this.ball.y = karis(onceki.top[1], sonraki.top[1]);
     this.ball.rotation = karis(onceki.top[2], sonraki.top[2]);
 
+    this.agServisYaz(onceki.servis, sonraki.servis, alfa);
+
     sonraki.oyuncular.forEach((hedef, i) => {
       const oyuncu = this.players[i];
       const once = onceki.oyuncular[i];
@@ -1501,6 +1508,62 @@ export default class Game {
       oyuncu.runFrame = karis(once[5], hedef[5]);
       oyuncu.squash = karis(once[6], hedef[6]);
     });
+  }
+
+  /**
+   * Servis göstergesini iki anlık görüntü arasında yürütür.
+   *
+   * NEDEN GEREKLİ: metre 0.65 saniyede baştan sona gidiyor ve paketler
+   * 1/20 sn arayla geliyor — doğrudan yazıldığında bar saniyede 20 kez,
+   * her seferinde barın %8'i kadar sıçrıyordu. Oyuncunun "sertlik ve
+   * yön barları kasıyor" dediği şeyin ikinci yarısı buydu (birincisi,
+   * telde 0.1'e yuvarlanmasıydı; bkz. snapshot.js).
+   *
+   * SEKME: metre uçlarda yön değiştiriyor. İki paket arasında sekme
+   * olduysa a'dan b'ye düz gitmek barı YANLIŞ yöne yürütürdü — üstelik
+   * tam da oyuncunun en dikkatli olduğu anda, azami güç için uca nişan
+   * alırken. Yön alanı bu yüzden telde: sekme varsa yol iki parçaya
+   * bölünüp uca kadar gidip geri dönülüyor.
+   */
+  agServisYaz(a, b, alfa) {
+    if (!b) {
+      this.serve = null;
+      return;
+    }
+    // Aşama ya da servis atan değiştiyse ara değerleme anlamsız: metre
+    // sıfırlanmıştır, aradaki yol diye bir şey yok.
+    const surekli = a && a[0] === b[0] && a[2] === b[2];
+    const karis = (x, y) => (surekli ? x + (y - x) * alfa : y);
+
+    let metre = b[1];
+    if (surekli) {
+      const onceYon = a[5] ?? 1;
+      const sonYon = b[5] ?? 1;
+      if (onceYon !== sonYon) {
+        // Sekme: a → uç → b. Toplam yol üzerinden ilerle.
+        const uc = onceYon > 0 ? 1 : 0;
+        const birinci = Math.abs(uc - a[1]);
+        const yol = birinci + Math.abs(b[1] - uc);
+        const gidilen = yol * alfa;
+        metre = gidilen <= birinci
+          ? a[1] + onceYon * gidilen
+          : uc + sonYon * (gidilen - birinci);
+      } else {
+        metre = a[1] + (b[1] - a[1]) * alfa;
+      }
+    }
+
+    this.serve = {
+      stage: b[0],
+      meter: metre,
+      serverId: b[2],
+      power: karis(a?.[3] ?? b[3], b[3]),
+      aim: karis(a?.[4] ?? b[4], b[4]),
+      dir: b[5] ?? 1,
+      // Misafir tarafta kullanılmaz; çizim tanımsızla karşılaşmasın
+      aiTimer: 0,
+      actionLatch: false,
+    };
   }
 
   /**

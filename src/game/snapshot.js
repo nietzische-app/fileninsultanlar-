@@ -182,13 +182,36 @@ export function paketle(oyun, olaylar = []) {
       oyun.agOnayIslenen.p2 ? yuvarla3(oyun.time - oyun.agOnayIslenen.p2.geldi) : 0,
     ],
     ko: oyun.combo,
-    tv: yuvarla(oyun.perfectFlash),
-    hy: yuvarla(oyun.hype),
+    /*
+     * 0-1 ARASI DEĞERLER 0.001'E YUVARLANIYOR, 0.1'E DEĞİL.
+     *
+     * `yuvarla` piksel koordinatları için yazılmıştı: 0.1 piksel gözle
+     * görünmez, doğru karar. Ama aynı işlev 0-1 arası oranlara da
+     * uygulanınca ölçek tamamen değişiyor — 0.1 çözünürlük, BÜTÜN
+     * aralıkta 11 kademe demek.
+     *
+     * Bedeli servis metresinde ölçüldü: metre 0.65 sn'de baştan sona
+     * gidiyor, bir paket aralığında 0.077 ilerliyor, yuvarlanınca bu
+     * "ya hiç kıpırdama ya %10 sıçra" oluyordu. Oyuncunun "güç ve yön
+     * barları kasıyor" dediği şey buydu — ağ değil, çözünürlük.
+     *
+     * Maliyeti alan başına ~2 bayt; 377 baytlık pakette önemsiz.
+     */
+    tv: yuvarla3(oyun.perfectFlash),
+    hy: yuvarla3(oyun.hype),
     sa: yuvarla(oyun.shake),
-    // Servis göstergesi — yalnız servis aşamasında dolu
+    /*
+     * Servis göstergesi — yalnız servis aşamasında dolu.
+     *
+     * `dir` de gidiyor (5. alan): metre uçlarda sekiyor ve iki paket
+     * arasında sekme olduğunda doğrusal ara değerleme barı yanlış yöne
+     * yürütürdü. Yön bilinince sekmenin hangi uçtan olduğu da bilinir.
+     * Tam da oyuncunun en çok baktığı an orası: azami güç için uca
+     * nişan alıyor.
+     */
     se: oyun.serve
-      ? [oyun.serve.stage, yuvarla(oyun.serve.meter), oyun.serve.serverId,
-         yuvarla(oyun.serve.power), yuvarla(oyun.serve.aim)]
+      ? [oyun.serve.stage, yuvarla3(oyun.serve.meter), oyun.serve.serverId,
+         yuvarla3(oyun.serve.power), yuvarla3(oyun.serve.aim), oyun.serve.dir ?? 1]
       : null,
     o: olaylar,
   };
@@ -268,13 +291,19 @@ export function uygula(oyun, paket) {
    * VARIŞ anına değil sunucu saatine kuruyor, yoksa ağ seğirmesi
    * doğrudan ekrana geçiyor (bkz. Game.agKonumHedefle).
    */
-  oyun.agKonumHedefle(paket.b, paket.p, tahminIndeksi, paket.n ?? null);
+  oyun.agKonumHedefle(paket.b, paket.p, tahminIndeksi, paket.n ?? null, paket.se ?? null);
 
   oyun.combo = paket.ko;
   oyun.perfectFlash = paket.tv;
   oyun.hype = paket.hy;
   oyun.shake = paket.sa;
 
+  /*
+   * Servis göstergesi ARA DEĞERLEMEYE bırakılıyor (bkz. agServisYaz):
+   * burada doğrudan yazılsaydı bar 20 Hz'de adım adım ilerlerdi. Yine
+   * de bir kez yazılıyor — ilk paketin ekrana gelmesi ara değerlemenin
+   * kurulmasını beklemesin.
+   */
   oyun.serve = paket.se
     ? {
         stage: paket.se[0],
@@ -282,9 +311,9 @@ export function uygula(oyun, paket) {
         serverId: paket.se[2],
         power: paket.se[3],
         aim: paket.se[4],
+        dir: paket.se[5] ?? 1,
         // Misafir tarafta kullanılmaz ama alanlar dursun ki çizim
         // kodu tanımsızla karşılaşmasın
-        dir: 1,
         aiTimer: 0,
         actionLatch: false,
       }

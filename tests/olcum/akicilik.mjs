@@ -211,3 +211,100 @@ for (const [ad, ayar] of DURUMLAR) {
   );
 }
 console.log('\ndalgalanma 0 = kusursuz düz akış. duraklama = takılan kare oranı.');
+
+/*
+ * SERVİS METRESİ ayrı ölçülüyor.
+ *
+ * Sahadaki hareketten farklı bir yol izliyor: konumlar ara değerlemeden
+ * geçerken metre bir süre doğrudan yazılıyordu, üstelik telde 0.1'e
+ * yuvarlanıyordu. Aynı tabloya koymak ikisini karıştırırdı; oyuncunun
+ * şikâyeti de zaten ayrıydı ("barlar kasıyor").
+ *
+ * Metre sabit hızla salınıyor (0.65 sn'de baştan sona), yani burada da
+ * kusursuz akışta kare başına yol DEĞİŞMEZ.
+ */
+function servisOlc({ gecikmeMs, segirmeMs }) {
+  const rastgele = uretec();
+  const gecikmeAdim = Math.round(gecikmeMs / MS);
+  const segirmeAdim = Math.round(segirmeMs / MS);
+
+  let adim = 0;
+  const asagi = new Kanal(gecikmeAdim, segirmeAdim, rastgele);
+  const yukari = new Kanal(gecikmeAdim, 0, rastgele);
+
+  const sunucu = new Game(null, {
+    ...AYAR, bassiz: true, agRol: 'ev', agGonder: (p) => asagi.yolla(p, adim),
+  });
+  sunucu.start();
+  const istemci = new Game(null, {
+    ...AYAR,
+    opponentId: sunucu.opponent.id,
+    homeIds: [...sunucu.homeIds],
+    bassiz: true,
+    agRol: 'misafir',
+    agYuvam: 'p1',
+    agGonder: (p) => yukari.yolla(p, adim),
+  });
+  istemci.start();
+
+  const yollar = [];
+  let onceki = null;
+
+  for (adim = 0; adim < ADIM; adim += 1) {
+    yukari.al(adim).forEach((p) => sunucu.agPaketAl(p, 'p1'));
+    asagi.al(adim).forEach((p) => istemci.agPaketAl(p, 'p2'));
+
+    /*
+     * Servis aşamasında TUT. Yalnız `phase`i yazmak yetmiyor: metreyi
+     * taşıyan `serve` nesnesini `beginServe` kuruyor ve o gelmeden
+     * `updateServe` hemen ralliye düşüyordu (ilk denemede ölçüm bu
+     * yüzden "servis aşaması yakalanmadı" dedi).
+     *
+     * Servis kendiliğinden atılmasın diye bekleme sayaçları her
+     * karede geri alınıyor — ölçmek istediğimiz şey salınan metre.
+     */
+    if (sunucu.phase !== PHASE.SERVE || !sunucu.serve) sunucu.beginServe();
+    sunucu.phaseTimer = 99;
+    if (sunucu.serve) {
+      sunucu.serve.aiTimer = 99;
+      sunucu.serve.stage = 'power';
+      sunucu.serve.holdTimer = 0;
+    }
+    sunucu.ilerlet(PHYSICS.step);
+    sunucu.agAkis();
+
+    istemci.ilerlet(PHYSICS.step);
+    istemci.agAkis();
+
+    if (adim >= ISINMA && istemci.serve) {
+      const m = istemci.serve.meter;
+      if (onceki !== null) yollar.push(Math.abs(m - onceki));
+      onceki = m;
+    }
+  }
+
+  if (yollar.length < 20) return null;
+  const sirali = [...yollar].sort((a, b) => a - b);
+  const kirp = Math.floor(sirali.length * 0.02);
+  const temiz = sirali.slice(kirp, sirali.length - kirp);
+  const ortalama = temiz.reduce((t, v) => t + v, 0) / temiz.length;
+  const varyans = temiz.reduce((t, v) => t + (v - ortalama) ** 2, 0) / temiz.length;
+  return {
+    dalgalanma: Math.sqrt(varyans) / ortalama,
+    duraklama: temiz.filter((v) => v < ortalama * 0.1).length / temiz.length,
+    sicrama: yuzdelik(temiz, 0.99) / ortalama,
+  };
+}
+
+console.log('\n\nSERVİS METRESİ — güç/yön barı ekranda ne kadar düzgün akıyor');
+console.log('durum                        dalgalanma   duraklama   sıçrama');
+console.log('------------------------------------------------------------');
+for (const [ad, ayar] of DURUMLAR) {
+  const s = servisOlc(ayar);
+  if (!s) { console.log(`${ad.padEnd(28)}  ölçülemedi (servis aşaması yakalanmadı)`); continue; }
+  console.log(
+    `${ad.padEnd(28)} ${s.dalgalanma.toFixed(2).padStart(9)}`
+    + ` ${(s.duraklama * 100).toFixed(1).padStart(9)}%`
+    + ` ${s.sicrama.toFixed(2).padStart(9)}`,
+  );
+}

@@ -109,3 +109,65 @@ describe('akış başladı mı', () => {
     expect(g.agSurumUyusmazligi).toBe(true);
   });
 });
+
+describe('servis metresi ara değerlemesi', () => {
+  /*
+   * Metre 0.65 sn'de baştan sona gidiyor, paketler 1/20 sn arayla
+   * geliyor. Doğrudan yazıldığında bar karelerin %74'ünde hiç
+   * kıpırdamıyor, sonra 4,4 kat sıçrıyordu (ölçüm: olcum/akicilik.mjs).
+   * Oyuncunun "güç ve yön barları kasıyor" dediği şey buydu.
+   */
+  const paket = (asama, metre, yon, atan = 'p1') => [asama, metre, atan, 0, 0, yon];
+
+  it('iki paket arasında metre yürür', () => {
+    const g = misafirKur();
+    g.agServisYaz(paket('power', 0.2, 1), paket('power', 0.4, 1), 0.5);
+    expect(g.serve.meter).toBeCloseTo(0.3, 5);
+  });
+
+  it('sekmede metre uca gidip geri döner, ters yöne KAÇMAZ', () => {
+    const g = misafirKur();
+    // 0.9'dan 1'e çarpıp 0.85'e dönmüş: toplam yol 0.1 + 0.15 = 0.25
+    const once = paket('power', 0.9, 1);
+    const sonra = paket('power', 0.85, -1);
+
+    // Yolun ilk %20'si: hâlâ yukarı, 0.9 + 0.05 = 0.95
+    g.agServisYaz(once, sonra, 0.2);
+    expect(g.serve.meter).toBeCloseTo(0.95, 5);
+
+    // Yolun %40'ı: tam uçta
+    g.agServisYaz(once, sonra, 0.4);
+    expect(g.serve.meter).toBeCloseTo(1, 5);
+
+    // Yolun %80'i: geri dönüşte, 1 - (0.2 - 0.1) = 0.9
+    g.agServisYaz(once, sonra, 0.8);
+    expect(g.serve.meter).toBeCloseTo(0.9, 5);
+
+    /*
+     * Sekme bilinmeseydi doğrusal karışım 0.9 → 0.85 arası inerdi,
+     * yani bar tam ters yöne yürürdü. Uçta nişan alan oyuncu için en
+     * kötü an orası.
+     */
+    g.agServisYaz(once, sonra, 0.2);
+    expect(g.serve.meter).toBeGreaterThan(0.9);
+  });
+
+  it('aşama değişince ara değerleme yapılmaz — metre sıfırlanmıştır', () => {
+    const g = misafirKur();
+    g.agServisYaz(paket('power', 0.95, 1), paket('aim', 0.5, 1), 0.5);
+    expect(g.serve.stage).toBe('aim');
+    expect(g.serve.meter).toBe(0.5);
+  });
+
+  it('servis atan değişince de ara değerleme yapılmaz', () => {
+    const g = misafirKur();
+    g.agServisYaz(paket('power', 0.9, 1, 'p1'), paket('power', 0.1, 1, 'p2'), 0.5);
+    expect(g.serve.meter).toBe(0.1);
+  });
+
+  it('servis bitince gösterge kalkar', () => {
+    const g = misafirKur();
+    g.agServisYaz(paket('power', 0.5, 1), null, 0.5);
+    expect(g.serve).toBe(null);
+  });
+});
