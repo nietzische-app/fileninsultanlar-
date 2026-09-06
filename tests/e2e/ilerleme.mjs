@@ -122,6 +122,68 @@ kontrol(
 );
 
 // ===================================================================
+// 2b) Eşik haberi — "yeni oyuncu açabilirsin"
+// ===================================================================
+/*
+ * Bakiye tek başına bir sayı; oyuncu ne anlama geldiğini bilmiyor.
+ * Asıl haber, kazancın bir EŞİĞİ geçmiş olması. Bunu sınamak için
+ * bakiyeyi en ucuz kilidin hemen ALTINA kurup bir maç daha oynuyoruz.
+ */
+const enUcuz = 150;
+await page.evaluate((alt) => {
+  const k = JSON.parse(localStorage.getItem('retro-voleybol-ilerleme'));
+  localStorage.setItem('retro-voleybol-ilerleme', JSON.stringify({ ...k, puan: alt }));
+}, enUcuz - 30);
+await page.reload({ waitUntil: 'load' });
+await page.waitForTimeout(1000);
+
+await page.getByRole('button', { name: /HIZLI MAÇ/ }).first().click();
+await page.waitForTimeout(400);
+await page.getByRole('button', { name: /MAÇA BAŞLA/ }).last().click();
+await page.waitForTimeout(2500);
+await page.evaluate(() => {
+  const g = window.__game;
+  g.sets.home = 1;
+  g.emitFinish('home');
+});
+await page.waitForTimeout(1500);
+
+const esikMetni = await page.evaluate(() => document.body.innerText);
+kontrol(
+  'eşik geçilince "YENİ OYUNCU AÇABİLİRSİN" çıkıyor',
+  esikMetni.includes('YENİ OYUNCU AÇABİLİRSİN'),
+  `bakiye ${(await depo(page))?.puan} FP`,
+);
+
+/*
+ * Ve TEKRAR ETMİYOR. Bakiyesi zaten yetenleri her maç sonunda
+ * duyurmak uyarıyı gürültüye çevirirdi; ikinci maçta aynı cümle
+ * çıkmamalı çünkü yeni bir eşik geçilmedi.
+ */
+await page.getByRole('button', { name: /TEKRAR OYNA/ }).first().click();
+await page.waitForTimeout(2500);
+await page.evaluate(() => {
+  const g = window.__game;
+  g.sets.home = 1;
+  g.emitFinish('home');
+});
+await page.waitForTimeout(1500);
+const ikinciMetin = await page.evaluate(() => document.body.innerText);
+/*
+ * İki iddia birlikte: panel VAR ama eşik kutusu YOK. Yalnız ikincisini
+ * sorsaydık, sonuç ekranı hiç açılmasa bile test geçerdi — yani asıl
+ * sorusunu hiç sormamış olurdu.
+ */
+kontrol(
+  'ikinci maçta FP paneli yine var (ekran açıldı)',
+  ikinciMetin.includes('FORMA PUANI'),
+);
+kontrol(
+  'aynı eşik İKİNCİ maçta tekrar duyurulmuyor',
+  !ikinciMetin.includes('YENİ OYUNCU AÇABİLİRSİN'),
+);
+
+// ===================================================================
 // 3) Oyuncu satın al → kadroya gerçekten katılıyor mu?
 // ===================================================================
 // Bakiyeyi en ucuz kilide yetecek hale getir; kazanç temposu burada
@@ -169,19 +231,22 @@ kontrol(
   `${ilkKilitli.length} → ${kalanKilitli.length}`
 );
 
-// Açılan oyuncu gerçekten seçilebiliyor mu — kilidin kalkması yetmez
-await page.evaluate((ad) => {
+// Satın alma anı görünür bir şey yapıyor mu
+const alimMetni = await page.evaluate(() => document.body.innerText);
+kontrol('satın alma KUTLANIYOR', alimMetni.includes('KADRONA KATILDI'), hedefAd);
+
+/*
+ * Ve alınan oyuncu kadroya GİRİYOR. Satın alıp ayrıca seçmek
+ * gerekseydi oyuncu çoğu zaman eski kadrosuyla maça başlar, aldığı
+ * oyuncuyu ilk maçta hiç oynayamazdı.
+ */
+const kadroda = await page.evaluate((ad) => {
   const b = [...document.querySelectorAll('button[aria-label]')]
     .find((x) => x.getAttribute('aria-label') === ad);
-  b?.click();
+  // Seçili kartlar sıra numarası rozeti taşıyor
+  return Boolean(b && b.className.includes('border-retro-accent'));
 }, hedefAd);
-await page.waitForTimeout(300);
-const secili = await page.evaluate(() =>
-  [...document.querySelectorAll('button')].some(
-    (b) => b.className.includes('border-retro-accent') && b.querySelector('canvas')
-  )
-);
-kontrol('açılan oyuncu SEÇİLEBİLİYOR', secili, hedefAd);
+kontrol('alınan oyuncu KADROYA da katıldı', kadroda, hedefAd);
 
 kontrol('konsol hatası yok', page.hatalar.length === 0, page.hatalar.slice(0, 2).join(' | '));
 

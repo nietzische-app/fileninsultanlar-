@@ -455,6 +455,25 @@ function FormaPuani({ kazanc }) {
           CÜZDAN: {kazanc.bakiye.toLocaleString('tr-TR')} FP
         </p>
       )}
+
+      {/*
+        EŞİK HABERİ. Bakiye tek başına bir sayı; bu satır onu bir şeye
+        çeviriyor. Yalnızca bu maçta AÇILABİLİR HALE GELENLER yazılıyor
+        (bkz. ilerleme.js `yeniAcilabilirler`) — bakiyesi zaten yetenleri
+        her maç sonunda tekrarlamak uyarıyı gürültüye çevirirdi.
+      */}
+      {kazanc.yeni?.length > 0 && (
+        <div className="mt-3 border-2 border-retro-accent bg-retro-accent/15 px-3 py-2">
+          <p className="text-[8px] tracking-widest text-retro-accent">
+            ★ YENİ OYUNCU AÇABİLİRSİN ★
+          </p>
+          <p className="mt-1 text-[7px] leading-relaxed text-white/75">
+            {kazanc.yeni.slice(0, 3).map((p) => upper(p.name)).join(' · ')}
+            {kazanc.yeni.length > 3 && ` +${kazanc.yeni.length - 3}`}
+          </p>
+          <p className="mt-1 text-[7px] text-white/40">KADRO EKRANINDAN AL</p>
+        </div>
+      )}
     </div>
   );
 }

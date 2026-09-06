@@ -37,6 +37,7 @@ import {
   macKazanci,
   rozetKazanci,
   turnuvaKazanci,
+  yeniAcilabilirler,
   ac,
 } from './game/ilerleme.js';
 import { getGameMode } from './game/modes.js';
@@ -364,8 +365,17 @@ export default function App() {
        * sonuç ekranı "+68 FP · 412 FP" diyebilsin. Bakiyeyi ayrıca
        * okumak, iki kaynağın farklı anlarda güncellenmesi riskini
        * getirirdi.
+       *
+       * `yeni`: bu maçla eşiği geçilen oyuncular. Hesap BURADA çünkü
+       * maç ÖNCESİ bakiye yalnız burada duruyor — sonuç ekranına
+       * geçtiğinde o sayı çoktan güncellenmiş olur ve fark alınamaz.
        */
-      setKazanc({ toplam, satirlar, bakiye: sonraki.puan });
+      setKazanc({
+        toplam,
+        satirlar,
+        bakiye: sonraki.puan,
+        yeni: yeniAcilabilirler(prev.puan, sonraki.puan, sonraki.acilanlar),
+      });
       return sonraki;
     });
   }, []);

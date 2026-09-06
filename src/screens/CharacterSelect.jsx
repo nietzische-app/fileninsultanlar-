@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import PixelAvatar from '../components/PixelAvatar.jsx';
 import StatBar from '../components/StatBar.jsx';
 import MuteButton from '../components/MuteButton.jsx';
@@ -154,6 +154,49 @@ export default function CharacterSelect({
       }
       return [...prev, id];
     });
+  };
+
+  /*
+   * SATIN ALMA ANI.
+   *
+   * Önce sessizdi: düğmeye basılıyor, kilit kalkıyor, kart diğerleriyle
+   * aynı görünüyordu. Oysa oyuncunun onlarca maç biriktirdiği şey tam
+   * olarak o an — karşılığı olmalı.
+   *
+   * `bekleyen` iyimser bir NİYET kaydı, sonucun kendisi değil: satın
+   * alma doğrulaması saf modülde (`ilerleme.js` → `ac`) ve reddedilmesi
+   * mümkün. O yüzden kutlama, oyuncu gerçekten `acilanlar` listesine
+   * GİRDİĞİNDE tetikleniyor; reddedilirse hiçbir şey olmuyor.
+   */
+  const [bekleyen, setBekleyen] = useState(null);
+  const [kutlama, setKutlama] = useState(null);
+
+  useEffect(() => {
+    if (!bekleyen || !acilanlar.includes(bekleyen)) return undefined;
+    setBekleyen(null);
+    setKutlama(bekleyen);
+
+    /*
+     * Alınan oyuncu KADROYA DA giriyor. Satın alıp sonra ayrıca seçmek
+     * gerekseydi, oyuncu çoğu zaman eski kadrosuyla maça başlar ve
+     * aldığı oyuncuyu ilk maçta oynayamazdı.
+     */
+    setSelected((prev) => (
+      prev.includes(bekleyen)
+        ? prev
+        : prev.length >= required
+          ? [...prev.slice(1), bekleyen]
+          : [...prev, bekleyen]
+    ));
+    setFocused(bekleyen);
+
+    const zaman = setTimeout(() => setKutlama(null), 2600);
+    return () => clearTimeout(zaman);
+  }, [bekleyen, acilanlar, required]);
+
+  const satinAl = (id) => {
+    setBekleyen(id);
+    onUnlock?.(id);
   };
 
   const canStart = selected.length === required;
@@ -384,6 +427,7 @@ export default function CharacterSelect({
         onFocus={setFocused}
         acilanlar={acilanlar}
         puan={puan}
+        kutlama={kutlama}
       />
 
       {bonusRoster.length > 0 && (
@@ -402,6 +446,7 @@ export default function CharacterSelect({
             onFocus={setFocused}
             acilanlar={acilanlar}
             puan={puan}
+            kutlama={kutlama}
             guest
           />
         </div>
@@ -428,6 +473,17 @@ export default function CharacterSelect({
             oyuncuya basmak bütün bakiyeyi harcatabilirdi. Burada oyuncu
             önce kimi aldığını görüyor.
           */}
+          {kutlama === focusedPlayer.id && (
+            <div className="mt-3 animate-pulse-gold border-2 border-retro-accent bg-retro-accent/20 px-3 py-2">
+              <p className="text-[9px] tracking-widest text-retro-accent">
+                ★ KADRONA KATILDI ★
+              </p>
+              <p className="mt-1 text-[7px] text-white/70">
+                Seçili kadroya da alındı — doğrudan maça çıkabilirsin.
+              </p>
+            </div>
+          )}
+
           {!odakAcik && (
             <div className="mt-3 flex flex-wrap items-center gap-3 border-2 border-[#FFD24A]/40 bg-black/30 px-3 py-2">
               <span className="text-[9px] text-[#FFD24A]">{odakBedel} FP</span>
@@ -435,7 +491,7 @@ export default function CharacterSelect({
                 type="button"
                 className="retro-button px-4 py-2 text-[8px] disabled:opacity-40"
                 disabled={puan < odakBedel || !onUnlock}
-                onClick={() => onUnlock?.(focusedPlayer.id)}
+                onClick={() => satinAl(focusedPlayer.id)}
               >
                 {puan >= odakBedel ? 'KADROYA KAT' : `${odakBedel - puan} FP EKSİK`}
               </button>
@@ -547,7 +603,7 @@ function Chip({ active, onClick, children, title }) {
 
 function RosterGrid({
   title, players, selected, focused, onSelect, onFocus, guest = false,
-  acilanlar = [], puan = 0,
+  acilanlar = [], puan = 0, kutlama = null,
 }) {
   return (
     <div className="flex flex-col gap-2 sm:gap-3">
@@ -557,6 +613,7 @@ function RosterGrid({
           const isSelected = selected.includes(player.id);
           const order = selected.indexOf(player.id) + 1;
           const kilitli = !acikMi(player.id, acilanlar);
+          const yeniAlindi = kutlama === player.id;
           const fiyat = bedel(player.id);
           // Parası yeten kilit, yetmeyenden farklı görünüyor: biri davet
           const alinabilir = kilitli && puan >= fiyat;
@@ -579,7 +636,11 @@ function RosterGrid({
                         ? 'border-white/60 bg-retro-panel'
                         : 'border-white/15 bg-retro-panel/60 hover:border-white/40'
               }`}
-              style={{ boxShadow: isSelected ? '4px 4px 0 0 rgba(0,0,0,0.6)' : undefined }}
+              style={{
+                boxShadow: yeniAlindi
+                  ? '0 0 0 3px #FFD24A, 4px 4px 0 0 rgba(0,0,0,0.6)'
+                  : isSelected ? '4px 4px 0 0 rgba(0,0,0,0.6)' : undefined,
+              }}
             >
               {/*
                 Kilit rozeti EMOJİ DEĞİL: oyunun yazı tipi (Press Start

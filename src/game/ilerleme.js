@@ -386,6 +386,28 @@ export function acilabilirler(puan, acilanlar = []) {
 }
 
 /**
+ * Bu maçla YENİ açılabilir hale gelenler.
+ *
+ * Sonuç ekranındaki "+275 FP" tek başına eksik: oyuncu bakiyesinin ne
+ * anlama geldiğini bilmiyor. Asıl haber, o kazancın bir EŞİĞİ geçmiş
+ * olması — "artık Salise Şanlı'yı alabilirsin".
+ *
+ * FARK alınıyor, mevcut durum değil. Bakiyesi zaten yetenleri her maç
+ * sonunda tekrar söylemek uyarı olmaktan çıkıp gürültü olurdu: oyuncu
+ * bilerek biriktiriyor olabilir ve on maç üst üste aynı cümleyi
+ * görmek, cümleyi görünmez yapar.
+ *
+ * @param {number} oncekiPuan Maçtan önceki bakiye
+ * @param {number} sonrakiPuan Maçtan sonraki bakiye
+ * @param {string[]} acilanlar
+ * @returns {Array<{id: string, name: string}>} Eşiği bu maçta geçenler
+ */
+export function yeniAcilabilirler(oncekiPuan, sonrakiPuan, acilanlar = []) {
+  const onceki = new Set(acilabilirler(oncekiPuan, acilanlar).map((p) => p.id));
+  return acilabilirler(sonrakiPuan, acilanlar).filter((p) => !onceki.has(p.id));
+}
+
+/**
  * Bir oyuncuyu açar.
  *
  * Doğrulama BURADA çünkü çağıran taraf (React) puanı ekranda

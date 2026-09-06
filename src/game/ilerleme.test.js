@@ -7,6 +7,7 @@ import {
   acikMi,
   kilitliler,
   acilabilirler,
+  yeniAcilabilirler,
   sonrakiHedef,
   ac,
   bedel,
@@ -323,6 +324,45 @@ describe('kilitler', () => {
 
   it('hepsi açıkken hedef YOK', () => {
     expect(sonrakiHedef(9999, Object.keys(BEDELLER))).toBeNull();
+  });
+
+  it('yeni açılabilirler yalnızca EŞİĞİ BU MAÇTA geçenleri verir', () => {
+    const enUcuz = Math.min(...Object.values(BEDELLER));
+
+    // Eşiği geçen maç: haber var
+    const gecti = yeniAcilabilirler(enUcuz - 10, enUcuz + 5, []);
+    expect(gecti.length).toBeGreaterThan(0);
+    expect(gecti.every((p) => bedel(p.id) === enUcuz)).toBe(true);
+
+    // Eşiğin altında kalan maç: haber yok
+    expect(yeniAcilabilirler(0, enUcuz - 1, [])).toEqual([]);
+  });
+
+  it('bakiyesi ZATEN yetenler her maç tekrar duyurulmuyor', () => {
+    /*
+     * Bu kuralın sebebi gürültü. Oyuncu bilerek biriktiriyor olabilir;
+     * "Salise Şanlı'yı alabilirsin" cümlesini on maç üst üste görmek,
+     * cümleyi tamamen görünmez yapar — sonra gerçekten yeni biri
+     * açıldığında da fark edilmez.
+     */
+    const enUcuz = Math.min(...Object.values(BEDELLER));
+    expect(yeniAcilabilirler(enUcuz + 50, enUcuz + 120, [])).toEqual([]);
+  });
+
+  it('açılmış oyuncu yeniden duyurulmuyor', () => {
+    const [id, fiyat] = Object.entries(BEDELLER)[0];
+    const hepsi = yeniAcilabilirler(0, fiyat, []);
+    expect(hepsi.some((p) => p.id === id)).toBe(true);
+    // Aynı oyuncu satın alındıktan sonra artık "açılabilir" değil
+    expect(yeniAcilabilirler(0, fiyat, [id]).some((p) => p.id === id)).toBe(false);
+  });
+
+  it('tek maçta iki kademe birden geçilebiliyor', () => {
+    // Kupa + rozet + zor maç aynı anda gelirse sıçrama büyük olabilir
+    const bedeller = [...new Set(Object.values(BEDELLER))].sort((a, b) => a - b);
+    const yeni = yeniAcilabilirler(0, bedeller[1], []);
+    const kademeler = new Set(yeni.map((p) => bedel(p.id)));
+    expect(kademeler.size).toBe(2);
   });
 
   it('açılabilirler bakiyeye göre süzülüyor', () => {
