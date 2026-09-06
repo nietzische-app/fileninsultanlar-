@@ -10,6 +10,8 @@
  * Tarayıcı politikası: `Sfx.unlock()` ilk kullanıcı hareketinde.
  */
 
+import { muzikUret } from './muzik.js';
+
 const MASTER_GAIN = 0.24;
 const SFX_GAIN = 1;
 const CROWD_GAIN = 0.85;
@@ -31,7 +33,6 @@ class SfxEngine {
     this.musicBus = null;
     this.musicVolume = 0.55;
     /** @type {null | ArrayBuffer} indirilen ham dosya */
-    this.musicRaw = null;
     /** @type {null | AudioBuffer} çözülmüş ses */
     this.musicBuffer = null;
     /** @type {null | { source: AudioBufferSourceNode, fade: GainNode }} */
@@ -127,23 +128,19 @@ class SfxEngine {
   }
 
   /**
-   * Dosyayı indirir. Bağlam gerektirmez, o yüzden ilk kullanıcı
-   * hareketini beklemeden başlayabilir.
-   * @param {string} url
+   * Müzik artık İNDİRİLMİYOR, üretiliyor.
+   *
+   * Eskiden 722 KB'lık bir mp3 çekiliyordu ve o dosya bize ait değildi.
+   * Şimdi `muzik.js` örnekleri kodda üretiyor; indirilecek bir şey
+   * olmadığı için bu yöntem yalnız geriye dönük uyumluluk adına duruyor
+   * ve hiçbir şey yapmıyor.
+   *
+   * Çağrısı silinmedi çünkü çağıran taraf (giriş ekranı) "önce indir,
+   * sonra başlat" akışını koruyor; üretimin ne zaman yapılacağını
+   * `startMusic` biliyor.
    */
-  async fetchMusic(url) {
-    if (this.musicRaw || this.musicBuffer || this.musicLoading) return;
-    this.musicLoading = true;
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(String(res.status));
-      this.musicRaw = await res.arrayBuffer();
-    } catch {
-      // Müzik indirilemezse oyun sessizce devam eder
-      this.musicRaw = null;
-    } finally {
-      this.musicLoading = false;
-    }
+  async fetchMusic() {
+    /* indirme yok — müzik kodda üretiliyor */
   }
 
   /**
@@ -152,22 +149,24 @@ class SfxEngine {
    * Tarayıcı otomatik oynatmayı engellediği için bağlam yoksa sessizce
    * vazgeçer; çağıran ilk kullanıcı hareketinde tekrar dener.
    *
-   * @param {string} url
    * @returns {Promise<boolean>} çalmaya başladı mı
    */
-  async startMusic(url) {
+  async startMusic() {
     this.musicWanted = true;
     if (!this.ctx || !this.musicBus) return false;
     if (this.musicVoice) return true;
 
     if (!this.musicBuffer) {
-      if (!this.musicRaw) await this.fetchMusic(url);
-      if (!this.musicRaw) return false;
+      /*
+       * Üretim BİR KEZ yapılıyor ve sonucu saklanıyor. ~13 saniyelik
+       * döngü için birkaç yüz bin örnek hesaplanıyor; ölçülebilir ama
+       * tek seferlik bir maliyet ve ekran açılırken, oyun döngüsü
+       * başlamadan oluyor.
+       */
       try {
-        // decodeAudioData ArrayBuffer'ı tüketiyor; kopyasını ver ki
-        // ikinci deneme (ör. otomatik oynatma engeli) boşa düşmesin.
-        this.musicBuffer = await this.ctx.decodeAudioData(this.musicRaw.slice(0));
+        this.musicBuffer = muzikUret(this.ctx);
       } catch {
+        // Üretim başarısız olursa oyun sessiz devam eder
         return false;
       }
     }

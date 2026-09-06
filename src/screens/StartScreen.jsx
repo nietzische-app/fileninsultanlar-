@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import teamBackdrop from '../assets/takim-arkaplan.webp';
-import menuMusic from '../assets/giris-muzigi.mp3';
 import PixelAvatar from '../components/PixelAvatar.jsx';
 import MuteButton from '../components/MuteButton.jsx';
 import MusicVolume from '../components/MusicVolume.jsx';
@@ -70,12 +69,12 @@ export default function StartScreen({
    * geldiğinde çalmaya hazır olsun diye hemen başlar.
    */
   useEffect(() => {
-    Sfx.fetchMusic(menuMusic);
-    Sfx.startMusic(menuMusic);
+    Sfx.fetchMusic();
+    Sfx.startMusic();
 
     const kick = () => {
       Sfx.unlock();
-      Sfx.startMusic(menuMusic);
+      Sfx.startMusic();
     };
     window.addEventListener('pointerdown', kick);
     window.addEventListener('keydown', kick);
