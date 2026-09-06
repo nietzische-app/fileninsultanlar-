@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import PixelAvatar from '../components/PixelAvatar.jsx';
 import MuteButton from '../components/MuteButton.jsx';
 import { drawTrophy } from '../game/sprites.js';
@@ -12,7 +12,7 @@ import { upper } from '../utils/text.js';
 const CONFETTI_COLORS = ['#E30A17', '#FFFFFF', '#FFD24A', '#FF7A18', '#9BE7FF'];
 
 /**
- * Maç sonu ekranı — kupa, konfeti ve Retro Voleybol'na
+ * Maç sonu ekranı — kupa, konfeti ve
  * onurlandırma mesajı.
  */
 export default function ResultScreen({
@@ -26,6 +26,8 @@ export default function ResultScreen({
   tournamentState = null,
   /** Bu maçta açılan rozet id'leri. */
   freshAchievements = [],
+  /** Bu maçın Forma Puanı kazancı — kalem dökümüyle (bkz. ilerleme.js). */
+  kazanc = null,
 }) {
   const survival = result.campaign === 'survival' ? result.survival : null;
   /*
@@ -295,6 +297,9 @@ export default function ResultScreen({
           </div>
         )}
 
+        {/* Bu maçta kazanılan Forma Puanı */}
+        {kazanc && kazanc.toplam > 0 && <FormaPuani kazanc={kazanc} />}
+
         {/* Bu maçta açılan rozetler */}
         {freshAchievements.length > 0 && (
           <div className="w-full border-2 border-[#9BE7FF]/70 bg-[#9BE7FF]/10 px-4 py-3 text-center">
@@ -403,4 +408,90 @@ function PixelTrophy() {
       aria-label="Şampiyonluk kupası"
     />
   );
+}
+
+/**
+ * Forma Puanı paneli — bu maçın kazancı, kalem kalem.
+ *
+ * Tek bir "+68 FP" yeterdi ama kalemleri göstermek başka bir iş
+ * yapıyor: oyuncuya bir dahaki sefere NEYİ artıracağını söylüyor.
+ * "PERFORMANS +14" satırını gören, blokların sayıldığını öğreniyor;
+ * "ZOR ×1.35" satırını gören zorluğu bir tık yükseltmeyi düşünüyor.
+ */
+function FormaPuani({ kazanc }) {
+  const sayac = useSayac(kazanc.toplam);
+
+  return (
+    <div className="w-full border-2 border-[#FFD24A]/70 bg-[#FFD24A]/10 px-4 py-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-[8px] tracking-widest text-[#FFD24A]">FORMA PUANI</p>
+        <p className="text-base text-[#FFD24A]">+{sayac.toLocaleString('tr-TR')}</p>
+      </div>
+
+      {/*
+        Satırlar TOPLANABİLİR: her satır bir FP farkı, oran değil. Çarpan
+        da fark olarak yazılıyor ve maç kalemlerinin hemen ardında
+        duruyor — rozet/kupa satırları çarpanın altında değil, çünkü
+        onlara uygulanmıyor (bkz. ilerleme.js `satirlariKur`).
+      */}
+      <div className="mt-3 flex flex-col gap-1">
+        {kazanc.satirlar.map((k) => (
+          <div
+            key={k.ad}
+            className={`flex justify-between gap-3 text-[7px] ${
+              k.carpan ? 'text-[#FFD24A]/80' : 'text-white/60'
+            }`}
+          >
+            <span>{k.ad}</span>
+            <span className={k.carpan ? '' : 'text-white/80'}>
+              {k.puan < 0 ? '' : '+'}{k.puan}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {typeof kazanc.bakiye === 'number' && (
+        <p className="mt-2 border-t border-white/10 pt-2 text-right text-[7px] text-white/45">
+          CÜZDAN: {kazanc.bakiye.toLocaleString('tr-TR')} FP
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Sıfırdan hedefe sayan sayaç.
+ *
+ * Sayının BİRDEN belirmesiyle sayarak gelmesi arasındaki fark küçük
+ * ama kazanmanın hissedildiği yer tam olarak orası — ödül anlık değil,
+ * bir an sürüyor.
+ *
+ * `prefers-reduced-motion` açıksa animasyon hiç çalışmıyor: hareket
+ * rahatsızlık verenler için burada taşınan bir bilgi yok, sayı zaten
+ * son değerinde duruyor.
+ */
+function useSayac(hedef, sure = 700) {
+  const [deger, setDeger] = useState(hedef);
+
+  useEffect(() => {
+    const azHareket = typeof matchMedia === 'function'
+      && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (azHareket || hedef <= 0) {
+      setDeger(hedef);
+      return undefined;
+    }
+
+    let kare = 0;
+    const bas = performance.now();
+    const adim = (simdi) => {
+      const t = Math.min(1, (simdi - bas) / sure);
+      // Sonu yavaşlayan eğri: sayı hedefe yaklaşırken duruyor gibi olsun
+      setDeger(Math.round(hedef * (1 - (1 - t) ** 3)));
+      if (t < 1) kare = requestAnimationFrame(adim);
+    };
+    kare = requestAnimationFrame(adim);
+    return () => cancelAnimationFrame(kare);
+  }, [hedef, sure]);
+
+  return deger;
 }

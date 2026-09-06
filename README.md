@@ -340,8 +340,52 @@ Hayatta kalma koşusu galibiyet/mağlubiyet tablosuna işlemez — koşu her zam
 yenilgiyle biter, onu kayıp saymak galibiyet serisini anlamsızca sıfırlardı.
 Ralli/smaç gibi kişisel zirveler orada da geçerlidir.
 
-İlk açılışta (veya menüden **NASIL OYNANIR**) 4 adımlık Sultan Rehberi çıkar:
+İlk açılışta (veya menüden **NASIL OYNANIR**) 4 adımlık Oyun Rehberi çıkar:
 manşet→pas→smaç, dalış, kontroller.
+
+## İlerleme — Forma Puanı
+
+Kadro ilk açılışta tam açık değil. Üç oyuncuyla başlanıyor, kalan
+ondördü **Forma Puanı (FP)** ile açılıyor. Kod: `src/game/ilerleme.js`
+(saf modül — React ve `localStorage` içermiyor, o yüzden temposu
+benzetilerek ölçülebiliyor).
+
+**Kazanç.** Her maç FP veriyor: taban 12, galibiyet +30, kazanılan set
+başına +8, performans (blok/kurtarış/tam vuruş/plase) en çok +20.
+Tamamı zorlukla çarpılıyor (KOLAY ×0.8, ZOR ×1.35). Antrenman ×0.25 —
+en zayıf rakiple en kısa maç, en verimli kaynak olmasın diye. Çevrimiçi
+galibiyet ayrıca +40, turnuva kupası +250, hayatta kalmada koşu puanı
+başına +5, her yeni rozet +60.
+
+Sonuç ekranı kazancı **kalem kalem** gösteriyor. Satırlar toplanabilir:
+çarpan bile oran olarak değil FARK olarak yazılıyor (`ZOR ×1.35  +25`),
+çünkü çarpan yalnızca maça uygulanıyor — rozet ve kupa kalemlerine
+değil. Bu, ekranda görülerek bulunmuş bir hatanın düzeltmesi.
+
+**Başlangıç kadrosu:** Gizel Örgen (kaptan, libero), Derya Başyolu
+(kadronun en dengelisi) ve Dilan Özdener (pasör). Üç kişi, çünkü Co-Op
+ve 2v2 iki oyuncu istiyor; üçüncüsü seçim olsun diye.
+
+**Bedeller** 150 / 400 / 700 / 1200 FP olmak üzere dört kademe.
+İstatistikten türetmeyi denedim ve ölçüm reddetti: kadro kasten
+dengeli (istatistik toplamları 428-516, net çarpan değeri onikisinde
+0.24-0.32), o yüzden her türetilmiş liste düz çıkıyordu — ve sıralama
+yanlıştı, kaptan en pahalı oyuncu oluyordu. Kademeler bu yüzden elle,
+"oyunu ne kadar değiştiriyor" ölçütüyle kondu.
+
+**Tempo** ölçülerek ayarlandı — `npm run olcum:ilerleme` üç oyuncu
+profili benzetip kaçıncı maçta kaç kilidin açıldığını yazdırıyor:
+
+| profil | 1. kilit | 3. kilit | 7. kilit | 14. kilit |
+| --- | --- | --- | --- | --- |
+| çaylak | 5 | 10 | 37 | 174 |
+| ortalama | 3 | 7 | 24 | 100 |
+| usta | 2 | 5 | 16 | 61 |
+
+**Sürüm geçişi.** Kilitler sonradan geldi, o yüzden eski kayıtlar
+cezalandırılmıyor: ilk açılışta geçmiş rekorlar FP'ye çevriliyor ve
+oyuncunun ZATEN KULLANDIĞI kadro bedelsiz açılıyor. İkincisi olmasa
+puan yetse bile oyuncu, dün oynadığı oyuncuyu mağazada bulurdu.
 
 ## Kadro
 
@@ -351,25 +395,28 @@ görünür ve hepsi kurgusaldır.
 
 **Kaptan:** Gizel Örgen (`captain: true` — sprite'ta pazıbandı).
 
-| # | Oyuncu | Mevki | Boy | Bonus |
-| --- | --- | --- | --- | --- |
-| 2 | Gizel Örgen ★ | Libero | 171 | **Kurtarış** — Manşette üstün savunma; alçak toplara geniş erişim. |
-| 5 | Cansel Özbey | Pasör | 181 | **Hızlı Tempo** — En hızlı saha içi hareket ve yüksek sıçrama. |
-| 9 | Salise Şanlı | Smaçör | 185 | **Çift Yönlü** — Hücum ve savunmada dengeli; manşette ek güç. |
-| 11 | Handan Balatan | Smaçör | 189 | **Çapraz Plase** — Dengeli hücum; vuruşlarda daha keskin açı. |
-| 4 | Sinem Jak-Kısar | Orta Oyuncu | 191 | **Tecrübeli Duvar** — Blokta %22 ek güç ve geniş erişim. |
-| 17 | Eylem Akarpınar | Libero | 172 | **Seri Refleks** — Sahanın en hızlısı; dalışta geniş erişim. |
-| 19 | Elifnur Şahan | Pasör | 188 | **Uzun Pasör** — Pasör hızı ile orta oyuncu erişimi bir arada. |
-| 21 | Dilan Özdener | Pasör | 187 | **Sakin Dağıtım** — İstikrarlı pas; manşette ve hızda dengeli. |
-| 23 | Ela Erdim Dündal | Orta Oyuncu | 187 | **Efsane Duvar** — Blokta %24 güç; tecrübeyle geniş file erişimi. |
-| 24 | Derin Uyanır | Orta Oyuncu | 194 | **Yüksek Kademe** — Uzun boyla file üstünde erişim ve blok üstünlüğü. |
-| 27 | Berna Buse Özdem | Orta Oyuncu | 186 | **Genç Enerji** — Diri blok; file önünde toparlanması hızlı. |
-| 28 | Zeliha Günay | Orta Oyuncu | 197 | **Duvar** — Kadronun en uzunu — en geniş erişim, en sert blok. |
-| 31 | Yağmur Erkin | Smaçör | 183 | **Hafif Ayak** — Kadronun en çevik smaçörü; hızlı ve yüksek sıçrar. |
-| 33 | İlknur Aydan | Smaçör | 184 | **Servis Ateşi** — Sert servis ve smaç; bar hızlı dolar. |
-| 37 | Melina Vargaz | Pasör Çaprazı | 193 | **Top Sallama** — Smaç çıkış hızı %25 daha yüksek. |
-| 42 | Derya Başyolu | Smaçör | 192 | **Taze Kan** — Çevik ve hevesli; bar biraz daha hızlı dolar. |
-| 55 | Ebru Karakut | Pasör Çaprazı | 194 | **Kara Kurt** — Sert smaç; açılı bitiriş. |
+Aşağıdaki tabloda ★ başlangıç kadrosunu, FP sütunu kilit bedelini
+gösteriyor.
+
+| # | Oyuncu | Mevki | Boy | FP | Bonus |
+| --- | --- | --- | --- | --- | --- |
+| 2 | Gizel Örgen ★ | Libero | 171 | ★ AÇIK | **Kurtarış** — Manşette üstün savunma; alçak toplara geniş erişim. |
+| 5 | Cansel Özbey | Pasör | 181 | 700 FP | **Hızlı Tempo** — En hızlı saha içi hareket ve yüksek sıçrama. |
+| 9 | Salise Şanlı | Smaçör | 185 | 150 FP | **Çift Yönlü** — Hücum ve savunmada dengeli; manşette ek güç. |
+| 11 | Handan Balatan | Smaçör | 189 | 1200 FP | **Çapraz Plase** — Dengeli hücum; vuruşlarda daha keskin açı. |
+| 4 | Sinem Jak-Kısar | Orta Oyuncu | 191 | 400 FP | **Tecrübeli Duvar** — Blokta %22 ek güç ve geniş erişim. |
+| 17 | Eylem Akarpınar | Libero | 172 | 1200 FP | **Seri Refleks** — Sahanın en hızlısı; dalışta geniş erişim. |
+| 19 | Elifnur Şahan | Pasör | 188 | 150 FP | **Uzun Pasör** — Pasör hızı ile orta oyuncu erişimi bir arada. |
+| 21 | Dilan Özdener | Pasör | 187 | ★ AÇIK | **Sakin Dağıtım** — İstikrarlı pas; manşette ve hızda dengeli. |
+| 23 | Ela Erdim Dündal | Orta Oyuncu | 187 | 700 FP | **Efsane Duvar** — Blokta %24 güç; tecrübeyle geniş file erişimi. |
+| 24 | Derin Uyanır | Orta Oyuncu | 194 | 400 FP | **Yüksek Kademe** — Uzun boyla file üstünde erişim ve blok üstünlüğü. |
+| 27 | Berna Buse Özdem | Orta Oyuncu | 186 | 150 FP | **Genç Enerji** — Diri blok; file önünde toparlanması hızlı. |
+| 28 | Zeliha Günay | Orta Oyuncu | 197 | 700 FP | **Duvar** — Kadronun en uzunu — en geniş erişim, en sert blok. |
+| 31 | Yağmur Erkin | Smaçör | 183 | 400 FP | **Hafif Ayak** — Kadronun en çevik smaçörü; hızlı ve yüksek sıçrar. |
+| 33 | İlknur Aydan | Smaçör | 184 | 150 FP | **Servis Ateşi** — Sert servis ve smaç; bar hızlı dolar. |
+| 37 | Melina Vargaz | Pasör Çaprazı | 193 | 400 FP | **Top Sallama** — Smaç çıkış hızı %25 daha yüksek. |
+| 42 | Derya Başyolu | Smaçör | 192 | ★ AÇIK | **Taze Kan** — Çevik ve hevesli; bar biraz daha hızlı dolar. |
+| 55 | Ebru Karakut | Pasör Çaprazı | 194 | 700 FP | **Kara Kurt** — Sert smaç; açılı bitiriş. |
 
 ### Bonus kadro
 
@@ -502,6 +549,7 @@ src/
 │   ├── serve.js              Servis metresi, güç/nişan, sonuç tahmini
 │   ├── ballstep.js           Topun serbest uçuşu — motor ve tahmin ortak
 │   ├── achievements.js       Rozet tanımları ve değerlendirme
+│   ├── ilerleme.js           Forma Puanı kazancı, kilit bedelleri, satın alma
 │   ├── modes.js              Oyun modu tanımları (hızlı maç / turnuva / hayatta kalma)
 │   ├── tournament.js         Kupa yolu turları ve saf durum makinesi
 │   ├── survival.js           Dalga hesabı, zorluk rampası, rütbeler
@@ -520,11 +568,11 @@ src/
 └── utils/
     ├── text.js               Türkçe büyük harf yardımcısı
     ├── fullscreen.js         Fullscreen API sarmalayıcı (webkit/iOS farkları)
-    └── storage.js            Mute / seçim / rekorlar / turnuva kaydı localStorage
+    └── storage.js            Mute / seçim / rekorlar / turnuva / ilerleme kaydı
 ```
 
 Saf motor mantığı (`rules.js`, `ballistics.js`, `effects.js`, `tournament.js`,
-`survival.js`, `combo.js`) ve `storage.js` Vitest ile test edilir
+`survival.js`, `combo.js`, `ilerleme.js`) ve `storage.js` Vitest ile test edilir
 (`*.test.js`). `Game.js` bu modülleri çağırır; canvas/React sarmalayıcı
 kalır.
 

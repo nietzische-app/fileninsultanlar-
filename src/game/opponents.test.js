@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FORMATS, RULES } from './constants.js';
-import { ROSTER, DEFAULT_PLAYER_ID, SHOWCASE_IDS } from './players.js';
+import { ROSTER, DEFAULT_PLAYER_ID } from './players.js';
+import { vitrinKadro } from './ilerleme.js';
 import { isMatchOver, isSetOver } from './rules.js';
 import {
   OPPONENT_TEAMS,
@@ -66,9 +67,18 @@ describe('kadro sabitleri kadroyla tutarlı', () => {
     expect(ROSTER.some((p) => p.id === DEFAULT_PLAYER_ID)).toBe(true);
   });
 
-  it('SHOWCASE_IDS hepsi gerçek oyuncu', () => {
+  it('vitrin kadrosu hep gerçek oyuncu döner', () => {
+    /*
+     * Vitrin sabit bir liste olmaktan çıkıp açılanlardan kurulur oldu
+     * (bkz. ilerleme.js). Aynı soru geçerli: ekrana var olmayan bir
+     * oyuncu gitmesin — kayıtta çöp id olsa bile.
+     */
     const kimlikler = new Set(ROSTER.map((p) => p.id));
-    SHOWCASE_IDS.forEach((id) => expect(kimlikler.has(id)).toBe(true));
+    [[], ['zeliha-gunay'], ['yok-boyle-biri', 'handan-balatan']].forEach((acilanlar) => {
+      const vitrin = vitrinKadro(acilanlar);
+      expect(vitrin.length).toBe(3);
+      vitrin.forEach((p) => expect(kimlikler.has(p.id)).toBe(true));
+    });
   });
 
   it('kadroda kimlik ve forma numarası benzersiz', () => {

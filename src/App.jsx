@@ -29,8 +29,16 @@ import {
   saveAchievements,
   savePrefs,
   saveTournament,
+  loadIlerleme,
+  saveIlerleme,
 } from './utils/storage.js';
 import { evaluateAchievements, newlyUnlocked } from './game/achievements.js';
+import {
+  macKazanci,
+  rozetKazanci,
+  turnuvaKazanci,
+  ac,
+} from './game/ilerleme.js';
 import { getGameMode } from './game/modes.js';
 
 /**
@@ -65,8 +73,21 @@ export default function App() {
   const [records, setRecords] = useState(() => loadRecords());
   const [savedTournament, setSavedTournament] = useState(() => loadTournament());
   const [achievements, setAchievements] = useState(() => loadAchievements());
+  /**
+   * Rozetlerin ref aynası.
+   *
+   * `syncAchievements` hem kaydı güncelliyor hem de bu maçta açılanları
+   * DÖNDÜRÜYOR (rozetler FP kazandırıyor). Durum güncelleyicisinin
+   * içinden okumak bunu veremezdi; ref, aynı olay içinde güncel değeri
+   * senkron okumanın yolu.
+   */
+  const rozetRef = useRef(achievements);
   /** Bu maçta açılan rozetler — sonuç ekranında gösterilir. */
   const [freshAchievements, setFreshAchievements] = useState([]);
+  /** Forma Puanı ve açılan oyuncular. */
+  const [ilerleme, setIlerleme] = useState(() => loadIlerleme());
+  /** Bu maçın FP kazancı — sonuç ekranındaki kalem dökümü. */
+  const [kazanc, setKazanc] = useState(null);
   /** Tutorial menüden mi açıldı (geri → start), yoksa ilk akış mı (→ select). */
   const [tutorialFromMenu, setTutorialFromMenu] = useState(false);
   /** Açık çevrimiçi bağlantı — sahibi burası, kapatan da burası. */
@@ -291,18 +312,73 @@ export default function App() {
   /**
    * Rozetleri güncel rekorlara göre yeniden değerlendirir ve bu maçta
    * açılanları saklar. Üç mod da aynı kapıdan geçer.
+   *
+   * Açılanları DÖNDÜRÜYOR: rozetler artık FP de kazandırıyor ve
+   * kazancı hesaplayan taraf listeyi bu çağrıdan almalı. `setState`
+   * içinden okumak yetmezdi — o geri çağrı sonra çalışır, oysa puan
+   * aynı olayda hesaplanıyor.
    */
   const syncAchievements = useCallback(
     (nextRecords, matchResult) => {
       const earned = evaluateAchievements(nextRecords, matchResult);
-      setAchievements((prev) => {
-        setFreshAchievements(newlyUnlocked(prev, earned));
-        // Bir kez açılan rozet geri kapanmaz: kayıt her zaman birleşimdir
-        return saveAchievements([...prev, ...earned]);
-      });
+      // Ref, `achievements` durumunun her an güncel aynası (aşağıda yazılıyor)
+      const taze = newlyUnlocked(rozetRef.current, earned);
+      const hepsi = saveAchievements([...rozetRef.current, ...earned]);
+      rozetRef.current = hepsi;
+      setAchievements(hepsi);
+      setFreshAchievements(taze);
+      return taze;
     },
     []
   );
+
+  /**
+   * Bir maçın/koşunun FP kazancını işler ve kaydeder.
+   *
+   * Tek kapı: üç mod da buradan geçiyor. Ayrı ayrı yazsaydık, yeni bir
+   * mod eklendiğinde puan vermeyi unutmak (ya da iki kez vermek)
+   * sessizce mümkün olurdu.
+   *
+   * @param {object} matchResult
+   * @param {string[]} tazeRozetler
+   * @param {object|null} kapananTurnuva Kupa yalnızca kapanışta sayılır
+   */
+  const puanIsle = useCallback((matchResult, tazeRozetler, kapananTurnuva = null) => {
+    const mac = macKazanci(matchResult);
+    const rozet = rozetKazanci(tazeRozetler);
+    const kupa = turnuvaKazanci(kapananTurnuva);
+
+    const toplam = mac.toplam + rozet.toplam + kupa.toplam;
+    /*
+     * `satirlar`, `kalemler` DEĞİL: çarpan yalnızca maça uygulanıyor ve
+     * satır listesi onu maç kalemlerinin hemen ardına, fark olarak
+     * koyuyor. Ham kalemleri birleştirseydik ekrandaki kolon toplamı
+     * gerçek toplamı tutmazdı (bkz. ilerleme.js `satirlariKur`).
+     */
+    const satirlar = [...mac.satirlar, ...rozet.satirlar, ...kupa.satirlar];
+
+    setIlerleme((prev) => {
+      const sonraki = saveIlerleme({ ...prev, puan: prev.puan + toplam });
+      /*
+       * Kazanç özeti, kazançtan SONRAKİ bakiyeyle birlikte saklanıyor:
+       * sonuç ekranı "+68 FP · 412 FP" diyebilsin. Bakiyeyi ayrıca
+       * okumak, iki kaynağın farklı anlarda güncellenmesi riskini
+       * getirirdi.
+       */
+      setKazanc({ toplam, satirlar, bakiye: sonraki.puan });
+      return sonraki;
+    });
+  }, []);
+
+  /** Oyuncu satın alma — doğrulama saf modülde (bkz. ilerleme.js `ac`). */
+  const oyuncuAc = useCallback((id) => {
+    setIlerleme((prev) => {
+      const sonuc = ac(prev, id);
+      if (!sonuc.ok) return prev;
+      Sfx.confirm();
+      return saveIlerleme(sonuc.durum);
+    });
+  }, []);
 
   const handleFinish = useCallback(
     (matchResult) => {
@@ -315,7 +391,7 @@ export default function App() {
         const { records: nextRecords, broken } = recordSurvivalResult(matchResult);
         setRecords(nextRecords);
         setBrokenRecords(broken);
-        syncAchievements(nextRecords, matchResult);
+        puanIsle(matchResult, syncAchievements(nextRecords, matchResult));
         setResult(matchResult);
         setFinishedTournament(null);
         setScreen('result');
@@ -335,7 +411,8 @@ export default function App() {
           setSavedTournament(nextState);
           setRecords(matchRecords);
           setBrokenRecords(matchBroken);
-          syncAchievements(matchRecords, matchResult);
+          // Ara tur: maç kazancı var, kupa YOK — turnuva daha bitmedi
+          puanIsle(matchResult, syncAchievements(matchRecords, matchResult));
           setResult(matchResult);
           setScreen('bracket');
           return;
@@ -348,7 +425,7 @@ export default function App() {
         setSavedTournament(null);
         setRecords(nextRecords);
         setBrokenRecords({ ...matchBroken, ...tourBroken });
-        syncAchievements(nextRecords, matchResult);
+        puanIsle(matchResult, syncAchievements(nextRecords, matchResult), nextState);
         setResult(matchResult);
         setFinishedTournament(nextState);
         setScreen('result');
@@ -366,12 +443,12 @@ export default function App() {
       const { records: nextRecords, broken } = recordMatchResult(matchResult);
       setRecords(nextRecords);
       setBrokenRecords(broken);
-      syncAchievements(nextRecords, matchResult);
+      puanIsle(matchResult, syncAchievements(nextRecords, matchResult));
       setResult(matchResult);
       setFinishedTournament(null);
       setScreen('result');
     },
-    [tournament, syncAchievements]
+    [tournament, syncAchievements, puanIsle]
   );
 
   const handleRematch = useCallback(() => {
@@ -463,6 +540,7 @@ export default function App() {
           resumeTournament={savedTournament}
           onResumeTournament={resumeSavedTournament}
           achievements={achievements}
+          ilerleme={ilerleme}
         />
       )}
 
@@ -504,6 +582,8 @@ export default function App() {
           initialFormat={prefs.format}
           initialOpponentId={prefs.opponentId}
           initialHomeIds={prefs.homeIds}
+          ilerleme={ilerleme}
+          onUnlock={oyuncuAc}
         />
       )}
 
@@ -559,6 +639,7 @@ export default function App() {
           brokenRecords={brokenRecords}
           tournamentState={finishedTournament}
           freshAchievements={freshAchievements}
+          kazanc={kazanc}
           onRematch={handleRematch}
           onHome={goHome}
           muted={muted}

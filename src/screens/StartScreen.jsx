@@ -3,7 +3,8 @@ import ArenaBackdrop from '../components/ArenaBackdrop.jsx';
 import PixelAvatar from '../components/PixelAvatar.jsx';
 import MuteButton from '../components/MuteButton.jsx';
 import MusicVolume from '../components/MusicVolume.jsx';
-import { ROSTER, SHOWCASE_IDS } from '../game/players.js';
+import { vitrinKadro, sonrakiHedef } from '../game/ilerleme.js';
+import { getPlayerById } from '../game/players.js';
 import { GAME_MODES } from '../game/modes.js';
 import { onlineAcik } from '../net/baglanti.js';
 import AchievementGrid from '../components/AchievementGrid.jsx';
@@ -28,6 +29,8 @@ export default function StartScreen({
   resumeTournament = null,
   onResumeTournament,
   achievements = [],
+  /** Forma Puanı ve açılan oyuncular (bkz. ilerleme.js). */
+  ilerleme = { puan: 0, acilanlar: [] },
   musicVolume = 0.55,
   onMusicVolume,
   onSettings,
@@ -45,10 +48,18 @@ export default function StartScreen({
   const hasRecords = (records?.matchesPlayed ?? 0) > 0;
   const hasSurvivalRecord = (records?.bestSurvivalPoints ?? 0) > 0;
 
-  // Öne çıkan üç sultan — giriş ekranı vitrini
+  /*
+   * Vitrin — SENİN kadron. Sabit üç isim değil: kaptan ve en son
+   * açtığın iki oyuncu. Böylece bir oyuncu açtığında onu bir sonraki
+   * açılışta menüde görüyorsun.
+   */
   const showcase = useMemo(
-    () => SHOWCASE_IDS.map((id) => ROSTER.find((p) => p.id === id)).filter(Boolean),
-    []
+    () => vitrinKadro(ilerleme?.acilanlar ?? []),
+    [ilerleme]
+  );
+  const hedef = useMemo(
+    () => sonrakiHedef(ilerleme?.puan ?? 0, ilerleme?.acilanlar ?? []),
+    [ilerleme]
   );
 
   useEffect(() => {
@@ -175,6 +186,35 @@ export default function StartScreen({
           </div>
         ))}
       </div>
+
+      {/*
+        Cüzdan ve sıradaki hedef.
+
+        Menüde durmasının sebebi: oyuncu maça BAŞLAMADAN önce bir sonraki
+        oyuncuya ne kadar kaldığını görsün. Yalnızca seçim ekranında
+        olsaydı bu bilgi, karar zaten verildikten sonra gelirdi.
+      */}
+      {hedef && (
+        <div className="retro-panel w-full max-w-xl px-5 py-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <span className="text-[7px] tracking-widest text-white/40">FORMA PUANI</span>
+            <span className="text-[10px] text-retro-accent">
+              {(ilerleme?.puan ?? 0).toLocaleString('tr-TR')} FP
+            </span>
+          </div>
+          <div className="mt-2 h-2 w-full border border-white/20 bg-black/40">
+            <div
+              className="h-full bg-retro-accent transition-[width] duration-500"
+              style={{ width: `${Math.round(hedef.oran * 100)}%` }}
+            />
+          </div>
+          <p className="mt-2 text-[7px] text-white/45">
+            {hedef.kalan > 0
+              ? `${upper(getPlayerById(hedef.id)?.name ?? '')} İÇİN ${hedef.kalan} FP`
+              : `${upper(getPlayerById(hedef.id)?.name ?? '')} AÇILMAYA HAZIR`}
+          </p>
+        </div>
+      )}
 
       {/* Yarım kalan turnuva — varsa her şeyin üstünde */}
       {resumeTournament && (

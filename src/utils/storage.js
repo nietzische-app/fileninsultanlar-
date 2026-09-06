@@ -3,10 +3,13 @@
  * Tarayıcı localStorage kullanır; yazma başarısız olursa sessizce yoksayılır.
  */
 
+import { gecmisKazanci, BASLANGIC_KADRO } from '../game/ilerleme.js';
+
 const PREFS_KEY = 'retro-voleybol-prefs';
 const RECORDS_KEY = 'retro-voleybol-records';
 const TOURNAMENT_KEY = 'retro-voleybol-tournament';
 const ACHIEVEMENTS_KEY = 'retro-voleybol-achievements';
+const ILERLEME_KEY = 'retro-voleybol-ilerleme';
 
 /**
  * ESKİ ANAHTARLARDAN TAŞIMA — tek seferlik.
@@ -523,6 +526,73 @@ export function saveAchievements(ids) {
     // ignore
   }
   return list;
+}
+
+// =====================================================================
+// İlerleme — Forma Puanı ve açılan oyuncular
+// =====================================================================
+
+/**
+ * İlerlemeyi okur; kayıt yoksa SÜRÜM GEÇİŞİNİ yapar.
+ *
+ * Geçiş burada, ilk okumada yapılıyor ve hemen yazılıyor. Yazmasaydık
+ * her açılışta yeniden hesaplanırdı — kendi başına zararsız görünür
+ * ama oyuncu puan harcadıktan sonra bakiyesi bir sonraki açılışta eski
+ * haline dönerdi. Yani harcama geri alınırdı.
+ *
+ * @returns {{puan: number, acilanlar: string[]}}
+ */
+export function loadIlerleme() {
+  try {
+    const raw = localStorage.getItem(ILERLEME_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        puan: num(parsed?.puan),
+        acilanlar: Array.isArray(parsed?.acilanlar)
+          ? parsed.acilanlar.filter((id) => typeof id === 'string')
+          : [],
+      };
+    }
+  } catch {
+    // Bozuk kayıt: geçişi çalıştırmak, sıfırlamaktan iyi
+  }
+
+  /*
+   * İlk kez: kilitler bu sürümde geldi, geçmiş sayılmalı. Aksi halde
+   * aylardır oynayan biri güncellemeden sonra kadrosunun ondördünü
+   * kilitli bulurdu — kendi kullandığı oyuncular dahil.
+   */
+  const gecis = gecmisKazanci(loadRecords(), loadAchievements(), loadPrefs().homeIds);
+  return saveIlerleme(gecis);
+}
+
+/**
+ * İlerlemeyi yazar.
+ * @param {{puan: number, acilanlar: string[]}} durum
+ */
+export function saveIlerleme(durum) {
+  const temiz = {
+    puan: num(durum?.puan),
+    acilanlar: Array.from(
+      new Set(
+        (Array.isArray(durum?.acilanlar) ? durum.acilanlar : [])
+          .filter((id) => typeof id === 'string')
+          /*
+           * Başlangıç kadrosu kayda YAZILMIYOR: zaten koşulsuz açık.
+           * Yazsaydık, ileride başlangıç kadrosu değiştiğinde eski
+           * kayıtlar sessizce fazladan oyuncu açık tutardı.
+           */
+          .filter((id) => !BASLANGIC_KADRO.includes(id))
+      )
+    ),
+  };
+  try {
+    localStorage.setItem(ILERLEME_KEY, JSON.stringify(temiz));
+  } catch {
+    // Kota dolu / gizli sekme — ilerleme kaybolur, oyun çalışır
+  }
+  return temiz;
 }
 
 /** Saklanan turnuvayı siler. */

@@ -11,6 +11,7 @@ import {
   getAge,
 } from '../game/players.js';
 import { DIFFICULTY, FORMATS, SURVIVAL } from '../game/constants.js';
+import { acikMi, bedel, sonrakiHedef } from '../game/ilerleme.js';
 import { OPPONENT_TEAMS } from '../game/opponents.js';
 import { getGameMode } from '../game/modes.js';
 import { TOURNAMENT_ROUNDS } from '../game/tournament.js';
@@ -18,11 +19,11 @@ import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
 
 const MODES = [
-  { id: '1v1', label: '1 vs 1', description: 'Tek sultan, tek rakip.' },
+  { id: '1v1', label: '1 vs 1', description: 'Tek oyuncu, tek rakip.' },
   {
     id: '2v2',
     label: '2 vs 2',
-    description: 'İki sultan — sen + AI takım arkadaşı.',
+    description: 'İki oyuncu — sen + AI takım arkadaşı.',
   },
 ];
 
@@ -37,13 +38,21 @@ function Fact({ label, value }) {
 }
 
 /**
+ * Kayıtlı kadroyu geçerli hale getirir.
+ *
+ * KİLİDİ de süzüyor: kayıt, oyuncunun artık sahip olmadığı bir
+ * oyuncuyu taşıyabiliyor (başka bir cihazdan gelen tercih, elle
+ * kurcalanmış depo, ileride değişecek bir başlangıç kadrosu). Süzmesek
+ * maç kilitli bir oyuncuyla başlardı — kilidin hiçbir anlamı kalmazdı.
+ *
  * @param {string[]} ids
  * @param {string} mode
+ * @param {string[]} acilanlar
  */
-function sanitizeHomeIds(ids, mode) {
+function sanitizeHomeIds(ids, mode, acilanlar = []) {
   const required = mode === '2v2' ? 2 : 1;
   const valid = (Array.isArray(ids) ? ids : [])
-    .filter((id) => Boolean(getPlayerById(id)))
+    .filter((id) => Boolean(getPlayerById(id)) && acikMi(id, acilanlar))
     .slice(0, required);
   if (valid.length === 0) return [DEFAULT_PLAYER_ID];
   return valid;
@@ -65,6 +74,8 @@ export default function CharacterSelect({
   initialFormat = 'classic',
   initialOpponentId = 'random',
   initialHomeIds,
+  ilerleme = { puan: 0, acilanlar: [] },
+  onUnlock,
 }) {
   const gameMode = getGameMode(modeId);
   const twoPlayer = playMode === 'coop' || playMode === 'vs';
@@ -84,7 +95,7 @@ export default function CharacterSelect({
       : 'random'
   );
   const [selected, setSelected] = useState(() =>
-    sanitizeHomeIds(initialHomeIds, initialMode === '2v2' ? '2v2' : '1v1')
+    sanitizeHomeIds(initialHomeIds, initialMode === '2v2' ? '2v2' : '1v1', ilerleme.acilanlar)
   );
   const [focused, setFocused] = useState(() => selected[0] ?? DEFAULT_PLAYER_ID);
 
@@ -92,7 +103,7 @@ export default function CharacterSelect({
   const bonusRoster = useMemo(() => getBonusRoster(), []);
 
   /*
-   * Co-Op iki sultanı aynı takımda oynatır → 2v2 zorunlu.
+   * Co-Op iki oyuncuyu aynı takımda oynatır → 2v2 zorunlu.
    * VS'te 2. oyuncu rakip takımı sürer, ev sahibi kadro tek kişiliktir.
    */
   const required = playMode === 'coop' ? 2 : mode === '2v2' ? 2 : 1;
@@ -107,7 +118,30 @@ export default function CharacterSelect({
     setSelected((prev) => prev.slice(0, nextMode === '2v2' ? 2 : 1));
   };
 
+  /*
+   * `ilerleme` her render'da yeni bir nesne olabiliyor; `acilanlar`
+   * doğrudan yazılsaydı `useMemo`nun bağımlılığı her seferinde
+   * değişirdi — yani memo hiçbir şey saklamazdı.
+   */
+  const acilanlar = useMemo(() => ilerleme?.acilanlar ?? [], [ilerleme]);
+  const puan = ilerleme?.puan ?? 0;
+  const hedef = useMemo(() => sonrakiHedef(puan, acilanlar), [puan, acilanlar]);
+  const odakAcik = acikMi(focused, acilanlar);
+  const odakBedel = bedel(focused);
+
   const togglePlayer = (id) => {
+    /*
+     * Kilitli karta basmak SEÇMİYOR, odaklıyor. Böylece alttaki künye
+     * kartı o oyuncuyu gösteriyor: istatistikleri, bonusu ve açma
+     * düğmesi. Basışı tamamen yok saymak, oyuncuya neyi kaçırdığını
+     * göstermeden "hayır" demek olurdu.
+     */
+    if (!acikMi(id, acilanlar)) {
+      Sfx.select();
+      setFocused(id);
+      return;
+    }
+
     Sfx.select();
     setFocused(id);
 
@@ -161,9 +195,9 @@ export default function CharacterSelect({
             )}
             {required === 2
               ? playMode === 'coop'
-                ? 'İKİ SULTAN · 1. VE 2. OYUNCU'
-                : 'İKİ SULTAN · 1. SEN, 2. AI'
-              : 'BİR SULTAN SEÇ'}{' '}
+                ? 'İKİ OYUNCU · 1. VE 2. KİŞİ'
+                : 'İKİ OYUNCU · 1. SEN, 2. AI'
+              : 'BİR OYUNCU SEÇ'}{' '}
             ·{' '}
             {selected.length}/{required}
           </p>
@@ -211,7 +245,7 @@ export default function CharacterSelect({
                 </div>
                 <p className="mt-2 text-[7px] leading-relaxed text-white/45">
                   {playMode === 'coop'
-                    ? 'İki sultan aynı takımda; rakip yapay zekâ.'
+                    ? 'İki oyuncu aynı takımda; rakip yapay zekâ.'
                     : '2. oyuncu rakip takımı sürer.'}
                 </p>
               </>
@@ -306,6 +340,40 @@ export default function CharacterSelect({
         )}
       </div>
 
+      {/* FP cüzdanı ve sıradaki hedef */}
+      <div className="retro-panel flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <div>
+          <p className="text-[7px] tracking-widest text-white/40">FORMA PUANI</p>
+          <p className="mt-1 text-sm text-retro-accent">{puan.toLocaleString('tr-TR')} FP</p>
+        </div>
+        {hedef && (
+          <div className="min-w-[140px] flex-1 sm:max-w-xs">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-[7px] text-white/45">
+                {hedef.kalan > 0 ? 'SIRADAKİ' : 'AÇILABİLİR'}
+              </span>
+              <span className="text-[7px] text-white/70">
+                {upper(getPlayerById(hedef.id)?.name ?? '')}
+              </span>
+            </div>
+            {/*
+              Çubuk, çıplak bakiyenin söylemediğini söylüyor: bir sonraki
+              oyuncuya NE KADAR kaldığı. "412 FP" bir sayı; "40 FP kaldı"
+              bir maç daha oynamak için sebep.
+            */}
+            <div className="mt-1 h-2 w-full border border-white/20 bg-black/40">
+              <div
+                className="h-full bg-retro-accent transition-[width] duration-500"
+                style={{ width: `${Math.round(hedef.oran * 100)}%` }}
+              />
+            </div>
+            <p className="mt-1 text-right text-[7px] text-white/45">
+              {hedef.kalan > 0 ? `${hedef.kalan} FP KALDI` : 'HAZIR'}
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* Aktif kadro */}
       <RosterGrid
         title="AKTİF KADRO"
@@ -314,6 +382,8 @@ export default function CharacterSelect({
         focused={focused}
         onSelect={togglePlayer}
         onFocus={setFocused}
+        acilanlar={acilanlar}
+        puan={puan}
       />
 
       {bonusRoster.length > 0 && (
@@ -321,7 +391,7 @@ export default function CharacterSelect({
           <div>
             <p className="text-[8px] tracking-widest text-retro-accent">★ BONUS KADRO ★</p>
             <p className="mt-1 text-[7px] text-white/40">
-              Milletler Ligi&apos;nde dinlenen sultanlar
+              Özel eklenti oyuncular
             </p>
           </div>
           <RosterGrid
@@ -330,6 +400,8 @@ export default function CharacterSelect({
             focused={focused}
             onSelect={togglePlayer}
             onFocus={setFocused}
+            acilanlar={acilanlar}
+            puan={puan}
             guest
           />
         </div>
@@ -349,6 +421,29 @@ export default function CharacterSelect({
             {focusedPlayer.captain && ' · KAPTAN'}
             {focusedPlayer.guest && ' · BONUS'}
           </p>
+
+          {/*
+            Açma düğmesi künye kartında, ızgarada değil: satın alma geri
+            alınamıyor ve ızgarada tek dokunuşla yapılabilseydi yanlış
+            oyuncuya basmak bütün bakiyeyi harcatabilirdi. Burada oyuncu
+            önce kimi aldığını görüyor.
+          */}
+          {!odakAcik && (
+            <div className="mt-3 flex flex-wrap items-center gap-3 border-2 border-[#FFD24A]/40 bg-black/30 px-3 py-2">
+              <span className="text-[9px] text-[#FFD24A]">{odakBedel} FP</span>
+              <button
+                type="button"
+                className="retro-button px-4 py-2 text-[8px] disabled:opacity-40"
+                disabled={puan < odakBedel || !onUnlock}
+                onClick={() => onUnlock?.(focusedPlayer.id)}
+              >
+                {puan >= odakBedel ? 'KADROYA KAT' : `${odakBedel - puan} FP EKSİK`}
+              </button>
+              <span className="text-[7px] text-white/40">
+                CÜZDAN: {puan.toLocaleString('tr-TR')} FP
+              </span>
+            </div>
+          )}
 
           <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-[7px] sm:grid-cols-4">
             <Fact label="DOĞUM" value={formatBirthDate(focusedPlayer)} />
@@ -411,7 +506,7 @@ export default function CharacterSelect({
           {!canStart && (
             <p className="text-[7px] text-white/45 sm:text-[8px]">
               {playMode === 'coop' ? 'CO-OP' : '2v2'} İÇİN{' '}
-              {required - selected.length} SULTAN DAHA
+              {required - selected.length} OYUNCU DAHA
             </p>
           )}
         </div>
@@ -450,7 +545,10 @@ function Chip({ active, onClick, children, title }) {
   );
 }
 
-function RosterGrid({ title, players, selected, focused, onSelect, onFocus, guest = false }) {
+function RosterGrid({
+  title, players, selected, focused, onSelect, onFocus, guest = false,
+  acilanlar = [], puan = 0,
+}) {
   return (
     <div className="flex flex-col gap-2 sm:gap-3">
       {title && <p className="text-[8px] tracking-widest text-white/45">{title}</p>}
@@ -458,6 +556,10 @@ function RosterGrid({ title, players, selected, focused, onSelect, onFocus, gues
         {players.map((player) => {
           const isSelected = selected.includes(player.id);
           const order = selected.indexOf(player.id) + 1;
+          const kilitli = !acikMi(player.id, acilanlar);
+          const fiyat = bedel(player.id);
+          // Parası yeten kilit, yetmeyenden farklı görünüyor: biri davet
+          const alinabilir = kilitli && puan >= fiyat;
 
           return (
             <button
@@ -465,15 +567,36 @@ function RosterGrid({ title, players, selected, focused, onSelect, onFocus, gues
               type="button"
               onClick={() => onSelect(player.id)}
               onMouseEnter={() => onFocus(player.id)}
+              aria-label={kilitli ? `${player.name} — kilitli, ${fiyat} FP` : player.name}
               className={`relative flex flex-col items-center gap-1 border-4 px-1 py-2 transition sm:gap-2 sm:px-2 sm:py-3 ${
                 isSelected
                   ? 'border-retro-accent bg-turkiye-red/25'
-                  : focused === player.id
-                    ? 'border-white/60 bg-retro-panel'
-                    : 'border-white/15 bg-retro-panel/60 hover:border-white/40'
+                  : alinabilir
+                    ? 'border-[#FFD24A]/70 bg-retro-panel/60'
+                    : kilitli
+                      ? 'border-white/10 bg-black/40'
+                      : focused === player.id
+                        ? 'border-white/60 bg-retro-panel'
+                        : 'border-white/15 bg-retro-panel/60 hover:border-white/40'
               }`}
               style={{ boxShadow: isSelected ? '4px 4px 0 0 rgba(0,0,0,0.6)' : undefined }}
             >
+              {/*
+                Kilit rozeti EMOJİ DEĞİL: oyunun yazı tipi (Press Start
+                2P) emojileri taşımıyor, tarayıcı başka bir yazı tipine
+                düşer ve piksel ızgarasında yamuk duran tek şey o olurdu.
+                Fiyatın kendisi zaten kilidi anlatıyor; alınabilir olanı
+                ★ ve altın renk ayırıyor.
+              */}
+              {kilitli && (
+                <span
+                  className={`absolute right-0.5 top-0.5 z-10 text-[6px] sm:text-[7px] ${
+                    alinabilir ? 'text-[#FFD24A]' : 'text-white/40'
+                  }`}
+                >
+                  {alinabilir ? '★ ' : ''}{fiyat} FP
+                </span>
+              )}
               {isSelected && (
                 <span className="absolute -left-1.5 -top-1.5 flex h-5 w-5 items-center justify-center border-2 border-black bg-retro-accent text-[8px] text-black sm:h-6 sm:w-6 sm:text-[9px]">
                   {order}
@@ -490,9 +613,24 @@ function RosterGrid({ title, players, selected, focused, onSelect, onFocus, gues
                 </span>
               )}
 
-              <PixelAvatar player={player} scale={2} />
+              {/*
+                Kilitli oyuncu SİLÜET değil, soluk. Tamamen karartmak
+                oyuncunun neyi kaçırdığını gizlerdi — oysa istenen tam
+                tersi: kimi açacağını görsün, sonra istesin.
+              */}
+              <div
+                style={kilitli
+                  ? { filter: 'grayscale(1) brightness(0.55)', opacity: 0.75 }
+                  : undefined}
+              >
+                <PixelAvatar player={player} scale={2} />
+              </div>
 
-              <span className="text-center text-[6px] leading-tight sm:text-[8px]">
+              <span
+                className={`text-center text-[6px] leading-tight sm:text-[8px] ${
+                  kilitli ? 'text-white/45' : ''
+                }`}
+              >
                 {upper(player.name)}
               </span>
               <span className="hidden text-[7px] text-white/45 sm:block">

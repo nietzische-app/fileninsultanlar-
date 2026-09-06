@@ -700,8 +700,14 @@ export const OPPONENT_TEMPLATE = {
 /** Oyunun varsayılan olarak seçili getirdiği oyuncu — kaptan. */
 export const DEFAULT_PLAYER_ID = 'gizel-orgen';
 
-/** Giriş ekranındaki vitrin kadrosu. */
-export const SHOWCASE_IDS = ['gizel-orgen', 'zeliha-gunay', 'melina-vargaz'];
+/*
+ * Vitrin kadrosu BURADAN KALKTI.
+ *
+ * Sabit üç isimdi ve kilit sistemi gelince yanlış oldu: üçünün ikisi
+ * kilitli oyunculardı, yani menü sahip olmadığın bir kadroyu senin
+ * gibi gösteriyordu. Vitrin artık açtıklarına bağlı, o yüzden
+ * ilerlemeyi bilen yerde duruyor: `ilerleme.js` → `vitrinKadro()`.
+ */
 
 /**
  * Aktif kadro (bonus işaretli oyuncular hariç).

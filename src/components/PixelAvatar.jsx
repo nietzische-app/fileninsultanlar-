@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { drawSultan, SPRITE_UNITS_H, SPRITE_UNITS_W } from '../game/sprites.js';
 
 /**
- * Bir sultanın piksel avatarını küçük bir canvas üzerine çizer.
+ * Bir oyuncunun piksel avatarını küçük bir canvas üzerine çizer.
  *
  * Sahadaki figürle birebir aynı çizim fonksiyonunu kullanır
  * (src/game/sprites.js) — böylece seçim ekranındaki görsel ile

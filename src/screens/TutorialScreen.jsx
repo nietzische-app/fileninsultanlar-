@@ -75,7 +75,7 @@ export default function TutorialScreen({ onDone, onBack, muted, onToggleMute }) 
       <div className="text-center">
         <p className="mb-2 text-[8px] tracking-widest text-retro-accent">NASIL OYNANIR</p>
         <h2 className="text-lg text-turkiye-red text-outline-red sm:text-xl">
-          SULTAN REHBERİ
+          OYUN REHBERİ
         </h2>
       </div>
 
