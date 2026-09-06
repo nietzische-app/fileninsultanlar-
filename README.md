@@ -1,18 +1,13 @@
-# 🏐 Retro Voleybol — Retro Volleyball
+# 🏐 Retro Voleybol
 
-Türkiye Kadın Millî Voleybol Takımı'na, yani **Retro Voleybol**'na saygı
-duruşu niteliğinde, tarayıcıda oynanan 8-bit piksel voleybol oyunu.
+Tarayıcıda oynanan 8-bit piksel voleybol oyunu. Kırmızı-beyaz bir saha,
+bayraklarla dolu bir tribün ve gerçek voleybol kuralları üzerine kurulu
+bir arcade.
 
-Amaç basit: takımın sahada bıraktığı izi, retro bir arcade oyununa dönüştürmek.
-Zehra Güneş'in bloğu, Melissa Vargas'ın smacı, Gizem Örge'nin kurtarışı — hepsi
-kırmızı-beyaz bir sahada, Türk bayraklarıyla dolu bir tribünün önünde.
-
-> Hayran yapımı, ticari olmayan bir saygı projesidir; resmî bir ürün değildir.
->
-> Forma numarası, mevki, doğum tarihi, boy ve kilo gerçek kadro bilgisidir.
-> **Statlar ve bonuslar ise kurgusaldır** — mevki ve fiziksel özelliklerden
-> türetilmiş oyun dengesi değerleridir, gerçek sporcu performansının ölçüsü
-> değildir. Saç modeli ve aksesuarlar da stilize tercihlerdir.
+Kadro **kurgusaldır**: oyuncular, forma numaraları, künye bilgileri ve
+yetenekleri oyun için tasarlandı; gerçek bir kişiyi ya da takımı temsil
+etmez. Statlar ve bonuslar mevki ile fiziksel özelliklerden türetilmiş
+oyun dengesi değerleridir.
 
 ## Oynanış
 
@@ -96,27 +91,24 @@ bir görsel ayak iziyle veriyor.
 
 Tamamen çıplak ikon denendi ama sahanın kalabalık zemininde
 kayboluyordu; disk hem tuşun nerede olduğunu söylüyor hem ikona
-kontrast veriyor. İkonlar Prinbles **"Silent"** GUI paketinden
-(ok, duraklat, oynat, ev).
+kontrast veriyor. İkonlar (ok, duraklat, oynat, ev) **kendi
+çizimimiz**: `src/components/GameIcon.jsx` içinde 16×16'lık bir
+ızgarada, tam sayı koordinatlı dikdörtgenlerden.
 
-Paket **dosya olarak taşınmıyor** — ikonların path verisi
-`src/components/GameIcon.jsx` içine gömülü. Üç sebep:
+Önce hazır bir GUI paketinden alınmıştı; iki sebeple değiştirildi.
+Telif tarafı: pakette açık bir lisans metni yoktu ve atıf vermek
+kullanma hakkı vermiyor. Tarz tarafı: o ikonlar yuvarlatılmış eğrisel
+vektörlerdi, oyunun tamamı piksel sanatı — yan yana durduklarında
+sonradan yapıştırılmış gibi görünüyorlardı.
 
-1. Paketin PNG'leri 376 KB, SVG'leri 816 KB; gömülü hâli 8 KB, yani
-   portal paketinde neredeyse hiç yer kaplamıyor.
-2. Tuş boyutu ayarlardan %70–%140 arası değişiyor; vektör her boyutta
-   keskin kalır, PNG kalmaz.
-3. Renk `currentColor` — paketin pembesi yerine oyunun kendi kırmızısını
-   alıyorlar, sonradan yapıştırılmış gibi durmuyorlar.
+Dikdörtgen ızgarası PNG'ye tercih edildi çünkü tuş boyutu ayarlardan
+%70–%140 arası değişiyor; tam sayı koordinatlar her ölçekte keskin
+kalıyor (`shapeRendering="crispEdges"`) ve renk `currentColor` olduğu
+için oyunun kendi kırmızısını alıyorlar.
 
-Aşağı ve yukarı ok paket içinde yok; sağ ok döndürülerek kullanılıyor.
-Vuruş için uygun ikon olmadığından "VUR" yazısı kaldı — yuvarlak tuşta
-kısa yazı zaten oturuyor.
-
-> **Kaynak ve lisans:** Prinbles — https://prinbles.github.io
-> Pakette açık bir lisans metni yok, README yalnızca siteye
-> yönlendiriyor. Ticari dağıtım (oyun portalları) öncesi kullanım
-> koşullarının doğrulanması gerekir.
+Aşağı ve yukarı ok ayrı çizilmedi; sağ ok döndürülerek kullanılıyor.
+Vuruş için "VUR" yazısı kaldı — yuvarlak tuşta kısa yazı zaten
+oturuyor.
 
 ### Servis
 
@@ -353,39 +345,36 @@ manşet→pas→smaç, dalış, kontroller.
 
 ## Kadro
 
-15 aktif sultan + 2 bonus oyuncu; her birinin kendi statları ve oyunu
-değiştiren bir yetenek bonusu var. Künye bilgileri (doğum, boy, kilo)
-karakter seçim ekranında görünür.
+17 oyuncu; her birinin kendi statları ve oyunu değiştiren bir yetenek
+bonusu var. Künye bilgileri (doğum, boy, kilo) karakter seçim ekranında
+görünür ve hepsi kurgusaldır.
 
-**Kaptan:** Gizem Örge (`captain: true` — sprite'ta pazıbandı).
+**Kaptan:** Gizel Örgen (`captain: true` — sprite'ta pazıbandı).
 
 | # | Oyuncu | Mevki | Boy | Bonus |
 | --- | --- | --- | --- | --- |
-| 1 | Gizem Örge ★ | Libero | 170 | **Kurtarış** — manşette %30 güç, üstün savunma |
-| 3 | Cansu Özbay | Pasör | 182 | **Hızlı Tempo** — en hızlı hareket, yüksek sıçrama |
-| 6 | Saliha Şahin | Smaçör | 186 | **Çift Yönlü** — hücum ve savunmada dengeli |
-| 7 | Hande Baladın | Smaçör | 190 | **Çapraz Plase** — keskin açı |
-| 8 | Sinead Jack-Kısal | Orta Oyuncu | 190 | **Tecrübeli Duvar** — blokta %22 güç |
-| 10 | Eylül Akarçeşme Yatgın | Libero | 173 | **Seri Refleks** — sahanın en hızlısı |
-| 12 | Elif Şahin | Pasör | 189 | **Uzun Pasör** — pasör hızı + orta oyuncu erişimi |
-| 13 | Dilay Özdemir | Pasör | 187 | **Sakin Dağıtım** — istikrarlı pas |
-| 15 | Deniz Uyanık | Orta Oyuncu | 195 | **Yüksek Kademe** — file üstünde erişim |
-| 16 | Berka Buse Özden | Orta Oyuncu | 187 | **Genç Enerji** — diri blok |
-| 18 | Zehra Güneş | Orta Oyuncu | 198 | **Duvar** — en geniş erişim, en sert blok |
-| 20 | Yaprak Erkek | Smaçör | 182 | **Hafif Ayak** — en çevik smaçör |
-| 22 | İlkin Aydın | Smaçör | 183 | **Servis Ateşi** — sert servis ve smaç |
-| 44 | Melissa Vargas | Pasör Çaprazı | 194 | **Top Sallama** — smaç hızı %25 fazla |
-| 91 | Defne Başyolcu | Smaçör | 192 | **Taze Kan** — çevik, bar hızlı dolar |
+| 2 | Gizel Örgen ★ | Libero | 171 | **Kurtarış** — Manşette üstün savunma; alçak toplara geniş erişim. |
+| 5 | Cansel Özbey | Pasör | 181 | **Hızlı Tempo** — En hızlı saha içi hareket ve yüksek sıçrama. |
+| 9 | Salise Şanlı | Smaçör | 185 | **Çift Yönlü** — Hücum ve savunmada dengeli; manşette ek güç. |
+| 11 | Handan Balatan | Smaçör | 189 | **Çapraz Plase** — Dengeli hücum; vuruşlarda daha keskin açı. |
+| 4 | Sinem Jak-Kısar | Orta Oyuncu | 191 | **Tecrübeli Duvar** — Blokta %22 ek güç ve geniş erişim. |
+| 17 | Eylem Akarpınar | Libero | 172 | **Seri Refleks** — Sahanın en hızlısı; dalışta geniş erişim. |
+| 19 | Elifnur Şahan | Pasör | 188 | **Uzun Pasör** — Pasör hızı ile orta oyuncu erişimi bir arada. |
+| 21 | Dilan Özdener | Pasör | 187 | **Sakin Dağıtım** — İstikrarlı pas; manşette ve hızda dengeli. |
+| 23 | Ela Erdim Dündal | Orta Oyuncu | 187 | **Efsane Duvar** — Blokta %24 güç; tecrübeyle geniş file erişimi. |
+| 24 | Derin Uyanır | Orta Oyuncu | 194 | **Yüksek Kademe** — Uzun boyla file üstünde erişim ve blok üstünlüğü. |
+| 27 | Berna Buse Özdem | Orta Oyuncu | 186 | **Genç Enerji** — Diri blok; file önünde toparlanması hızlı. |
+| 28 | Zeliha Günay | Orta Oyuncu | 197 | **Duvar** — Kadronun en uzunu — en geniş erişim, en sert blok. |
+| 31 | Yağmur Erkin | Smaçör | 183 | **Hafif Ayak** — Kadronun en çevik smaçörü; hızlı ve yüksek sıçrar. |
+| 33 | İlknur Aydan | Smaçör | 184 | **Servis Ateşi** — Sert servis ve smaç; bar hızlı dolar. |
+| 37 | Melina Vargaz | Pasör Çaprazı | 193 | **Top Sallama** — Smaç çıkış hızı %25 daha yüksek. |
+| 42 | Derya Başyolu | Smaçör | 192 | **Taze Kan** — Çevik ve hevesli; bar biraz daha hızlı dolar. |
+| 55 | Ebru Karakut | Pasör Çaprazı | 194 | **Kara Kurt** — Sert smaç; açılı bitiriş. |
 
 ### Bonus kadro
 
-Milletler Ligi'nde dinlenen sultanlar — seçim ekranında ayrı bölümde,
-`guest: true` ile işaretli:
-
-| # | Oyuncu | Mevki | Boy | Bonus |
-| --- | --- | --- | --- | --- |
-| 14 | Eda Erdem | Orta Oyuncu | 188 | **Efsane Duvar** — blokta %24 güç |
-| 99 | Ebrar Karakurt | Pasör Çaprazı | 195 | **Kara Kurt** — sert smaç, bar %30 hızlı dolar |
+Seçim ekranı `guest: true` işaretli oyuncuları ayrı bir bölümde
+gösterir. **Şu an bu bölüm boş** — kadronun tamamı aktif.
 
 ## Kurulum
 
@@ -478,7 +467,7 @@ Ortam değişkeni, backend ya da veritabanı yok; tamamen statik bir SPA.
 | Oyun | HTML5 Canvas 2D + `requestAnimationFrame` |
 | Grafik | Oyunun tamamı %100 kod — `drawImage` yok. Tek istisna: giriş ekranı arka plan fotoğrafı |
 | Ses | Web Audio API — katmanlı motor (master → sfx/tribün/müzik bus). Efektler dosyasız üretilir; tek istisna giriş müziği |
-| Arayüz ikonları | Prinbles "Silent" GUI paketi — path verisi koda gömülü, dosya yok |
+| Arayüz ikonları | Kendi çizimimiz — 16×16 piksel ızgarasında SVG dikdörtgenleri, dosya yok |
 | Font | Arayüzde Press Start 2P; forma numaraları kendi piksel fontumuz |
 
 ## Dosya Yapısı
@@ -582,7 +571,7 @@ Bir karakterin görünümü tamamen `src/game/players.js` içinden değiştirili
 
 ```js
 {
-  name: 'İlkin Aydın',
+  name: 'İlknur Aydan',
   number: 22,                    // formaya piksel fontla basılır
   captain: false,                // true ise kaptan pazıbandı çizilir
   guest: false,                  // true ise bonus kadro bölümünde listelenir
@@ -608,7 +597,7 @@ Bir karakterin görünümü tamamen `src/game/players.js` içinden değiştirili
 }
 ```
 
-Liberolar (Gizem Örge, Eylül Akarçeşme Yatgın) kural gereği farklı renkte forma
+Liberolar (Gizel Örgen, Eylem Akarpınar) kural gereği farklı renkte forma
 giyer; bu `LIBERO_KIT` sabitiyle verilir.
 
 Saç stilleri: `short`, `short-spiky`, `short-fade`, `ponytail`, `high-ponytail`,

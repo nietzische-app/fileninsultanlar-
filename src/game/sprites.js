@@ -309,7 +309,7 @@ function drawHair(px, style, hair, facing) {
       break;
 
     case 'half-up':
-      // Yarı bağlı (Zehra)
+      // Yarı bağlı (Zeliha)
       px(5.5, -0.7, 3.0, 1.9, hair);
       crown = [5.5, 3.0];
       break;

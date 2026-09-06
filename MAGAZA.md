@@ -6,29 +6,25 @@ Oyunu Google Play ve App Store'a taşımak için gereken her şey.
 
 ---
 
-## ⛔ Önce: yayınlamayı engelleyen şey
+## Telif durumu
 
-**Telif.** Oyunda üç tane bize ait olmayan varlık var:
+Kadro ve ad **kurgusallaştırıldı**: gerçek sporcuların adları,
+benzerlikleri ve "Filenin Sultanları" adı çıkarıldı. Arayüz ikonları da
+kendi çizimimizle değiştirildi.
 
-| Varlık | Ne | Boyut |
-|---|---|---|
-| Arka plan fotoğrafı | VNL basın görseli | 84 KB |
-| Giriş müziği | Yayınlanmış bir şarkı | 722 KB |
-| Arayüz ikonları | Prinbles GUI paketi | — |
+Kalan iki varlık:
 
-Buna bir dördüncüsü eklendi: **uygulama ikonu** artık bir sultanın
-piksel görselini taşıyor.
+| Varlık | Ne | Boyut | Durum |
+|---|---|---|---|
+| Arka plan fotoğrafı | Basın görseli | 84 KB | 🔸 değiştirilecek |
+| Giriş müziği | Yayınlanmış bir şarkı | 722 KB | 🔸 değiştirilecek |
 
-Ayrıca oyun gerçek sporcuların **adlarını ve benzerliklerini**
-kullanıyor. İkisi de mağaza incelemesinde ve sonrasında sorun çıkarabilir
-— Apple ve Google, telif sahibinin şikâyetiyle uygulamayı yayından
-kaldırıyor ve hesaba yaptırım uygulayabiliyor.
+İkisi de tamamen bizim elimizde: fotoğraf yerine kodla çizilmiş salon,
+müzik yerine kendi ürettiğimiz tema. Projenin baştan beri geçerli kuralı
+(her şey kodda üretilsin) zaten buydu; bu ikisi istisnaydı.
 
-TVF'den cevap gelmeden **herkese açık yayınlama.** Aşağıdaki
-hazırlıkların hepsi bu cevaptan bağımsız yapılabilir — **kapalı test**
-kanalına yükleme dahil, çünkü orada uygulama mağazada listelenmiyor,
-yalnız senin davet ettiğin hesaplar kurabiliyor. Bekleyen tek şey
-"üretime çıkar" düğmesi.
+Bunlar da bitince mağazaya çıkmanın önünde telif kaynaklı bir engel
+kalmıyor.
 
 ---
 

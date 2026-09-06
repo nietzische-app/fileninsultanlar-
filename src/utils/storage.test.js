@@ -199,7 +199,7 @@ describe('storage records', () => {
 });
 
 describe('players roster', () => {
-  it('Gizem Örge kaptandır', () => {
+  it('Gizel Örgen kaptandır', () => {
     const captain = getCaptain();
     expect(captain?.id).toBe('gizel-orgen');
     expect(captain?.captain).toBe(true);

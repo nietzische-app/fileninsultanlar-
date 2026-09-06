@@ -78,7 +78,7 @@ export const POSITIONS = {
  * @property {string} position
  * @property {boolean} captain
  * @property {boolean} [guest] Bonus kadro — özel eklenti oyuncular için
- *   ayrılmış bayrak. Şu an kimsede yok: Eda Erdem ve Ebrar Karakurt
+ *   ayrılmış bayrak. Şu an kimsede yok: Ela Erdim ve Ebru Karakut
  *   asıl kadroya alındı.
  * @property {string|null} birthDate ISO 'YYYY-MM-DD' — bilinmiyorsa null
  * @property {number|null} height cm — bilinmiyorsa null
