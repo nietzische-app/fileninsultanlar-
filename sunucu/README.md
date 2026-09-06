@@ -234,14 +234,71 @@ rele.retrovoleybol.online {
 }
 ```
 
-Sonra Caddy'yi yeniden başlatmadan ayarı uygula:
+**Adres DEĞİŞTİRİYORSAN eskisini silme, yanına ekle.** Caddy tek blokta
+virgülle iki ad kabul ediyor:
+
+```
+rele-eski-adres.example, rele.retrovoleybol.online {
+    reverse_proxy filenin-rele:8787
+}
+```
+
+Sebep: yayındaki `.aab` ve Vercel yapısı hâlâ eski adrese bakıyor.
+Tek satırda değiştirirsen, sen `VITE_RELE_URL`'i güncelleyip yeniden
+dağıtana kadar çevrimiçi mod ölür. Yeni adres doğrulandıktan SONRA
+eskisini silersin.
+
+Değişikliği uygulamadan önce doğrula — bu Caddy başka servisleri de
+servis ediyor olabilir ve bozuk bir dosyayla reload hepsini düşürür:
 
 ```bash
+docker exec <caddy-konteyner-adı> caddy validate --config /etc/caddy/Caddyfile
 docker exec <caddy-konteyner-adı> caddy reload --config /etc/caddy/Caddyfile
 ```
 
+#### `sed -i` TUZAĞI — reload "config is unchanged" diyorsa
+
+Caddyfile tek dosya olarak bind mount edilmişse
+(`/opt/aegis/Caddyfile -> /etc/caddy/Caddyfile`) **`sed -i` ile
+düzenleme.** `sed -i` dosyayı yerinde değiştirmiyor: yeni bir dosya
+yazıp eskisinin üstüne `rename` ediyor, yani YENİ BİR INODE yaratıyor.
+Docker ise tek dosyalık mount'u konteyner başlarken inode'a bağlıyor,
+yola değil — konteyner eski inode'u görmeye devam ediyor.
+
+Belirtisi sinsi, çünkü her şey başarılı görünüyor:
+
+```
+host'ta diff       → değişiklik var
+caddy validate     → "Valid configuration"   (ESKİ dosyayı doğruluyor)
+caddy reload       → "config is unchanged"   ← tek ipucu bu
+curl yeni-adres    → TLS hatası (o ad için site yok)
+```
+
+Konteynerin ne gördüğünü sor, host'a bakma:
+
+```bash
+docker exec <caddy-konteyner-adı> grep -n "rele" /etc/caddy/Caddyfile
+```
+
+Olduysa çözüm konteyneri yeniden başlatmak (mount yolu tekrar çözülür).
+Yeni inode'a yazmak işe yaramaz, çünkü konteyner artık ona bakmıyor:
+
+```bash
+docker restart <caddy-konteyner-adı>   # 80/443 birkaç saniye kapanır
+```
+
+Bir daha yaşamamak için inode'u koruyan yolla düzenle — son `cat >`
+mevcut dosyayı truncate edip AYNI inode'a yazıyor:
+
+```bash
+sed -E 's/eski/yeni/' /opt/aegis/Caddyfile > /tmp/cf && cat /tmp/cf > /opt/aegis/Caddyfile
+```
+
 Caddy ilk istekte bu domain için otomatik Let's Encrypt sertifikası
-alır — certbot'a hiç gerek yok. Ardından doğrudan **4) Sınama**'ya geç.
+alır — certbot'a hiç gerek yok. `tls-alpn-01` doğrulaması 443 üzerinden
+yürüdüğü için ek bir port açmak da gerekmiyor; onay 10-20 saniye
+sürebiliyor, `certificate obtained successfully` satırını bekle.
+Ardından doğrudan **4) Sınama**'ya geç.
 
 **3) TLS sertifikası al** (yalnız 2a — nginx yolunu izlediysen;
 certbot kuruluysa, değilse önce `sudo apt install certbot python3-certbot-nginx`):
