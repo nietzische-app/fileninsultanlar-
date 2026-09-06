@@ -128,19 +128,40 @@ IP'ye bağlı bir adresle paketlemeyi **durduruyor**
 
 ### DNS kayıtları
 
-Alan adının yönetim panelinde (kayıt şirketi ya da Cloudflare):
+Alan adı **Namecheap**'te, BasicDNS ile. Kayıtlar Domain List → Manage
+→ **Advanced DNS** altında:
 
-| Tip | Ad | Değer | Not |
+| Tip | Host | Değer | Ne için |
 | --- | --- | --- | --- |
-| A | `rele` | `178.104.2.249` | Röle. Cloudflare kullanıyorsan **proxy KAPALI** (gri bulut) — turuncu bulut WebSocket'i vekilliyor ve gereksiz bir katman ekliyor |
-| A | `@` | Vercel'in verdiği IP | Web sitesi (Vercel panelinde **Add Domain** deyince gösteriyor) |
-| CNAME | `www` | `cname.vercel-dns.com` | Web sitesi |
+| A | `rele` | `178.104.2.249` | **Röle.** Vercel'in bundan haberi yok, olmamalı da — bu kayıt doğrudan Hetzner sunucusuna gidiyor |
+| A | `@` | `216.198.79.1` | Web sitesi (Vercel) |
+| CNAME | `www` | `77ce11e60fe721d1.vercel-dns-017.com` | Web sitesi (Vercel). Bu değer **hesaba özel** — kendi Vercel panelinden kopyala, buradaki örnek |
+
+Üç tuzak, üçü de yaşandı:
+
+1. **Namecheap'in "REDIRECT DOMAIN" özelliği `@` A kaydının kendisidir.**
+   Panelde ayrı bir kutu gibi görünüyor ama arka planda Namecheap'in
+   kendi yönlendirme sunucusuna (`162.255.119.57`) A kaydı yazıyor.
+   Dururken `@`'a başka A kaydı eklenemiyor. Üstelik gereksiz: apex →
+   www yönlendirmesini Vercel zaten yapıyor (308).
+2. **Yeni alan adında hazır gelen park kayıtları siliniyor** —
+   `CNAME www → parkingpage.namecheap.com` bunlardan biri.
+3. **CNAME değerini elle yazma.** Vercel sondaki noktayla gösteriyor
+   (`...-017.com.`); Namecheap'e noktasız girilir, kendisi ekler.
+
+Cloudflare kullanıyorsan `rele` için **proxy KAPALI** (gri bulut) —
+turuncu bulut WebSocket'i vekilliyor ve gereksiz bir katman ekliyor.
 
 Yayılmayı doğrula (kendi makinende):
 
 ```bash
-dig +short rele.retrovoleybol.online   # 178.104.2.249 dönmeli
+dig +short rele.retrovoleybol.online   # 178.104.2.249
+dig +short retrovoleybol.online        # 216.198.79.1
+dig +short www.retrovoleybol.online    # ...vercel-dns-017.com + IP'ler
 ```
+
+Vercel panelindeki üç satır da **Valid Configuration** olmalı. `rele`
+orada GÖRÜNMEZ; onu yalnız yukarıdaki `dig` doğrular.
 
 Tüm sunucu komutları **kendi sunucunda**, SSH ile bağlanıp
 çalıştırılır. **DNS önce oturmalı**: hem Caddy hem certbot sertifikayı
