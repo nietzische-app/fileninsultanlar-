@@ -152,6 +152,37 @@ const AG = {
   saatCekisi: 0.05,
 
   /**
+   * TOPU İLERİ SARMA sınırı (sn).
+   *
+   * Kendi oyuncumuz tahmin edilip "şimdi"de çiziliyor, top ise
+   * tampondan geçmişten geliyordu. Ölçüldü (tests/olcum/top.mjs): top
+   * ekranda 133-217 ms geride ve gerçek yerinden 58-83 px uzakta.
+   *
+   * Bu sayı neden önemli: temas eşiği toplam ~65 px (hızlı topta
+   * `speedPenalty` ile ~41'e iniyor). Yani görsel sapma VURUŞ
+   * PENCERESİNİN TAMAMINDAN büyük — oyuncu ekranda gördüğü topa nişan
+   * alınca gerçek temas alanının dışında kalıyordu.
+   *
+   * Sınır var çünkü ileri sarma serbest uçuşta KUSURSUZ ama vuruş
+   * anında yanılıyor: kimse topa vurmadığı sürece `stepBall` sunucunun
+   * yaptığının aynısını yapar, biri vurduğunda ise istemci topu eski
+   * yolunda sürdürmeye devam eder ve paket gelince düzeltir. Ne kadar
+   * ileri sararsak o yanılma penceresi o kadar uzun. 0.3 sn, kötü
+   * bağlantıda bile makul bir tavan.
+   */
+  azamiTopIleri: 0.3,
+
+  /**
+   * İleri sarma düzeltmesinin ekrana yedirilme oranı (kare başına).
+   *
+   * Vuruş anında tahmin yanılıyor ve paket gelince top gerçek yerine
+   * atlıyor. Doğrudan yazmak ışınlanma gibi görünüyordu; oyuncunun
+   * uzlaştırmasında kullanılan yöntemin aynısı burada da uygulanıyor
+   * (`agSapmaAl`): fark sapmaya alınıp birkaç karede eritiliyor.
+   */
+  topSapmaErimesi: 0.25,
+
+  /**
    * Girdinin EN AZ bu sıklıkta yollanması (Hz).
    *
    * Girdi normalde yalnız değiştiğinde gidiyor. Tahmin gelince bu tek
@@ -387,6 +418,17 @@ export default class Game {
      * gerekçesi `agAradegerle`de.
      */
     this.agTampon = [];
+    /**
+     * İleri sarma düzeltmesinin görünür kalıntısı.
+     *
+     * Top gerçek konuma YAZILIYOR; ekranda hemen atlamasın diye fark
+     * burada tutulup her karede eritiliyor.
+     */
+    this.agTopSapma = { x: 0, y: 0 };
+    /** İleri sarmanın bir önceki karedeki HEDEFİ — süreksizliği görmek için. */
+    this.agTopSonHedef = null;
+    /** Uzlaştırmadan öğrenilen gidiş-dönüş penceresi (sn), yumuşatılmış. */
+    this.agPencere = 0;
     /** Ekranın çizildiği an, SUNUCU saatinde. İlk pakette kuruluyor. */
     this.agCizimSaati = null;
 
@@ -398,6 +440,12 @@ export default class Game {
      * geldiğini gösteriyor.
      */
     this.agTahmin = options.agTahmin ?? true;
+    /*
+     * Topu ileri sarma. Ayrı bayrak çünkü tahminden BAĞIMSIZ ölçülmesi
+     * gerekiyor: ikisi aynı anahtara bağlı olsaydı "iyileşme hangisinden
+     * geldi" sorusu sorulamazdı.
+     */
+    this.agTopIleri = options.agTopIleri ?? true;
 
     /**
      * Girdi geçmişi (yalnız istemcide): [{ an, tuslar }].
@@ -1149,6 +1197,13 @@ export default class Game {
        */
       const bekleme = paket.ay?.[yuvaSira] ?? 0;
       const pencere = Math.max(0, Math.min(AG.azamiTahmin, this.time - onay - bekleme));
+      /*
+       * Aynı pencere TOPU ileri sarmak için de gerekiyor: top ekranda
+       * oyuncuyla aynı ana denk gelsin diye ne kadar sarılacağını bu
+       * belirliyor. Yumuşatılıyor çünkü ham değer pakete göre
+       * seğiriyor ve top o seğirmeyi doğrudan gösterirdi.
+       */
+      this.agPencere = this.agPencere * 0.85 + pencere * 0.15;
       const adet = Math.round(pencere / PHYSICS.step);
       /*
        * Aşama pakettekinden okunuyor: girdinin işlenip işlenmediğini
@@ -1458,6 +1513,7 @@ export default class Game {
      */
     if (hedefZaman >= son.zaman) {
       this.agKareYaz(son, son, 1);
+      this.agTopIleriSar(son, son, son.zaman, son.zaman, dt);
       return;
     }
 
@@ -1479,6 +1535,162 @@ export default class Game {
       ? Math.max(0, Math.min(1, (hedefZaman - onceki.zaman) / aralik))
       : 1;
     this.agKareYaz(onceki, sonraki, alfa);
+    this.agTopIleriSar(onceki, sonraki, hedefZaman, son.zaman, dt);
+  }
+
+  /**
+   * TOPU İLERİ SARMA — ekranda oyuncuyla aynı ana getirmek.
+   *
+   * Sorun ölçülerek bulundu (tests/olcum/top.mjs): kendi oyuncumuz
+   * tahmin edilip "şimdi"de çiziliyor, top ise tampondan 133-217 ms
+   * geçmişten geliyordu. Aradaki fark 58-83 piksel — ve temas eşiği
+   * toplam ~65 px. Yani görsel gecikme vuruş penceresinin tamamından
+   * büyüktü: oyuncu ekranda gördüğü topa nişan alınca gerçek temas
+   * alanının dışında kalıyordu.
+   *
+   * NEDEN İŞE YARIYOR: serbest uçuşta topun fiziği tamamen
+   * belirlenimci ve `stepBall` sunucunun kullandığı fonksiyonun TA
+   * KENDİSİ. Kimse topa dokunmadığı sürece ileri sarma kusursuz —
+   * tahmin değil, aynı hesabın tekrarı.
+   *
+   * NEREDE YANILIYOR: biri topa vurduğunda. İstemci vuruşu ancak paket
+   * geldiğinde öğreniyor, o ana kadar topu eski yolunda sürdürüyor.
+   * Düzeltme `agTopSapma` ile birkaç kareye yayılıyor.
+   *
+   * HIZ TELDEN GELMİYOR: paket topun yalnız [x, y, dönüş] alanlarını
+   * taşıyor. Hızı eklemek `PAKET_SURUM`'u yükseltmek demekti ve
+   * yayındaki istemcileri kırardı — bu bir kez yaşandı. Onun yerine
+   * hız iki anlık görüntünün FARKINDAN türetiliyor.
+   *
+   * @param {object} onceki Kuşatan çiftin eskisi
+   * @param {object} sonraki Kuşatan çiftin yenisi
+   * @param {number} hedefZaman Ara değerlemenin çizdiği an
+   * @param {number} sonZaman EN YENİ paketin anı
+   * @param {number} dt Kare süresi — sapma erimesi için
+   */
+  agTopIleriSar(onceki, sonraki, hedefZaman, sonZaman, dt) {
+    if (!this.agTopIleri) return;
+
+    /*
+     * Ufuk EN YENİ pakete göre ölçülüyor, kuşatan çifte göre değil.
+     * İlk yazışta `sonraki.zaman` kullanmıştım ve ölçüm yakaladı: o an
+     * kuşatan çiftin yenisi, çizim saatinin en fazla bir paket
+     * aralığı (0.05 sn) ötesinde. Oysa telafi edilmesi gereken şey
+     * ara değerleme gecikmesinin TAMAMI (0.1 sn) artı ağ gidiş yolu.
+     * Yanlış ufukla ileri sarma sapmayı düşürmüyordu.
+     */
+    let ileriSure = Math.min(
+      AG.azamiTopIleri,
+      Math.max(0, (sonZaman - hedefZaman) + this.agPencere),
+    );
+
+    /*
+     * OYUNCUYA YAKINKEN AZ SAR.
+     *
+     * İleri sarma serbest uçuşta kusursuz, vuruş anında yanılıyor —
+     * ölçümde bu, p95 sapmasının 129 px'den 202 px'e çıkması demekti.
+     * Vuruşun NEREDE olacağını bilmiyoruz ama nerede OLAMAYACAĞINI
+     * biliyoruz: kimsenin yakınında olmayan top serbest uçuyordur.
+     *
+     * Top bir oyuncunun temas alanına yaklaştıkça ufuk kısalıyor.
+     * Böylece riskli anlarda az, güvenli anlarda çok telafi ediliyor.
+     */
+    ileriSure *= this.agTopGuvenOrani();
+
+    const adet = Math.round(ileriSure / PHYSICS.step);
+    if (adet <= 0) {
+      this.agTopSapmaErit(dt);
+      return;
+    }
+
+    const aralik = sonraki.zaman - onceki.zaman;
+    let vx = 0;
+    let vy = 0;
+    if (aralik > 0) {
+      vx = (sonraki.top[0] - onceki.top[0]) / aralik;
+      vy = (sonraki.top[1] - onceki.top[1]) / aralik;
+      /*
+       * İki kare farkı ORTALAMA hızı veriyor, anlık hızı değil. Sabit
+       * ivmede ortalama hız aralığın ORTASINDAKİ anlık hıza eşit; o
+       * yüzden yerçekimi farkı kadar düzeltiliyor. Düzeltmesiz bırakmak
+       * topu sistematik olarak yanlış yere koyardı.
+       */
+      vy += PHYSICS.ballGravity * (hedefZaman - (onceki.zaman + sonraki.zaman) / 2);
+    }
+
+    const sanal = {
+      x: this.ball.x, y: this.ball.y, vx, vy, radius: this.ball.radius,
+    };
+    for (let i = 0; i < adet; i += 1) stepBall(sanal, PHYSICS.step);
+
+    /*
+     * SÜREKSİZLİĞİ YUMUŞAT.
+     *
+     * Serbest uçuşta ardışık iki karenin hedefi arasındaki mesafe
+     * topun normal yolu kadar. Biri topa vurduğunda ise hedef bir anda
+     * bambaşka bir yere kayıyor — ölçümde bu sıçrama p99'da 80 px'e,
+     * uçta 280 px'e çıkıyordu ve ekranda ışınlanma gibi görünür.
+     *
+     * Yalnız FAZLALIK sapmaya alınıyor, farkın tamamı değil: normal
+     * hareket geçip gitmeli, yoksa top her karede frenlenir ve ileri
+     * sarmanın kazancı yok olur. Bu ayrım olmadan yazdığım ilk sürüm
+     * tam olarak bunu yaptı — sapma 58 px'den 74 px'e ÇIKMIŞTI.
+     */
+    const oncekiHedef = this.agTopSonHedef;
+    if (oncekiHedef) {
+      const dx = sanal.x - oncekiHedef.x;
+      const dy = sanal.y - oncekiHedef.y;
+      const atlama = Math.hypot(dx, dy);
+      // O karede fizikçe mümkün olan yol; +2 px sayısal pay
+      const mumkun = Math.hypot(vx, vy) * PHYSICS.step * 2 + 2;
+      if (atlama > mumkun) {
+        const fazla = (atlama - mumkun) / atlama;
+        this.agTopSapma.x -= dx * fazla;
+        this.agTopSapma.y -= dy * fazla;
+      }
+    }
+    this.agTopSonHedef = { x: sanal.x, y: sanal.y };
+
+    this.agTopSapmaErit(dt);
+    this.ball.x = sanal.x + this.agTopSapma.x;
+    this.ball.y = sanal.y + this.agTopSapma.y;
+  }
+
+  /**
+   * Topun "serbest uçuyor" güveni — 0 ile 1 arası.
+   *
+   * En yakın oyuncuya olan mesafe temas eşiğinin altındaysa 0 (hiç
+   * sarma), iki katının üstündeyse 1 (tam sar), arada doğrusal.
+   *
+   * Sert bir aç/kapa yerine geçişli olmasının sebebi: eşiğin iki
+   * yanında gidip gelen bir top, ufkun sıfırla tam arasında
+   * seğirmesine ve dolayısıyla ekranda titremesine yol açardı.
+   */
+  agTopGuvenOrani() {
+    let enYakin = Infinity;
+    for (const oyuncu of this.players) {
+      if (!oyuncu) continue;
+      const d = Math.hypot(oyuncu.x - this.ball.x, contactCenterY(oyuncu) - this.ball.y);
+      if (d < enYakin) enYakin = d;
+    }
+    if (!Number.isFinite(enYakin)) return 1;
+
+    // Temas eşiğinin kaba üst sınırı; kesin değer gerekmiyor, oran yeter
+    const esik = PLAYER.hitRadius + PLAYER.attackReachBonus + this.ball.radius;
+    if (enYakin <= esik) return 0;
+    if (enYakin >= esik * 2) return 1;
+    return (enYakin - esik) / esik;
+  }
+
+  /** Görünür top düzeltmesini her karede biraz eritir. */
+  agTopSapmaErit(dt) {
+    const kalan = Math.max(0, 1 - AG.topSapmaErimesi * (dt > 0 ? dt / PHYSICS.step : 1));
+    this.agTopSapma.x *= kalan;
+    this.agTopSapma.y *= kalan;
+    if (Math.hypot(this.agTopSapma.x, this.agTopSapma.y) < 0.5) {
+      this.agTopSapma.x = 0;
+      this.agTopSapma.y = 0;
+    }
   }
 
   /**

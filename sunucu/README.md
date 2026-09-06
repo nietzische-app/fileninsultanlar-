@@ -67,13 +67,58 @@ noktası o hatanın tekrarını engelliyor (`tahmin.test.js` bunu sınıyor).
 
 `TAHMIN=0` ile katman kapanıyor; "önce" sütunu böyle ölçüldü.
 
-**Kalan eksik:** tahmin yalnız oyuncunun kendisine uygulanıyor. Top ve
-rakip hâlâ anlık görüntüden ara değerleniyor, yani ekranda oyuncu
-"şimdi"yi, top ise yarım gidiş-dönüş öncesini gösteriyor. 100 ms'lik
-bir bağlantıda bu, topla oyuncu arasında birkaç on piksellik bir zaman
-farkı demek. Topu da ileri sarmak mümkün (`ballstep.js` bunun için ayrı
-duruyor) ama top yalnız serbest uçarken tahmin edilebilir — vuruş anında
-tahmin yanılır ve topu zıplatır. Ölçmeden yapılacak bir iş değil.
+## Topun ileri sarılması
+
+Tahmin başta yalnız oyuncunun kendisine uygulanıyordu; top ara
+değerlemeyle geçmişten çiziliyordu. `npm run olcum:top` sorunun
+büyüklüğünü ölçtü:
+
+| tek yön | sapma p50 | top geri |
+| --- | --- | --- |
+| 0 ms | 58 px | 133 ms |
+| 100 ms | 83 px | 217 ms |
+
+Bu sayıyı belirleyici yapan şey temas eşiği: `hitRadius` 40 + salınım
+payı 12 + top yarıçapı 13 = **~65 px**, hızlı topta `speedPenalty` ile
+~41'e iniyor. Yani görsel sapma VURUŞ PENCERESİNİN TAMAMINDAN büyüktü —
+oyuncu ekranda gördüğü topa nişan alınca gerçek temas alanının dışında
+kalıyordu.
+
+Çözüm üç parçalı ve her parçası ölçümle geldi:
+
+1. **İleri sarma.** Top `stepBall` ile — sunucunun kullandığı
+   fonksiyonun ta kendisiyle — çizim saatinden "şimdi"ye sarılıyor.
+   Serbest uçuşta bu tahmin değil, aynı hesabın tekrarı. Hız telden
+   gelmiyor (paket yalnız `[x, y, dönüş]` taşıyor; eklemek
+   `PAKET_SURUM`'u yükseltip yayındaki istemcileri kırardı), iki anlık
+   görüntünün farkından türetiliyor — ortalama hızı anlık hıza çeviren
+   yerçekimi düzeltmesiyle.
+2. **Süreksizlik yumuşatması.** Vuruş anında tahmin yanılıyor ve paket
+   gelince top gerçek yerine atlıyor. Yalnız FAZLALIK sapmaya alınıp
+   birkaç karede eritiliyor; farkın tamamını almak topu her karede
+   frenler ve kazancı yok ederdi (ilk sürümde tam bu oldu: sapma
+   58 px'den 74 px'e ÇIKTI).
+3. **Yakınlık frenlemesi.** Vuruşun nerede olacağını bilmiyoruz ama
+   nerede olamayacağını biliyoruz: kimsenin yakınında olmayan top
+   serbest uçuyordur. Ufuk, top bir oyuncunun temas alanına
+   yaklaştıkça kısalıyor.
+
+Sonuç — `TOPILERI=0 npm run olcum:top` ile "önce", düz koşumla "sonra":
+
+| tek yön | sapma p50 | sapma p95 | top geri | en büyük sıçrama |
+| --- | --- | --- | --- | --- |
+| 0 ms | 58 → **26** px | 87 → **65** px | 133 → **67** ms | 1 → 15 px |
+| 25 ms | 59 → **17** px | 96 → **67** px | 150 → **33** ms | 5 → 15 px |
+| 50 ms | 65 → **11** px | 104 → **69** px | 167 → **33** ms | 6 → 17 px |
+| 100 ms | 83 → **12** px | 129 → **119** px | 217 → **0** ms | 7 → 22 px |
+
+Medyan sapma top yarıçapının (13 px) altına indi: çizilen top artık
+gerçek topla örtüşüyor. Bedeli dürüstçe — sıçrama 1-7 px'den 15-22 px'e
+çıktı, yani vuruş anında ekranda küçük bir düzeltme görünüyor.
+Karşılığında nişan alınan yer doğru.
+
+Oyuncu tahmini ve akıcılık etkilenmedi (tepki hâlâ 17 ms, duraklama
+%0) — ikisi de ayrı ölçümlerle doğrulandı.
 
 ## Çalıştırma
 
