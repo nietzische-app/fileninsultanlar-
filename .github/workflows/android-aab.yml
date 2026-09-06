@@ -38,11 +38,16 @@
 #    sessizce yutuluyor, sonuç anlaşılmaz bir "yanlış parola" hatası.
 #
 #    Variables (gizli değil):
-#      VITE_RELE_URL       → wss://rele-178-104-2-249.sslip.io
+#      VITE_RELE_URL       → wss://rele.retrovoleybol.online
 #
 #    Röle adresi neden secret DEĞİL: zaten istemci paketinin içinde,
 #    yani herkes görebiliyor. Secret'a koymak gizlilik değil, yanlış
 #    bir güven duygusu verirdi.
+#
+#    NEDEN KENDİ ALAN ADI: adres .aab'nin İÇİNE gömülüyor. Eskiden
+#    kullanılan `rele-178-104-2-249.sslip.io` IP'yi adın içinde
+#    taşıyordu — sunucu taşınsa mağazadaki uygulamanın çevrimiçi modu
+#    ölürdü. `npm run paket` artık IP'ye bağlı adresi reddediyor.
 #
 # ── KULLANIM ───────────────────────────────────────────────────────
 #

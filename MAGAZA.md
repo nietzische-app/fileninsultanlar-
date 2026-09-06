@@ -142,7 +142,7 @@ Sakla: parola yöneticisi + şifreli ayrı bir yedek.
 | Secret | `KEYSTORE_PASSWORD` | belirlediğin parola |
 | Secret | `KEY_ALIAS` | `sultanlar` |
 | Secret | `KEY_PASSWORD` | aynı parola (Enter'la aynısını seçtiysen) |
-| Variable | `VITE_RELE_URL` | `wss://rele-178-104-2-249.sslip.io` |
+| Variable | `VITE_RELE_URL` | `wss://rele.retrovoleybol.online` |
 
 Secret'lar **Secrets** sekmesinde ("New repository secret"),
 `VITE_RELE_URL` ise **Variables** sekmesinde ("New repository
@@ -178,7 +178,7 @@ Android Studio (ya da yalnız `cmdline-tools` + JDK 17) kuruluysa:
 
 ```bash
 npm ci
-VITE_RELE_URL=wss://rele-178-104-2-249.sslip.io npm run paket
+VITE_RELE_URL=wss://rele.retrovoleybol.online npm run paket
 cp android/keystore.properties.ornek android/keystore.properties  # doldur
 cd android && ./gradlew bundleRelease
 # → android/app/build/outputs/bundle/release/app-release.aab
@@ -194,6 +194,14 @@ eklenmeden önce bu gerçekten yaşandı: paket testinin bıraktığı
 çalışırdı ve oyuncu "çevrimiçi çalışmıyor" derdi — hiçbir hata mesajı
 olmadan.
 
+Denetim dört şeye bakıyor (`scripts/rele-adresi.js`): adres var mı,
+yerel mi, şifresiz mi, ve **IP'ye bağlı mı**. Sonuncusu alan adı
+alınınca eklendi: `rele-178-104-2-249.sslip.io` gibi bir adres IP'yi
+adın içinde taşıyor ve `.aab`'ye gömülünce sunucunun IP'si değiştiği
+gün mağazadaki uygulamanın çevrimiçi modu ölüyor — düzeltmenin tek
+yolu yeni sürüm yayınlamak. Bilerek gerekiyorsa
+`PAKET_IP_ADRESI_TAMAM=1` ile geçilebilir.
+
 ### 2. Mağaza hesapları
 
 | Mağaza | Ücret | Durum |
@@ -208,8 +216,15 @@ makul: ücret bir kereye mahsus ve inceleme daha hızlı.
 
 ### 3. Gizlilik politikası — ✅ hazır
 
-`public/gizlilik.html` → yayında `https://<site>/gizlilik.html`.
+`public/gizlilik.html` → yayında
+**`https://retrovoleybol.online/gizlilik.html`**.
+Play Console'un "Gizlilik Politikası URL'si" alanına bu yazılacak.
 Ayarlar ekranına da bağlantı kondu.
+
+Alan adı alınana kadar buraya Vercel'in ürettiği adres girilecekti;
+o adres proje adı değişirse ya da başka bir yere taşınırsa kırılıyor
+ve Play Console kırık bir politika bağlantısını **ihlal** sayıyor.
+Kendi alan adı bunu da sabitliyor.
 
 Oyunun React paketinden bağımsız, tek başına duran statik bir sayfa:
 mağaza incelemecisi doğrudan tıklıyor ve oyunda bir hata olsa bile
@@ -219,12 +234,15 @@ politikanın erişilebilir kalması gerekiyor.
 
 | Ne | Nerede | Kod |
 |---|---|---|
-| Tercihler, rekorlar, turnuva, rozetler | Yalnız cihazda | 4 `localStorage` anahtarı |
+| Tercihler, rekorlar, turnuva, rozetler, ilerleme | Yalnız cihazda | 5 `localStorage` anahtarı |
 | Takma ad, kimlik no, anahtar özeti, maç sonuçları | Sunucuda | `sunucu/depo.js` |
 | IP adresi | Yalnız bellekte, bağlantı kapanınca siliniyor | `sunucu/rele.js` |
 
-Üçüncü taraf analitik/reklam/takip **yok** — kodda `fetch` yalnız bir
-yerde geçiyor (`src/game/audio.js`, kendi paketimizdeki müzik dosyası).
+Üçüncü taraf analitik/reklam/takip **yok** — `src/` içinde tek bir
+`fetch` çağrısı bile geçmiyor. (Eskiden bir tane vardı: giriş müziğini
+indiren `src/game/audio.js`. Müzik kodla üretilir olunca o da kalktı,
+yani iddia artık daha güçlü.) Tek dış bağlantı, oyuncu çevrimiçi maça
+girerse açılan WebSocket.
 
 Mağaza formunu doldururken **"Kullanıcılar arası etkileşim var"** ve
 **"Kullanıcı adı toplanıyor"** kutularını işaretle; ikisi de doğru.

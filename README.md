@@ -283,6 +283,13 @@ Seçeneğin görünmesi için bir röle sunucusu gerekiyor; kurulumu ve
 mimarinin gerekçesi [`sunucu/README.md`](sunucu/README.md) içinde.
 `VITE_RELE_URL` tanımlı değilse menüde bu seçenek hiç çıkmaz.
 
+Adres yapı sırasında gömülüyor (`wss://rele.retrovoleybol.online`) ve
+mağaza paketinde **sonradan değiştirilemiyor** — bu yüzden IP'ye bağlı
+bir adresle (`sslip.io`, çıplak IP) paketlemek `npm run paket`
+tarafından reddediliyor; sunucunun IP'si değiştiği gün telefonlardaki
+uygulamanın çevrimiçi modu ölerdi. Kendi alan adında indirekt katman
+DNS'te: A kaydını güncellersin, pakete gömülü adres aynı kalır.
+
 **Bilinen sınır:** gecikme telafisi (tahmin/uzlaştırma) henüz yok.
 Katılan tarafta tuş ile görüntü arası gecikme, gidiş-dönüş süresi
 kadardır; tam vuruş penceresi 170 ms olduğu için yüksek gecikmede o

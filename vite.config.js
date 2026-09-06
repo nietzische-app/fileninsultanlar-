@@ -25,6 +25,16 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     // `sunucu/` oyunun paketine girmez ama testleri aynı koşumda çıksın
-    include: ['src/**/*.test.{js,jsx}', 'sunucu/**/*.test.js'],
+    /*
+     * `scripts/` de dahil: paketleme denetimi (`rele-adresi.js`)
+     * mağazaya yanlış adresle paket gitmesini engelliyor ve o kararın
+     * sınanmadan durması, denetimin kendisinin sessizce bozulabilmesi
+     * demekti.
+     */
+    include: [
+      'src/**/*.test.{js,jsx}',
+      'sunucu/**/*.test.js',
+      'scripts/**/*.test.js',
+    ],
   },
 });

@@ -102,26 +102,49 @@ bağlantının oyuncuyu yabancı bir sunucuya bağlaması istenmiyor.
 Kendi sunucunda mevcut bir ters vekil (nginx veya Caddy) zaten
 80/443'ü kullanıyorsa bu yol en azdan-çoğa gider: röle dışarıya hiç
 açılmaz, yalnızca `127.0.0.1:8787`'de dinler; mevcut ters vekil onun
-önünde durup TLS'i (`wss://`) karşılar. Domain yerine ücretsiz
-**nip.io** ya da **sslip.io** kullanılabilir — ikisi de aynı işi
-görüyor: DNS kaydı gerektirmeden adın içindeki IP'ye çözülüyorlar.
-
-Aşağıdaki adımlar **senin gerçek sunucunun IP'sine göre** yazıldı.
-Bu sunucuda Caddy zaten başka bir servis için `panel-<ip>.sslip.io`
-kalıbını kullandığından (bkz. Caddyfile), röle için de sslip.io ve
-aynı `<isim>-<ip>` kalıbı seçildi:
+önünde durup TLS'i (`wss://`) karşılar.
 
 ```
 Sunucu IP'si:  178.104.2.249
-Röle adresi:   rele-178-104-2-249.sslip.io
+Röle adresi:   rele.retrovoleybol.online
 ```
 
-(Bu ikisi eşleşiyor — sslip.io, adın içindeki tireli sayıları noktaya
-çevirip o IP'ye yönlendiriyor. Sunucunun IP'si değişirse — örn. yeni
-bir Hetzner sunucusuna taşınırsan — bu adres de değişir, aşağıdaki
-her komutta yeniden hesaplaman gerekir.)
+### Neden kendi alan adı — sslip.io neden bırakıldı
 
-Tüm komutlar **kendi sunucunda**, SSH ile bağlanıp çalıştırılır.
+Önce `rele-178-104-2-249.sslip.io` kullanılıyordu. sslip.io ve nip.io
+DNS kaydı gerektirmeden adın İÇİNDEKİ IP'ye çözüyor; bedava ve hızlı.
+
+Sorun, adresin `.aab`'nin İÇİNE gömülmesi. Web'de IP değişirse
+`VITE_RELE_URL`'i güncelleyip yeniden dağıtırsın — on dakika. Mağazada
+öyle değil: telefonlardaki uygulama o adresi taşır ve sunucunun IP'si
+değiştiği gün — yeni makineye taşıma, sağlayıcı değişikliği, Hetzner'in
+IP'yi geri alması — çevrimiçi mod ölür. Tek çare yeni sürüm yayınlayıp
+herkesin güncellemesini beklemek olur.
+
+Kendi alan adında bu indirekt katman DNS'te: sunucu değişince A kaydını
+güncellersin, pakete gömülü adres aynı kalır. `npm run paket` artık
+IP'ye bağlı bir adresle paketlemeyi **durduruyor**
+(`scripts/rele-adresi.js`).
+
+### DNS kayıtları
+
+Alan adının yönetim panelinde (kayıt şirketi ya da Cloudflare):
+
+| Tip | Ad | Değer | Not |
+| --- | --- | --- | --- |
+| A | `rele` | `178.104.2.249` | Röle. Cloudflare kullanıyorsan **proxy KAPALI** (gri bulut) — turuncu bulut WebSocket'i vekilliyor ve gereksiz bir katman ekliyor |
+| A | `@` | Vercel'in verdiği IP | Web sitesi (Vercel panelinde **Add Domain** deyince gösteriyor) |
+| CNAME | `www` | `cname.vercel-dns.com` | Web sitesi |
+
+Yayılmayı doğrula (kendi makinende):
+
+```bash
+dig +short rele.retrovoleybol.online   # 178.104.2.249 dönmeli
+```
+
+Tüm sunucu komutları **kendi sunucunda**, SSH ile bağlanıp
+çalıştırılır. **DNS önce oturmalı**: hem Caddy hem certbot sertifikayı
+alabilmek için alan adının sunucuya çözülmesini bekliyor.
 
 **1) Depoyu sunucuya al (yoksa klonla, varsa güncelle) ve röleyi başlat:**
 
@@ -151,7 +174,7 @@ hangisi olduğunu bul.
 
 ```bash
 sudo cp nginx-rele.conf.ornek /etc/nginx/sites-available/filenin-rele
-sudo sed -i 's/RELE_DOMAIN/rele-178-104-2-249.sslip.io/' /etc/nginx/sites-available/filenin-rele
+sudo sed -i 's/RELE_DOMAIN/rele.retrovoleybol.online/' /etc/nginx/sites-available/filenin-rele
 sudo ln -s /etc/nginx/sites-available/filenin-rele /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 ```
@@ -185,7 +208,7 @@ Caddyfile'a (host'taki gerçek dosya yoluna, örn. `/opt/aegis/Caddyfile`)
 İÇ portu (host portu değil, çünkü artık aynı Docker ağındasınız):
 
 ```
-rele-178-104-2-249.sslip.io {
+rele.retrovoleybol.online {
     reverse_proxy filenin-rele:8787
 }
 ```
@@ -203,7 +226,7 @@ alır — certbot'a hiç gerek yok. Ardından doğrudan **4) Sınama**'ya geç.
 certbot kuruluysa, değilse önce `sudo apt install certbot python3-certbot-nginx`):
 
 ```bash
-sudo certbot --nginx -d rele-178-104-2-249.sslip.io
+sudo certbot --nginx -d rele.retrovoleybol.online
 ```
 
 Certbot 443 bloğunu ve http→https yönlendirmesini otomatik ekler.
@@ -212,7 +235,7 @@ E-posta/onay soracak, mail adresini gir ve kabul et.
 **4) Sınama:**
 
 ```bash
-curl https://rele-178-104-2-249.sslip.io/saglik
+curl https://rele.retrovoleybol.online/saglik
 ```
 
 Aynı `{"durum":"ayakta",...}` cevabını, bu sefer `https://` üstünden
@@ -221,7 +244,7 @@ görmelisin.
 **5) Oyunu bu adrese bağla** — Vercel'de:
 
 - Projene gir → **Settings** → **Environment Variables**.
-- **Key:** `VITE_RELE_URL`, **Value:** `wss://rele-178-104-2-249.sslip.io`,
+- **Key:** `VITE_RELE_URL`, **Value:** `wss://rele.retrovoleybol.online`,
   **Environment:** Production. Kaydet.
 - **Deployments** sekmesinden en üstteki yayının **⋯** → **Redeploy**.
   Değişken ancak yeni bir yayında etki eder.
@@ -281,9 +304,17 @@ Yedek:
 docker compose cp rele:/veri/oyuncular.jsonl ./yedek.jsonl
 ```
 
-### nip.io/sslip.io yerine gerçek domain
+### Sunucu taşınırsa
 
-İleride bir domain alırsan tek fark 1. ve 3-4. adımlar: nip.io/sslip.io
+Alan adının asıl kazancı burada. Yeni sunucunun IP'sini öğren, DNS'te
+`rele` A kaydını o IP'ye çevir, röleyi orada ayağa kaldır. Pakete
+gömülü adres değişmediği için **mağazadaki uygulamaya hiç dokunmadan**
+taşıma tamamlanır. Eskiden bu, yeni bir sürüm yayınlamak demekti.
+
+### (Tarihçe) nip.io/sslip.io yerine gerçek domain
+
+Bu bölüm alan adı alınmadan önce yazılmıştı; artık `retrovoleybol.online`
+kullanılıyor. Tek fark 1. ve 3-4. adımlardı: nip.io/sslip.io
 yerine `rele.senin-domainin.com` gibi bir A kaydını sunucunun IP'sine
 yönlendirirsin, gerisi (docker compose, nginx/Caddy şablonu, certbot)
 aynen çalışır. nip.io/sslip.io üçüncü taraf servisler — uzun vadede
