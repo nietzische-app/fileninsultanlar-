@@ -346,7 +346,7 @@ export default function ResultScreen({
             <br />
             Her blokta yürek, her smaçta gurur verdiniz.
             <br />
-            <span className="text-turkiye-red">Teşekkürler Sultanlar.</span>
+            <span className="text-turkiye-red">İyi oyundu.</span>
           </p>
         </div>
 

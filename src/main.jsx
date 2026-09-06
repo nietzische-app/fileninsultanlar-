@@ -46,8 +46,8 @@ function installIcons() {
 
       const manifest = {
         name: 'Retro Voleybol',
-        short_name: 'Sultanlar',
-        description: "Retro Voleybol'na adanmış retro piksel voleybol oyunu.",
+        short_name: 'Voleybol',
+        description: '8 bit piksel voleybol oyunu — her şey kodla çizildi.',
         start_url: `${origin}/`,
         scope: `${origin}/`,
         display: 'standalone',

@@ -1,7 +1,7 @@
 {
   "name": "Retro Voleybol",
-  "short_name": "Sultanlar",
-  "description": "Retro Voleybol'na adanmış retro piksel voleybol oyunu.",
+  "short_name": "Voleybol",
+  "description": "8 bit piksel voleybol oyunu — her şey kodla çizildi.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0b0b12",

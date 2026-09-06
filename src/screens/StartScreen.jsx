@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import teamBackdrop from '../assets/takim-arkaplan.webp';
+import ArenaBackdrop from '../components/ArenaBackdrop.jsx';
 import PixelAvatar from '../components/PixelAvatar.jsx';
 import MuteButton from '../components/MuteButton.jsx';
 import MusicVolume from '../components/MusicVolume.jsx';
@@ -13,7 +13,7 @@ import { upper } from '../utils/text.js';
 
 /** Gurur Tablosu — dönüşümlü onur mesajları (henüz maç yokken). */
 const PRIDE_MESSAGES = [
-  'BİR MİLLETİN GURURU, BİR FİLENİN SULTANLARI',
+  'FİLENİN İKİ YANINDA, TEK BİR YÜREK',
   'SAHADA YÜREK, FİLEDE ZAFER',
   'KIRMIZI BEYAZ, DÜNYANIN ZİRVESİNDE',
   'HER SMAÇTA BİR MİLLETİN ALKIŞI',
@@ -106,15 +106,22 @@ export default function StartScreen({
         <MuteButton muted={muted} onToggle={onToggleMute} />
       </div>
 
-      {/* Başlık */}
-      <div className="text-center">
+      {/*
+        Başlık.
+
+        `mt-10 sm:mt-0`: dar ekranda ses düğmeleri (sağ üstte, `top-4`)
+        ortalanmış üst satırın ÜSTÜNE biniyordu — 390 px genişlikte iki
+        düğme 270 px yer kaplıyor, geriye yazı için yer kalmıyor. Geniş
+        ekranda çakışma yok, orada boşluk da yok.
+      */}
+      <div className="mt-10 text-center sm:mt-0">
         <p className="mb-2 text-[8px] tracking-[0.35em] text-white/50 sm:mb-3 sm:text-[9px]">
-          RETRO VOLLEYBALL
+          8 BİT PİKSEL VOLEYBOL
         </p>
         <h1 className="text-2xl leading-relaxed text-turkiye-red text-outline-red sm:text-4xl md:text-5xl">
-          FİLENİN
+          RETRO
           <br />
-          SULTANLARI
+          VOLEYBOL
         </h1>
         <div className="mx-auto mt-4 h-1 w-32 bg-white/80 sm:mt-5 sm:w-40" />
       </div>
@@ -248,18 +255,18 @@ export default function StartScreen({
       </div>
 
       <footer className="max-w-md text-center text-[7px] leading-relaxed text-white/30">
-        Türkiye Kadın Millî Voleybol Takımı&apos;na saygıyla yapılmış, ticari olmayan
-        bir hayran projesidir.
+        Voleybola saygıyla yapılmış, ticari olmayan bağımsız bir oyundur.
+        Takımlar ve oyuncular kurgusaldır.
       </footer>
     </div>
   );
 }
 
 /**
- * Giriş ekranı arka planı — millî takım karesi.
+ * Giriş ekranı arka planı — kodla çizilen salon.
  *
  * `fixed`, çünkü giriş ekranı dar ekranlarda kayıyor; `absolute` olsaydı
- * fotoğraf içerikle birlikte kayar ve alt yarıda zemin boşalırdı. Üst
+ * arka plan içerikle birlikte kayar ve alt yarıda zemin boşalırdı. Üst
  * kapsayıcıdaki `isolate` bir yığın bağlamı açtığı için `-z-10` katmanı
  * içeriğin arkasına, ama sayfa zemininin önüne koyuyor.
  *
@@ -271,15 +278,22 @@ export default function StartScreen({
 function TeamBackdrop() {
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+      {/*
+        Fotoğraf yerine KODLA çizilen salon (bkz. ArenaBackdrop).
+        Saydamlık ve doygunluk ayarları olduğu gibi korundu: fotoğraf
+        için seçilmişlerdi ama aynı işi görüyorlar — arka planı
+        arayüzün altında geride tutmak.
+      */}
       <div
-        className="absolute inset-0 bg-cover bg-center"
+        className="absolute inset-0"
         style={{
-          backgroundImage: `url(${teamBackdrop})`,
           opacity: 0.62,
           // Formaların kırmızısı koyu arayüzün altında sönükleşiyordu
           filter: 'saturate(1.2) contrast(1.06)',
         }}
-      />
+      >
+        <ArenaBackdrop />
+      </div>
       <div className="absolute inset-0 bg-retro-bg/40" />
       {/*
         Degrade yalnızca uçlarda kapatır: başlık üstte, altbilgi altta

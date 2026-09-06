@@ -541,7 +541,7 @@ kapanana kadar beklerdi. PWA ikonları çalışma anında canvas'tan üretilir
 
 ## Karakter Özelleştirme
 
-**Oyunun içinde tek bir görsel dosyası yok.** Sultanlar, voleybol topu, file,
+**Oyunun içinde tek bir görsel dosyası yok.** Oyuncular, voleybol topu, file,
 tribün, Türk bayrakları, kupa ve forma numaraları dahil her şey
 `src/game/sprites.js` içinde Canvas 2D API'siyle (`ctx.fillRect`, `ctx.arc`)
 blok blok çizilir. Sekme simgesi bile çalışma anında canvas'tan üretilir
