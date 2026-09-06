@@ -137,6 +137,12 @@ export default function MatchScreen({
       );
       // Karşı taraf gidince maç donup kalmasın — sebebi söylenmeli
       cozucular.push(config.baglanti.on('ayrildi', () => setAgKopuk('RAKİP AYRILDI')));
+      /*
+       * Sunucudaki simülasyon hata verdi. `ayrildi` demek YANLIŞ olurdu:
+       * rakip yerinde duruyor ve oyuncu onu suçlardı. Sebebi doğru
+       * söylemek, "neden koptu" diye birbirlerine sormalarını önlüyor.
+       */
+      cozucular.push(config.baglanti.on('mac-hata', () => setAgKopuk('MAÇ SUNUCUDA DURDU')));
       cozucular.push(config.baglanti.on('kapandi', () => setAgKopuk('BAĞLANTI KOPTU')));
     }
 

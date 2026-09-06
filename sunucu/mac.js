@@ -116,14 +116,55 @@ export class Mac {
       this.sonTik = simdi;
 
       /*
-       * Zamanlayıcı hassas değil (Node timer'ları kayar) ama önemli de
-       * değil: `ilerlet` geçen GERÇEK zamanı sabit adımlara çeviriyor,
-       * yani tik erken ya da geç gelse de sahadaki fizik aynı hızda
-       * akıyor. Sabit adım işi tam da bunun için gerekliydi.
+       * TİK KORUMALI.
+       *
+       * Korumasızken bir simülasyon hatası `setInterval` geri
+       * çağrısından dışarı çıkıyordu ve Node'da bunun karşılığı
+       * YAKALANMAMIŞ İSTİSNA: süreç ölür. Yani tek bir maçtaki tek bir
+       * hata, o sırada oynayan HERKESİN maçını düşürürdü. Docker da
+       * `restart: unless-stopped` ile sessizce yeniden kaldırdığı için
+       * dışarıdan görünen tek şey "oyun bir anda koptu" olurdu.
+       *
+       * Şimdi hata bu maçla sınırlı: maç durur, iki istemciye sebebi
+       * söylenir, röle ayakta kalır.
        */
-      this.oyun.ilerlet(gecen);
-      this.oyun.agAkis();
+      try {
+        /*
+         * Zamanlayıcı hassas değil (Node timer'ları kayar) ama önemli
+         * de değil: `ilerlet` geçen GERÇEK zamanı sabit adımlara
+         * çeviriyor, yani tik erken ya da geç gelse de sahadaki fizik
+         * aynı hızda akıyor. Sabit adım işi tam da bunun için gerekti.
+         */
+        this.oyun.ilerlet(gecen);
+        this.oyun.agAkis();
+      } catch (hata) {
+        this.cokme(hata);
+      }
     }, TIK_MS);
+  }
+
+  /**
+   * Simülasyon hatası: maçı sonlandırır, iki tarafa da sebebini söyler.
+   *
+   * Günlüğe TAM YIĞIN basılıyor. Sebebi bu projede yaşandı: donan bir
+   * çevrimiçi maçın ardından `docker compose logs` bomboştu ve arıza
+   * teşhis edilemedi — sunucu maç sırasında hiçbir şey yazmıyordu.
+   */
+  cokme(hata) {
+    this.bittiMi = true;
+    console.error('MAÇ HATASI — maç durduruldu, röle ayakta:', hata);
+    /*
+     * İstemciye ayrı bir tip gidiyor, `ayrildi` değil: rakip ayrılmadı
+     * ve öyle demek yanlış olurdu — oyuncu karşısındakini suçlar.
+     */
+    this.yolla({ t: 'mac-hata' });
+    /*
+     * Odanın maç kaydı temizlensin diye `bitince` yine çağrılıyor.
+     * Sonuç YOK: kazanan belirsiz ve skor tablosuna yazılmamalı —
+     * yarım kalan maçı puanlamak, çöktüğü an önde olanı ödüllendirirdi.
+     */
+    this.bitince(null);
+    this.durdur();
   }
 
   /**

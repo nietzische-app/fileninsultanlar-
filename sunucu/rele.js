@@ -239,6 +239,14 @@ export async function baslat({
       ayar,
       yolla: (paket) => odayaYolla(oda, paket),
       bitince: (sonuc) => {
+        /*
+         * `sonuc` null ise maç düzgün bitmedi (simülasyon hatası).
+         * `sonucIsle` bunu zaten eliyor; burada yalnız günlüğe geçiyor.
+         */
+        console.log(
+          `maç bitti — oda=${oda.kod} kazanan=${sonuc?.winner ?? 'yok'}`
+          + ` set=${sonuc?.sets?.home ?? '?'}-${sonuc?.sets?.away ?? '?'}`,
+        );
         sonucIsle(oda, sonuc);
         oda.mac = null;
       },
@@ -258,7 +266,29 @@ export async function baslat({
     yolla(oda.ev, { t: 'mac', cfg: gercek, yuva: 'p1', rakip: oda.misafir?.kimlik ?? null });
     yolla(oda.misafir, { t: 'mac', cfg: gercek, yuva: 'p2', rakip: oda.ev?.kimlik ?? null });
 
-    oda.mac.baslat();
+    /*
+     * MAÇ BAŞLANGICI GÜNLÜĞE YAZILIYOR.
+     *
+     * Bu satır bir arızanın bedeli. Donan bir çevrimiçi maçtan sonra
+     * `docker compose logs` yalnız iki açılış satırı gösterdi: sunucu
+     * maç sırasında hiçbir şey yazmıyordu, dolayısıyla "maç kuruldu mu,
+     * motor döndü mü, nerede durdu" sorularının hiçbiri dışarıdan
+     * cevaplanamıyordu. Maç başına tek satır, günlüğü boğmadan bu
+     * soruların hepsini cevaplıyor.
+     *
+     * `baslat` da korumalı: burada patlarsa iki istemci maç ekranına
+     * geçmiş ama akış hiç başlamamış olurdu — teşhisi en zor hâl,
+     * çünkü ekranda "her şey yolunda" görünür.
+     */
+    console.log(
+      `maç başlıyor — oda=${oda.kod} mod=${gercek.mode} format=${gercek.format}`
+      + ` rakip=${gercek.opponentId} sıralamalı=${siralamali}`,
+    );
+    try {
+      oda.mac.baslat();
+    } catch (hata) {
+      oda.mac.cokme(hata);
+    }
   }
 
   /**
