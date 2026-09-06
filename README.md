@@ -281,7 +281,22 @@ açanın seçimidir — iki taraf farklı kadro kurarsa aynı maçı çizemezler
 
 Seçeneğin görünmesi için bir röle sunucusu gerekiyor; kurulumu ve
 mimarinin gerekçesi [`sunucu/README.md`](sunucu/README.md) içinde.
-`VITE_RELE_URL` tanımlı değilse menüde bu seçenek hiç çıkmaz.
+`VITE_RELE_URL` tanımlı değilse menüde bu seçenekler hiç çıkmaz.
+
+Menüde İKİ çevrimiçi giriş var ve en üstteler:
+
+| Mod | Ne yapar |
+| --- | --- |
+| **HEMEN OYNA** | Tek dokunuş. Kadro ekranını ve lobi seçimini atlar, kayıtlı kadroyla doğrudan eşleşmeye girer. |
+| **ARKADAŞLA OYNA** | Oda kodu. Biri açar, diğeri girer; ayarlar odayı açanın. |
+
+Ayrım şuydu: rakip aramak en sık istenen şeydi ama en derine gömülüydü
+(ÇEVRİMİÇİ → kadro seç → ODA KUR → lobi → HIZLI EŞLEŞ, beş adım).
+Kısayol seçenekleri kaldırmıyor, yalnız varsayılanı hızlandırıyor.
+
+Maç bitince **RÖVANŞ**: soket açık kalıyor ve aynı rakiple yeni maç tek
+düğme. İki taraf da istemeli — gerekçesi
+[`sunucu/README.md`](sunucu/README.md#rövanş) içinde.
 
 Adres yapı sırasında gömülüyor (`wss://rele.retrovoleybol.online`) ve
 mağaza paketinde **sonradan değiştirilemiyor** — bu yüzden IP'ye bağlı

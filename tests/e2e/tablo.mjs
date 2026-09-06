@@ -54,7 +54,7 @@ async function oyuncuAc(ad, { takmaAd = null } = {}) {
 }
 
 async function lobiyeGit(page) {
-  await page.getByRole('button', { name: /ÇEVRİMİÇİ/ }).first().click();
+  await page.getByRole('button', { name: /ARKADAŞLA OYNA/ }).first().click();
   await page.waitForTimeout(400);
   await page.getByRole('button', { name: /ODA KUR/ }).last().click();
   await page.waitForTimeout(600);
@@ -120,11 +120,11 @@ kontrol(
 const b = await oyuncuAc('B', { takmaAd: 'OYUNCU İKİ' });
 
 await lobiyeGit(a.page);
-await a.page.getByRole('button', { name: /HIZLI EŞLEŞ/ }).click();
+await a.page.getByRole('button', { name: /RASTGELE RAKİP BUL/ }).click();
 await a.page.waitForTimeout(800);
 
 await lobiyeGit(b.page);
-await b.page.getByRole('button', { name: /HIZLI EŞLEŞ/ }).click();
+await b.page.getByRole('button', { name: /RASTGELE RAKİP BUL/ }).click();
 await a.page.waitForTimeout(2500);
 
 const macKuruldu = await a.page.evaluate(() => Boolean(window.__game));

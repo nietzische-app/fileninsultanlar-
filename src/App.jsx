@@ -90,6 +90,14 @@ export default function App() {
   const [ilerleme, setIlerleme] = useState(() => loadIlerleme());
   /** Bu maçın FP kazancı — sonuç ekranındaki kalem dökümü. */
   const [kazanc, setKazanc] = useState(null);
+  /**
+   * Rövanş oyları — {ben, rakip, bekleniyor}.
+   *
+   * Sunucu iki tarafın da istemesini bekliyor; ekran "sen istedin,
+   * rakip bekleniyor" ile "rakip istedi, sıra sende" arasındaki farkı
+   * gösterebilsin diye ikisi ayrı tutuluyor.
+   */
+  const [rovans, setRovans] = useState({ ben: false, rakip: false, bekleniyor: false });
   /** Tutorial menüden mi açıldı (geri → start), yoksa ilk akış mı (→ select). */
   const [tutorialFromMenu, setTutorialFromMenu] = useState(false);
   /** Açık çevrimiçi bağlantı — sahibi burası, kapatan da burası. */
@@ -193,9 +201,39 @@ export default function App() {
         setScreen('tutorial');
         return;
       }
+
+      /*
+       * HEMEN OYNA kadro ekranını ATLIYOR.
+       *
+       * Rakip aramak en sık istenen şeydi ama beş adım gerisindeydi.
+       * Kayıtlı tercihlerle doğrudan lobiye gidiliyor; kadrosunu
+       * değiştirmek isteyen ARKADAŞLA OYNA ya da HIZLI MAÇ'tan seçim
+       * ekranına ulaşıyor. Yani kısayol seçenekleri kaldırmıyor,
+       * yalnız varsayılanı hızlandırıyor.
+       */
+      if (mode.hizli) {
+        setResult(null);
+        setBrokenRecords(null);
+        setFinishedTournament(null);
+        setMatchConfig({
+          campaign: 'match',
+          playMode: 'vs',
+          mode: prefs.mode,
+          difficulty: prefs.difficulty,
+          format: prefs.format,
+          opponentId: prefs.opponentId === 'random' ? undefined : prefs.opponentId,
+          opponentRandom: prefs.opponentId === 'random',
+          homeIds: prefs.homeIds,
+          hizli: true,
+          startedAt: Date.now(),
+        });
+        setScreen('online');
+        return;
+      }
+
       goSelect();
     },
-    [prefs.tutorialSeen, goSelect]
+    [prefs, goSelect]
   );
 
   const openTutorial = useCallback(() => {
@@ -399,9 +437,23 @@ export default function App() {
 
   const handleFinish = useCallback(
     (matchResult) => {
-      // Maç bitti: çevrimiçiyse oda da bitti
-      baglantiRef.current?.kapat();
-      baglantiRef.current = null;
+      /*
+       * BAĞLANTI AÇIK KALIYOR — rövanş için.
+       *
+       * Eskiden maç biter bitmez soket kapanıyordu ve aynı rakiple
+       * tekrar oynamanın yolu yoktu: menüye dönüp baştan rakip aramak
+       * gerekiyordu. Oysa çevrimiçi bir maçın en sık istenen devamı
+       * "bir daha" ve az önce oynadığın kişi zaten karşında.
+       *
+       * Soket ANA MENÜYE dönülünce kapanıyor (`goHome` → `agiKapat`);
+       * sahibi hâlâ burası.
+       */
+      const cevrimici = matchResult.playMode === 'online' || Boolean(baglantiRef.current);
+      if (!cevrimici) {
+        baglantiRef.current?.kapat();
+        baglantiRef.current = null;
+      }
+      setRovans({ ben: false, rakip: false, bekleniyor: false });
 
       // --- Hayatta kalma: koşu bitti ---
       if (matchResult.campaign === 'survival') {
@@ -522,6 +574,65 @@ export default function App() {
     baglantiRef.current = null;
   }, []);
 
+  /**
+   * RÖVANŞ — sonuç ekranından aynı rakiple yeni maç.
+   *
+   * İstek tek taraflı gitmiyor: sunucu ikisini de bekliyor. Burada
+   * yalnız "ben hazırım" oyu veriliyor ve ekran beklemeye geçiyor.
+   */
+  const rovansIste = useCallback(() => {
+    const baglanti = baglantiRef.current;
+    if (!baglanti) return;
+    Sfx.confirm();
+    baglanti.rovans();
+    setRovans((o) => ({ ...o, ben: true, bekleniyor: true }));
+  }, []);
+
+  /*
+   * Rövanş olayları — bağlantı maç sonrası açık kaldığı için sonuç
+   * ekranındayken de dinleniyor.
+   *
+   * Dinleyiciler `screen` değiştikçe kuruluyor: bağlantı nesnesi
+   * `baglantiRef`te ve ref değişimi yeniden render tetiklemiyor, o
+   * yüzden ekrana bağlamak tek güvenilir yol.
+   */
+  useEffect(() => {
+    const baglanti = baglantiRef.current;
+    if (!baglanti || screen !== 'result') return undefined;
+
+    const cozucular = [
+      baglanti.on('rovans-durum', (m) => {
+        setRovans({ ben: Boolean(m.ben), rakip: Boolean(m.rakip), bekleniyor: Boolean(m.ben) });
+      }),
+      /*
+       * `mac` paketi yeni maçın kurulduğunu söylüyor. Motor ayarı
+       * sunucunun KESİNLEŞMİŞ hâlinden alıyor — ilk maçtaki gibi.
+       */
+      baglanti.on('mac', (m) => {
+        setResult(null);
+        setBrokenRecords(null);
+        setKazanc(null);
+        setFreshAchievements([]);
+        setRovans({ ben: false, rakip: false, bekleniyor: false });
+        setMatchConfig((prev) => ({
+          ...(prev ?? {}),
+          ...(m.cfg ?? {}),
+          agYuvam: m.yuva,
+          rakipKimlik: m.rakip ?? null,
+          baglanti,
+          campaign: 'match',
+          playMode: 'online',
+          startedAt: Date.now(),
+        }));
+        setScreen('match');
+      }),
+      baglanti.on('ayrildi', () => {
+        setRovans({ ben: false, rakip: false, bekleniyor: false, ayrildi: true });
+      }),
+    ];
+    return () => cozucular.forEach((c) => c?.());
+  }, [screen]);
+
   const handleQuitMatch = useCallback(() => {
     agiKapat();
     if (campaign === 'tournament') {
@@ -641,7 +752,11 @@ export default function App() {
             });
             setScreen('match');
           }}
-          onBack={() => setScreen('select')}
+          /*
+            HEMEN OYNA kadro ekranını atladığı için oradan GERİ, hiç
+            görülmemiş bir ekrana düşürürdü. Nereden gelindiyse oraya.
+          */
+          onBack={() => setScreen(matchConfig.hizli ? 'start' : 'select')}
         />
       )}
 
@@ -668,6 +783,8 @@ export default function App() {
           tournamentState={finishedTournament}
           freshAchievements={freshAchievements}
           kazanc={kazanc}
+          rovans={baglantiRef.current ? rovans : null}
+          onRovans={rovansIste}
           onRematch={handleRematch}
           onHome={goHome}
           muted={muted}

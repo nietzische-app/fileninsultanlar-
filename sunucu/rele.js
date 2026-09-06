@@ -111,7 +111,7 @@ export async function baslat({
   nabiz: nabizAraligi = NABIZ,
   beklemeSiniri,
   /**
-   * Hızlı eşleşmede Retro Voleybol'nı kim oynayacak.
+   * Hızlı eşleşmede Türkiye takımını kim oynayacak.
    *
    * Rastgele, çünkü iki yabancının ikisi de Türkiye'yi oynamak
    * istiyor ve tercih soracak bir "ev sahibi" yok. Testte
@@ -284,6 +284,8 @@ export async function baslat({
     }
 
     oda.siralamali = siralamali;
+    // Rövanş aynı ayarla kurulsun; oyuncu ikinci kez seçim yapmasın
+    oda.sonAyar = ayar;
     oda.mac = new Mac({
       ayar,
       yolla: (paket) => odayaYolla(oda, paket),
@@ -298,6 +300,8 @@ export async function baslat({
         );
         sonucIsle(oda, sonuc);
         oda.mac = null;
+        // Yeni maç, yeni istek: eski rövanş oyları taşınmaz
+        oda.rovans?.clear();
       },
     });
 
@@ -455,6 +459,46 @@ export async function baslat({
           // İki taraf da eşleşmeyi öğrenmeli: maçı ev sahibi başlatacak
           yolla(soket, { t: 'eslesme', rol: 'misafir' });
           yolla(sonuc.es, { t: 'eslesme', rol: 'ev' });
+          break;
+        }
+
+        case 'rovans': {
+          /*
+           * RÖVANŞ — aynı odada, aynı rakiple yeni maç.
+           *
+           * Çevrimiçi maçın en sık istenen devamı bu ve eskiden yoktu:
+           * maç bitince bağlantı kapanıyor, oyuncu menüye dönüp
+           * baştan rakip arıyordu. Yeni rakip aramak, az önce
+           * oynadığın kişiyle tekrar oynamaktan çok daha uzun.
+           *
+           * İKİ TARAFIN DA İSTEMESİ ŞART. Tek taraflı başlatmak,
+           * ekranı okuyan ya da çıkmak üzere olan oyuncuyu maça
+           * sokardı. İstek `oda.rovans` kümesinde birikiyor; ikisi de
+           * girince maç kuruluyor.
+           */
+          const oda = defter.odaOf(soket);
+          if (!oda) {
+            hataYolla(soket, HATA.odaYok);
+            break;
+          }
+          if (oda.mac) break; // Maç zaten sürüyor — yoksayılır
+
+          oda.rovans = oda.rovans ?? new Set();
+          oda.rovans.add(soket);
+
+          const taraflar = [oda.ev, oda.misafir].filter(Boolean);
+          const hazir = taraflar.filter((t) => oda.rovans.has(t)).length;
+
+          if (hazir >= 2 && taraflar.length === 2) {
+            oda.rovans.clear();
+            odayaYolla(oda, { t: 'rovans-basladi' });
+            macKur(oda, oda.sonAyar ?? { mode: '1v1', format: 'single', difficulty: 'normal' }, oda.siralamali);
+          } else {
+            // Karşı tarafa "rakibin bekliyor" de; kendine "beklemedesin"
+            yolla(soket, { t: 'rovans-durum', ben: true, rakip: false });
+            const es = taraflar.find((t) => t !== soket);
+            if (es) yolla(es, { t: 'rovans-durum', ben: false, rakip: true });
+          }
           break;
         }
 

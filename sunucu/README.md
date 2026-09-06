@@ -120,6 +120,24 @@ Karşılığında nişan alınan yer doğru.
 Oyuncu tahmini ve akıcılık etkilenmedi (tepki hâlâ 17 ms, duraklama
 %0) — ikisi de ayrı ölçümlerle doğrulandı.
 
+## Rövanş
+
+Çevrimiçi bir maçın en sık istenen devamı "bir daha" ve bunun yolu
+yoktu: maç biter bitmez soket kapanıyor, oyuncu menüye dönüp baştan
+rakip arıyordu. Yeni rakip bulmak, az önce oynadığın kişiyle tekrar
+oynamaktan çok daha uzun.
+
+Artık soket maç sonrası AÇIK kalıyor (ana menüye dönülünce kapanıyor)
+ve sonuç ekranında RÖVANŞ düğmesi çıkıyor.
+
+**İki taraf da istemeli.** Tek taraflı başlatmak, ekranı okuyan ya da
+çıkmak üzere olan oyuncuyu hazırlıksız maça sokardı. İstekler odada
+birikiyor (`oda.rovans`); ikisi de girince maç aynı ayarla kuruluyor —
+oyuncu ikinci kez kadro/format seçmiyor.
+
+Ekran hangi aşamada olduğunu söylüyor ("RAKİP BEKLENİYOR", "SIRA
+SENDE"), çünkü "bastım ve bir şey olmadı" en kötü hâl.
+
 ## Çalıştırma
 
 ```bash
@@ -135,8 +153,8 @@ Oyunu ona bağlamak için `VITE_RELE_URL` ile yapı alın:
 VITE_RELE_URL=wss://rele.example.com npm run build
 ```
 
-Bu değişken tanımlı değilse menüde **ÇEVRİMİÇİ** seçeneği hiç
-görünmez — çalışmayan bir düğme, basılana kadar süren bir yalandır.
+Bu değişken tanımlı değilse menüde **HEMEN OYNA** ve **ARKADAŞLA
+OYNA** seçenekleri hiç görünmez — çalışmayan bir düğme, basılana kadar süren bir yalandır.
 
 Geliştirmede `?rele=ws://localhost:8787` sorgu parametresiyle de
 ezilebilir. Üretim yapısında bu parametre okunmaz: paylaşılan bir

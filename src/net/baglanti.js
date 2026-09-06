@@ -191,6 +191,16 @@ export class Baglanti {
     return this.yolla({ t: 'siralama' });
   }
 
+  /**
+   * Rövanş isteği — aynı odada, aynı rakiple yeni maç.
+   *
+   * Sunucu İKİ TARAFIN da istemesini bekliyor; tek taraflı çağrı
+   * yalnızca "hazırım" oyu veriyor ve karşı tarafa haber gidiyor.
+   */
+  rovans() {
+    this.yolla({ t: 'rovans' });
+  }
+
   ayril() {
     this.yolla({ t: 'ayril' });
     this.kod = null;

@@ -57,7 +57,7 @@ async function oyuncuAc(ad, { mobil = false } = {}) {
 
 /** Menüden kadro ekranına, oradan çevrimiçi lobiye. */
 async function lobiyeGit(page) {
-  await page.getByRole('button', { name: /ÇEVRİMİÇİ/ }).first().click();
+  await page.getByRole('button', { name: /ARKADAŞLA OYNA/ }).first().click();
   await page.waitForTimeout(400);
   await page.getByRole('button', { name: /ODA KUR/ }).last().click();
   await page.waitForTimeout(600);
@@ -91,7 +91,7 @@ console.log('═══ çevrimiçi');
 // --- Menüde görünüyor mu ---
 kontrol(
   'röle tanımlıyken ÇEVRİMİÇİ menüde',
-  (await ev.page.getByRole('button', { name: /ÇEVRİMİÇİ/ }).count()) > 0,
+  (await ev.page.getByRole('button', { name: /ARKADAŞLA OYNA/ }).count()) > 0,
 );
 
 // --- Oda aç ---

@@ -146,16 +146,16 @@ kontrol(
  * ancak mağazaya yükledikten sonra fark ederdik.
  */
 kontrol(
-  'ÇEVRİMİÇİ düğmesi var (röle adresi gömülü)',
-  (await page.getByRole('button', { name: /ÇEVRİMİÇİ/ }).count()) > 0,
+  'ARKADAŞLA OYNA düğmesi var (röle adresi gömülü)',
+  (await page.getByRole('button', { name: /ARKADAŞLA OYNA/ }).count()) > 0,
 );
 
 // --- Çevrimiçi gerçekten çalışıyor mu (gömülü adresle) ---
-await page.getByRole('button', { name: /ÇEVRİMİÇİ/ }).first().click();
+await page.getByRole('button', { name: /ARKADAŞLA OYNA/ }).first().click();
 await page.waitForTimeout(400);
 await page.getByRole('button', { name: /ODA KUR/ }).last().click();
 await page.waitForTimeout(600);
-await page.getByRole('button', { name: /HIZLI EŞLEŞ/ }).click();
+await page.getByRole('button', { name: /RASTGELE RAKİP BUL/ }).click();
 await page.waitForTimeout(1500);
 
 kontrol(
@@ -186,11 +186,11 @@ await sahtePage.evaluate(
 await sahtePage.reload({ waitUntil: 'load' });
 await sahtePage.waitForTimeout(1200);
 
-await sahtePage.getByRole('button', { name: /ÇEVRİMİÇİ/ }).first().click();
+await sahtePage.getByRole('button', { name: /ARKADAŞLA OYNA/ }).first().click();
 await sahtePage.waitForTimeout(400);
 await sahtePage.getByRole('button', { name: /ODA KUR/ }).last().click();
 await sahtePage.waitForTimeout(600);
-await sahtePage.getByRole('button', { name: /HIZLI EŞLEŞ/ }).click();
+await sahtePage.getByRole('button', { name: /RASTGELE RAKİP BUL/ }).click();
 await sahtePage.waitForTimeout(1500);
 
 /*

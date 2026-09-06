@@ -25,6 +25,8 @@ import { TOURNAMENT_ROUNDS } from './tournament.js';
  * @property {boolean} pickOpponent Rakip/format seçimi oyuncuda mı
  * @property {'solo'|'coop'|'vs'} [playMode]
  * @property {boolean} [twoPlayer] Tek klavyede iki kişi mi
+ * @property {boolean} [online] Röle üzerinden mi oynanıyor
+ * @property {boolean} [hizli] Kadro ekranı ve lobi atlanıp doğrudan eşleşilsin mi
  */
 
 // Rozet ve açıklamalardaki sayılar ayarlardan türetilir; elle yazılsaydı
@@ -33,6 +35,50 @@ const ROUNDS = TOURNAMENT_ROUNDS.length;
 
 /** @type {GameMode[]} */
 export const GAME_MODES = [
+  {
+    /*
+     * HEMEN OYNA — menüdeki ilk düğme ve tek dokunuşta maç.
+     *
+     * Eskiden çevrimiçi oynamak beş adımdı: ÇEVRİMİÇİ → kadro seç →
+     * ODA KUR → lobi → HIZLI EŞLEŞ. Rakip aramak en sık istenen şeydi
+     * ama en derine gömülmüştü; oyunu ilk açan biri o düğmeye hiç
+     * varamadan vazgeçiyordu.
+     *
+     * `hizli: true` iki şeyi birden atlıyor: kadro ekranı (kayıtlı
+     * kadroyla girilir, isteyen KADRONU SEÇ'ten değiştirir) ve lobi
+     * seçimi (eşleşme kendiliğinden başlar).
+     */
+    id: 'hemen',
+    campaign: 'match',
+    label: 'HEMEN OYNA',
+    tagline: 'RAKİP BUL',
+    description: 'Tek dokunuş. Sunucu seni bekleyen bir oyuncuyla eşleştirir.',
+    pickOpponent: true,
+    playMode: 'vs',
+    online: true,
+    hizli: true,
+  },
+  {
+    /*
+     * Çevrimiçi, "karşılıklı"nın uzaktan oynananı: motor açısından
+     * ikisi de `vs` — 1. yuva Türkiye'de, 2. yuva rakip takımda. Fark
+     * yalnızca 2. yuvanın tuşlarının nereden geldiği. Bu yüzden ayrı
+     * bir oyun modu değil, aynı modun ağ üzerinden hâli.
+     *
+     * Röle adresi tanımlı değilse menüde hiç görünmez (App bunu
+     * `onlineAcik()` ile eliyor) — çalışmayan bir düğme göstermek,
+     * basılana kadar süren bir yalan olurdu.
+     */
+    id: 'online',
+    campaign: 'match',
+    label: 'ARKADAŞLA OYNA',
+    tagline: 'ODA KODU',
+    description:
+      'Tanıdığın biriyle. Biri oda açar, diğeri kodu girer.',
+    pickOpponent: true,
+    playMode: 'vs',
+    online: true,
+  },
   {
     id: 'match',
     campaign: 'match',
@@ -72,27 +118,6 @@ export const GAME_MODES = [
     pickOpponent: true,
     playMode: 'vs',
     twoPlayer: true,
-  },
-  {
-    /*
-     * Çevrimiçi, "karşılıklı"nın uzaktan oynananı: motor açısından
-     * ikisi de `vs` — 1. yuva Türkiye'de, 2. yuva rakip takımda. Fark
-     * yalnızca 2. yuvanın tuşlarının nereden geldiği. Bu yüzden ayrı
-     * bir oyun modu değil, aynı modun ağ üzerinden hâli.
-     *
-     * Röle adresi tanımlı değilse menüde hiç görünmez (App bunu
-     * `onlineAcik()` ile eliyor) — çalışmayan bir düğme göstermek,
-     * basılana kadar süren bir yalan olurdu.
-     */
-    id: 'online',
-    campaign: 'match',
-    label: 'ÇEVRİMİÇİ',
-    tagline: 'İNTERNET',
-    description:
-      'İki kişi ayrı cihazlarda. Biri oda açar, diğeri kodu girer.',
-    pickOpponent: true,
-    playMode: 'vs',
-    online: true,
   },
   {
     id: 'survival',

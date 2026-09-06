@@ -70,7 +70,7 @@ async function oyuncuAc(ad, { mobil = false, takmaAd = null } = {}) {
 
 /** Menüden çevrimiçi lobiye. */
 async function lobiyeGit(page) {
-  await page.getByRole('button', { name: /ÇEVRİMİÇİ/ }).first().click();
+  await page.getByRole('button', { name: /ARKADAŞLA OYNA/ }).first().click();
   await page.waitForTimeout(400);
   await page.getByRole('button', { name: /ODA KUR/ }).last().click();
   await page.waitForTimeout(600);
@@ -102,14 +102,14 @@ const b = await oyuncuAc('B', { mobil: true, takmaAd: 'ÇELİK BLOK' });
 await lobiyeGit(a.page);
 kontrol(
   'lobide HIZLI EŞLEŞ var',
-  (await a.page.getByRole('button', { name: /HIZLI EŞLEŞ/ }).count()) > 0,
+  (await a.page.getByRole('button', { name: /RASTGELE RAKİP BUL/ }).count()) > 0,
 );
 kontrol(
   'kendi takma adı görünüyor',
   (await a.page.getByText('ATEŞLİ SMAÇ').count()) > 0,
 );
 
-await a.page.getByRole('button', { name: /HIZLI EŞLEŞ/ }).click();
+await a.page.getByRole('button', { name: /RASTGELE RAKİP BUL/ }).click();
 await a.page.waitForTimeout(700);
 
 kontrol(
@@ -119,7 +119,7 @@ kontrol(
 kontrol('sunucuda bir kişi sırada', rele.sira.sayi === 1, `sıra=${rele.sira.sayi}`);
 
 await lobiyeGit(b.page);
-await b.page.getByRole('button', { name: /HIZLI EŞLEŞ/ }).click();
+await b.page.getByRole('button', { name: /RASTGELE RAKİP BUL/ }).click();
 await a.page.waitForTimeout(2500);
 
 const aDurum = await durum(a.page);
@@ -160,7 +160,7 @@ await b.ctx.close();
 // ---------------------------------------------------------------
 const yalniz = await oyuncuAc('YALNIZ', { takmaAd: 'YALNIZ KURT' });
 await lobiyeGit(yalniz.page);
-await yalniz.page.getByRole('button', { name: /HIZLI EŞLEŞ/ }).click();
+await yalniz.page.getByRole('button', { name: /RASTGELE RAKİP BUL/ }).click();
 await yalniz.page.waitForTimeout(700);
 
 kontrol(

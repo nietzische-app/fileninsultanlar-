@@ -28,6 +28,12 @@ export default function ResultScreen({
   freshAchievements = [],
   /** Bu maçın Forma Puanı kazancı — kalem dökümüyle (bkz. ilerleme.js). */
   kazanc = null,
+  /**
+   * Çevrimiçi rövanş durumu — {ben, rakip, bekleniyor, ayrildi}.
+   * `null` ise maç çevrimiçi değil (ya da bağlantı kapandı).
+   */
+  rovans = null,
+  onRovans,
 }) {
   const survival = result.campaign === 'survival' ? result.survival : null;
   /*
@@ -355,11 +361,58 @@ export default function ResultScreen({
           </p>
         </div>
 
+        {/*
+          ÇEVRİMİÇİ RÖVANŞ.
+          
+          Çevrimiçi bir maçın en sık istenen devamı "bir daha" ve az
+          önce oynadığın kişi zaten karşında. Eskiden bunun yolu yoktu:
+          maç biter bitmez soket kapanıyor, oyuncu menüye dönüp baştan
+          rakip arıyordu — yeni rakip bulmak, mevcut rakiple tekrar
+          oynamaktan çok daha uzun.
+
+          İKİ TARAF DA İSTEMELİ; ekran hangi aşamada olduğunu söylüyor,
+          çünkü "bastım ve bir şey olmadı" en kötü hâl.
+        */}
+        {rovans && (
+          <div className="w-full max-w-sm border-2 border-retro-accent/60 bg-retro-accent/10 px-4 py-3 text-center">
+            {rovans.ayrildi ? (
+              <p className="text-[8px] leading-relaxed text-white/55">
+                RAKİP AYRILDI — RÖVANŞ YOK
+              </p>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="retro-button w-full py-3 text-[9px] disabled:opacity-50"
+                  disabled={rovans.bekleniyor}
+                  onClick={onRovans}
+                >
+                  {rovans.bekleniyor ? 'RAKİP BEKLENİYOR…' : '★ RÖVANŞ ★'}
+                </button>
+                <p className="mt-2 text-[7px] leading-relaxed text-white/50">
+                  {rovans.rakip && !rovans.ben
+                    ? 'RAKİBİN RÖVANŞ İSTİYOR — SIRA SENDE'
+                    : rovans.bekleniyor
+                      ? 'İKİNİZ DE İSTEYİNCE MAÇ BAŞLAR'
+                      : 'AYNI RAKİPLE YENİ MAÇ'}
+                </p>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Butonlar */}
         <div className="flex flex-wrap justify-center gap-4 pb-6">
-          <button type="button" className="retro-button px-8 py-4" onClick={onRematch}>
-            {survival ? 'YENİDEN DENE' : tournament ? 'YENİ TURNUVA' : 'TEKRAR OYNA'}
-          </button>
+          {/*
+            Çevrimiçide "TEKRAR OYNA" yok: o düğme yerel maçı aynı
+            ayarla yeniden kuruyor ve çevrimiçide karşılığı yok —
+            basınca rakipsiz bir maç açardı. Rövanş yukarıda.
+          */}
+          {!rovans && (
+            <button type="button" className="retro-button px-8 py-4" onClick={onRematch}>
+              {survival ? 'YENİDEN DENE' : tournament ? 'YENİ TURNUVA' : 'TEKRAR OYNA'}
+            </button>
+          )}
           <button type="button" className="retro-button-ghost px-8 py-4" onClick={onHome}>
             ANA MENÜ
           </button>

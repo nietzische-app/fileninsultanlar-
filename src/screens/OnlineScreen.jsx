@@ -10,11 +10,11 @@ import { upper } from '../utils/text.js';
  *
  * İki yol var ve ikisi farklı ihtiyaca cevap veriyor:
  *
- *   - HIZLI EŞLEŞ: kimseyi tanımıyorsan. Sunucu seni bekleyen biriyle
- *     buluşturur. Oyunu ilk açan kişinin elinde kod verecek kimse yok;
- *     bu düğme olmadan "ÇEVRİMİÇİ" onun için boş bir odaya açılıyordu.
- *   - ARKADAŞINLA: tanıdığın biriyle. Oda kodu paylaşılır, maç ayarları
- *     (kadro, rakip, format) odayı açanın seçimi olur.
+ *   - RASTGELE RAKİP BUL: kimseyi tanımıyorsan. Sunucu seni bekleyen
+ *     biriyle buluşturur. Menüdeki HEMEN OYNA doğrudan buraya düşüyor
+ *     ve eşleşmeyi kendiliğinden başlatıyor.
+ *   - ODA AÇ / KODLA KATIL: tanıdığın biriyle. Oda kodu paylaşılır, maç
+ *     ayarları (kadro, rakip, format) odayı açanın seçimi olur.
  *
  * Maçı iki yolda da SUNUCU koşturuyor; iki istemci de yalnızca çiziyor
  * ve tuşlarını yolluyor.
@@ -150,6 +150,20 @@ export default function OnlineScreen({ config, onStart, onBack }) {
   // Ekrandan çıkarken bağlantıyı bırak — maç başladıysa devralınmıştır
   useEffect(
     () => () => {
+      /*
+       * Otomatik eşleşme bayrağı BAĞLANTIYLA BİRLİKTE sıfırlanıyor.
+       *
+       * Bayrağı sıfırlamayı unutmuştum ve HEMEN OYNA hiç çalışmadı:
+       * StrictMode geliştirmede efektleri bağla-çöz-bağla diye
+       * çalıştırıyor, bu temizlik bağlantıyı kapatıyor, ikinci
+       * bağlanmada bayrak "zaten başlattım" deyip eşleşmeyi hiç
+       * kurmuyordu. Ekranda "Sunucuya ulaşılamadı" yazıyordu — yani
+       * arıza ağ gibi görünüyordu, oysa kendi bayrağımdı.
+       *
+       * Bayrak "bir kez çalıştı" değil, "canlı bir denemem var"
+       * demek; bağlantı gidince o da gitmeli.
+       */
+      otomatikRef.current = false;
       if (baglantiRef.current?.devredildi) return;
       baglantiRef.current?.kapat();
       baglantiRef.current = null;
@@ -167,6 +181,18 @@ export default function OnlineScreen({ config, onStart, onBack }) {
     const sayac = setInterval(() => setGecen((s) => s + 1), 1000);
     return () => clearInterval(sayac);
   }, [durum]);
+
+  /*
+   * HEMEN OYNA ile gelindiyse eşleşme kendiliğinden başlıyor.
+   *
+   * Menüdeki düğmenin sözü "tek dokunuşta rakip". Lobiye düşürüp bir
+   * düğme daha bastırmak o sözü bozardı — oyuncu zaten kararını verdi.
+   *
+   * `otomatikRef` bir kez çalışmayı garanti ediyor: bağlantı koparsa
+   * `durum` seçime dönüyor ve etki yeniden tetiklenirse oyuncu
+   * "İPTAL"e bassa bile sonsuz döngüde eşleşmeye zorlanırdı.
+   */
+  const otomatikRef = useRef(false);
 
   const hizliEsles = useCallback(async () => {
     Sfx.select();
@@ -282,10 +308,18 @@ export default function OnlineScreen({ config, onStart, onBack }) {
     setAdDuzenle(false);
   }, []);
 
+  useEffect(() => {
+    if (!config?.hizli || otomatikRef.current) return;
+    otomatikRef.current = true;
+    hizliEsles();
+  }, [config?.hizli, hizliEsles]);
+
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-6 px-4 py-8">
       <div className="w-full max-w-md border-4 border-white/20 bg-retro-panel/85 p-5">
-        <p className="text-center text-[11px] text-white">ÇEVRİMİÇİ MAÇ</p>
+        <p className="text-center text-[11px] text-white">
+          {config?.hizli ? 'RAKİP ARANIYOR' : 'ARKADAŞLA OYNA'}
+        </p>
 
         {/* Takma ad — rakibin ekranında bu görünüyor */}
         {durum === DURUM.secim && !adDuzenle && (
@@ -324,40 +358,44 @@ export default function OnlineScreen({ config, onStart, onBack }) {
 
         {durum === DURUM.secim && (
           <div className="mt-6 flex flex-col gap-3">
-            <button
-              type="button"
-              className="retro-button w-full py-3 text-[9px]"
-              onClick={hizliEsles}
-            >
-              HIZLI EŞLEŞ
-            </button>
+            {/*
+              ODA KODU ARTIK BAŞTA. Bu ekrana gelen oyuncu menüden
+              "ARKADAŞLA OYNA"yı seçmiş; yani ne istediğini söyledi.
+              Rakip aramayı en üste koymak, sorduğu şeyi ikinci sıraya
+              itmek olurdu. Hızlı eşleşme yine burada, ama altta —
+              menüde kendi düğmesi var.
+            */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="retro-button flex-1 py-3 text-[9px]"
+                onClick={odaAc}
+              >
+                ODA AÇ
+              </button>
+              <button
+                type="button"
+                className="retro-button flex-1 py-3 text-[9px]"
+                onClick={() => {
+                  Sfx.select();
+                  setDurum(DURUM.kodGir);
+                }}
+              >
+                KODLA KATIL
+              </button>
+            </div>
             <p className="text-center text-[7px] leading-relaxed text-white/40">
-              {upper('Sunucu seni bekleyen bir oyuncuyla buluşturur')}
+              {upper('Oda açan kodu paylaşır; ayarlar odayı açanın seçimidir')}
             </p>
 
             <div className="mt-2 border-t-4 border-white/10 pt-4">
-              <p className="mb-3 text-center text-[7px] text-white/40">
-                {upper('Ya da tanıdığın biriyle')}
-              </p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  className="retro-button-ghost flex-1 py-3 text-[8px]"
-                  onClick={odaAc}
-                >
-                  ODA AÇ
-                </button>
-                <button
-                  type="button"
-                  className="retro-button-ghost flex-1 py-3 text-[8px]"
-                  onClick={() => {
-                    Sfx.select();
-                    setDurum(DURUM.kodGir);
-                  }}
-                >
-                  KODLA KATIL
-                </button>
-              </div>
+              <button
+                type="button"
+                className="retro-button-ghost w-full py-3 text-[8px]"
+                onClick={hizliEsles}
+              >
+                RASTGELE RAKİP BUL
+              </button>
             </div>
 
             <button
