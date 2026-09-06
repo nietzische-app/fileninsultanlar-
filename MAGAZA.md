@@ -92,26 +92,42 @@ makinene Android Studio kurman `.aab` almak için **gerekmiyor**.
 
 #### Bir kerelik kurulum
 
-**1) Anahtarı üret — tek komut:**
+**1) Anahtarı üret.**
 
-```bash
-bash scripts/imza-uret.sh
-```
+> **NEREDE: kendi bilgisayarında. Sunucuda DEĞİL.**
+>
+> İmza anahtarının röleyle, Docker'la, prod ile hiçbir ilgisi yok —
+> o dosya **uygulamanın kimliği**. Sunucuya bağlanmana gerek yok;
+> bağlanmaman daha iyi, çünkü özel anahtarın internete açık bir
+> makinede durmasının hiçbir faydası, birkaç riski var.
 
-Betik ne yapıyor: `keytool`u doğru argümanlarla çağırıyor, hangi
-sorunun ne olduğunu önceden yazıyor, parolada ters bölü olmaması
+| Makinen | Komut |
+|---|---|
+| **Windows** (PowerShell) | `.\scripts\imza-uret.ps1` |
+| **macOS / Linux** | `bash scripts/imza-uret.sh` |
+
+İkisi de aynı işi yapıyor: `keytool`u doğru argümanlarla çağırıyor,
+hangi sorunun ne olduğunu önceden yazıyor, parolada ters bölü olmaması
 gerektiğini hatırlatıyor, base64'ü üretiyor ve **geri çözüp bayt bayta
 karşılaştırarak** doğruluyor. Sonunda GitHub'a girilecek beş değeri
 adıyla listeliyor.
 
-Makinende `keytool` yoksa (JDK kurulu değilse) betik Docker'la geçici
-bir JDK kabı kullanıyor — kalıcı bir kurulum gerekmiyor.
+`keytool` bir JDK ile geliyor. Yoksa:
+- **Windows:** [adoptium.net](https://adoptium.net) → Temurin 17, x64,
+  `.msi`. (Android Studio kuruluysa betik onun içindeki JDK'yı da
+  buluyor, ayrıca kurmana gerek kalmıyor.)
+- **macOS / Linux:** bash betiği JDK yoksa Docker'la geçici bir kap
+  kullanıyor, kalıcı kurulum gerekmiyor.
 
-Çıktı `~/filenin-imza/` altına yazılıyor; **bilerek depo dizinine
-değil**, yanlışlıkla commit edilmesin diye.
+Çıktı ev dizinindeki `filenin-imza` klasörüne yazılıyor; **bilerek depo
+dizinine değil**, yanlışlıkla commit edilmesin diye.
 
 `keytool` sırayla soracak: parola (iki kez) → ad → kurum/şehir/ülke
 (hepsi Enter'la geçilebilir) → `yes` → anahtar parolası (Enter = aynısı).
+
+> PowerShell sürümünü bu ortamda **çalıştırarak deneyemedim** (burada
+> PowerShell yok); bash sürümü uçtan uca denendi. Windows'ta bir yerde
+> takılırsa çıktıyı gönder.
 
 **Anahtar dosyasını kaybetme.** Kaybedersen uygulamayı bir daha
 güncelleyemezsin — Google yeni anahtarla yüklemeyi kabul etmiyor,

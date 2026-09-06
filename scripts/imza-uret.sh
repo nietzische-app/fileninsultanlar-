@@ -9,6 +9,13 @@
 # üstleniyor: doğru keytool çağrısı, parolada ters bölü denetimi ve
 # base64'ün bozulmadığının doğrulanması.
 #
+# NEREDE ÇALIŞTIRILIR: KENDİ BİLGİSAYARINDA. Sunucuda değil.
+# İmza anahtarının röleyle, Docker'la, prod ile hiçbir ilgisi yok — o
+# dosya uygulamanın kimliği. İnternete açık bir makinede durmasının
+# hiçbir faydası, birkaç riski var.
+#
+# Windows kullanıyorsan bunun yerine: scripts/imza-uret.ps1
+#
 # Kullanım:
 #   bash scripts/imza-uret.sh [cikti-dizini]
 #
