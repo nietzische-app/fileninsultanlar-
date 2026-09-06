@@ -53,7 +53,7 @@ describe('girdi yuvaları', () => {
     game = new Game(sahteCanvas(), {
       mode: '2v2',
       difficulty: 'normal',
-      homeIds: ['nehir-tunca', 'ceren-yildirim'],
+      homeIds: ['gizel-orgen', 'zeliha-gunay'],
       format: 'single',
       opponentId: 'atlas',
     });

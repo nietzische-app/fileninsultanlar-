@@ -8,7 +8,7 @@ const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_C
 const errors = [];
 const PREFS = {
   tutorialSeen: true, mode: '1v1', difficulty: 'kolay', format: 'classic',
-  opponentId: 'atlas', homeIds: ['nehir-tunca'], muted: true,
+  opponentId: 'atlas', homeIds: ['gizel-orgen'], muted: true,
 };
 
 const watch = (page, tag) => {

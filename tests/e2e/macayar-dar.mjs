@@ -19,7 +19,7 @@ for (const [name, w, h] of [['iPhone SE', 667, 375], ['Galaxy S20', 800, 360]]) 
   // En büyük tuş ayarıyla başla
   await page.evaluate(() => localStorage.setItem('retro-voleybol-prefs', JSON.stringify({
     tutorialSeen: true, muted: true, mode: '1v1', difficulty: 'kolay',
-    format: 'practice', opponentId: 'atlas', homeIds: ['nehir-tunca'],
+    format: 'practice', opponentId: 'atlas', homeIds: ['gizel-orgen'],
     controls: { scale: 1.4, opacity: 1, swap: false } })));
   await page.reload({ waitUntil: 'load' });
   await page.waitForTimeout(1300);

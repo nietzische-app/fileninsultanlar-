@@ -19,7 +19,7 @@ const loss = { winner: 'away', sets: { home: 0, away: 1 } };
 function champion() {
   return TOURNAMENT_ROUNDS.reduce(
     (state) => advanceTournament(state, win),
-    createTournament({ homeIds: ['nehir-tunca'] })
+    createTournament({ homeIds: ['gizel-orgen'] })
   );
 }
 

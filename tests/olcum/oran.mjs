@@ -49,8 +49,8 @@ const rows = await page.evaluate(async ({ n, levels, basisYaricap }) => {
     i.action = near; i.dive = false;
   }
   const out = [];
-  for (const [label, cfg] of levels.map((d) => [`1v1 ${d}`, { mode:'1v1', difficulty:d, homeIds:['nehir-tunca'] }])
-      .concat([['2v2 normal', { mode:'2v2', difficulty:'normal', homeIds:['nehir-tunca','ceren-yildirim'] }]])) {
+  for (const [label, cfg] of levels.map((d) => [`1v1 ${d}`, { mode:'1v1', difficulty:d, homeIds:['gizel-orgen'] }])
+      .concat([['2v2 normal', { mode:'2v2', difficulty:'normal', homeIds:['gizel-orgen','zeliha-gunay'] }]])) {
     let homePts = 0, awayPts = 0, touchSum = 0, rallies = 0, hT = 0, pT = 0;
     for (let k = 0; k < n; k += 1) {
       let done = false;

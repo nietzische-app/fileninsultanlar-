@@ -45,7 +45,7 @@ function masaKur() {
     mode: '1v1',
     playMode: 'vs',
     difficulty: 'normal',
-    homeIds: ['nehir-tunca'],
+    homeIds: ['gizel-orgen'],
     format: 'single',
     opponentId: 'atlas',
   };
@@ -244,7 +244,7 @@ describe('anlık görüntü', () => {
 
   it('çevrimdışı oyunda olay biriktirilmez', () => {
     const oyun = new Game(sahteCanvas(), {
-      mode: '1v1', difficulty: 'normal', homeIds: ['nehir-tunca'],
+      mode: '1v1', difficulty: 'normal', homeIds: ['gizel-orgen'],
       format: 'single', opponentId: 'atlas',
     });
     oyun.spawnBurst(10, 10, 4, '#fff');

@@ -134,8 +134,8 @@ const LIBERO_KIT = {
 /** @type {Player[]} */
 export const ROSTER = [
   {
-    id: 'nehir-tunca',
-    name: 'Nehir Tunca',
+    id: 'gizel-orgen',
+    name: 'Gizel Örgen',
     number: 2,
     position: POSITIONS.LIBERO,
     captain: true,
@@ -165,8 +165,8 @@ export const ROSTER = [
     modifiers: { bumpPower: 1.3, speed: 1.18, reach: 1.12, spikePower: 0.78, jump: 0.94 },
   },
   {
-    id: 'beren-aksoy',
-    name: 'Beren Aksoy',
+    id: 'cansel-ozbey',
+    name: 'Cansel Özbey',
     number: 5,
     position: POSITIONS.PASOR,
     captain: false,
@@ -196,8 +196,8 @@ export const ROSTER = [
     modifiers: { speed: 1.22, jump: 1.1, spikePower: 0.9, bumpPower: 1.1 },
   },
   {
-    id: 'iraz-demirel',
-    name: 'Iraz Demirel',
+    id: 'salise-sanli',
+    name: 'Salise Şanlı',
     number: 9,
     position: POSITIONS.SMACOR,
     captain: false,
@@ -227,8 +227,8 @@ export const ROSTER = [
     modifiers: { spikePower: 1.08, bumpPower: 1.12, speed: 1.04 },
   },
   {
-    id: 'sevval-korkmaz',
-    name: 'Şevval Korkmaz',
+    id: 'handan-balatan',
+    name: 'Handan Balatan',
     number: 11,
     position: POSITIONS.SMACOR,
     captain: false,
@@ -258,8 +258,8 @@ export const ROSTER = [
     modifiers: { spikePower: 1.14, angle: 1.25, speed: 1.04 },
   },
   {
-    id: 'naz-alkan',
-    name: 'Naz Alkan',
+    id: 'sinem-jak-kisar',
+    name: 'Sinem Jak-Kısar',
     number: 4,
     position: POSITIONS.ORTA,
     captain: false,
@@ -289,8 +289,8 @@ export const ROSTER = [
     modifiers: { blockPower: 1.22, reach: 1.1, speed: 0.94 },
   },
   {
-    id: 'duru-yalcin',
-    name: 'Duru Yalçın',
+    id: 'eylem-akarpinar',
+    name: 'Eylem Akarpınar',
     number: 17,
     position: POSITIONS.LIBERO,
     captain: false,
@@ -320,8 +320,8 @@ export const ROSTER = [
     modifiers: { speed: 1.24, bumpPower: 1.2, reach: 1.08, spikePower: 0.75, jump: 0.96 },
   },
   {
-    id: 'ada-sarikaya',
-    name: 'Ada Sarıkaya',
+    id: 'elifnur-sahan',
+    name: 'Elifnur Şahan',
     number: 19,
     position: POSITIONS.PASOR,
     captain: false,
@@ -351,8 +351,8 @@ export const ROSTER = [
     modifiers: { speed: 1.12, reach: 1.08, blockPower: 1.1, spikePower: 0.94 },
   },
   {
-    id: 'zeynep-ilgaz',
-    name: 'Zeynep Ilgaz',
+    id: 'dilan-ozdener',
+    name: 'Dilan Özdener',
     number: 21,
     position: POSITIONS.PASOR,
     captain: false,
@@ -382,8 +382,8 @@ export const ROSTER = [
     modifiers: { speed: 1.14, bumpPower: 1.08, spikePower: 0.9 },
   },
   {
-    id: 'sena-bozkurt',
-    name: 'Sena Bozkurt',
+    id: 'ela-erdim-dundal',
+    name: 'Ela Erdim Dündal',
     number: 23,
     position: POSITIONS.ORTA,
     captain: false,
@@ -413,8 +413,8 @@ export const ROSTER = [
     modifiers: { blockPower: 1.24, reach: 1.14, jump: 1.04, speed: 0.94 },
   },
   {
-    id: 'melis-erguven',
-    name: 'Melis Ergüven',
+    id: 'derin-uyanir',
+    name: 'Derin Uyanır',
     number: 24,
     position: POSITIONS.ORTA,
     captain: false,
@@ -444,8 +444,8 @@ export const ROSTER = [
     modifiers: { blockPower: 1.18, reach: 1.14, jump: 1.06, speed: 0.94 },
   },
   {
-    id: 'nisan-cetin',
-    name: 'Nisan Çetin',
+    id: 'berna-buse-ozdem',
+    name: 'Berna Buse Özdem',
     number: 27,
     position: POSITIONS.ORTA,
     captain: false,
@@ -481,8 +481,8 @@ export const ROSTER = [
     modifiers: { blockPower: 1.24, jump: 1.06 },
   },
   {
-    id: 'ceren-yildirim',
-    name: 'Ceren Yıldırım',
+    id: 'zeliha-gunay',
+    name: 'Zeliha Günay',
     number: 28,
     position: POSITIONS.ORTA,
     captain: false,
@@ -512,8 +512,8 @@ export const ROSTER = [
     modifiers: { reach: 1.18, blockPower: 1.15, jump: 1.06, speed: 0.92 },
   },
   {
-    id: 'oyku-balaban',
-    name: 'Öykü Balaban',
+    id: 'yagmur-erkin',
+    name: 'Yağmur Erkin',
     number: 31,
     position: POSITIONS.SMACOR,
     captain: false,
@@ -543,8 +543,8 @@ export const ROSTER = [
     modifiers: { speed: 1.18, jump: 1.08 },
   },
   {
-    id: 'ruya-sensoy',
-    name: 'Rüya Şensoy',
+    id: 'ilknur-aydan',
+    name: 'İlknur Aydan',
     number: 33,
     position: POSITIONS.SMACOR,
     captain: false,
@@ -574,8 +574,8 @@ export const ROSTER = [
     modifiers: { spikePower: 1.16, speed: 1.08 },
   },
   {
-    id: 'lina-moreno',
-    name: 'Lina Moreno',
+    id: 'melina-vargaz',
+    name: 'Melina Vargaz',
     number: 37,
     position: POSITIONS.PASOR_CAPRAZI,
     captain: false,
@@ -606,8 +606,8 @@ export const ROSTER = [
     modifiers: { spikePower: 1.25, bumpPower: 1.05, speed: 0.96 },
   },
   {
-    id: 'ipek-arda',
-    name: 'İpek Arda',
+    id: 'derya-basyolu',
+    name: 'Derya Başyolu',
     number: 42,
     position: POSITIONS.SMACOR,
     captain: false,
@@ -637,8 +637,8 @@ export const ROSTER = [
     modifiers: { speed: 1.1, spikePower: 1.04 },
   },
   {
-    id: 'doga-simsek',
-    name: 'Doğa Şimşek',
+    id: 'ebru-karakut',
+    name: 'Ebru Karakut',
     number: 55,
     position: POSITIONS.PASOR_CAPRAZI,
     captain: false,
@@ -698,10 +698,10 @@ export const OPPONENT_TEMPLATE = {
 };
 
 /** Oyunun varsayılan olarak seçili getirdiği oyuncu — kaptan. */
-export const DEFAULT_PLAYER_ID = 'nehir-tunca';
+export const DEFAULT_PLAYER_ID = 'gizel-orgen';
 
 /** Giriş ekranındaki vitrin kadrosu. */
-export const SHOWCASE_IDS = ['nehir-tunca', 'ceren-yildirim', 'lina-moreno'];
+export const SHOWCASE_IDS = ['gizel-orgen', 'zeliha-gunay', 'melina-vargaz'];
 
 /**
  * Aktif kadro (bonus işaretli oyuncular hariç).

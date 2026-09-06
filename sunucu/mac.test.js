@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Mac } from './mac.js';
 
-const AYAR = { mode: '1v1', format: 'single', difficulty: 'normal', homeIds: ['nehir-tunca'] };
+const AYAR = { mode: '1v1', format: 'single', difficulty: 'normal', homeIds: ['gizel-orgen'] };
 
 /** Bir tikin geçmesini bekler (tik 1/60 sn). */
 const tikBekle = (ms = 80) => new Promise((coz) => { setTimeout(coz, ms); });

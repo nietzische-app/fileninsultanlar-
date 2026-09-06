@@ -86,7 +86,7 @@ export const DEFAULT_PREFS = {
   difficulty: 'normal',
   format: 'classic',
   opponentId: 'random',
-  homeIds: ['nehir-tunca'],
+  homeIds: ['gizel-orgen'],
   tutorialSeen: false,
 };
 

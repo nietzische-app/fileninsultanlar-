@@ -30,7 +30,7 @@ const rows = await page.evaluate(async () => {
     let ev = 0, rak = 0;
     for (let k = 0; k < 12; k += 1) {
       let done = false;
-      const g = new Game(canvas, { mode:'1v1', difficulty:'normal', homeIds:['nehir-tunca'],
+      const g = new Game(canvas, { mode:'1v1', difficulty:'normal', homeIds:['gizel-orgen'],
         format:'single', opponentId:t.id, onState(){}, onFinish(){ done = true; } });
       g.emitState = () => {};
       const oA = g.awardPoint.bind(g);

@@ -56,7 +56,7 @@ describe('storage prefs', () => {
   it('eski easy/hard anahtarlarını kolay/zor çevirir', () => {
     localStorage.setItem(
       'retro-voleybol-prefs',
-      JSON.stringify({ muted: false, difficulty: 'hard', mode: '1v1', homeIds: ['nehir-tunca'] })
+      JSON.stringify({ muted: false, difficulty: 'hard', mode: '1v1', homeIds: ['gizel-orgen'] })
     );
     expect(loadPrefs().difficulty).toBe('zor');
   });
@@ -69,7 +69,7 @@ describe('storage prefs', () => {
   it('müzik sesi alanı olmayan eski kayıtta varsayılana döner', () => {
     localStorage.setItem(
       'retro-voleybol-prefs',
-      JSON.stringify({ muted: false, mode: '1v1', homeIds: ['nehir-tunca'] })
+      JSON.stringify({ muted: false, mode: '1v1', homeIds: ['gizel-orgen'] })
     );
     expect(loadPrefs().musicVolume).toBe(DEFAULT_PREFS.musicVolume);
   });
@@ -108,7 +108,7 @@ describe('storage prefs', () => {
   it('tuş ayarı olmayan eski kayıtta varsayılana döner', () => {
     localStorage.setItem(
       'retro-voleybol-prefs',
-      JSON.stringify({ muted: false, homeIds: ['nehir-tunca'] })
+      JSON.stringify({ muted: false, homeIds: ['gizel-orgen'] })
     );
     expect(loadPrefs().controls).toEqual(DEFAULT_PREFS.controls);
   });
@@ -132,7 +132,7 @@ describe('storage prefs', () => {
     cases.forEach(([given, expected]) => {
       localStorage.setItem(
         'retro-voleybol-prefs',
-        JSON.stringify({ musicVolume: given, homeIds: ['nehir-tunca'] })
+        JSON.stringify({ musicVolume: given, homeIds: ['gizel-orgen'] })
       );
       expect(loadPrefs().musicVolume).toBe(expected);
     });
@@ -201,14 +201,14 @@ describe('storage records', () => {
 describe('players roster', () => {
   it('Gizem Örge kaptandır', () => {
     const captain = getCaptain();
-    expect(captain?.id).toBe('nehir-tunca');
+    expect(captain?.id).toBe('gizel-orgen');
     expect(captain?.captain).toBe(true);
   });
 
   it('Eda ve Ebrar asıl kadroda, bonus değil', () => {
     const aktif = getActiveRoster().map((p) => p.id);
-    expect(aktif).toContain('sena-bozkurt');
-    expect(aktif).toContain('doga-simsek');
+    expect(aktif).toContain('ela-erdim-dundal');
+    expect(aktif).toContain('ebru-karakut');
     // Bonus bölümü boş kalınca seçim ekranında hiç görünmüyor
     expect(getBonusRoster()).toHaveLength(0);
   });
@@ -221,13 +221,13 @@ describe('players roster', () => {
   it('Ebrar sert smaç çarpanı taşır', () => {
     // Sultan Gücü kaldırılınca `charge` bonusu da kalktı; Ebrar'ın
     // kimliği artık smaç gücü ve açısında.
-    const ebrar = getPlayerById('doga-simsek');
+    const ebrar = getPlayerById('ebru-karakut');
     expect(getModifier(ebrar, 'spikePower')).toBe(1.22);
     expect(getModifier(ebrar, 'charge')).toBe(1);
   });
 
   it('yaş hesaplar', () => {
-    const kaptan = getPlayerById('nehir-tunca');
+    const kaptan = getPlayerById('gizel-orgen');
     // 1994-03-11 doğumlu; 2026-08-04'te doğum günü geçmiş → 32
     const age = getAge(kaptan, new Date('2026-08-04'));
     expect(age).toBe(32);
@@ -317,14 +317,14 @@ describe('turnuva rekorları ve kaydı', () => {
   });
 
   it('yarım turnuvayı saklar ve geri okur', () => {
-    const tournament = createTournament({ mode: '2v2', homeIds: ['nehir-tunca', 'ceren-yildirim'] });
+    const tournament = createTournament({ mode: '2v2', homeIds: ['gizel-orgen', 'zeliha-gunay'] });
     saveTournament(tournament);
     expect(loadTournament()).toMatchObject({ status: 'active', roundIndex: 0 });
   });
 
   it('kapanmış turnuvayı saklamaz', () => {
-    saveTournament(createTournament({ homeIds: ['nehir-tunca'] }));
-    saveTournament({ ...createTournament({ homeIds: ['nehir-tunca'] }), status: 'won' });
+    saveTournament(createTournament({ homeIds: ['gizel-orgen'] }));
+    saveTournament({ ...createTournament({ homeIds: ['gizel-orgen'] }), status: 'won' });
     expect(loadTournament()).toBeNull();
   });
 
@@ -340,7 +340,7 @@ describe('turnuva rekorları ve kaydı', () => {
   });
 
   it('temizlenen turnuva geri gelmez', () => {
-    saveTournament(createTournament({ homeIds: ['nehir-tunca'] }));
+    saveTournament(createTournament({ homeIds: ['gizel-orgen'] }));
     clearTournament();
     expect(loadTournament()).toBeNull();
   });

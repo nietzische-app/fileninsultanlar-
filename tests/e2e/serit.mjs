@@ -22,7 +22,7 @@ for (const [name, w, h] of [['iPhone SE', 667, 375], ['Pixel 5', 851, 393],
     await page.waitForTimeout(600);
     await page.evaluate((sc) => localStorage.setItem('retro-voleybol-prefs', JSON.stringify({
       tutorialSeen: true, muted: true, mode: '1v1', difficulty: 'kolay', format: 'practice',
-      opponentId: 'atlas', homeIds: ['nehir-tunca'], controls: { scale: sc, opacity: 1, swap: false } })), scale);
+      opponentId: 'atlas', homeIds: ['gizel-orgen'], controls: { scale: sc, opacity: 1, swap: false } })), scale);
     await page.reload({ waitUntil: 'load' });
     await page.waitForTimeout(1200);
     await page.getByRole('button', { name: /HIZLI MAÇ/ }).first().click();

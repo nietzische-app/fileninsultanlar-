@@ -43,7 +43,7 @@ const out = await page.evaluate(async ({ mac }) => {
   for (let n = 0; n < mac; n += 1) {
     let done = false;
     const g = new Game(canvas, { mode:'2v2', difficulty:'normal',
-      homeIds:['nehir-tunca','ceren-yildirim'], format:'single', opponentId:'atlas',
+      homeIds:['gizel-orgen','zeliha-gunay'], format:'single', opponentId:'atlas',
       onState(){}, onFinish(){ done = true; } });
     g.emitState = () => {};
     const oH = g.hitBall.bind(g);

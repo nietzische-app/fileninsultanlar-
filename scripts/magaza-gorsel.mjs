@@ -62,7 +62,7 @@ const TERCIH = {
   difficulty: 'normal',
   format: 'single',
   opponentId: 'atlas',
-  homeIds: ['nehir-tunca'],
+  homeIds: ['gizel-orgen'],
 };
 
 rmSync(CIKTI, { recursive: true, force: true });

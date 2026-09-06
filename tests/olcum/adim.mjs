@@ -99,7 +99,7 @@ const sonuc = await page.evaluate(async ({ saniye, hizlar, titreme }) => {
 
   function kos(hz, eski, tolerans = true) {
     tohumla();
-    const g = new Game(canvas, { mode: '1v1', difficulty: 'normal', homeIds: ['nehir-tunca'],
+    const g = new Game(canvas, { mode: '1v1', difficulty: 'normal', homeIds: ['gizel-orgen'],
       format: 'single', opponentId: 'atlas', onState(){}, onFinish(){} });
     g.emitState = () => {};
     g.render = () => {};

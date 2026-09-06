@@ -21,7 +21,7 @@ export const VARSAYILAN_TERCIH = {
   difficulty: 'kolay',
   format: 'practice',
   opponentId: 'atlas',
-  homeIds: ['nehir-tunca'],
+  homeIds: ['gizel-orgen'],
 };
 
 export async function tarayiciAc() {
