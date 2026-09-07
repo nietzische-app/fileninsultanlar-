@@ -32,6 +32,7 @@ import { Depo, genelGorunum } from './depo.js';
 import { puanDegisimi } from './puan.js';
 import { Mac } from './mac.js';
 import { PAKET_SURUM } from '../src/game/snapshot.js';
+import { agAyarOzeti } from '../src/game/Game.js';
 
 /** Tek mesajın azami boyu (bayt). Anlık görüntü ~300 bayt; 16 KB fazlasıyla yeter. */
 const AZAMI_MESAJ = 16 * 1024;
@@ -167,6 +168,20 @@ export async function baslat({
            * dönüyorsa sebep budur.
            */
           makine: process.env.FLY_MACHINE_ID ?? process.env.HOSTNAME ?? null,
+          /*
+           * DAĞITIM DAMGASI. İstemci Vercel'den kendiliğinden
+           * güncelleniyor, röle ELLE dağıtılıyor — ikisi ayrı sürümde
+           * kaldığında belirti "yaptığın düzeltme işe yaramadı" oluyor
+           * ve dışarıdan hangisinin eski olduğu görünmüyordu. Bu iki
+           * alan o soruyu tek `curl`e indiriyor.
+           *
+           *   surum — imaja yapı sırasında basılan git damgası
+           *   ag    — rölenin GERÇEKTE koştuğu ağ ayarları; `durumAdim`
+           *           alanı eski sürümde hiç yok, yani yokluğu da bilgi
+           */
+          surum: process.env.SURUM ?? null,
+          paketSurum: PAKET_SURUM,
+          ag: agAyarOzeti(),
         }),
       );
       return;

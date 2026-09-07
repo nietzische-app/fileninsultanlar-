@@ -552,8 +552,12 @@ Kod değiştiğinde sunucuda (zaten `sunucu/` dizinindeysen `cd`'yi atla):
 ```bash
 cd fileninsultanlar-/sunucu
 git pull
-docker compose up -d --build
+# SURUM damgası imaja basılıyor; `/saglik` onu yayınlıyor ve
+# "röle yeni kodda mı" sorusu böylece tahmin olmaktan çıkıyor.
+SURUM=$(git rev-parse --short HEAD) docker compose up -d --build
 ```
+
+`SURUM=` olmadan da çalışır, yalnız damga `bilinmiyor` yazar.
 
 Doğrulama:
 
@@ -565,10 +569,11 @@ sleep 3 && curl http://127.0.0.1:8787/saglik
 Beklenen:
 
 ```json
-{"durum":"ayakta","oda":0,"sira":0,"oyuncu":0,"kalici":true,"birim":true,...}
+{"durum":"ayakta","oda":0,"sira":0,"oyuncu":0,"kalici":true,"birim":true,
+ "surum":"b3fa7f4","paketSurum":2,"ag":{"durumHz":30,"durumAdim":2,"tamponTabanMs":50}}
 ```
 
-Üç şeye bak:
+Şuna bak:
 
 | Belirti | Anlamı |
 |---|---|
@@ -576,6 +581,60 @@ Beklenen:
 | `oyuncu`/`kalici` alanları yok | Eski imaj hâlâ ayakta — yapı başarısız olmuş. `docker compose logs --tail 40`. |
 | `"kalici": false` | Veri dizinine yazılamıyor. Maçlar oynanır, tablo yeniden başlatmada sıfırlanır. |
 | `"birim": false` | **Kalıcı birim bağlanmamış.** Tablo her `up --build` ile gider. |
+| **`ag` alanı yok** | **Röle ESKİ kodda.** Aşağıya bak — bu, düzelmemekten de kötü. |
+| `"surum":"bilinmiyor"` | Yapı depo dışından çalıştırılmış; kod yeni olabilir ama hangi taahhüt olduğu belli değil. |
+
+### İstemci yeni, röle eski — en sinsi hâl
+
+İstemciyi Vercel kendiliğinden dağıtıyor, röleyi SEN elle dağıtıyorsun.
+İkisi ayrı sürümde kaldığında belirti "yaptığın düzeltme işe yaramadı"
+oluyor ve dışarıdan hangisinin eski olduğu görünmüyor.
+
+Üstelik karışık sürüm, hiç düzeltmemekten **daha kötü**. Ölçüldü:
+
+| | rakip ekranıma (ağ 0 ms) | istemcinin tamponu | rölenin gerçek paket aralığı |
+|---|---|---|---|
+| yeni istemci + **yeni röle** | 50 ms | 50 ms | hep 2 adım (30 Hz) |
+| yeni istemci + **eski röle** | **100 ms** | **96 ms** | 4 adım ×78, 3 adım ×11 (~15 Hz) |
+
+Sebebi: eski rölenin gönderme kapısı süre karşılaştırıyordu ve kayan
+nokta artığı yüzünden aralıklar hem uzun hem DÜZENSİZDİ (20 Hz ayarı
+gerçekte ~15 Hz). Yeni istemcinin uyarlanan tamponu bu düzensizliği —
+haklı olarak — ağ seğirmesi sayıp kendini iki katına çıkarıyor.
+
+`ag.durumAdim` alanı bunun için var: eski sürümde o alan hiç yok, yani
+**yokluğu da bilgi**. Bir birim testi `durumHz` ile `durumAdim`in
+birbiriyle tutarlı kalmasını da sınıyor.
+
+### "Sunucu mu suçlu" — taşımadan önce ölç
+
+Gecikme şikâyetinde ilk akla gelen sunucuyu taşımak oluyor, ama
+suçlunun kim olduğu ölçülebilir bir şey. Üç kaynak var ve üçü ayrı
+ayrı bakılmalı:
+
+```bash
+# 1) RÖLE YENİ KODDA MI  (en sık sebep bu)
+curl -s http://127.0.0.1:8787/saglik | grep -o '"ag":{[^}]*}'
+
+# 2) MAKİNE TİKLERİ TUTUYOR MU — kendi zamanlayıcısı, ağ değil
+docker compose exec rele node tik-tani.mjs
+
+# 3) AĞ — oyuncunun bulunduğu yerden, sunucunun üstünden değil
+ping -c 20 rele.retrovoleybol.online
+```
+
+Nasıl okunur:
+
+| Ölçüm | İyi | Kötüyse ne yapılır |
+|---|---|---|
+| `ag.durumAdim` | `2` | Röleyi yeniden dağıt — bedava ve en büyük kazanç |
+| tik p95 | < 25 ms, geç tik %5 altı | CPU sınırını yükselt ya da komşu servisleri seyrelt |
+| ping (TR → Almanya) | 40-60 ms | Ancak bu 100 ms'i aşıyorsa sunucu taşımak konuşulur |
+
+Sıralama önemli: 40-60 ms'lik bir gidiş-dönüş çevrimiçi oyun için
+normaldir ve tek başına "oynanmaz" demek değildir. Kodun eklediği
+gecikme bir zamanlar bunun iki katıydı — önce onu bitir, sunucunun yeri
+en son bakılacak şey.
 
 ### Neden `ls /veri` ile doğrulanmıyor
 

@@ -27,6 +27,12 @@ services:
       # kalır, konteyner "Cannot find module" ile açılmazdı.
       context: ..
       dockerfile: sunucu/Dockerfile
+      args:
+        # Dağıtım damgası — `/saglik` bunu yayınlıyor, böylece "röle
+        # yeni kodda mı" sorusu tahmin olmaktan çıkıyor. Kabuk bunu
+        # `docker compose up --build` çağrısında çözüyor, yani komutu
+        # DEPO İÇİNDEN çalıştırmak gerekiyor.
+        SURUM: ${SURUM:-bilinmiyor}
     container_name: filenin-rele
     restart: unless-stopped
 

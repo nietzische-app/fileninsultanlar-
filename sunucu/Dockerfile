@@ -23,6 +23,20 @@ COPY src/utils/ ./src/utils/
 
 WORKDIR /app/sunucu
 
+# DAĞITIM DAMGASI.
+#
+# İmajın içinde git yok, olsun da istemiyoruz (depoyu imaja koymak
+# demekti). Damga dışarıdan yapı argümanı olarak geliyor ve `/saglik`
+# onu yayınlıyor. Sebebi yaşanmış bir kafa karışıklığı: istemci
+# Vercel'den kendiliğinden güncelleniyor, röle elle dağıtılıyor ve
+# ikisi ayrı sürümdeyken belirti "düzeltme işe yaramadı" oluyordu.
+#
+# `docker compose up -d --build` bunu kendisi geçiriyor (compose'daki
+# `args`), elle yapı için:
+#   docker build -f sunucu/Dockerfile --build-arg SURUM=$(git rev-parse --short HEAD) .
+ARG SURUM=bilinmiyor
+ENV SURUM=$SURUM
+
 # fly.toml / docker-compose ile aynı olmalı
 ENV PORT=8787
 EXPOSE 8787

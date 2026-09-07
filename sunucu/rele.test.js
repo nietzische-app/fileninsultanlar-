@@ -359,6 +359,34 @@ describe('röle', () => {
     expect('makine' in veri).toBe(true);
     ev.kapat();
   });
+
+  it('sağlık ucu RÖLENİN KOŞTUĞU ağ ayarlarını bildiriyor', async () => {
+    /*
+     * Bu alanların sebebi yaşanmış bir kafa karışıklığı: istemci
+     * Vercel'den kendiliğinden güncelleniyor, röle ELLE dağıtılıyor.
+     * İkisi ayrı sürümde kalınca belirti "yaptığın düzeltme işe
+     * yaramadı" oluyor ve dışarıdan hangisinin eski olduğu
+     * görünmüyordu. Üstelik karışık sürüm düzelmemekten de kötü:
+     * eski rölenin DÜZENSİZ paket aralığını yeni istemci haklı olarak
+     * seğirme sayıp tamponunu büyütüyor (ölçüldü: 50 → 96 ms).
+     *
+     * `durumAdim` asıl kanıt — eski sürümde bu alan hiç yok.
+     */
+    const veri = await (await fetch(`http://localhost:${sunucu.port}/saglik`)).json();
+
+    expect(veri.ag.durumHz).toBe(30);
+    expect(veri.ag.durumAdim).toBe(2);
+    /*
+     * Ve bu iki sayı TUTARLI olmalı: 60 Hz döngüde 30 Hz göndermek
+     * tam 2 adım demek. Biri diğerine bakmadan değiştirilirse gerçek
+     * hız ayarın söylediği şey olmaz — düzelttiğimiz arıza tam da buydu.
+     */
+    expect(Math.round(1 / (veri.ag.durumAdim * (1 / 60)))).toBe(veri.ag.durumHz);
+
+    // Damga alanları hep bulunmalı; değerleri ortama göre değişir
+    expect('surum' in veri).toBe(true);
+    expect(typeof veri.paketSurum).toBe('number');
+  });
 });
 
 describe('hızlı eşleşme', () => {

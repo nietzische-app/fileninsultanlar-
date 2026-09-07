@@ -29,8 +29,9 @@ module.exports = {
       env: { node: true, browser: false },
     },
     {
-      // Röle sunucusu Node'da çalışır; oyunun paketine girmez
-      files: ['sunucu/**/*.js'],
+      // Röle sunucusu Node'da çalışır; oyunun paketine girmez.
+      // `.mjs` de dahil: teşhis betikleri (tik-tani.mjs) o uzantıda.
+      files: ['sunucu/**/*.js', 'sunucu/**/*.mjs'],
       env: { node: true, browser: false },
     },
   ],

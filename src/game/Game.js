@@ -344,6 +344,33 @@ function createInputState() {
   };
 }
 
+/**
+ * Rölenin GERÇEKTE koştuğu ağ ayarları — teşhis için.
+ *
+ * Bunun var olma sebebi yaşanmış bir kafa karışıklığı: istemci Vercel'den
+ * kendiliğinden güncelleniyor ama maçı RÖLE koşturuyor ve o elle
+ * dağıtılıyor. İkisi ayrı sürümdeyken belirti "gecikme düzelmedi" oluyor
+ * ve dışarıdan hangisinin eski olduğu görünmüyordu. Üstelik karışık
+ * sürüm, düzelmemekten de kötü: eski rölenin düzensiz paket aralığını
+ * yeni istemci haklı olarak seğirme sayıp tamponunu büyütüyor
+ * (ölçüldü: tampon 50 → 96 ms, hissedilen gecikme 50 → 100 ms).
+ *
+ * `/saglik` bunu yayınlıyor, yani "yeni kod yayında mı" artık bir
+ * tahmin değil tek `curl`.
+ */
+export function agAyarOzeti() {
+  return {
+    durumHz: AG.durumHz,
+    /*
+     * `durumAdim` ASIL kanıt: eski sürümde bu alan hiç yok ve kapı
+     * süre karşılaştırdığı için gerçek hız ayarın altına düşüyordu
+     * (20 Hz ayarı → gerçekte ~15 Hz).
+     */
+    durumAdim: AG.durumAdim,
+    tamponTabanMs: Math.round((AG.tamponTaban / AG.durumHz) * 1000),
+  };
+}
+
 export default class Game {
   /**
    * @param {HTMLCanvasElement} canvas
