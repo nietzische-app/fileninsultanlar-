@@ -1922,6 +1922,27 @@ export default class Game {
       stepBall(sanal, PHYSICS.step);
       // Kendi oyuncumuza çarptıysa orada DUR — içinden geçirme
       if (this.agTopCarpisma(sanal)) break;
+      /*
+       * ZEMİN — `stepBall` bunu BİLMİYOR.
+       *
+       * O fonksiyon yan duvarları, tavanı ve fileyi ele alıyor ama
+       * zemini almıyor: motorda yere düşmek bir çarpışma değil, sayının
+       * BİTTİĞİ an ve ayrı ele alınıyor (`onGround`). İleri sarma aynı
+       * fonksiyonu kullandığı için ekrandaki top yerin altına iniyordu.
+       *
+       * Oyuncunun bildirimi tam buydu: "yere düştüğünde bazen zeminin
+       * içerisine giriyor". Ölçüldü: istemcinin topu zeminin 44 px
+       * altına kadar gömülüyordu (top yarıçapı ~13 px, yani tamamen
+       * kayboluyor), sunucununki 0-4 px.
+       *
+       * Sunucu bu topu zaten "yere düştü" sayacak; ileri sarmanın onu
+       * kovalamasının hiçbir anlamı yok. Zeminde durdurmak hem doğru
+       * hem de görsel olarak sunucuyla aynı.
+       */
+      if (sanal.y + sanal.radius >= GROUND_Y) {
+        sanal.y = GROUND_Y - sanal.radius;
+        break;
+      }
     }
 
     /*

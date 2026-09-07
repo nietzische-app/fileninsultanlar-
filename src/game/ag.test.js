@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import Game from './Game.js';
 import { paketle } from './snapshot.js';
 import { stepBall } from './ballstep.js';
-import { PHYSICS, PLAYER } from './constants.js';
+import { PHYSICS, PLAYER, GROUND_Y } from './constants.js';
 
 /** Başsız misafir motoru — tarayıcı yok, çizim yok. */
 function misafirKur() {
@@ -547,6 +547,68 @@ describe('topu ileri sarma', () => {
      * mutasyon da testi geçerdi.
      */
     expect(g.ball.x).toBeGreaterThan(xSon);
+  });
+
+  it('ileri sarılan top ZEMİNİN ALTINA inmiyor', () => {
+    /*
+     * Oyuncu bildirimi: "yere düştüğünde bazen zeminin içerisine
+     * giriyor". Sebebi `stepBall`in zemini BİLMEMESİ — o fonksiyon yan
+     * duvarları, tavanı ve fileyi ele alıyor ama yere düşmek motorda
+     * bir çarpışma değil, sayının bittiği an (`onGround`) ve ayrı ele
+     * alınıyor. İleri sarma aynı fonksiyonu kullandığı için ekrandaki
+     * top yerin altına iniyordu.
+     *
+     * Ölçüldü: istemcinin topu zeminin 44 px altına gömülüyordu (top
+     * yarıçapı ~13 px, yani tamamen kayboluyor); düzeltmeden sonra
+     * 2.5 px, yani sunucunun kendi payından (3.3 px) bile az.
+     */
+    const g = misafirKur();
+    const s = sunucuKur();
+    g.agPencere = 0.3; // kötü bağlantı: ileri sarma en uzun
+
+    // Top hızla yere iniyor
+    /*
+     * Topun YATAY hızı da var. Dikey bırakılsaydı, yere değdikten sonra
+     * ileri sarmayı DURDURMAYAN bir sürüm (kelepçe var ama `break` yok)
+     * fark edilmezdi: y kelepçelenir, x zaten değişmezdi. Yatay hızla
+     * o sürüm topu zeminde kaydırıyor ve test görüyor.
+     */
+    g.agPaketAl(topluPaket(s, { x: 300, y: GROUND_Y - 80, vx: 300, vy: 400 }, 20));
+    g.agPaketAl(topluPaket(s, { x: 305, y: GROUND_Y - 73, vx: 300, vy: 400 }, 21));
+    oyunculariUzaklastir(g);
+    akit(g, 0.05);
+
+    /*
+     * SINIR DAR ve ölçülerek kondu. Önce 5 px pay bırakmıştım ve
+     * mutasyon denemesi ele verdi: kelepçeyi topun YARIÇAPINI unutacak
+     * şekilde bozan sürüm de testi geçiyordu. Ölçülen değerler —
+     * doğrusu 416.5 (zeminin 3.5 px üstünde), yarıçapı unutan sürüm
+     * 423.8 (3.8 px altında). Sapma yumuşatması 13 px'lik hatanın
+     * çoğunu yuttuğu için ayrım dar; pay da o yüzden dar.
+     */
+    expect(
+      g.ball.y + g.ball.radius,
+      'top zeminin ALTINDA çiziliyor',
+    ).toBeLessThan(GROUND_Y + 1);
+
+    /*
+     * Ve top gerçekten zemine kadar İNMİŞ olmalı. Yalnız üst sınır
+     * olsaydı ileri sarmayı tamamen kapatan bir mutasyon da geçerdi.
+     */
+    expect(
+      g.ball.y + g.ball.radius,
+      'top zemine hiç ulaşmamış — ileri sarma çalışmıyor olabilir',
+    ).toBeGreaterThan(GROUND_Y - 10);
+
+    /*
+     * VE YERE DEĞİNCE İLERİ SARMA DURMALI — top zeminde kaymamalı.
+     *
+     * Sayı ölçülerek kondu: durduran sürümde top 325.9'da, durmayan
+     * sürümde (kelepçe var ama `break` yok) 353.6'da bitiyor. Sunucu
+     * bu topu zaten "yere düştü" saydığı için kaymanın karşılığı yok;
+     * ekranda topun zeminde süzülmesi olarak görünürdü.
+     */
+    expect(g.ball.x, 'top zeminde kaymaya devam ediyor').toBeLessThan(340);
   });
 
   it('ev sahibi tarafta ileri sarma HİÇ çalışmıyor', () => {
