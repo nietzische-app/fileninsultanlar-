@@ -270,6 +270,81 @@ hissedilen gecikme 83 ms, top sapması p50/p95 14.9/48.4 px, dalgalanma
 0.11-0.15 olurdu — yani fazladan paketin karşılığı her üç ölçütte de
 görünüyor.
 
+## Teşhis katmanı — `?tani=1`
+
+Adrese `?tani=1` eklenince maç sırasında sol üstte canlı sayılar
+çıkıyor: ping, seğirme, ölçülen paket aralığı, sessizlik, ara değerleme
+tamponu, çizim geriliği, ileri sarma oranı, kare süresi, çizim süresi
+ve uzun kare yüzdesi. Parametre yoksa hiç çizilmiyor.
+
+**Neden var:** bir oyuncu aylarca "top gecikmeli ilerliyor" dedi ve
+buradaki ölçümlerin hiçbiri bunu doğrulamadı. Sebebi sonradan anlaşıldı
+— hepsi masaüstü bir tarayıcıda ya da Node'da koşuyordu; oyuncunun
+telefonu başka bir şey yapıyordu. Aradaki farkı kapatmanın tek yolu
+sayıları **oyuncunun cihazından** almaktı.
+
+Katmanın kendisi bir e2e testiyle sınanıyor (`tests/e2e/tani.mjs`):
+bilinen bir gecikme enjekte ediliyor ve ekrandaki sayıların onunla
+tutarlı olması bekleniyor. Yanlış sayı gösteren bir teşhis aracı,
+hiç araç olmamasından kötüdür.
+
+### Katmanın bulduğu şey
+
+İlk ekran görüntüsü şunu gösterdi:
+
+```
+kare 33ms · uzun kare %97.6 · tampon 170ms · gerilik 193ms
+```
+
+Telefon 30 fps çiziyordu **ve** tampon olması gerekenin üç katındaydı.
+İkisi bağımsız değildi: seğirme ölçümü istemcinin kendi **kare
+saatini** okuyordu ve o saat yalnız kare başına ilerliyor. 33 ms'lik
+kareler paket varışlarını kutulara yuvarlıyor, kod bunu ağ seğirmesi
+sanıp tamponu şişiriyordu.
+
+Yani **düşük kare hızı, ağda hiçbir şey değişmeden gecikmeye
+dönüşüyordu.**
+
+Ölçüldü (`npm run olcum:kare-hizi`, ağ sabit, yalnız kare hızı değişken):
+
+| fps | kare düzensizliği | uydurulan seğirme | tampon |
+| --- | --- | --- | --- |
+| 60 | ±%30 | 6 → **8 ms** | 66 → **70 ms** |
+| 30 | ±%30 | 146 → **10 ms** | 200 → **77 ms** |
+
+Varış anı artık `performance.now()`dan okunuyor (`agSaat`); `agPaketAl`
+soket olayından çağrıldığı için orada okunan değer paketin gerçek varış
+anı, kareyi beklemiyor. Aynı telefonda tampon 170 → 63 ms, gerilik
+193 → 90 ms oldu.
+
+Bu değişiklik sessiz bir tuzak açtı ve bir ölçümü bozdu: saati enjekte
+etmeyi unutan `olcum:vurus` 33 → 167 ms'e fırladı. Misafir motoru kuran
+bütün düzenekler tarandı ve dördü daha düzeltildi.
+
+### Sonra ne kaldı
+
+İkinci bir telefonda (60 fps, aynı ağ) katman şunu gösterdi:
+
+| ping | seğirme | sessizlik | tampon | gerilik | kare | çizim |
+| --- | --- | --- | --- | --- | --- | --- |
+| 50 | 2 | 17 | 61 | 72 | 17 | 0.8 |
+| 154 | 36 | **133** | 141 | 85 | 17 | 1.0 |
+| 73 | 23 | 0 | 126 | 161 | 17 | 0.9 |
+| 53 | 3 | 17 | 57 | 68 | 17 | 0.8 |
+
+İki sonuç:
+
+- **Çizim ~1 ms.** Yani 30 fps'e düşen cihazın sebebi bizim çizimimiz
+  değil; kısıtlama cihazda ya da tarayıcıda.
+- **`sessizlik 133 ms`** = 33 ms'de bir gelmesi gereken paket dört
+  aralık boyunca hiç gelmemiş. Gerçek bir Wi-Fi tökezlemesi, ve tampon
+  buna doğru tepki veriyor.
+
+Tamponun tökezlemeyi abartıp abartmadığı ayrıca ölçüldü: saniyede bir
+120 ms'lik tökezlemede bile ortalama tampon 70 ms'de kalıyor. Yani
+ekranda görülen 141 ms, o anda gerçekten sürekli seğiren bir
+bağlantının doğru karşılığı — kodun abartması değil.
+
 ## Rakip adı ve taraf etiketleri
 
 Çevrimiçide skorbordda artık rakibin TAKMA ADI yazıyor, yapay zekâ
