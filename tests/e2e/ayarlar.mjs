@@ -130,6 +130,22 @@ check('sıfırlama varsayılana döndürüyor',
   reset?.scale === 1 && reset?.swap === false && Math.abs(reset?.opacity - 0.85) < 0.01,
   JSON.stringify(reset));
 
+/*
+ * YAPI DAMGASI görünür mü.
+ *
+ * Sebebi yaşanmış bir teşhis çıkmazı: çevrimiçi gecikme düzeltildi,
+ * oyuncu "hâlâ aynı" dedi ve hangi tarafın eski kodda olduğunu kimse
+ * söyleyemedi. Röleye `/saglik` damgası konuldu, bu da istemci yarısı.
+ * TELEFONDA görünür olması şart — hata bildiren oyuncuda konsol yok.
+ *
+ * "Boş değil" yetmez: `define` unutulursa ekranda "YAPIM __SURUM__"
+ * yazardı ve test bunu geçerdi. O yüzden ham adın SIZMADIĞI da
+ * sınanıyor.
+ */
+const damga = (await page.locator('text=/^YAPIM /').first().textContent() ?? '').trim();
+check('ayarlar ekranı yapı damgasını gösteriyor',
+  /^YAPIM \S+$/.test(damga) && !damga.includes('SURUM'), damga || 'yok');
+
 check('konsol hatası yok', errs.length === 0, errs.join(' | ') || 'temiz');
 await page.screenshot({ path: `${CIKTI}/ayarlar.png`, fullPage: true });
 await browser.close();

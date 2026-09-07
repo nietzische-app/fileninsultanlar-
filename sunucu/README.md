@@ -606,6 +606,22 @@ haklı olarak — ağ seğirmesi sayıp kendini iki katına çıkarıyor.
 **yokluğu da bilgi**. Bir birim testi `durumHz` ile `durumAdim`in
 birbiriyle tutarlı kalmasını da sınıyor.
 
+İstemci tarafında da aynı damga var: **Ayarlar ekranının dibinde
+`YAPIM <taahhüt>`** yazıyor. Telefonda görünür olması kasıtlı — hata
+bildiren oyuncu telefonda ve orada geliştirici konsolu yok. Damga
+Vercel'de `VERCEL_GIT_COMMIT_SHA`dan, yerelde `git`ten geliyor; ikisi
+de yoksa `bilinmiyor` yazıyor, uydurmuyor.
+
+Yani "iki taraf da yeni mi" sorusu artık iki bakışa indi:
+
+| Taraf | Nereye bakılır | Beklenen |
+|---|---|---|
+| röle | `curl -s http://127.0.0.1:8787/saglik` | `surum` alanı, son taahhüt |
+| istemci | oyunda Ayarlar ekranının dibi | `YAPIM` + aynı taahhüt |
+
+İkisi aynı taahhüdü göstermiyorsa gecikme ölçümlerine bakmadan önce
+eksik olanı dağıt.
+
 ### "Sunucu mu suçlu" — taşımadan önce ölç
 
 Gecikme şikâyetinde ilk akla gelen sunucuyu taşımak oluyor, ama

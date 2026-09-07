@@ -1,6 +1,12 @@
 module.exports = {
   root: true,
   env: { browser: true, es2021: true },
+  /*
+   * Yapı anında gömülen sabitler (vite.config.js `define`). ESLint
+   * yapıyı çalıştırmadığı için bunları tanımıyor; burada bildirilmezse
+   * `no-undef` verir. `readonly`: koda yazılmamalı, yalnız okunmalı.
+   */
+  globals: { __SURUM__: 'readonly' },
   extends: [
     'eslint:recommended',
     'plugin:react/recommended',
@@ -22,6 +28,11 @@ module.exports = {
     {
       files: ['**/*.test.{js,jsx}'],
       env: { node: true },
+    },
+    {
+      // Vite yapılandırması Node'da çalışır (yapı anında), tarayıcıda değil
+      files: ['vite.config.js'],
+      env: { node: true, browser: false },
     },
     {
       // Dağıtım betikleri Node'da çalışır, tarayıcıda değil

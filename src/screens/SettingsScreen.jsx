@@ -95,6 +95,23 @@ export default function SettingsScreen({
           GİZLİLİK POLİTİKASI
         </a>
       </p>
+
+      {/*
+        YAPI DAMGASI.
+
+        Sebebi yaşanmış bir teşhis çıkmazı: çevrimiçi gecikme
+        düzeltildi, oyuncu "hâlâ aynı" dedi ve hangi tarafın eski kodda
+        olduğunu kimse söyleyemedi — istemciyi Vercel kendiliğinden
+        dağıtıyor, röleyi elle dağıtıyoruz. Röleye `/saglik` damgası
+        konuldu; bu satır aynı sorunun istemci yarısı.
+
+        TELEFONDA görünür olması şart: hata bildiren oyuncu telefonda ve
+        orada geliştirici konsolu yok. Ayarlar ekranının dibi, kimseyi
+        rahatsız etmeyen ama sorulduğunda okunabilen yer.
+      */}
+      <p className="text-center text-[6px] tracking-widest text-white/20">
+        YAPIM {__SURUM__}
+      </p>
     </div>
   );
 }
