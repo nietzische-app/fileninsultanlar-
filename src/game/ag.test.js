@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import Game from './Game.js';
 import { paketle } from './snapshot.js';
 import { stepBall } from './ballstep.js';
-import { PHYSICS } from './constants.js';
+import { PHYSICS, PLAYER } from './constants.js';
 
 /** Başsız misafir motoru — tarayıcı yok, çizim yok. */
 function misafirKur() {
@@ -246,31 +246,122 @@ describe('topu ileri sarma', () => {
     expect(acik.ball.x).toBeGreaterThan(kapali.ball.x);
   });
 
-  it('oyuncuya YAKINKEN frenliyor', () => {
+  it('RAKİBE yakınken frenliyor', () => {
     /*
      * İleri sarma serbest uçuşta kusursuz, vuruş anında yanılıyor.
      * Vuruşun nerede olacağını bilmiyoruz ama nerede olamayacağını
      * biliyoruz: kimsenin yakınında olmayan top serbest uçuyordur.
+     *
+     * Kıstas artık YALNIZ RAKİP. Kendi oyuncumuz frenlemiyor, çünkü
+     * onun konumunu tahmin ediyoruz ve çarpışmasını hesaplayabiliyoruz
+     * (bkz. `agTopCarpisma`). Bu test o yüzden rakibi (p2) kullanıyor;
+     * ilk yazılışında p1 kullanıyordu ve kural değişince yanlış şeyi
+     * sınar hâle gelmişti.
      */
-    const uzak = misafirKur();
-    const yakin = misafirKur();
-    const s = sunucuKur();
-
-    [uzak, yakin].forEach((g) => {
+    /*
+     * RAKİBİN YERİ PAKETİN İÇİNDEN geliyor, elle yazılarak değil.
+     *
+     * Elle yazmayı denedim ve tutmadı: rakip ara değerlemeyle her
+     * karede paketten geri yazılıyor (yalnız KENDİ oyuncumuz bunun
+     * dışında, çünkü o tahmin ediliyor). Testin ilk hâli p1 kullandığı
+     * için çalışıyordu; kural değişince p2'ye geçirmek yetmedi,
+     * kurulumun da değişmesi gerekti.
+     */
+    const kur = (rakipX, rakipY) => {
+      const g = misafirKur();
+      const s = sunucuKur();
+      const rakipS = s.players.find((p) => p.controlSlot === 'p2');
+      rakipS.x = rakipX;
+      rakipS.y = rakipY;
       g.agPencere = 0.1;
       g.agPaketAl(topluPaket(s, { x: 300, y: 200, vx: 400, vy: 0 }, 20));
+      rakipS.x = rakipX;
+      rakipS.y = rakipY;
       g.agPaketAl(topluPaket(s, { x: 320, y: 200, vx: 400, vy: 0 }, 21));
-    });
-    oyunculariUzaklastir(uzak);
-    // Yakın kurulumda bir oyuncu topun tam üstünde
-    yakin.players.forEach((p, i) => {
-      if (i === 0) { p.x = 320; p.y = 240; } else { p.x = -5000; p.y = -5000; }
-    });
+      // Kendi oyuncumuz yolun dışında — sınanan şey RAKİBİN etkisi
+      const ben = g.players.find((p) => p.controlSlot === g.agYuvam);
+      ben.x = -5000;
+      ben.y = -5000;
+      akit(g, 0.05);
+      return g;
+    };
 
-    akit(uzak, 0.05);
-    akit(yakin, 0.05);
+    const uzak = kur(-5000, -5000);
+    const yakin = kur(330, 240);
 
     expect(yakin.ball.x).toBeLessThan(uzak.ball.x);
+  });
+
+  it('KENDİ oyuncumuz ileri sarmayı frenlemiyor', () => {
+    /*
+     * Bu kural bir ölçümden doğdu (olcum:vurus): top kendi oyuncumuza
+     * yaklaşınca ileri sarma sıfırlanıyor ve ekran tam vuruş anında
+     * 67 ms geriye düşüyordu. O sayı gidiş-dönüşten BAĞIMSIZDI, yani
+     * kaynağı ağ değil bu karardı — oyuncunun "vurduktan sonra top geç
+     * sekiyor" dediği şey buydu.
+     *
+     * Kendi oyuncumuzu ayırabilmemizin sebebi onun konumunu TAHMİN
+     * ediyor olmamız; rakip için aynısı doğru değil.
+     */
+    const g = misafirKur();
+    g.ball.x = 400;
+    g.ball.y = 200;
+    g.players.forEach((p) => { p.x = -5000; p.y = -5000; });
+
+    // Kendi oyuncumuz topun TAM ÜSTÜNDE — güven tam kalmalı
+    const ben = g.players.find((p) => p.controlSlot === g.agYuvam);
+    ben.x = 400;
+    ben.y = 200;
+    expect(g.agTopGuvenOrani()).toBe(1);
+
+    // Aynı yere RAKİBİ koyunca frenlemeli — kural taraf ayırıyor
+    ben.x = -5000;
+    ben.y = -5000;
+    const rakip = g.players.find((p) => p.controlSlot !== g.agYuvam);
+    rakip.x = 400;
+    rakip.y = 200;
+    expect(g.agTopGuvenOrani()).toBe(0);
+  });
+
+  it('sanal top KENDİ oyuncumuzun içinden GEÇMİYOR', () => {
+    /*
+     * Güven oranından çıkarmanın bedeli: ileri sarılan top artık kendi
+     * oyuncumuzun üstünden geçebilir. Hesaplanmasaydı top oyuncunun
+     * içinden geçer, sunucunun paketi gelince geri sıçrardı —
+     * gecikmeden de kötü bir görüntü.
+     */
+    const g = misafirKur();
+    const s = sunucuKur();
+    g.agPencere = 0.3;
+    g.agPaketAl(topluPaket(s, { x: 200, y: 240, vx: 600, vy: 0 }, 20));
+    g.agPaketAl(topluPaket(s, { x: 210, y: 240, vx: 600, vy: 0 }, 21));
+
+    // Kendi oyuncumuz topun YOLUNDA duruyor
+    g.players.forEach((p) => { p.x = -5000; p.y = -5000; });
+    const ben = g.players.find((p) => p.controlSlot === g.agYuvam);
+    ben.x = 300;
+    ben.y = 240 + (PLAYER.hitOffsetY ?? 0);
+
+    akit(g, 0.05);
+
+    /*
+     * SINIR TEMAS YÜZEYİNDE, cömert değil.
+     *
+     * İlk yazışta sınırı oyuncunun ÖTESİNE koymuştum (+20 pay ile) ve
+     * mutasyon denemesi ele verdi: çarpışmayı tamamen kaldıran kod da
+     * testi geçiyordu. Ölçülen değerler farkı net gösteriyor —
+     * çarpışma açıkken top 228.9'da duruyor, kapalıyken 308.3'e, yani
+     * oyuncunun içinden geçiyor.
+     */
+    const erim = ben.hitRadius + PLAYER.reachBonus + g.ball.radius;
+    expect(g.ball.x, 'top oyuncunun içinden geçmiş').toBeLessThan(ben.x - erim + 8);
+
+    /*
+     * Ve ileri sarma DURMAMIŞ olmalı: topu temas noktasına kadar
+     * taşımaya devam ediyor. Yalnız üst sınır olsaydı, ileri sarmayı
+     * tamamen kapatan bir mutasyon da testi geçerdi.
+     */
+    expect(g.ball.x, 'ileri sarma hiç çalışmamış').toBeGreaterThan(215);
   });
 
   it('güven oranı mesafeyle artıyor ve 0-1 arasında kalıyor', () => {
@@ -278,9 +369,14 @@ describe('topu ileri sarma', () => {
     g.ball.x = 400;
     g.ball.y = 200;
 
+    /*
+     * Mesafe RAKİPTEN ölçülüyor: kendi oyuncumuz artık bu hesaba
+     * girmiyor (gerekçesi bir üstteki testte). İlk yazılışında p1
+     * kullanılıyordu ve kural değişince test hep 1 okur olmuştu.
+     */
     const oran = (mesafe) => {
-      g.players.forEach((p, i) => {
-        if (i === 0) { p.x = 400 + mesafe; p.y = 200; } else { p.x = -5000; p.y = -5000; }
+      g.players.forEach((p) => {
+        if (p.controlSlot !== g.agYuvam) { p.x = 400 + mesafe; p.y = 200; } else { p.x = -5000; p.y = -5000; }
       });
       return g.agTopGuvenOrani();
     };

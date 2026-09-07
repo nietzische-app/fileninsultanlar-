@@ -1918,7 +1918,11 @@ export default class Game {
     const sanal = {
       x: this.ball.x, y: this.ball.y, vx, vy, radius: this.ball.radius,
     };
-    for (let i = 0; i < adet; i += 1) stepBall(sanal, PHYSICS.step);
+    for (let i = 0; i < adet; i += 1) {
+      stepBall(sanal, PHYSICS.step);
+      // Kendi oyuncumuza çarptıysa orada DUR — içinden geçirme
+      if (this.agTopCarpisma(sanal)) break;
+    }
 
     /*
      * SÜREKSİZLİĞİ YUMUŞAT.
@@ -1964,9 +1968,26 @@ export default class Game {
    * seğirmesine ve dolayısıyla ekranda titremesine yol açardı.
    */
   agTopGuvenOrani() {
+    /*
+     * KENDİ OYUNCUMUZ bu hesaba GİRMİYOR.
+     *
+     * Eskiden giriyordu ve ölçüm bedelini gösterdi (olcum:vurus): top
+     * kendi oyuncumuza yaklaşınca ileri sarma sıfırlanıyor, ekran tam
+     * vuruş anında 67 ms geriye düşüyordu — üstelik bu sayı
+     * gidiş-dönüşten bağımsızdı, yani kaynağı ağ değil bu karardı.
+     * Oyuncunun "vurduktan sonra top geç sekiyor" dediği şey buydu.
+     *
+     * Kendi oyuncumuzu çıkarabilmemizin sebebi, onun konumunu TAHMİN
+     * ediyor olmamız: nerede olduğunu "şimdi" biliyoruz, yani sanal
+     * topun ona çarpmasını da hesaplayabiliyoruz (bkz. `agTopCarpisma`).
+     * Rakip için aynısı doğru değil — o geçmişten çiziliyor, vuruşunu
+     * tahmin etmek uydurmak olurdu.
+     */
+    const kendiYuvam = this.agRol === 'misafir' ? this.agYuvam : null;
     let enYakin = Infinity;
     for (const oyuncu of this.players) {
       if (!oyuncu) continue;
+      if (kendiYuvam && oyuncu.controlSlot === kendiYuvam) continue;
       const d = Math.hypot(oyuncu.x - this.ball.x, contactCenterY(oyuncu) - this.ball.y);
       if (d < enYakin) enYakin = d;
     }
@@ -1977,6 +1998,65 @@ export default class Game {
     if (enYakin <= esik) return 0;
     if (enYakin >= esik * 2) return 1;
     return (enYakin - esik) / esik;
+  }
+
+  /**
+   * Sanal topu KENDİ oyuncumuzun temas yüzeyinde durdurur.
+   *
+   * NEDEN VAR: `agTopGuvenOrani` artık kendi oyuncumuza yaklaşınca
+   * ileri sarmayı kesmiyor (gerekçesi orada). Kesmeseydik ve çarpışmayı
+   * da hesaplamasaydık, ileri sarılan top oyuncunun İÇİNDEN GEÇER,
+   * sunucunun paketi gelince de geri sıçrardı — gecikmeden de kötü.
+   *
+   * NEDEN SEKTİRMİYOR, yalnız DURDURUYOR: sunucunun vuruş çözümü
+   * (`hitBall`) üç temas kuralını, faulü, sayıyı ve yapay zekâ için
+   * `Math.random()`u içeriyor. İstemcide birebir tekrarlamak iki tarafı
+   * sessizce ayrıştırırdı. Topu temas yüzeyinde tutmak ise yanılsa bile
+   * en fazla birkaç kare topu yerinde bekletir — yanlış yöne fırlatmaz.
+   *
+   * Geometri sunucununkiyle AYNI fonksiyonlardan geliyor (`reach.js`);
+   * ayrı yazıldıklarında sessizce ayrışıp menzil sanısı üretmişlerdi.
+   *
+   * @param {{x:number,y:number,vx:number,vy:number,radius:number}} sanal
+   * @returns {boolean} Çarpışma olduysa true
+   */
+  agTopCarpisma(sanal) {
+    if (this.agRol !== 'misafir' || !this.agYuvam) return false;
+    const ben = this.players.find((p) => p.controlSlot === this.agYuvam);
+    if (!ben || ben.hitCooldown > 0) return false;
+    if (!mayTouch(ben, sanal)) return false;
+
+    const diving = ben.diveTimer > 0 || ben.recoverTimer > 0;
+    const cx = ben.x;
+    const cy = contactCenterY(ben, { diving, airborne: !ben.onGround });
+    const erim = contactRadius({
+      hitRadius: ben.hitRadius,
+      acting: ben.swingTimer > 0,
+      diving,
+      airborne: !ben.onGround,
+      ballSpeed: Math.hypot(sanal.vx, sanal.vy),
+    });
+
+    const dx = sanal.x - cx;
+    const dy = sanal.y - cy;
+    const uzaklik = Math.hypot(dx, dy) || 0.001;
+    if (uzaklik > erim + sanal.radius) return false;
+
+    /*
+     * TEMAS YÜZEYİNE İT — sunucunun `hitBall` içinde yaptığının aynısı.
+     *
+     * BİRİM TESTİ BUNU AYIRT EDEMİYOR, ölçüm ediyor. Mutasyon denemesi
+     * bu satırları silince testler geçmeye devam etti (etki tek bir
+     * kareden ibaret, üstelik sapma yumuşatması araya giriyor). Ama
+     * kaldırınca ÖLÇÜM bozuluyor: sekme gecikmesi 17 → 33 ms'e çıkıyor
+     * ve top sapması p95 31.3 → 33.7 px oluyor (olcum:vurus, olcum:top,
+     * 25-67 ms). Yani ölü kod değil; sınanmamış olması onu gereksiz
+     * yapmıyor — silmeden önce o iki ölçümü koş.
+     */
+    const sinir = erim + sanal.radius;
+    sanal.x = cx + (dx / uzaklik) * sinir;
+    sanal.y = cy + (dy / uzaklik) * sinir;
+    return true;
   }
 
   /** Görünür top düzeltmesini her karede biraz eritir. */
