@@ -48,7 +48,6 @@ function olc(tekYonMs) {
     bassiz: true, agRol: 'misafir', agYuvam: 'p1', agGonder: (p) => yukari.yolla(p, adim),
   });
   istemci.start();
-  const ben = istemci.players.find((p) => p.controlSlot === 'p1');
   for (adim = 0; adim < 400; adim += 1) {
     yukari.al(adim).forEach((p) => sunucu.agPaketAl(p, 'p1'));
     asagi.al(adim).forEach((p) => istemci.agPaketAl(p, 'p2'));

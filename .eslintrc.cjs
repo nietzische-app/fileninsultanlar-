@@ -40,6 +40,15 @@ module.exports = {
       env: { node: true, browser: false },
     },
     {
+      /*
+       * Ölçüm ve e2e betikleri de Node'da koşuyor. `browser: false`
+       * DEĞİL: bu dosyalar `page.evaluate` içinde tarayıcı kodu da
+       * taşıyor, ikisi de tanınmalı.
+       */
+      files: ['tests/**/*.mjs'],
+      env: { node: true, browser: true },
+    },
+    {
       // Röle sunucusu Node'da çalışır; oyunun paketine girmez.
       // `.mjs` de dahil: teşhis betikleri (tik-tani.mjs) o uzantıda.
       files: ['sunucu/**/*.js', 'sunucu/**/*.mjs'],

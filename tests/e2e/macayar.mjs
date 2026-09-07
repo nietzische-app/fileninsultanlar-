@@ -76,7 +76,7 @@ const clear = await page.evaluate(() => {
   };
 });
 check('ayar kartı hiçbir tuşun üstüne binmiyor', clear && clear.hits.length === 0,
-  `kart=[${clear?.card}] çakışan=${clear?.hits.length ? hits.join(',') : 'yok'}`);
+  `kart=[${clear?.card}] çakışan=${clear?.hits.length ? clear.hits.join(',') : 'yok'}`);
 
 // Boyutu değiştir — anında yansımalı
 const before = (await state()).dirW;
