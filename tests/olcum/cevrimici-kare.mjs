@@ -34,8 +34,8 @@
  *   CPU=4 npm run olcum:cevrimici-kare                   # zayıf telefon
  */
 
-import WebSocket from 'ws';
 import { baslat } from '../../sunucu/rele.js';
+import { vekilKur } from '../e2e/_gecikmeli-vekil.mjs';
 import {
   tarayiciAc, masaustuBaglam, URL, VARSAYILAN_TERCIH,
 } from '../e2e/yardim.mjs';
@@ -48,30 +48,26 @@ const CPU = Number(process.env.CPU ?? 1);
 const GECIKME = Number(process.env.GECIKME ?? 0);
 const SEGIRME = Number(process.env.SEGIRME ?? 0);
 
-/*
- * GECİKME RÖLENİN GÖNDERME UCUNA takılıyor, yani yalnız AŞAĞI yöne.
- *
- * Ölçülen şey ekranın akışı ve o, paketlerin ne zaman geldiğine bağlı.
- * Yukarı yön (istemci → röle) gecikmesiz kalıyor — bunu söylemek şart,
- * çünkü buradaki sayı bir gidiş-dönüş DEĞİL.
- */
-if (GECIKME > 0 || SEGIRME > 0) {
-  const asilSend = WebSocket.prototype.send;
-  WebSocket.prototype.send = function gecikmeliSend(...arg) {
-    const sapma = SEGIRME ? (Math.random() * 2 - 1) * SEGIRME : 0;
-    setTimeout(() => {
-      try { asilSend.apply(this, arg); } catch { /* soket kapanmış olabilir */ }
-    }, Math.max(0, GECIKME + sapma));
-  };
-}
-
 const rele = await baslat({ port: RELE_PORT, nabiz: 60_000 });
+/*
+ * GECİKME VEKİLLE enjekte ediliyor — tarayıcı ile röle arasına giren
+ * gerçek bir ara katman, iki yönü de geciktiriyor.
+ *
+ * Önce `WebSocket.prototype.send` yamalanıyordu ve o yama `ws`in
+ * sunucu tarafında HİÇ ÇAĞRILMIYORDU. Sessizce başarısız oldu: bu
+ * dosya "26/45/80 ms gecikmede ekran düzgün" diye tablolar üretti ve
+ * hepsi aslında SIFIR gecikmede ölçülmüştü. Vekil taşıdığı mesajı
+ * sayıyor ve rapor onu basıyor — aynı hata bir daha sessiz kalamaz.
+ */
+const vekil = await vekilKur({
+  hedef: `ws://localhost:${RELE_PORT}`, gecikme: GECIKME, segirme: SEGIRME,
+});
 const browser = await tarayiciAc();
 
 async function oyuncuAc() {
   const ctx = await masaustuBaglam(browser, { width: 1280, height: 800 });
   const page = await ctx.newPage();
-  await page.goto(`${URL}?rele=${encodeURIComponent(`ws://localhost:${RELE_PORT}`)}`, { waitUntil: 'load' });
+  await page.goto(`${URL}?rele=${encodeURIComponent(vekil.adres)}`, { waitUntil: 'load' });
   await page.evaluate(
     (t) => localStorage.setItem('retro-voleybol-prefs', JSON.stringify(t)),
     { ...VARSAYILAN_TERCIH, format: 'practice' },
@@ -248,6 +244,8 @@ const roller = {
 
 console.log('0) ARACIN DOĞRULAMASI — bulguya güvenmeden önce');
 console.log(`   roller: A=${roller.A.rol}/${roller.A.yuva} · B=${roller.B.rol}/${roller.B.yuva}`);
+console.log(`   vekilden geçen mesaj: yukarı ${vekil.sayac.yukari} · aşağı ${vekil.sayac.asagi}`
+  + `  ${vekil.sayac.asagi > 20 ? '✓ gecikme uygulanıyor' : '✗ TRAFİK VEKİLDEN GEÇMİYOR — ölçüm geçersiz'}`);
 console.log(`   B (${sonucB.yuva}/${sonucB.taraf}) ralli boyunca yolu ${bYolu.toFixed(0)} px`
   + `  ${bYolu > 100 ? '✓ yürüdü' : '✗ YÜRÜMEDİ — ölçüm geçersiz'}`);
 console.log(`   aşamalar: ${JSON.stringify(fazSayim)}`);
@@ -305,4 +303,5 @@ Karşılaştırma: aynı ölçütler yapay döngüde (olcum:akicilik) 0.07-0.08
 dalgalanma ve %0 duraklama veriyor.`);
 
 await browser.close();
+await vekil.kapat();
 await rele.kapat?.();

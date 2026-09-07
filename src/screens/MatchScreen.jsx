@@ -4,6 +4,7 @@ import { FORMATS, GAME_HEIGHT, GAME_WIDTH, PHASE } from '../game/constants.js';
 import { getPlayerById } from '../game/players.js';
 import Scoreboard from '../components/Scoreboard.jsx';
 import BaglantiGostergesi from '../components/BaglantiGostergesi.jsx';
+import TaniKatmani from '../components/TaniKatmani.jsx';
 import TouchControls from '../components/TouchControls.jsx';
 import ArenaWings from '../components/ArenaWings.jsx';
 import MuteButton from '../components/MuteButton.jsx';
@@ -64,6 +65,16 @@ export default function MatchScreen({
 }) {
   const canvasRef = useRef(null);
   const gameRef = useRef(null);
+  /*
+   * TEŞHİS KATMANI için motor referansı.
+   *
+   * `gameRef` yetmiyor: ref değişimi yeniden çizim tetiklemediği için
+   * katman motoru hiç görmezdi. Ayrı bir durum, yalnız teşhis açıkken
+   * kuruluyor — kapalıyken tek bir yeniden çizim bile eklemiyor.
+   */
+  const [taniOyun, setTaniOyun] = useState(null);
+  const taniAcik = typeof window !== 'undefined'
+    && new URLSearchParams(window.location.search).get('tani') === '1';
   const onFinishRef = useRef(onFinish);
   onFinishRef.current = onFinish;
   const confirmCancelRef = useRef(null);
@@ -114,6 +125,7 @@ export default function MatchScreen({
     });
 
     gameRef.current = game;
+    if (taniAcik) setTaniOyun(game);
 
     /*
      * Ağ paketlerini motora bağla. Motor tanımadığı paketi yok sayıyor,
@@ -171,6 +183,7 @@ export default function MatchScreen({
       cozucular.forEach((coz) => coz());
       game.destroy();
       gameRef.current = null;
+      setTaniOyun(null);
       if (import.meta.env.DEV) {
         delete window.__game;
         delete window.__sfx;
@@ -506,6 +519,13 @@ export default function MatchScreen({
               <BaglantiGostergesi ms={hud.gidisDonus} />
             </div>
           )}
+
+          {/*
+            TEŞHİS KATMANI — yalnız `?tani=1` ile.
+            Oyuncunun kendi cihazından canlı sayılar; gerekçesi
+            bileşenin başında.
+          */}
+          {taniAcik && <TaniKatmani oyun={taniOyun} />}
 
           {/* Duraklat / tam ekran / çık — yalnızca mobil */}
           <div className="pointer-events-auto flex shrink-0 gap-1 pr-[env(safe-area-inset-right)] fine:hidden">

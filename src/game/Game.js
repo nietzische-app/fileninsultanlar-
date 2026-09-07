@@ -486,6 +486,14 @@ export default class Game {
     this.agGonder = options.agGonder ?? null;
     /** Bir sonraki pakete binecek efekt/ses olayları. */
     this.agOlaylar = [];
+    /**
+     * Kare süresi ölçümü — teşhis katmanı için (`agTaniOzeti`).
+     * Yumuşatılmış süre, toplam kare ve uzun kare sayısı.
+     */
+    this.kareSuresi = null;
+    this.kareSayisi = 0;
+    this.uzunKare = 0;
+
     /** Son durum paketinin ADIM numarası (süre değil — bkz. `agAkis`). */
     this.agSonDurum = -Infinity;
     this.agSonGirdi = '';
@@ -1286,6 +1294,50 @@ export default class Game {
     return { homeName: evAdi, opponentName: rakip };
   }
 
+  /**
+   * TEŞHİS ÖZETİ — oyuncunun KENDİ cihazından canlı sayılar.
+   *
+   * NEDEN VAR: bir oyuncu ısrarla "top gecikmeli ilerliyor" dedi ve
+   * bizim bütün ölçümlerimiz bunu doğrulamadı (serbest uçuşta 17-33 ms,
+   * fark edilmemesi gereken bir değer). İki ihtimal vardı ve ikisi de
+   * ölçülmeden ayrılamazdı: ya ölçmediğimiz bir yer var, ya ölçtüğümüz
+   * şey oyuncunun gördüğü şey değil.
+   *
+   * Aradaki farkı kapatmanın tek dürüst yolu, sayıları OYUNCUNUN
+   * CİHAZINDAN almak. Bizim taklit ettiğimiz masaüstü tarayıcı 60 fps'i
+   * hiç kaçırmıyor; onun telefonu kaçırıyor olabilir, ağı seğiriyor
+   * olabilir — ve bunlar ancak orada görünür.
+   *
+   * Katman `?tani=1` ile açılıyor: normal oyuncu hiç görmüyor, açmak
+   * için gizli bir hareket öğrenmek de gerekmiyor.
+   *
+   * @returns {object|null} Çevrimiçi misafir değilsek null
+   */
+  agTaniOzeti() {
+    if (this.agRol !== 'misafir') return null;
+    const son = this.agTampon.length ? this.agTampon[this.agTampon.length - 1] : null;
+    return {
+      // Ağ
+      ping: this.agGidisDonus(),
+      segirme: Math.round(this.agVarisSapma * 1000),
+      paketAralik: Math.round(this.agPaketAralik * 1000),
+      sessizlik: Math.round(this.agSessizlik() * 1000),
+      // Ara değerleme
+      tampon: Math.round(this.agTamponBoyu * 1000),
+      gerilik: son && this.agCizimSaati !== null
+        ? Math.round((son.zaman - this.agCizimSaati) * 1000)
+        : null,
+      tamponAdet: this.agTampon.length,
+      // Top telafisi — 1 tam sarma, 0 hiç
+      ileriSarma: Number(this.agTopGuvenOrani().toFixed(2)),
+      // Cihaz
+      kare: this.kareSuresi === null ? null : Math.round(this.kareSuresi * 1000),
+      uzunKareYuzde: this.kareSayisi
+        ? Number(((this.uzunKare / this.kareSayisi) * 100).toFixed(1))
+        : 0,
+    };
+  }
+
   agGidisDonus() {
     if (this.agRol !== 'misafir' || this.agDongu === null) return null;
     return Math.round(this.agDongu * 1000);
@@ -1561,6 +1613,25 @@ export default class Game {
    */
   ilerlet(gercekSure) {
     const elapsed = Math.min(gercekSure, PHYSICS.maxCatchUp);
+
+    /*
+     * KARE SÜRESİ ölçümü — teşhis katmanı için (`agTaniOzeti`).
+     *
+     * Burada durmasının sebebi: oyuncunun cihazında kare düşüp
+     * düşmediğini ancak oyuncunun cihazı söyleyebilir. Bizim taklit
+     * ettiğimiz tarayıcı 60 fps'i hiç kaçırmıyor; onun telefonu
+     * kaçırıyor olabilir ve o fark ölçülmeden tahminden ibaret kalır.
+     *
+     * Maliyeti iki toplama ve bir karşılaştırma; teşhis kapalıyken de
+     * çalışıyor çünkü açıldığı anda geçmişe dair bir şey söyleyebilmeli.
+     */
+    if (gercekSure > 0) {
+      this.kareSuresi = this.kareSuresi === null
+        ? gercekSure
+        : this.kareSuresi * 0.9 + gercekSure * 0.1;
+      this.kareSayisi += 1;
+      if (gercekSure > PHYSICS.step * 1.5) this.uzunKare += 1;
+    }
 
     /*
      * Eşik tam adım değil, adım eksi tolerans — gerekçe ve ölçüm
