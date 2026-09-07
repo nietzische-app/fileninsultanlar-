@@ -72,6 +72,12 @@ function olc(tekYonMs) {
     agRol: 'misafir',
     agYuvam: 'p1',
     agGonder: (p) => yukari.yolla(p, adim),
+    /*
+     * Varış saati SİMÜLE zamandan: bu düzenek zamanı adım adım
+     * ilerletiyor, duvar saati burada anlamsız olurdu. Motor gerçek
+     * tarayıcıda `performance.now()` kullanıyor (bkz. Game `agSaat`).
+     */
+    agSaat: () => adim * PHYSICS.step,
   });
   c.start();
 

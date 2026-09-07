@@ -155,6 +155,13 @@ function olc(gecikmeMs) {
     agTahmin: process.env.TAHMIN !== '0',
     agTopIleri: process.env.TOPILERI !== '0',
     agGonder: (paket) => yukari.yolla(paket, adim),
+    /*
+     * Varış saati SİMÜLE zamandan okunuyor: bu düzenek zamanı adım adım
+     * ilerletiyor, duvar saati burada anlamsız olurdu (bütün koşum
+     * milisaniyeler içinde biter ve her paket aynı anda varmış görünürdü).
+     * Motor gerçek tarayıcıda `performance.now()` kullanıyor.
+     */
+    agSaat: () => adim * PHYSICS.step,
   });
   istemci.start();
 

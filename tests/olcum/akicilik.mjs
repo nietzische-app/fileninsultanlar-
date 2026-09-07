@@ -139,6 +139,13 @@ function olc({ gecikmeMs, segirmeMs }) {
     agRol: 'misafir',
     agYuvam: 'p1',
     agGonder: (paket) => yukari.yolla(paket, adim),
+    /*
+     * Varış saati SİMÜLE zamandan okunuyor: bu düzenek zamanı adım adım
+     * ilerletiyor, duvar saati burada anlamsız olurdu (bütün koşum
+     * milisaniyeler içinde biter ve her paket aynı anda varmış görünürdü).
+     * Motor gerçek tarayıcıda `performance.now()` kullanıyor.
+     */
+    agSaat: () => adim * PHYSICS.step,
   });
   istemci.start();
 

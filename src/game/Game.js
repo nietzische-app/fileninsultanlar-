@@ -570,6 +570,26 @@ export default class Game {
     this.agVarisOrt = null;
     this.agVarisSapma = 0;
     /**
+     * PAKET VARIŞ SAATİ — kare döngüsünden BAĞIMSIZ.
+     *
+     * Seğirmeyi `this.time` ile ölçüyordum ve o saat yalnız kare başına
+     * ilerliyor. Sonucu bir oyuncunun ekran görüntüsü gösterdi: telefonu
+     * 30 fps çiziyordu ve kod, olmayan 146 ms'lik bir ağ seğirmesi
+     * uydurup tamponu 170 ms'e şişirmişti. Yani DÜŞÜK KARE HIZI, koda
+     * gecikme olarak geri dönüyordu.
+     *
+     * Ölçüldü (ağ sabit, yalnız kare hızı değişiyor):
+     *   60 fps ±%30  → seğirme   6 ms, tampon  66 ms
+     *   30 fps ±%30  → seğirme 146 ms, tampon 200 ms
+     *
+     * `agPaketAl` üretimde soket olayından çağrılıyor, yani kareyi
+     * beklemiyor: orada okunan gerçek saat paketin GERÇEK varış anı.
+     *
+     * Enjekte edilebilir olması ölçüm için: Node düzenekleri zamanı
+     * adım adım simüle ediyor, duvar saati onlar için anlamsız.
+     */
+    this.agSaat = options.agSaat ?? (() => performance.now() / 1000);
+    /**
      * ÖLÇÜLEN paket aralığı (sn) ve son paketin damgası.
      *
      * `AG.durumHz` bizim GÖNDERME sıklığımız; karşı taraf başka bir
@@ -1790,7 +1810,12 @@ export default class Game {
    * @param {number} zaman Paketin sunucu damgası (sn)
    */
   agSegirmeOlc(zaman) {
-    const fark = this.time - zaman;
+    /*
+     * Varış anı GERÇEK saatten, `this.time`dan değil: o saat kare
+     * başına ilerlediği için düşük kare hızı seğirme gibi görünüyordu
+     * (gerekçe ve ölçüm `agSaat`in yanında).
+     */
+    const fark = this.agSaat() - zaman;
     if (this.agVarisOrt === null) {
       this.agVarisOrt = fark;
     } else {

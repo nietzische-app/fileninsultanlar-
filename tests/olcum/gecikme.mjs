@@ -165,6 +165,12 @@ function olc(gecikmeMs) {
      */
     agTahmin: process.env.TAHMIN !== '0',
     agGonder: (paket) => yukari.yolla(paket, adim),
+    /*
+     * Varış saati SİMÜLE zamandan: bu düzenek zamanı adım adım
+     * ilerletiyor, duvar saati burada anlamsız olurdu. Motor gerçek
+     * tarayıcıda `performance.now()` kullanıyor (bkz. Game `agSaat`).
+     */
+    agSaat: () => adim * PHYSICS.step,
   });
   istemci.start();
 

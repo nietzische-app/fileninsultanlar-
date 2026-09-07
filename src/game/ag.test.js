@@ -4,8 +4,16 @@ import { paketle } from './snapshot.js';
 import { stepBall } from './ballstep.js';
 import { PHYSICS, PLAYER, GROUND_Y } from './constants.js';
 
-/** Başsız misafir motoru — tarayıcı yok, çizim yok. */
-function misafirKur() {
+/**
+ * Başsız misafir motoru — tarayıcı yok, çizim yok.
+ *
+ * `agSaat` verilebiliyor: seğirme ölçümü artık paketin GERÇEK varış
+ * anını okuyor, kare saatini değil (gerekçesi Game.js'te `agSaat`
+ * yanında). Testin o saati sürebilmesi gerekiyor; varsayılan
+ * `performance.now()` testte anlamsız olurdu, çünkü bütün koşum
+ * milisaniyeler içinde biter.
+ */
+function misafirKur(ek = {}) {
   return new Game(null, {
     mode: '1v1',
     format: 'single',
@@ -14,6 +22,7 @@ function misafirKur() {
     bassiz: true,
     agRol: 'misafir',
     agYuvam: 'p1',
+    ...ek,
   });
 }
 
@@ -887,7 +896,12 @@ describe('ara değerleme tamponu — ölçülen seğirmeye göre', () => {
     for (let i = 0; i < paket; i += 1) {
       const zaman = i * aralik;
       const sapma = segirmeSn ? (rast() * 2 - 1) * segirmeSn : 0;
-      g.time = zaman + saatFarki + sapma;
+      /*
+       * VARIŞ SAATİ sürülüyor, `g.time` değil. Ölçüm artık paketin
+       * gerçek varış anını okuyor; kare saatini sürmek testi üretim
+       * kodundan koparırdı — bu ayrımın kendisi düzeltilen arızaydı.
+       */
+      g.agSaat = () => zaman + saatFarki + sapma;
       g.agSegirmeOlc(zaman);
     }
     return g.agTamponBoyu;
@@ -980,12 +994,53 @@ describe('ara değerleme tamponu — ölçülen seğirmeye göre', () => {
     const duzgun = g.agPaketAralik;
 
     // Aynı motora geriye giden damgalar ver
+    let saat = 100;
     for (let i = 0; i < 50; i += 1) {
-      g.time += 1 / 30;
+      saat += 1 / 30;
+      g.agSaat = () => saat;
       g.agSegirmeOlc(g.agSonPaketZaman - 0.5);
     }
     expect(g.agPaketAralik).toBeCloseTo(duzgun, 3);
     expect(g.agPaketAralik).toBeGreaterThan(0);
+  });
+
+  it('KARE HIZI seğirme sanılmıyor', () => {
+    /*
+     * Bu testin sebebi gerçek bir oyuncunun ekran görüntüsü: telefonu
+     * 30 fps çiziyordu ve tampon 170 ms'e çıkmıştı — olması gerekenin
+     * üç katı. Ağda bir sorun yoktu.
+     *
+     * Sebep: seğirme ölçümü istemcinin KARE saatini okuyordu ve o saat
+     * yalnız kare başına ilerliyor. 33 ms'lik kareler paket varışlarını
+     * kutulara yuvarlıyor, kod bunu ağ seğirmesi sanıp tamponu
+     * şişiriyordu. Yani düşük kare hızı gecikmeye dönüşüyordu.
+     *
+     * Ölçüldü (olcum:kare-hizi, ağ sabit): 30 fps ±%30'da uydurulan
+     * seğirme 146 ms → 10 ms, tampon 200 ms → 77 ms.
+     */
+    const g = misafirKur();
+    const rast = uretec();
+    const aralik = 1 / 30;
+
+    for (let i = 0; i < 400; i += 1) {
+      const zaman = i * aralik;
+      /*
+       * Paket TAM ZAMANINDA varıyor — ağ kusursuz. Ama istemcinin kare
+       * saati düzensiz ve geride: gerçek telefonun hâli bu.
+       */
+      g.agSaat = () => zaman + 0.5;
+      g.time = zaman + 0.5 - (rast() * 0.033);
+      g.agSegirmeOlc(zaman);
+    }
+
+    /*
+     * Kare saatindeki 33 ms'lik düzensizliğe RAĞMEN tampon tabanda
+     * kalmalı. Ölçüm kare saatini okusaydı burada 100 ms'i aşardı.
+     */
+    expect(
+      g.agTamponBoyu,
+      'kare düzensizliği ağ seğirmesi sanılıyor',
+    ).toBeLessThan(0.06);
   });
 
   it('tampon PAKET YOLUNDAN besleniyor', () => {
@@ -994,10 +1049,16 @@ describe('ara değerleme tamponu — ölçülen seğirmeye göre', () => {
      * test onun gerçekten paket alma yoluna BAĞLI olduğunu soruyor;
      * bağlantı kopsa hepsi geçmeye devam ederdi.
      */
-    const g = misafirKur();
+    /*
+     * Saat burada da elle sürülüyor: `akit` yalnız kare saatini
+     * ilerletiyor, ölçümün okuduğu gerçek saati değil.
+     */
+    let saat = 0;
+    const g = misafirKur({ agSaat: () => saat });
     const s = sunucuKur();
     const baslangic = g.agTamponBoyu;
     for (let i = 0; i < 40; i += 1) {
+      saat += 6 / 60;
       s.ball.x = 300; s.ball.y = 200; s.ball.vx = 0; s.ball.vy = 0;
       s.adim = 20 + i * 2;
       g.agPaketAl(paketle(s));
