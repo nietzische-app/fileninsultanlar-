@@ -493,6 +493,15 @@ export default class Game {
     this.kareSuresi = null;
     this.kareSayisi = 0;
     this.uzunKare = 0;
+    /**
+     * Yalnız ÇİZİMİN süresi (ms), yumuşatılmış.
+     *
+     * `kareSuresi` toplam kare bütçesi; bu ise onun içinde çizime giden
+     * pay. İkisi birlikte "kare neden uzun" sorusunu ayırıyor: çizim
+     * uzunsa yük bizde, kare uzun ama çizim kısaysa kısıtlama başka
+     * yerde (tarayıcı, pil tasarrufu, ekran tazeleme hızı).
+     */
+    this.cizimSuresi = null;
 
     /** Son durum paketinin ADIM numarası (süre değil — bkz. `agAkis`). */
     this.agSonDurum = -Infinity;
@@ -1352,6 +1361,11 @@ export default class Game {
       ileriSarma: Number(this.agTopGuvenOrani().toFixed(2)),
       // Cihaz
       kare: this.kareSuresi === null ? null : Math.round(this.kareSuresi * 1000),
+      /*
+       * Çizimin kare bütçesindeki payı. `kare` uzun ama `çizim` kısaysa
+       * yavaşlatan şey bizim çizimimiz DEĞİL.
+       */
+      cizim: this.cizimSuresi === null ? null : Number(this.cizimSuresi.toFixed(1)),
       uzunKareYuzde: this.kareSayisi
         ? Number(((this.uzunKare / this.kareSayisi) * 100).toFixed(1))
         : 0,
@@ -1614,7 +1628,28 @@ export default class Game {
 
     this.ilerlet(elapsed);
 
+    /*
+     * ÇİZİM SÜRESİ ölçülüyor — teşhis katmanı için.
+     *
+     * Sebebi bir oyuncunun ekran görüntüsü: telefonu 33 ms'lik kareler
+     * çiziyordu. O sayının bu kadar KARARLI olması anlamlı — değişken
+     * bir çizim yükü 28/35/41 gibi zıplardı; tam yarım hız, tarayıcının
+     * her ikinci kareyi atlaması demek ve bu, çizim bütçeyi kıl payı
+     * aştığında oluyor.
+     *
+     * Ama "kıl payı aşıyor" ile "tarayıcı kısıtlıyor" dışarıdan aynı
+     * görünüyor. Çizimin kendi süresi ikisini ayırıyor: 16 ms'nin
+     * üstündeyse yük bizde, altındaysa kısıtlama başka yerde.
+     *
+     * Maliyeti iki `performance.now()` çağrısı.
+     */
+    const cizimBasi = performance.now();
     this.render();
+    const cizim = performance.now() - cizimBasi;
+    this.cizimSuresi = this.cizimSuresi === null
+      ? cizim
+      : this.cizimSuresi * 0.9 + cizim * 0.1;
+
     this.emitState();
     this.agAkis();
 

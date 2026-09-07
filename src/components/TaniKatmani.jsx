@@ -104,6 +104,15 @@ export default function TaniKatmani({ oyun }) {
 
       {/* --- Cihaz --- */}
       <Satir ad="kare" deger={veri.kare} renkli={renk(veri.kare, 18, 25)} />
+      {/*
+        ÇİZİM, "kare"nin içindeki paydır ve ikisi birlikte okunur:
+          kare uzun + çizim uzun  → yavaşlatan şey BİZİM çizimimiz
+          kare uzun + çizim kısa  → kısıtlama başka yerde (tarayıcı,
+                                    pil tasarrufu, ekran tazeleme hızı)
+        Bu ayrım olmadan "30 fps" tek başına nereye bakılacağını
+        söylemiyor.
+      */}
+      <Satir ad="çizim" deger={veri.cizim} renkli={renk(veri.cizim, 8, 14)} />
       <Satir
         ad="uzun kare"
         deger={veri.uzunKareYuzde}

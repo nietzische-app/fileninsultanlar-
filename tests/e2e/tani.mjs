@@ -143,6 +143,17 @@ if (veri) {
   );
 
   /*
+   * ÇİZİM SÜRESİ kare bütçesinin İÇİNDE olmalı ve sıfır olmamalı.
+   * Sıfır çıkarsa ölçüm bağlanmamış demektir; kareden büyük çıkarsa
+   * ölçüm yanlış yeri saymıştır. İkisi de sessiz arıza olurdu.
+   */
+  kontrol(
+    'çizim süresi ölçülüyor ve kare bütçesinin içinde',
+    veri.çizim !== null && veri.çizim > 0 && veri.çizim <= veri.kare,
+    `çizim=${veri.çizim} ms · kare=${veri.kare} ms`,
+  );
+
+  /*
    * SESSİZLİK son paketten beri geçen süre. Akış sağlıklıyken bir
    * paket aralığından büyük olmamalı; büyükse akış kesilmiş demektir.
    */
