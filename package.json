@@ -20,6 +20,7 @@
     "olcum:ping": "node tests/olcum/ping.mjs",
     "olcum:hissedilen": "node tests/olcum/hissedilen.mjs",
     "olcum:gercek-yol": "node tests/olcum/gercek-yol.mjs",
+    "olcum:cevrimici-kare": "node tests/olcum/cevrimici-kare.mjs",
     "vercel-build": "vite build",
     "build:portal": "node scripts/build-portal.mjs",
     "rele": "node sunucu/index.js",
