@@ -1,7 +1,9 @@
 /**
  * Röle bağlantısı — tarayıcı tarafı.
  *
- * Tek bir WebSocket'i sarar ve oyunun geri kalanına dört şey sunar:
+ * Altındaki boruyu `tasima.js` seçiyor (WebTransport, olmazsa
+ * WebSocket); burası o seçimden habersiz. Oyunun geri kalanına dört şey
+ * sunar:
  * oda aç, odaya gir, mesaj yolla, olay dinle. React'ten bağımsız
  * tutuldu; ekranlar buna abone oluyor, bu ekranları tanımıyor.
  *
@@ -11,6 +13,7 @@
  */
 
 import { PAKET_SURUM } from '../game/snapshot.js';
+import { tasimaKur } from './tasima.js';
 
 /**
  * Röle adresi; yapı sırasında gömülür.
@@ -58,13 +61,24 @@ export function hataMetni(sebep) {
 }
 
 export class Baglanti {
-  constructor(url = RELE_URL) {
+  /**
+   * @param {string} [url] Röle adresi
+   * @param {object} [secenek] `tasimaKur`a geçiyor (test ve WT kapatma)
+   */
+  constructor(url = RELE_URL, secenek = {}) {
     this.url = url;
-    this.soket = null;
+    this.secenek = secenek;
+    /** @type {import('./tasima.js').WebSocketTasima|null} */
+    this.tasima = null;
     this.rol = null;
     this.kod = null;
     /** @type {Map<string, Set<Function>>} */
     this.dinleyiciler = new Map();
+  }
+
+  /** Hangi taşıma kullanılıyor — teşhis ve test için. */
+  get tasimaAdi() {
+    return this.tasima?.ad ?? null;
   }
 
   /** Olay dinler; dönen fonksiyon aboneliği bitirir. */
@@ -79,61 +93,38 @@ export class Baglanti {
   }
 
   /** Bağlanır; açılana kadar bekler. */
-  baglan() {
-    if (!this.url) return Promise.reject(new Error('rele-yok'));
-    if (this.soket && this.soket.readyState === WebSocket.OPEN) {
-      return Promise.resolve();
-    }
+  async baglan() {
+    if (!this.url) throw new Error('rele-yok');
+    if (this.tasima?.acikMi()) return;
 
-    return new Promise((coz, red) => {
-      let soket;
-      try {
-        soket = new WebSocket(this.url);
-      } catch (hata) {
-        red(hata);
-        return;
+    const tasima = await tasimaKur(this.url, this.secenek);
+    this.tasima = tasima;
+
+    tasima.onMesaj = (mesaj) => {
+      if (mesaj.t === 'oda') {
+        this.kod = mesaj.kod;
+        this.rol = mesaj.rol;
       }
-      this.soket = soket;
+      /*
+       * Her mesaj hem kendi adıyla hem de 'mesaj' adıyla yayılıyor.
+       * Ekranlar denetim mesajlarını (oda, eşleşme, ayrıldı) ada göre
+       * dinliyor; motor ise tek bir kapıdan bütün oyun paketlerini
+       * alıyor ve tanımadığını yok sayıyor.
+       */
+      this.yay(mesaj.t, mesaj);
+      this.yay('mesaj', mesaj);
+    };
 
-      soket.addEventListener('open', () => coz());
-      soket.addEventListener('error', () => red(new Error('baglanti')));
-
-      soket.addEventListener('message', (olay) => {
-        let mesaj;
-        try {
-          mesaj = JSON.parse(olay.data);
-        } catch {
-          return;
-        }
-        if (!mesaj || typeof mesaj !== 'object') return;
-
-        if (mesaj.t === 'oda') {
-          this.kod = mesaj.kod;
-          this.rol = mesaj.rol;
-        }
-        /*
-         * Her mesaj hem kendi adıyla hem de 'mesaj' adıyla yayılıyor.
-         * Ekranlar denetim mesajlarını (oda, eşleşme, ayrıldı) ada göre
-         * dinliyor; motor ise tek bir kapıdan bütün oyun paketlerini
-         * alıyor ve tanımadığını yok sayıyor.
-         */
-        this.yay(mesaj.t, mesaj);
-        this.yay('mesaj', mesaj);
-      });
-
-      soket.addEventListener('close', () => {
-        // Oda bilgisi kapanınca geçersiz; kalırsa ekran hayalet oda gösterir
-        this.kod = null;
-        this.rol = null;
-        this.yay('kapandi', null);
-      });
-    });
+    tasima.onKapandi = () => {
+      // Oda bilgisi kapanınca geçersiz; kalırsa ekran hayalet oda gösterir
+      this.kod = null;
+      this.rol = null;
+      this.yay('kapandi', null);
+    };
   }
 
   yolla(veri) {
-    if (!this.soket || this.soket.readyState !== WebSocket.OPEN) return false;
-    this.soket.send(JSON.stringify(veri));
-    return true;
+    return this.tasima ? this.tasima.yolla(veri) : false;
   }
 
   odaAc() {
@@ -209,8 +200,8 @@ export class Baglanti {
 
   kapat() {
     this.dinleyiciler.clear();
-    if (this.soket && this.soket.readyState <= WebSocket.OPEN) this.soket.close();
-    this.soket = null;
+    this.tasima?.kapat();
+    this.tasima = null;
     this.kod = null;
     this.rol = null;
   }

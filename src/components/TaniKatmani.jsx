@@ -48,9 +48,10 @@ function Satir({ ad, deger, birim = 'ms', renkli = '#7CE38B' }) {
 }
 
 /**
- * @param {{ oyun: object|null }} props Motor örneği (`window.__game`)
+ * @param {{ oyun: object|null, tasima: string|null }} props
+ *   Motor örneği (`window.__game`) ve kullanılan taşımanın adı
  */
-export default function TaniKatmani({ oyun }) {
+export default function TaniKatmani({ oyun, tasima = null }) {
   const [veri, setVeri] = useState(null);
 
   useEffect(() => {
@@ -73,7 +74,20 @@ export default function TaniKatmani({ oyun }) {
       className="pointer-events-none fixed left-1 top-1 z-50 flex flex-col gap-[2px] rounded px-2 py-1 text-[7px] leading-[1.6]"
       style={{ backgroundColor: 'rgba(0,0,0,0.72)', minWidth: 132 }}
     >
-      <div style={{ color: '#FFD24A' }}>TEŞHİS</div>
+      <div className="flex justify-between gap-3">
+        <span style={{ color: '#FFD24A' }}>TEŞHİS</span>
+        {/*
+          Hangi taşıma kullanılıyor. WebTransport sessizce WebSocket'e
+          düşebiliyor (Safari'de yok, kurum ağları UDP'yi kapatıyor) ve
+          o düşüş DOĞRU davranış — ama görünmezse "açık mı" sorusu yine
+          tahmine kalırdı. Bu proje o tuzağa röle sürümüyle bir kez düştü.
+        */}
+        {tasima && (
+          <span style={{ color: tasima === 'webtransport' ? '#7CE38B' : 'rgba(255,255,255,0.45)' }}>
+            {tasima === 'webtransport' ? 'WT' : 'WS'}
+          </span>
+        )}
+      </div>
 
       {/* --- Ağ --- */}
       <Satir ad="ping" deger={veri.ping} renkli={renk(veri.ping, 100, 250)} />

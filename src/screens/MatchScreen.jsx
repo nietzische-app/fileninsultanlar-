@@ -532,7 +532,7 @@ export default function MatchScreen({
             Oyuncunun kendi cihazından canlı sayılar; gerekçesi
             bileşenin başında.
           */}
-          {taniAcik && <TaniKatmani oyun={taniOyun} />}
+          {taniAcik && <TaniKatmani oyun={taniOyun} tasima={config.baglanti?.tasimaAdi ?? null} />}
 
           {/* Duraklat / tam ekran / çık — yalnızca mobil */}
           <div className="pointer-events-auto flex shrink-0 gap-1 pr-[env(safe-area-inset-right)] fine:hidden">
