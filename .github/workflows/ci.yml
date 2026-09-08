@@ -1,8 +1,22 @@
 name: ci
 
+# NE ZAMAN KOŞUYOR: yalnız `main` ve açık bir pull request'te.
+#
+# Önce çalışma dalları da (`claude/**`, `cursor/**`) buradaydı ve her
+# değişiklik İKİ koşum üretiyordu: biri dala push'ta, biri `main`'e
+# birleştirmede. Yani her düzeltme için iki bildirim maili — bir gecede
+# üç commit atınca altı mail. Dal koşumu, hemen ardından gelen `main`
+# koşumunun aynısını yapıyordu.
+#
+# NEYİ KAYBEDİYORUZ, açıkça: dala push edilen bir değişiklik artık
+# `main`'e girmeden sınanmıyor. Bu, geliştirmenin dalda birikip toplu
+# birleştiği bir akışta kötü bir takas olurdu; burada dal `main`'e
+# dakikalar içinde giriyor ve testler zaten birleştirmeden önce yerelde
+# koşuluyor. Bir dalı önce sınamak istersen pull request aç — o hâlâ
+# tetikliyor.
 on:
   push:
-    branches: [main, 'claude/**', 'cursor/**']
+    branches: [main]
   pull_request:
 
 jobs:
