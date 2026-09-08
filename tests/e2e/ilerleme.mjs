@@ -13,11 +13,23 @@
  *
  * Bu dosyanın tamamı o dört sorunun cevabı. Hepsi sessizce
  * bozulabilecek şeyler: hiçbiri hata vermez, sadece sistem çalışmaz.
+ *
+ * FP GEÇİCİ OLARAK KAPATILABİLİYOR (`ilerleme.js` → `FP_ACIK`). Bu
+ * dosya o anahtara göre İKİ AYRI sınav koşuyor:
+ *
+ *   açıkken  → aşağıdaki zincirin tamamı
+ *   kapalıyken → "gerçekten kapalı mı" sınavı
+ *
+ * İkincisi gerekli çünkü bir özelliği kapatmanın da kendi arızaları
+ * var: kazanç kesilip arayüz kalabilir, arayüz gizlenip kilitler
+ * kalabilir (o hâlde kadro sonsuza dek üç kişide donar). Testi silmek
+ * ya da atlamak bunların hiçbirini yakalamazdı.
  */
 
 import {
   tarayiciAc, masaustuBaglam, sayfaAc, kontrolcu,
 } from './yardim.mjs';
+import { FP_ACIK } from '../../src/game/ilerleme.js';
 
 const kontrol = kontrolcu();
 const browser = await tarayiciAc();
@@ -29,6 +41,80 @@ const depo = (page) => page.evaluate(
 );
 
 const page = await sayfaAc(ctx, { format: 'single', difficulty: 'normal' });
+
+// ===================================================================
+// FP KAPALIYKEN: gerçekten her yerden kalkmış mı?
+// ===================================================================
+if (!FP_ACIK) {
+  const metin = () => page.evaluate(() => document.body.innerText);
+
+  kontrol('menüde FP cüzdanı YOK', !(await metin()).includes('FORMA PUANI'));
+
+  await page.getByRole('button', { name: /HIZLI MAÇ/ }).first().click();
+  await page.waitForTimeout(600);
+
+  /*
+   * KİLİT KALMAMALI. Kazancı kesip kilitleri bırakmak en olası yarım
+   * kapatma ve sonucu oyunu bozmak: kadro üç kişide donar, Koleksiyon
+   * ulaşılamaz bir vitrine döner.
+   */
+  const kilitli = await page.evaluate(() =>
+    [...document.querySelectorAll('button[aria-label]')]
+      .map((b) => b.getAttribute('aria-label'))
+      .filter((a) => a.includes('kilitli')));
+  kontrol('kadroda KİLİTLİ oyuncu yok', kilitli.length === 0, `${kilitli.length} kilitli kart`);
+
+  kontrol('kadro ekranında FP yazmıyor', !(await metin()).includes(' FP'));
+
+  /*
+   * VE KADRO GERÇEKTEN SEÇİLEBİLİR OLMALI. Rozetin kalkması yetmez;
+   * asıl soru oyuncunun kadroya girip girmediği.
+   */
+  const secildi = await page.evaluate(() => {
+    const kartlar = [...document.querySelectorAll('button[aria-label]')];
+    const son = kartlar[kartlar.length - 1];
+    const ad = son?.getAttribute('aria-label');
+    son?.click();
+    return ad;
+  });
+  await page.waitForTimeout(400);
+  const secimSayisi = await page.evaluate(() =>
+    document.body.innerText.match(/\d+\s*\/\s*\d+/)?.[0] ?? '?');
+  kontrol('kilitsiz kadrodan oyuncu SEÇİLEBİLİYOR', Boolean(secildi), `${secildi} · ${secimSayisi}`);
+
+  /*
+   * Koleksiyon ekranı. Menüye `goBack` ile dönmüştüm ve tarayıcı
+   * localStorage'a erişimi olmayan bir belgeye düşüyordu; sayfayı
+   * yenilemek hem daha sağlam hem de gerçek bir açılışı taklit ediyor.
+   */
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(900);
+  const koleksiyon = page.getByRole('button', { name: /KOLEKSİYON/ }).first();
+  kontrol('koleksiyon düğmesi duruyor', (await koleksiyon.count()) > 0);
+  if (await koleksiyon.count()) {
+    await koleksiyon.click();
+    await page.waitForTimeout(700);
+    const k = await metin();
+    const fpGecen = k.split('\n').filter((r) => r.includes(' FP'));
+    kontrol('koleksiyonda FP fiyatı yok', fpGecen.length === 0, fpGecen.slice(0, 3).join(' | '));
+    kontrol('koleksiyonda "OYUNCU AÇIK" sayacı yok', !k.includes('OYUNCU AÇIK'));
+    kontrol('koleksiyonda "AÇ" düğmesi yok',
+      (await page.getByRole('button', { name: /^AÇ$/ }).count()) === 0);
+  }
+
+  // Depodaki kayıt SİLİNMEMELİ — geri açınca kaldığı yerden devam etsin
+  const kayit = await depo(page);
+  kontrol(
+    'kayıtlı ilerleme SİLİNMEDİ (geri açılabilir)',
+    kayit === null || typeof kayit.puan === 'number',
+    JSON.stringify(kayit),
+  );
+
+  await browser.close();
+  kontrol.bitir('İLERLEME — FP KAPALI');
+  process.exit(kontrol.durum.hata === 0 ? 0 : 1);
+}
+
 
 // ===================================================================
 // 1) Yeni oyuncu: kadro kilitli mi?

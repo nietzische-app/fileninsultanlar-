@@ -5,6 +5,7 @@ import {
   rozetKazanci,
   gecmisKazanci,
   acikMi,
+  kullanilabilir,
   kilitliler,
   acilabilirler,
   yeniAcilabilirler,
@@ -542,4 +543,53 @@ describe('geçmişe dönük kazanç (sürüm geçişi)', () => {
     expect(gecmisKazanci(null, null, null).puan).toBe(0);
     expect(gecmisKazanci({ wins: 'çok' }, [], []).puan).toBe(0);
   });
+});
+
+describe('FP anahtarı — geçici kapatma', () => {
+  /*
+   * Bu testler anahtarın İKİ dalını da koşuyor, çünkü sabit okunsaydı
+   * yalnız o anki hâl sınanır ve diğer dal hiç çalışmazdı. Anahtar geri
+   * açıldığında burada bir sürpriz çıkmasın diye.
+   */
+  it('FP AÇIKKEN kilit uygulanır', () => {
+    const kilitli = ROSTER.find((p) => !BASLANGIC_KADRO.includes(p.id));
+    expect(kullanilabilir(kilitli.id, [], true)).toBe(false);
+    expect(kullanilabilir(BASLANGIC_KADRO[0], [], true)).toBe(true);
+    // Satın alınmışsa açık
+    expect(kullanilabilir(kilitli.id, [kilitli.id], true)).toBe(true);
+  });
+
+  it('FP KAPALIYKEN kadronun tamamı kullanılabilir', () => {
+    /*
+     * Kapatmanın en olası yarım hâli: kazancı kesip kilitleri bırakmak.
+     * O durumda kadro sonsuza dek üç kişide donar ve Koleksiyon
+     * ulaşılamaz bir vitrine döner — yani "özelliği kapatmak" değil,
+     * oyunu bozmak olur.
+     */
+    ROSTER.forEach((p) => {
+      expect(kullanilabilir(p.id, [], false), `${p.id} kapalıyken kilitli`).toBe(true);
+    });
+  });
+
+  it('kilidin KENDİSİ (acikMi) anahtardan etkilenmiyor', () => {
+    /*
+     * `acikMi` "satın alındı mı" sorusu ve saf kalmalı: kayıt geri
+     * açıldığında oyuncunun neye sahip olduğunu hâlâ o söylüyor.
+     * Anahtarı oraya gömseydik kapalı geçen süre kaydı da silerdi.
+     */
+    const kilitli = ROSTER.find((p) => !BASLANGIC_KADRO.includes(p.id));
+    expect(acikMi(kilitli.id, [])).toBe(false);
+    expect(acikMi(kilitli.id, [kilitli.id])).toBe(true);
+  });
+
+  it('kademe adları FP kapalıyken fiyat GÖSTERMİYOR', () => {
+    const acik = kademeGruplari([], true).map((g) => g.ad);
+    const kapali = kademeGruplari([], false).map((g) => g.ad);
+    expect(acik.some((ad) => ad.includes('FP'))).toBe(true);
+    expect(kapali.some((ad) => ad.includes('FP'))).toBe(false);
+    // Gruplama aynı kalmalı — değişen yalnız etiket
+    expect(kapali.length).toBe(acik.length);
+  });
+
+
 });

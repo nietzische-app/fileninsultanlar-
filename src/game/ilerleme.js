@@ -321,6 +321,43 @@ export function acikMi(id, acilanlar = []) {
   return BASLANGIC_KADRO.includes(id) || acilanlar.includes(id);
 }
 
+/**
+ * FORMA PUANI SİSTEMİ AÇIK MI — geçici kapatma anahtarı.
+ *
+ * `false` iken oyunda FP diye bir şey YOK: hiçbir ekranda görünmüyor,
+ * maçtan kazanılmıyor ve kadro kilitleri kalkıyor.
+ *
+ * KADRO NEDEN AÇILIYOR: FP kilitlerin tek anahtarı. Yalnız kazancı
+ * kesip kilitleri bıraksaydık kadro sonsuza dek üç kişide donardı ve
+ * Koleksiyon ekranı ulaşılamaz bir vitrine dönüşürdü — bu "özelliği
+ * kapatmak" değil, oyunu bozmak olurdu.
+ *
+ * GERİ AÇMAK: bu satırı `true` yap, başka hiçbir şeye dokunma.
+ * Kayıtlı FP ve açılan oyuncular SİLİNMİYOR — kapalıyken sadece
+ * okunmuyor. Yani geri açıldığında herkes kaldığı yerden devam eder;
+ * kapalı geçen sürede kazanılmamış FP ise geri gelmez.
+ */
+export const FP_ACIK = false;
+
+/**
+ * Oyuncu KULLANILABİLİR mi? — arayüzün sorması gereken soru.
+ *
+ * `acikMi` "bu oyuncu satın alındı mı" diye soruyor ve saf kalması
+ * gerekiyor (ilerleme testleri onu o hâliyle sınıyor). Bu ise
+ * "oyuncu şu an seçilebilir mi" sorusu; FP kapalıyken cevap her
+ * zaman evet.
+ *
+ * Anahtar parametre olarak da alınabiliyor: sabit okunsaydı testler
+ * yalnız o anki hâli sınayabilir, diğer dalı hiç çalıştıramazdı.
+ *
+ * @param {string} id
+ * @param {string[]} acilanlar
+ * @param {boolean} [fpAcik] Varsayılan: sistemin gerçek hâli
+ */
+export function kullanilabilir(id, acilanlar = [], fpAcik = FP_ACIK) {
+  return !fpAcik || acikMi(id, acilanlar);
+}
+
 /** Kilitli oyuncular — ucuzdan pahalıya, eşit bedelde kadro sırasıyla. */
 export function kilitliler(acilanlar = []) {
   return ROSTER
@@ -489,7 +526,7 @@ export function gecmisKazanci(records = {}, rozetler = [], kullanilan = []) {
  * @returns {Array<{bedel: number, ad: string, oyuncular: Array<object>,
  *   acik: number, toplam: number}>}
  */
-export function kademeGruplari(acilanlar = []) {
+export function kademeGruplari(acilanlar = [], fpAcik = FP_ACIK) {
   const bul = (id) => ROSTER.find((p) => p.id === id);
   const grup = (bedelDeger, ad, idler) => {
     const oyuncular = idler.map(bul).filter(Boolean);
@@ -502,9 +539,15 @@ export function kademeGruplari(acilanlar = []) {
     };
   };
 
+  /*
+   * Kademe adı FP KAPALIYKEN fiyat olamaz: "150 FP" başlığı, ödeme
+   * diye bir şeyin olmadığı bir oyunda anlamsız. Gruplama yine de
+   * duruyor çünkü bedel kabaca güçle örtüşüyor — yani liste hâlâ
+   * "kolaydan zora" okunuyor, sadece etiketi nötr.
+   */
   return [
     grup(0, 'BAŞLANGIÇ KADROSU', BASLANGIC_KADRO),
-    ...KADEMELER.map(({ bedel: b, ids }) => grup(b, `${b} FP`, ids)),
+    ...KADEMELER.map(({ bedel: b, ids }, i) => grup(b, fpAcik ? `${b} FP` : `KADEME ${i + 1}`, ids)),
   ];
 }
 

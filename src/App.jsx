@@ -40,6 +40,7 @@ import {
   turnuvaKazanci,
   yeniAcilabilirler,
   ac,
+  FP_ACIK,
 } from './game/ilerleme.js';
 import { getGameMode } from './game/modes.js';
 
@@ -390,6 +391,14 @@ export default function App() {
    * @param {object|null} kapananTurnuva Kupa yalnızca kapanışta sayılır
    */
   const puanIsle = useCallback((matchResult, tazeRozetler, kapananTurnuva = null) => {
+    /*
+     * FP KAPALIYKEN hiçbir şey işlenmiyor ve `kazanc` da kurulmuyor —
+     * sonuç ekranındaki FP kolonu böylece kendiliğinden çizilmiyor.
+     * Kayıtlı bakiyeye DOKUNULMUYOR: geri açıldığında oyuncu kaldığı
+     * yerden devam etsin (bkz. ilerleme.js `FP_ACIK`).
+     */
+    if (!FP_ACIK) return;
+
     const mac = macKazanci(matchResult);
     const rozet = rozetKazanci(tazeRozetler);
     const kupa = turnuvaKazanci(kapananTurnuva);

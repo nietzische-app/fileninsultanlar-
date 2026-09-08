@@ -3,11 +3,12 @@ import PixelAvatar from '../components/PixelAvatar.jsx';
 import MuteButton from '../components/MuteButton.jsx';
 import StatBar from '../components/StatBar.jsx';
 import {
-  acikMi,
+  kullanilabilir,
   bedel,
   sonrakiHedef,
   kademeGruplari,
   koleksiyonOzeti,
+  FP_ACIK,
 } from '../game/ilerleme.js';
 import { getPlayerById } from '../game/players.js';
 import Sfx from '../game/audio.js';
@@ -50,7 +51,10 @@ export default function CollectionScreen({
 
   const ozet = useMemo(() => koleksiyonOzeti(acilanlar), [acilanlar]);
   const gruplar = useMemo(() => kademeGruplari(acilanlar), [acilanlar]);
-  const hedef = useMemo(() => sonrakiHedef(puan, acilanlar), [puan, acilanlar]);
+  const hedef = useMemo(
+    () => (FP_ACIK ? sonrakiHedef(puan, acilanlar) : null),
+    [puan, acilanlar],
+  );
 
   const satinAl = (id) => {
     Sfx.select();
@@ -66,7 +70,7 @@ export default function CollectionScreen({
             KOLEKSİYON
           </h2>
           <p className="mt-1 text-[7px] text-white/50 sm:mt-2 sm:text-[8px]">
-            KADRONUN TAMAMI · FORMA PUANIYLA AÇILIR
+            {FP_ACIK ? 'KADRONUN TAMAMI · FORMA PUANIYLA AÇILIR' : 'KADRONUN TAMAMI'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -81,50 +85,55 @@ export default function CollectionScreen({
         </div>
       </div>
 
-      {/* 1) Ne kadar yol aldım + 2) sırada ne var */}
-      <div className="retro-panel flex flex-col gap-3 px-4 py-4">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <span className="text-sm text-white">
-            {ozet.acik}
-            <span className="text-white/40"> / {ozet.toplam}</span>
-            <span className="ml-2 text-[8px] text-white/45">OYUNCU AÇIK</span>
-          </span>
-          <span className="text-sm text-retro-accent">
-            {puan.toLocaleString('tr-TR')} FP
-          </span>
-        </div>
-
-        <div className="h-3 w-full border-2 border-white/20 bg-black/40">
-          <div
-            className="h-full bg-retro-accent transition-[width] duration-700"
-            style={{ width: `${Math.round(ozet.oran * 100)}%` }}
-          />
-        </div>
-
-        {/*
-          Tamamlandığında hedef satırı YOK — `sonrakiHedef` null dönüyor.
-          Yerine bitiş mesajı, çünkü boş bir alan "bir şey bozuldu" gibi
-          okunur.
-        */}
-        {hedef ? (
-          <p className="text-[8px] leading-relaxed text-white/60">
-            SIRADAKİ:{' '}
-            <span className="text-white/85">
-              {upper(getPlayerById(hedef.id)?.name ?? '')}
+      {/*
+        İlerleme paneli — FP KAPALIYKEN çizilmiyor. Kapalıyken
+        "3 / 24 OYUNCU AÇIK" yazmak yalan olurdu: hepsi açık.
+      */}
+      {FP_ACIK && (
+        <div className="retro-panel flex flex-col gap-3 px-4 py-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <span className="text-sm text-white">
+              {ozet.acik}
+              <span className="text-white/40"> / {ozet.toplam}</span>
+              <span className="ml-2 text-[8px] text-white/45">OYUNCU AÇIK</span>
             </span>
-            {' · '}
-            {hedef.kalan > 0 ? (
-              <span className="text-white/45">{hedef.kalan} FP KALDI</span>
-            ) : (
-              <span className="text-retro-accent">AÇILMAYA HAZIR</span>
-            )}
-          </p>
-        ) : (
-          <p className="text-[8px] text-retro-accent">
-            ★ KADRONUN TAMAMI AÇIK ★
-          </p>
-        )}
-      </div>
+            <span className="text-sm text-retro-accent">
+              {puan.toLocaleString('tr-TR')} FP
+            </span>
+          </div>
+
+          <div className="h-3 w-full border-2 border-white/20 bg-black/40">
+            <div
+              className="h-full bg-retro-accent transition-[width] duration-700"
+              style={{ width: `${Math.round(ozet.oran * 100)}%` }}
+            />
+          </div>
+
+          {/*
+            Tamamlandığında hedef satırı YOK — `sonrakiHedef` null dönüyor.
+            Yerine bitiş mesajı, çünkü boş bir alan "bir şey bozuldu" gibi
+            okunur.
+          */}
+          {hedef ? (
+            <p className="text-[8px] leading-relaxed text-white/60">
+              SIRADAKİ:{' '}
+              <span className="text-white/85">
+                {upper(getPlayerById(hedef.id)?.name ?? '')}
+              </span>
+              {' · '}
+              {hedef.kalan > 0 ? (
+                <span className="text-white/45">{hedef.kalan} FP KALDI</span>
+              ) : (
+                <span className="text-retro-accent">AÇILMAYA HAZIR</span>
+              )}
+            </p>
+          ) : (
+            <p className="text-[8px] text-retro-accent">
+              ★ KADRONUN TAMAMI AÇIK ★
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Kademeler */}
       {gruplar.map((grup) => (
@@ -133,9 +142,12 @@ export default function CollectionScreen({
             <h3 className="text-[9px] tracking-widest text-retro-accent">
               {grup.ad}
             </h3>
-            <span className="text-[7px] text-white/40">
-              {grup.acik} / {grup.toplam} AÇIK
-            </span>
+            {/* Sayaç yalnız FP açıkken anlamlı: kapalıyken hepsi açık */}
+            {FP_ACIK && (
+              <span className="text-[7px] text-white/40">
+                {grup.acik} / {grup.toplam} AÇIK
+              </span>
+            )}
           </div>
 
           <div className="grid gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
@@ -143,7 +155,7 @@ export default function CollectionScreen({
               <OyuncuKarti
                 key={oyuncu.id}
                 oyuncu={oyuncu}
-                acik={acikMi(oyuncu.id, acilanlar)}
+                acik={kullanilabilir(oyuncu.id, acilanlar)}
                 fiyat={bedel(oyuncu.id)}
                 puan={puan}
                 onAl={satinAl}

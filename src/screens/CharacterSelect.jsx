@@ -11,7 +11,9 @@ import {
   getAge,
 } from '../game/players.js';
 import { DIFFICULTY, FORMATS, SURVIVAL } from '../game/constants.js';
-import { acikMi, bedel, sonrakiHedef } from '../game/ilerleme.js';
+import {
+  kullanilabilir, bedel, sonrakiHedef, FP_ACIK,
+} from '../game/ilerleme.js';
 import { OPPONENT_TEAMS } from '../game/opponents.js';
 import { getGameMode } from '../game/modes.js';
 import { TOURNAMENT_ROUNDS } from '../game/tournament.js';
@@ -52,7 +54,7 @@ function Fact({ label, value }) {
 function sanitizeHomeIds(ids, mode, acilanlar = []) {
   const required = mode === '2v2' ? 2 : 1;
   const valid = (Array.isArray(ids) ? ids : [])
-    .filter((id) => Boolean(getPlayerById(id)) && acikMi(id, acilanlar))
+    .filter((id) => Boolean(getPlayerById(id)) && kullanilabilir(id, acilanlar))
     .slice(0, required);
   if (valid.length === 0) return [DEFAULT_PLAYER_ID];
   return valid;
@@ -125,8 +127,11 @@ export default function CharacterSelect({
    */
   const acilanlar = useMemo(() => ilerleme?.acilanlar ?? [], [ilerleme]);
   const puan = ilerleme?.puan ?? 0;
-  const hedef = useMemo(() => sonrakiHedef(puan, acilanlar), [puan, acilanlar]);
-  const odakAcik = acikMi(focused, acilanlar);
+  const hedef = useMemo(
+    () => (FP_ACIK ? sonrakiHedef(puan, acilanlar) : null),
+    [puan, acilanlar],
+  );
+  const odakAcik = kullanilabilir(focused, acilanlar);
   const odakBedel = bedel(focused);
 
   const togglePlayer = (id) => {
@@ -136,7 +141,7 @@ export default function CharacterSelect({
      * düğmesi. Basışı tamamen yok saymak, oyuncuya neyi kaçırdığını
      * göstermeden "hayır" demek olurdu.
      */
-    if (!acikMi(id, acilanlar)) {
+    if (!kullanilabilir(id, acilanlar)) {
       Sfx.select();
       setFocused(id);
       return;
@@ -383,39 +388,46 @@ export default function CharacterSelect({
         )}
       </div>
 
-      {/* FP cüzdanı ve sıradaki hedef */}
-      <div className="retro-panel flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <div>
-          <p className="text-[7px] tracking-widest text-white/40">FORMA PUANI</p>
-          <p className="mt-1 text-sm text-retro-accent">{puan.toLocaleString('tr-TR')} FP</p>
-        </div>
-        {hedef && (
-          <div className="min-w-[140px] flex-1 sm:max-w-xs">
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="text-[7px] text-white/45">
-                {hedef.kalan > 0 ? 'SIRADAKİ' : 'AÇILABİLİR'}
-              </span>
-              <span className="text-[7px] text-white/70">
-                {upper(getPlayerById(hedef.id)?.name ?? '')}
-              </span>
-            </div>
-            {/*
-              Çubuk, çıplak bakiyenin söylemediğini söylüyor: bir sonraki
-              oyuncuya NE KADAR kaldığı. "412 FP" bir sayı; "40 FP kaldı"
-              bir maç daha oynamak için sebep.
-            */}
-            <div className="mt-1 h-2 w-full border border-white/20 bg-black/40">
-              <div
-                className="h-full bg-retro-accent transition-[width] duration-500"
-                style={{ width: `${Math.round(hedef.oran * 100)}%` }}
-              />
-            </div>
-            <p className="mt-1 text-right text-[7px] text-white/45">
-              {hedef.kalan > 0 ? `${hedef.kalan} FP KALDI` : 'HAZIR'}
-            </p>
+      {/*
+        FP cüzdanı — sistem KAPALIYKEN hiç çizilmiyor.
+        Kilit rozetleri ve "KADROYA KAT" paneli ayrıca gizlenmiyor:
+        onlar `kullanilabilir`den besleniyor ve kapalıyken herkes
+        açık olduğu için kendiliğinden yok oluyorlar.
+      */}
+      {FP_ACIK && (
+        <div className="retro-panel flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <div>
+            <p className="text-[7px] tracking-widest text-white/40">FORMA PUANI</p>
+            <p className="mt-1 text-sm text-retro-accent">{puan.toLocaleString('tr-TR')} FP</p>
           </div>
-        )}
-      </div>
+          {hedef && (
+            <div className="min-w-[140px] flex-1 sm:max-w-xs">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-[7px] text-white/45">
+                  {hedef.kalan > 0 ? 'SIRADAKİ' : 'AÇILABİLİR'}
+                </span>
+                <span className="text-[7px] text-white/70">
+                  {upper(getPlayerById(hedef.id)?.name ?? '')}
+                </span>
+              </div>
+              {/*
+                Çubuk, çıplak bakiyenin söylemediğini söylüyor: bir sonraki
+                oyuncuya NE KADAR kaldığı. "412 FP" bir sayı; "40 FP kaldı"
+                bir maç daha oynamak için sebep.
+              */}
+              <div className="mt-1 h-2 w-full border border-white/20 bg-black/40">
+                <div
+                  className="h-full bg-retro-accent transition-[width] duration-500"
+                  style={{ width: `${Math.round(hedef.oran * 100)}%` }}
+                />
+              </div>
+              <p className="mt-1 text-right text-[7px] text-white/45">
+                {hedef.kalan > 0 ? `${hedef.kalan} FP KALDI` : 'HAZIR'}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Aktif kadro */}
       <RosterGrid
@@ -612,7 +624,7 @@ function RosterGrid({
         {players.map((player) => {
           const isSelected = selected.includes(player.id);
           const order = selected.indexOf(player.id) + 1;
-          const kilitli = !acikMi(player.id, acilanlar);
+          const kilitli = !kullanilabilir(player.id, acilanlar);
           const yeniAlindi = kutlama === player.id;
           const fiyat = bedel(player.id);
           // Parası yeten kilit, yetmeyenden farklı görünüyor: biri davet
