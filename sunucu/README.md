@@ -824,6 +824,41 @@ normaldir ve tek başına "oynanmaz" demek değildir. Kodun eklediği
 gecikme bir zamanlar bunun iki katıydı — önce onu bitir, sunucunun yeri
 en son bakılacak şey.
 
+### Elle sınamanın yerine: `npm run e2e dayanim`
+
+Bu bölümdeki arızaların hepsi bir insanın telefonunda bulundu ve
+hiçbiri masaüstü tarayıcıda görünmüyordu — ikisi de 60 fps'te **tam
+sıfır** etki veriyor. Yani "iki masaüstü açıp oynadım, sorun yok"
+demek hiçbir şey söylemiyor; haftalarca öyle dedi.
+
+`tests/e2e/dayanim.mjs` kötü koşulları **bilerek** üretiyor: gerçek
+röle, gerçek WebSocket, araya gecikme + seğirme + hıçkırık veren bir
+vekil, ve maçın ortasında CPU'su 6 kat kısıtlanan bir istemci.
+
+Deney **aynı cihazın kısıt öncesi/sonrası** karşılaştırması, iki ayrı
+istemcinin karşılaştırması değil. Sebebi ölçüldü: iki istemciyi
+karşılaştıran ilk tasarım, girdi damgasını bozan mutasyonu
+YAKALAMIYORDU (arıza ping'i 135'ten 103'e düşürüyordu ama o sayı hâlâ
+diğer istemcininkinin üstündeydi). Kısıtlanmayan istemci kontrol grubu
+olarak duruyor ve onun aynı aradaki değişimi çıkarılıyor — koşuma özgü
+kayma böylece temizleniyor.
+
+İki mutasyonla doğrulandı:
+
+| bozulan şey | doğru hâl | mutasyon | eşik |
+|---|---|---|---|
+| çizim saati kırpılmamış zamanla | fazla 23 ms | **65 ms** | 30 |
+| girdi damgası `agSaat`ten | ping artışı 30 ms | **10 ms** | 15 |
+
+Her push'ta CI koşuyor (`.github/workflows/ci.yml` → `npm run e2e`),
+yani kimsenin müsait olması gerekmiyor.
+
+**Yerine geçmediği şey, dürüstçe:** gerçek cihazın GPU'su, ısınması,
+pil tasarrufu ve gerçek hücresel ağ. CPU kısıtı kare düşmesini taklit
+ediyor, sebebini değil. Bu test *gerilemeyi* yakalar — "bir kez
+düzelttiğimiz şey tekrar bozuldu mu" sorusunu cevaplar. "Oynaması iyi
+hissettiriyor mu" sorusunu hâlâ insan cevaplıyor.
+
 ### Dördüncü kaynak: OYUNCUNUN KARE HIZI
 
 Üç kaynağın hiçbiri suçlu çıkmayabilir ve şikâyet yine sürebilir.

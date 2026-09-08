@@ -22,16 +22,34 @@ import { WebSocketServer, WebSocket } from 'ws';
  * `.mjs`i test sayıp koşturuyor; alt çizgi mevcut "bu bir yardımcı"
  * işareti (bkz. `_pinch.mjs`).
  *
- * @param {{ hedef: string, gecikme?: number, segirme?: number, port?: number }} ayar
+ * @param {{ hedef: string, gecikme?: number, segirme?: number,
+ *   hickirikOran?: number, hickirikMs?: number, port?: number }} ayar
  *   `hedef` rölenin ws adresi; `gecikme`/`segirme` TEK YÖN, ms.
+ *   `hickirikOran` 0-1 arası: paketlerin bu oranı `hickirikMs` kadar
+ *   FAZLADAN gecikir.
  */
-export async function vekilKur({ hedef, gecikme = 0, segirme = 0, port = 0 }) {
-  const sayac = { yukari: 0, asagi: 0 };
+export async function vekilKur({
+  hedef, gecikme = 0, segirme = 0, hickirikOran = 0, hickirikMs = 80, port = 0,
+}) {
+  const sayac = { yukari: 0, asagi: 0, hickirik: 0 };
   const sunucu = new WebSocketServer({ port });
 
+  /*
+   * HIÇKIRIK ayrı bir kalem, seğirmenin büyütülmüş hâli değil.
+   * Seğirme sürekli ve küçük; istemcinin EWMA'sı onu öğrenip tamponu
+   * ona göre boyutluyor. Hıçkırık ise seyrek ve büyük — öğrenilemiyor,
+   * tamponun payından karşılanmak zorunda. Gerçek Wi-Fi'nin bozulma
+   * biçimi bu ve tamponu asıl sınayan şey de bu (bkz.
+   * tests/olcum/tampon-tabani.mjs).
+   */
   const bekle = () => {
     const sapma = segirme ? (Math.random() * 2 - 1) * segirme : 0;
-    return Math.max(0, gecikme + sapma);
+    let ek = 0;
+    if (hickirikOran > 0 && Math.random() < hickirikOran) {
+      ek = hickirikMs;
+      sayac.hickirik += 1;
+    }
+    return Math.max(0, gecikme + sapma + ek);
   };
 
   sunucu.on('connection', (tarayici) => {
