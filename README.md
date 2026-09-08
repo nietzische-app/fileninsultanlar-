@@ -560,7 +560,7 @@ Ortam değişkeni, backend ya da veritabanı yok; tamamen statik bir SPA.
 | Grafik | Oyunun tamamı %100 kod — `drawImage` yok. Tek istisna: giriş ekranı arka plan fotoğrafı |
 | Ses | Web Audio API — katmanlı motor (master → sfx/tribün/müzik bus). Efektler dosyasız üretilir; tek istisna giriş müziği |
 | Arayüz ikonları | Kendi çizimimiz — 16×16 piksel ızgarasında SVG dikdörtgenleri, dosya yok |
-| Font | Arayüzde Press Start 2P; forma numaraları kendi piksel fontumuz |
+| Font | Arayüzde Press Start 2P (gömülü alt küme — bkz. `docs/yazitipi.md`); forma numaraları kendi piksel fontumuz |
 
 ## Dosya Yapısı
 

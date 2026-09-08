@@ -70,6 +70,8 @@ export class Baglanti {
     this.secenek = secenek;
     /** @type {import('./tasima.js').WebSocketTasima|null} */
     this.tasima = null;
+    /** Kapatıldı mı — taşıma kurulurken gelen `kapat()` buradan görülüyor. */
+    this.kapandi = false;
     this.rol = null;
     this.kod = null;
     /** @type {Map<string, Set<Function>>} */
@@ -97,7 +99,31 @@ export class Baglanti {
     if (!this.url) throw new Error('rele-yok');
     if (this.tasima?.acikMi()) return;
 
+    this.kapandi = false;
     const tasima = await tasimaKur(this.url, this.secenek);
+
+    /*
+     * BAĞLANIRKEN KAPATILDIYSA taşımayı hemen bırak.
+     *
+     * `kapat()` yalnız `this.tasima`ya bakıyordu ve o alan taşıma
+     * KURULDUKTAN sonra doluyor. Kurulum sırasında kapatılan bir
+     * bağlantıda `kapat()` boşa gidiyor, sonra taşıma sessizce açılıp
+     * SAHİPSİZ kalıyordu.
+     *
+     * Belirtisi ağ hatası değildi, bambaşka bir şeydi: React
+     * geliştirmede efektleri bağla-çöz-bağla diye çalıştırıyor, HEMEN
+     * OYNA iki bağlantı açıyor, ikisi de sıraya giriyor ve röle
+     * oyuncuyu KENDİSİYLE eşleştiriyordu. Ekranda gerçek bir maç
+     * görünüyordu; rakip yoktu. Rövanş testi bunu "haber ulaşmadı"
+     * diye yakaladı — iki taraf ayrı odalardaydı.
+     *
+     * Bu, taşıma katmanına geçerken doğdu: eski kod `WebSocket`i
+     * kurucuda açtığı için `kapat()`ın kapatacağı bir nesne HEP vardı.
+     */
+    if (this.kapandi) {
+      tasima.kapat();
+      return;
+    }
     this.tasima = tasima;
 
     tasima.onMesaj = (mesaj) => {
@@ -200,6 +226,8 @@ export class Baglanti {
 
   kapat() {
     this.dinleyiciler.clear();
+    // Kurulumu süren bir taşıma varsa `baglan()` bu bayrağa bakıp bırakıyor
+    this.kapandi = true;
     this.tasima?.kapat();
     this.tasima = null;
     this.kod = null;

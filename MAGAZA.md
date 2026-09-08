@@ -254,7 +254,7 @@ Mağaza formunu doldururken **"Kullanıcılar arası etkileşim var"** ve
 | Uygulama ikonu | 512×512 | ✅ `npm run ikon` → `tests/ciktilar/play-store-ikon-512.png` |
 | Ekran görüntüsü (telefon) | 2732×1536, en az 2 adet | ✅ `npm run magaza-gorsel` |
 | Ekran görüntüsü (tablet) | 2560×1600 | ✅ aynı betik |
-| Öne çıkan görsel | 1024×500 | 🔸 **sende** |
+| Öne çıkan görsel | 1024×500 | ✅ aynı betik → `magaza/one-cikan-1024x500.png` |
 
 ```bash
 npm run dev            # bir uçbirimde açık kalsın
@@ -267,6 +267,14 @@ için ayrı ayrı kare üretiyor. Maç karesi **kuruluyor**, rastgele
 yakalanmıyor: skor 22–20, top havada, bir oyuncu smaçta. Rastgele bir
 an çoğu zaman topun aut olduğu, kimsenin bir şey yapmadığı sıkıcı bir
 kare oluyor.
+
+**Öne çıkan görsel** (mağaza listesinin tepesindeki afiş) ekran
+görüntüsü değil, ayrı bir kompozisyon: oyunun içinden alınan bir kare
+500 px yüksekliğe sığmıyor (skorbord, tuşlar ve ipucu şeridi birlikte
+kalabalık ve okunmaz çıkıyor). Yine de aynı kuralla çiziliyor —
+figürler oyunun kendi `drawSultan`/`drawBall` fonksiyonlarından
+geliyor, tek bir hazır görsel yok. Yazı ve figürler 84 px kenar payının
+içinde: Play bu görseli bazı yerleşimlerde yanlardan kırpıyor.
 
 Boyutlar ölçülerek seçildi. İlk denemede 1920×1080 kullandım ve
 görüntünün alt %22'si boş siyah bant çıktı — oyun kendini ~1148×638'de
@@ -304,7 +312,7 @@ görünüyor. Bunu belirtmemek sonradan sorun çıkarır.
 3. ~~Ekran görüntüsü üretimi~~ ✅ `npm run magaza-gorsel`
 4. **İmza anahtarını üret ve GitHub secret'larını gir** (yukarıda,
    bölüm 1). Bundan sonrası tek tık.
-5. **Öne çıkan görsel** (1024×500) — sende.
+5. ~~Öne çıkan görsel (1024×500)~~ ✅ `npm run magaza-gorsel`
 6. **İlk imzalı `.aab`** → Play Console **kapalı test** kanalı. Yayın
    değil: kendi telefonunda gerçek mağaza kurulumuyla denemek için.
    Kapalı test telif cevabından bağımsız yapılabilir — uygulama

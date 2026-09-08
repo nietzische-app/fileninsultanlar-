@@ -877,8 +877,17 @@ export default function MatchScreen({
       </div>
 
       {/* Alt bilgi — masaüstü */}
-      <div className="match-footer flex w-full shrink-0 flex-wrap items-center justify-between gap-2 touch:hidden">
-        <div className="hidden items-center gap-3 text-[7px] text-white/45 sm:flex">
+      {/*
+        SARMA YOK, KISALTMA VAR.
+        `.match-footer` sahanın genişliğiyle sınırlı (max-width:
+        --court-w + 8) — 1280×600'de bu 670 px. Bilgi satırı ile dört
+        düğme birlikte 672 px tutuyordu ve satır alta kayınca sayfa
+        9 px uzayıp DİKEY KAYDIRMA çıkıyordu: oyun ekranı bir kaydırma
+        çubuğu kazanıyordu. Süslü olan taraf (mod · set · kadro)
+        kısalsın; düğmeler her zaman tam dursun.
+      */}
+      <div className="match-footer flex w-full shrink-0 items-center justify-between gap-2 touch:hidden">
+        <div className="hidden min-w-0 flex-1 items-center gap-3 overflow-hidden whitespace-nowrap text-[7px] text-white/45 sm:flex">
           <span>{upper(config.mode)}</span>
           <span className="text-white/20">|</span>
           <span>{matchLabel}</span>
@@ -892,7 +901,15 @@ export default function MatchScreen({
           )}
         </div>
 
-        <div className="flex w-full justify-end gap-2 sm:w-auto sm:gap-3">
+        {/*
+          `flex-wrap`: dört düğme (SES · TAM EKRAN · DURAKLAT · ÇIK) dar
+          bir masaüstü penceresinde tek satıra sığmıyor ve sığmayınca
+          `justify-end` ilkini SOLA, ekran dışına taşıyordu — düğme
+          görünmüyor ama tıklanabilir bir alan olarak duruyordu.
+          Sarmalayınca alt satıra iniyorlar. Piksel yazı tipi geri
+          gelince ortaya çıktı: yedek monospace %40 dar yazıyordu.
+        */}
+        <div className="flex w-full shrink-0 flex-wrap justify-end gap-2 sm:w-auto sm:gap-3">
           <MuteButton muted={muted} onToggle={onToggleMute} />
           {fullscreen.supported && (
             <button
