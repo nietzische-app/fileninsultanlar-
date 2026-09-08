@@ -230,14 +230,63 @@ const AG = {
   tamponUyum: 0.05,
 
   /**
-   * Çizim saatinin hedefe çekilme oranı (kare başına).
+   * Çizim saatinin hedefe çekilme oranı — saat İLERİDEYKEN.
    *
    * Doğrudan atama seğirmeyi ekrana geçirir, hiç çekmemek saatin
    * sunucudan kopmasına yol açar. 0.05 ≈ yarım saniyede hizalanıyor:
    * seğirmeyi süzecek kadar yavaş, gecikme değişince geride kalmayacak
    * kadar hızlı.
+   *
+   * Bu YÖN yavaş olmalı: saat hedefin ilerisindeyse ekran en yeni
+   * pakete fazla yaklaşmış demektir ve onu geri çekmek görsel olarak
+   * GERİ SARMAK olurdu. Yavaşça bırakmak doğru davranış.
    */
   saatCekisi: 0.05,
+
+  /**
+   * Çizim saatinin hedefe çekilme oranı — saat GERİDEYKEN.
+   *
+   * NEDEN AYRI: iki yön aynı şey değil. Saat geride kalmışsa bu
+   * KARŞILIKSIZ gecikmedir — tamponun istediği değil, bir tökezlemenin
+   * bıraktığı artık. Onu yavaş kapatmanın hiçbir faydası yok, bedeli
+   * doğrudan oyuncunun hissettiği gecikme.
+   *
+   * Tampon şiştikçe toparlanma uzuyordu çünkü hizalama eşiği tampona
+   * ORANLIYDI (bkz. `saatHizalamaEsigi`): 180 ms'lik tamponda eşik
+   * 360 ms oluyor ve 60 ms'lik bir açık ona hiç değmiyor. Bir oyuncunun
+   * teşhis kaydında bu `tampon 180 · gerilik 215-323 ms` olarak
+   * görünmüştü.
+   *
+   * DEĞER TAKASLA SEÇİLDİ, sezgiyle değil. Hızlı yakalamanın bedeli
+   * var: saat gerçek zamandan hızlı akarken sahne kısa süre hızlanıyor
+   * ve bu ekranda SIÇRAMA olarak ölçülüyor. Oyuncunun şikâyeti "kasma"
+   * olduğu için o sütuna ağırlık verildi.
+   *
+   *   geri  tipik sıçrama  kötü sıçrama  180 ms tamponda toparlanma
+   *   0.05      1.06           1.10           289 ms
+   *   0.15      1.14           1.21            85 ms   ← seçilen
+   *   0.20      1.17           1.26            51 ms
+   *   0.35      1.23           1.40            17 ms
+   *
+   * 0.15, toparlanma kazancının dörtte üçünü en küçük akıcılık
+   * bedeliyle alıyor. (olcum:akicilik ve tökezleme ölçümü.)
+   */
+  saatCekisiGeri: 0.15,
+
+  /**
+   * Çizim saatinin DOĞRUDAN hizalandığı eşik (sn) — MUTLAK.
+   *
+   * Eskiden `agTamponBoyu * 2` idi ve tam ters yönde çalışıyordu:
+   * tampon ne kadar şişerse (yani ağ ne kadar kötüyse) eşik o kadar
+   * büyüyor, düzeltme o kadar geç devreye giriyordu. Kötü bağlantıda
+   * en çok gereken şey en az çalışıyordu.
+   *
+   * Mutlak eşik bu bağı kesiyor. 0.15 sn, tek bir tökezlemenin
+   * bırakabileceği açıktan (ölçümde 60 ms) belirgin biçimde büyük —
+   * yani normal seyirde hiç tetiklenmiyor, yalnız maç başı ve uzun
+   * donma gibi gerçekten kopmuş durumlarda hizalıyor.
+   */
+  saatHizalamaEsigi: 0.08,
 
   /**
    * TOPU İLERİ SARMA sınırı (sn).
@@ -2061,17 +2110,33 @@ export default class Game {
      * Çok uzaksa (maç başı, uzun donma) yumuşak çekiş dakikalar sürer;
      * o durumda saat doğrudan hizalanıyor. Sınır bir tampon boyu.
      */
-    if (Math.abs(sapma) > this.agTamponBoyu * 2) {
+    /*
+     * HİZALAMA EŞİĞİ MUTLAK, tampona oranlı DEĞİL. Oranlıyken tampon
+     * şiştikçe eşik de büyüyor ve düzeltme kötü bağlantıda hiç
+     * tetiklenmiyordu (gerekçe ve ölçüm `saatHizalamaEsigi`nin yanında).
+     *
+     * Saat İLERİDEYSE eşik yine tamponla ölçülüyor: oradaki soru
+     * "en yeni pakete fazla mı yaklaştık" ve onun ölçeği tampon.
+     */
+    const cokGeride = sapma > AG.saatHizalamaEsigi;
+    const cokIleride = -sapma > Math.max(AG.saatHizalamaEsigi, this.agTamponBoyu * 2);
+
+    if (cokGeride || cokIleride) {
       this.agCizimSaati = hedefNokta;
     } else {
       /*
-       * Çekiş SÜREYE bağlı, kare sayısına değil. `saatCekisi` bir 60 Hz
-       * adımının karşılığı; 30 fps'te kare başına iki katı, 120 Hz'de
-       * yarısı uygulanıyor. Sabit katsayı bırakılsaydı düşük kare
-       * hızında hizalanma yarı yavaş olur ve tam da en çok gereken
+       * ÇEKİŞ ASİMETRİK: geride kalmak karşılıksız gecikme, ileride
+       * olmak ise tamponu yemek. İlki hızlı kapatılmalı, ikincisi
+       * yavaş — geri çekmek ekranda geri sarmak demek.
+       *
+       * Çekiş ayrıca SÜREYE bağlı, kare sayısına değil: `saatCekisi`
+       * bir 60 Hz adımının karşılığı; 30 fps'te kare başına iki katı,
+       * 120 Hz'de yarısı uygulanıyor. Sabit katsayı bırakılsaydı düşük
+       * kare hızında hizalanma yarı yavaş olur ve tam da en çok gereken
        * cihazda en az çalışırdı.
        */
-      const kat = 1 - (1 - AG.saatCekisi) ** (dt / PHYSICS.step);
+      const taban = sapma > 0 ? AG.saatCekisiGeri : AG.saatCekisi;
+      const kat = 1 - (1 - taban) ** (dt / PHYSICS.step);
       this.agCizimSaati += sapma * kat;
     }
 

@@ -272,12 +272,28 @@ if (once.a.length > 10 && sonra.a.length > 10) {
   const fazla = (d) => ort(d, 'gerilik') - ort(d, 'tampon');
 
   /*
-   * ARACIN DOĞRULAMASI: kısıt gerçekten AYNI cihazda kare düşürdü mü.
+   * ARACIN DOĞRULAMASI: kısıt gerçekten iş yaptı mı.
+   *
+   * ÖLÇÜT ÇİZİM SÜRESİ, kare süresi değil. Kare süresini kullanıyordum
+   * ve koşumdan koşuma dalgalanıyordu: kısıt aynı 6x iken kare kimi
+   * zaman 23 ms, kimi zaman 19 ms çıkıyor — çünkü kare süresi
+   * tarayıcının kendi zamanlamasına da bağlı ve tavanı ekran tazeleme
+   * hızı. Çizim süresi doğrudan HESAP yükü, yani kısıtın etkisini
+   * seyreltmeden gösteriyor (aynı koşumda 1.0 → 6.0 ms).
+   *
+   * Kare süresi yine de bakılıyor ama gevşek sınırla: kısıt kareyi
+   * hiç etkilemediyse ortada bir tuhaflık vardır.
    */
   kontrol(
-    `CPU kısıtı kareyi uzattı (${KISIT}x)`,
-    ort(sonra.a, 'kare') > ort(once.a, 'kare') * 1.3,
-    `${ort(once.a, 'kare').toFixed(0)}ms → ${ort(sonra.a, 'kare').toFixed(0)}ms`,
+    `CPU kısıtı iş yükünü artırdı (${KISIT}x)`,
+    ort(sonra.a, 'cizim') > ort(once.a, 'cizim') * 2.5,
+    `çizim ${ort(once.a, 'cizim').toFixed(1)}ms → ${ort(sonra.a, 'cizim').toFixed(1)}ms · `
+    + `kare ${ort(once.a, 'kare').toFixed(0)}ms → ${ort(sonra.a, 'kare').toFixed(0)}ms`,
+  );
+  kontrol(
+    'kısıt kare süresine de yansıdı',
+    ort(sonra.a, 'kare') > ort(once.a, 'kare') * 1.05,
+    `${ort(once.a, 'kare').toFixed(1)}ms → ${ort(sonra.a, 'kare').toFixed(1)}ms`,
   );
 
   /*
@@ -309,17 +325,26 @@ if (once.a.length > 10 && sonra.a.length > 10) {
    * Kontrol istemcisinin aynı aradaki değişimi çıkarılınca koşuma özgü
    * kayma (ısınma, makine yükü) da temizleniyor.
    *
-   * Ölçüldü: doğru hâlde +31..+37 ms, damga kare saatine bağlıyken
-   * +5 ms. 15 ms ikisini kesin ayırıyor.
+   * SINIR KARE ARTIŞINA ORANLI, sabit değil. Sabit 15 ms yazmıştım ve
+   * koşuma göre sınırda kalıyordu: CPU kısıtının ürettiği yavaşlama
+   * makinenin o anki yüküne bağlı (kare kimi koşumda +6 ms, kimi
+   * koşumda +1.8 ms). Ping artışı da doğal olarak onunla ölçekleniyor.
+   *
+   * Ölçülen oran (ping artışı ÷ kare artışı):
+   *   doğru hâl        5.0 – 7.8
+   *   damga bozukken   1.4
+   * 3 katı ikisini rahatça ayırıyor. Alt taban (8 ms) kısıt hiç iş
+   * yapmadığında testin kendiliğinden geçmesini engelliyor.
    */
   const pingArtisi = (ort(sonra.a, 'ping') - ort(once.a, 'ping'))
     - (ort(sonra.b, 'ping') - ort(once.b, 'ping'));
+  const kareArtisi = ort(sonra.a, 'kare') - ort(once.a, 'kare');
   kontrol(
     'PING yavaşlayan cihazda artıyor (kare saatinden okunmuyor)',
-    pingArtisi > 15,
-    `kısıtlının artışı ${pingArtisi.toFixed(0)} ms `
-    + `(${ort(once.a, 'ping').toFixed(0)}→${ort(sonra.a, 'ping').toFixed(0)}, `
-    + `kontrol ${ort(once.b, 'ping').toFixed(0)}→${ort(sonra.b, 'ping').toFixed(0)})`,
+    pingArtisi > Math.max(8, kareArtisi * 3),
+    `ping +${pingArtisi.toFixed(0)} ms · kare +${kareArtisi.toFixed(1)} ms · `
+    + `oran ${(pingArtisi / Math.max(0.1, kareArtisi)).toFixed(1)}x `
+    + `(eşik ${Math.max(8, kareArtisi * 3).toFixed(0)} ms)`,
   );
 
   /*

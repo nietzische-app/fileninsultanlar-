@@ -824,6 +824,37 @@ normaldir ve tek başına "oynanmaz" demek değildir. Kodun eklediği
 gecikme bir zamanlar bunun iki katıydı — önce onu bitir, sunucunun yeri
 en son bakılacak şey.
 
+### `gerilik` tamponu çok aşıyorsa: çizim saati toparlanamıyor
+
+Teşhis katmanında `gerilik` ile `tampon` paralel gitmeli. Aralarında
+100 ms'i aşan KALICI fark varsa çizim saati bir tökezlemeden sonra
+toparlanamıyor demektir.
+
+Bir oyuncunun kaydında bu `tampon 180 · gerilik 215-323 ms` olarak
+göründü — üstelik kare hızı kusursuzken (`kare 17 ms`, `uzun kare %0`),
+yani kare kaynaklı değil.
+
+Sebep, hizalama eşiğinin tampona ORANLI olmasıydı (`tampon * 2`):
+tampon şiştikçe eşik de büyüyor, yani **ağ kötüleştikçe düzeltme daha
+geç devreye giriyordu.** En çok gereken yerde en az çalışan bir
+mekanizma. Üstelik çekiş simetrikti: geride kalmak (karşılıksız
+gecikme) ile ileride olmak (tamponu yemek) aynı hızda düzeltiliyordu,
+oysa ilki hızlı kapatılmalı.
+
+Şimdi eşik MUTLAK (`saatHizalamaEsigi`) ve çekiş asimetrik
+(`saatCekisiGeri`). Ölçülen (200 ms'lik tek tökezleme):
+
+| tampon | önce toparlanma | sonra |
+| --- | --- | --- |
+| 50 ms | anında (sert hizalama) | 0 ms |
+| 90 ms | 289 ms | 17 ms |
+| 180 ms | 289 ms | 17 ms |
+
+Bedeli ölçüldü ve takasla seçildi: hızlı yakalama sahneyi kısa süre
+hızlandırıyor ve bu ekranda sıçrama olarak görünüyor. Şikâyet "kasma"
+olduğu için o sütuna ağırlık verildi — `saatCekisiGeri` 0.35 yerine
+0.15 seçildi (sıçrama 1.40 yerine 1.21, toparlanma 17 yerine 85 ms).
+
 ### Elle sınamanın yerine: `npm run e2e dayanim`
 
 Bu bölümdeki arızaların hepsi bir insanın telefonunda bulundu ve

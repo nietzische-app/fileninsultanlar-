@@ -1192,6 +1192,84 @@ describe('ara değerleme tamponu — ölçülen seğirmeye göre', () => {
     ).toBeLessThan(25);
   });
 
+  it('TOPARLANMA tampon boyundan BAĞIMSIZ', () => {
+    /*
+     * Bir oyuncunun teşhis kaydı: `tampon 180 · gerilik 215-323 ms`.
+     * Sebep hizalama eşiğinin tampona ORANLI olmasıydı (`tampon * 2`):
+     * tampon şiştikçe eşik de büyüyor, yani ağ kötüleştikçe düzeltme
+     * daha geç devreye giriyordu — en çok gereken yerde en az çalışan
+     * bir mekanizma.
+     *
+     * Bu testi ilk yazdığımda 85 ms'lik bir tamponla ölçmüştüm; orada
+     * eşik zaten aşılıyordu ve "sebep bu değil" sonucuna varmıştım.
+     * Yanlıştı. Ayrım ancak tampon ŞİŞMİŞKEN görünüyor, o yüzden test
+     * iki tampon boyunu karşılaştırıyor.
+     */
+    const olc = (tamponBoyu) => {
+      let saat = 0;
+      const g = misafirKur({ agSaat: () => saat });
+      const s = sunucuKur();
+      let paket = 0;
+      const yolla = () => {
+        s.ball.x = 300; s.ball.y = 200; s.ball.vx = 0; s.ball.vy = 0;
+        s.adim = Math.round((paket / 30) / PHYSICS.step);
+        g.agPaketAl(paketle(s));
+        paket += 1;
+      };
+
+      // Otur: tamponu dışarıdan sabitliyoruz, sınanan şey ÇEKİŞ
+      for (let i = 0; i < 60; i += 1) {
+        saat = i / 30;
+        yolla();
+        g.agTamponBoyu = tamponBoyu;
+        akit(g, 1 / 30);
+      }
+
+      /*
+       * TÖKEZLEME: 200 ms boyunca paket yok, sonra hepsi TOPLU geliyor.
+       * Çizim saati o sırada ilerlediği için, paketler gelince en yeni
+       * damga bir anda sıçrıyor ve saat geride kalıyor.
+       */
+      const tokezBasi = saat;
+      while (saat < tokezBasi + 0.2) {
+        saat += 1 / 60;
+        g.agTamponBoyu = tamponBoyu;
+        akit(g, 1 / 60);
+      }
+      while (paket / 30 < saat) yolla();
+      g.agTamponBoyu = tamponBoyu;
+
+      // Toparlanmayı izle
+      let kare = 0;
+      const enFazla = [];
+      while (kare < 60) {
+        saat += 1 / 60;
+        yolla();
+        g.agTamponBoyu = tamponBoyu;
+        akit(g, 1 / 60);
+        const t = g.agTaniOzeti();
+        if (t.gerilik !== null) enFazla.push(t.gerilik - t.tampon);
+        kare += 1;
+      }
+      // Toparlandıktan sonraki KALICI fazlalık: son 20 karenin ortalaması
+      const son = enFazla.slice(-20);
+      return son.reduce((a, b) => a + b, 0) / Math.max(1, son.length);
+    };
+
+    const kucuk = olc(0.05);
+    const buyuk = olc(0.18);
+
+    /*
+     * Sınır ölçülerek kondu. Eşik tampona oranlıyken 180 ms'lik tamponda
+     * fazlalık 289 ms boyunca yüksek kalıyor ve bu pencerede ortalama
+     * 40 ms'yi aşıyor; mutlak eşikle iki tampon boyu da tabana dönüyor.
+     */
+    expect(
+      Math.abs(buyuk - kucuk),
+      `küçük tampon ${kucuk.toFixed(0)}ms, büyük tampon ${buyuk.toFixed(0)}ms kalıcı fazlalık`,
+    ).toBeLessThan(25);
+  });
+
   it('DÜŞÜK KARE HIZI gidiş-dönüşü KÜÇÜK göstermiyor', () => {
     /*
      * Aynı arızanın ikinci yüzü. Girdi damgası `this.time`dan gelirken
