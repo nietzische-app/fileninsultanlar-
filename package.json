@@ -27,6 +27,7 @@
     "olcum:tampon-tabani": "node tests/olcum/tampon-tabani.mjs",
     "olcum:ekran-hizi": "node tests/olcum/ekran-hizi.mjs",
     "olcum:tasima": "node tests/olcum/tasima.mjs",
+    "olcum:yerli": "node tests/olcum/yerli-istemci.mjs",
     "vercel-build": "vite build",
     "build:portal": "node scripts/build-portal.mjs",
     "rele": "node sunucu/index.js",
