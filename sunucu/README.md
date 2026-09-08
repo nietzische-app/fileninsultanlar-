@@ -585,53 +585,77 @@ mevcut dosyayı truncate edip AYNI inode'a yazıyor:
 sed -E 's/eski/yeni/' /opt/aegis/Caddyfile > /tmp/cf && cat /tmp/cf > /opt/aegis/Caddyfile
 ```
 
-#### PAYLAŞILAN CADDY TUZAĞI — blok bir gün kayboluyor
+#### PAYLAŞILAN CADDY — diğer proje dağıtılınca oyun kesiliyor
 
-Bu Caddyfile bu kutudaki BAŞKA bir projeye ait. O proje her
-dağıtıldığında dosyayı kendi kaynağından yeniden yazabiliyor ve bizim
-eklediğimiz site bloğu sessizce siliniyor. Yaşandı: oyun bir gün
-"bağlantı koptu" vermeye başladı.
+Bu Caddy bu kutudaki BAŞKA bir projeye ait ve oyun ona bağlı. O proje
+dağıtıldığında Caddy konteyneri yeniden oluşturuluyor; o sırada oyun
+kesiliyor. Yaşandı: oyun "bağlantı koptu" vermeye başladı, konsolda
+`WebSocket connection to 'wss://rele...' failed`.
 
-Belirtiler, en tepeden aşağı:
+O andaki tablo:
 
 ```
-tarayıcı konsolu → WebSocket connection to 'wss://rele...' failed
-curl -sS -I https://rele...  → curl: (35) tlsv1 alert internal error
-curl http://127.0.0.1:8787/saglik → ÇALIŞIYOR   ← röle sağlam
-docker ps → aegis-caddy "Up 43 minutes", filenin-rele "Up 27 hours"
-grep rele /opt/aegis/Caddyfile → BOŞ            ← sebep bu
+docker ps       → aegis-caddy "Up 43 minutes", filenin-rele "Up 27 hours"
+curl http://127.0.0.1:8787/saglik → ÇALIŞIYOR        ← röle sağlam
+curl -sS -I https://rele...       → tlsv1 alert internal error
 ```
 
-Ayırt edici üçlü: **röle kendi portundan cevap veriyor**, **Caddy
-röleden çok daha yeni**, **blok dosyada yok**. TLS hatası "sertifika
-süresi doldu" değil — Caddy o alan adını hiç tanımıyor, o yüzden el
-sıkışma daha başlarken düşüyor.
+Yani **röle hiç kesilmedi**; kesilen şey önündeki Caddy'ydi. Bir süre
+sonra aynı adres kendiliğinden çalışmaya başladı — muhtemelen Caddy
+yeniden oluşturulurken sertifikasını yeniden alıyordu ve o aralıkta
+TLS el sıkışması düşüyordu.
 
-Geri koymak (`>>` inode'u korur, yukarıdaki tuzağa düşmez):
+**BENİM TEŞHİS HATAM, kayda geçsin:** ilk anda "site bloğu Caddyfile'dan
+silinmiş" dedim ve bloğu yeniden ekletmeye çalıştım. Yanlıştı — blok
+oradaydı. `grep` komutunu vermiştim ama çıktısını GÖRMEDEN, yokluğunu
+kanıt sayıp ilerledim. Sonuç: dosyaya ikinci bir kopya eklendi,
+`caddy validate` `ambiguous site definition` verdi ve **Caddyfile
+geçersiz kaldı** — o hâlde konteyner yeniden başlasa hiç açılmayacaktı,
+üstelik diğer proje de birlikte düşerdi.
+
+Ders: boş çıktı kanıt değil. Komutun çalıştığı ve ne döndürdüğü
+görülmeden sonuca gidilmemeli.
+
+Yanlışlıkla eklenen bloğu geri almak (inode'u koruyarak):
 
 ```bash
-cat >> /opt/aegis/Caddyfile <<'EOF'
-
-rele.retrovoleybol.online {
-	reverse_proxy filenin-rele:8787
-}
-EOF
+tail -8 /opt/aegis/Caddyfile      # önce BAK
+head -n -4 /opt/aegis/Caddyfile > /tmp/cf && cat /tmp/cf > /opt/aegis/Caddyfile
 docker exec aegis-caddy caddy validate --config /etc/caddy/Caddyfile
-docker exec aegis-caddy caddy reload --config /etc/caddy/Caddyfile
-sleep 5 && curl -s https://rele.retrovoleybol.online/saglik; echo
 ```
 
-**Ama elle geri koymak çözüm değil, erteleme.** Kalıcı olanı ikisinden
-biri:
+`Valid configuration` görülmeden bırakma.
 
-1. Bloğu diğer projenin KENDİ kaynağına taşı — Caddyfile'ı o üretiyorsa
-   bizim tanımımız da onun deposunda dursun.
-2. O Caddyfile'a bir kez `import /etc/caddy/conf.d/*.caddy` ekle ve
-   bizim bloğu ayrı bir dosyaya (`/opt/aegis/conf.d/rele.caddy`) koy.
+#### Doğru teşhis sırası
 
-Ve **dışarıdan bir uptime kontrolü** şart: `/saglik` adresini dakikada
-bir yoklayan ücretsiz bir servis yeterli. Bu kesinti 43 dakika sürdü ve
-ancak oynamaya çalışınca fark edildi; yayında bunu oyuncular fark eder.
+Röleye ulaşılamıyorsa, yukarıdan aşağı — her adım bir sonrakini eler:
+
+```bash
+docker ps -a --filter name=filenin-rele --filter name=aegis-caddy
+curl -s http://127.0.0.1:8787/saglik; echo      # röle kendi portundan
+grep -n -A 5 "rele.retrovoleybol" /opt/aegis/Caddyfile   # ÇIKTIYI GÖR
+docker exec aegis-caddy grep -n "rele.retrovoleybol" /etc/caddy/Caddyfile
+curl -sS -I https://rele.retrovoleybol.online/saglik
+```
+
+| Bulgu | Anlamı |
+| --- | --- |
+| Röle kendi portundan cevap vermiyor | Röle çökmüş — `docker compose logs` |
+| Röle çalışıyor, TLS düşüyor, blok VAR | Caddy yeniden kurulmuş/sertifika alıyor; birkaç dakika bekle |
+| Röle çalışıyor, TLS düşüyor, blok YOK | Blok gerçekten gitmiş — o zaman geri ekle |
+| Konteynerler farklı ağlarda | `docker network connect aegis_net aegis-caddy` |
+
+#### Kalıcı çözüm
+
+Elle müdahale bunu çözmüyor: diğer proje her dağıtıldığında oyun yine
+kesilecek. İki yol:
+
+1. Röleyi o Caddy'den ayır — kendi TLS'ini bitiren ayrı bir giriş
+   noktası ver, ya da röleyi başka bir kutuya/servise taşı.
+2. En azından **dışarıdan uptime kontrolü** koy: `/saglik` adresini
+   dakikada bir yoklayan ücretsiz bir servis. Bu kesinti 43 dakika
+   sürdü ve ancak oynamaya çalışınca fark edildi; yayında bunu
+   oyuncular fark eder.
 
 Caddy ilk istekte bu domain için otomatik Let's Encrypt sertifikası
 alır — certbot'a hiç gerek yok. `tls-alpn-01` doğrulaması 443 üzerinden
