@@ -281,19 +281,25 @@ if (once.a.length > 10 && sonra.a.length > 10) {
    * hızı. Çizim süresi doğrudan HESAP yükü, yani kısıtın etkisini
    * seyreltmeden gösteriyor (aynı koşumda 1.0 → 6.0 ms).
    *
-   * Kare süresi yine de bakılıyor ama gevşek sınırla: kısıt kareyi
-   * hiç etkilemediyse ortada bir tuhaflık vardır.
+   * KARE SÜRESİ ÜSTÜNDEN DENETİM YOK — ve bu bilerek.
+   *
+   * Bir aşama "kısıt kare süresine de yansıdı" diye ayrı bir denetim
+   * vardı; kendi makinemde geçiyordu, CI'da düştü: çizim 0.9 → 4.6 ms
+   * çıkmasına rağmen kare 17.0 → 17.2 ms'de kaldı. Sebebi arıza değil,
+   * denetimin kendisiydi. Kare süresinin tavanı ekran tazeleme hızı;
+   * 16.7 ms'lik bütçede 12 ms boşluk varken 4 ms fazladan iş kareyi
+   * UZATMAZ. Yani hızlı bir makinede o denetim, kısıt gerçekten
+   * çalışırken bile düşer.
+   *
+   * Aracın gerçekten iş yaptığı zaten çizim süresiyle sınanıyor ve o
+   * ölçüt bütçeden bağımsız. İki denetim aynı şeye bakıyordu; biri
+   * yanlış cevap veriyordu.
    */
   kontrol(
     `CPU kısıtı iş yükünü artırdı (${KISIT}x)`,
     ort(sonra.a, 'cizim') > ort(once.a, 'cizim') * 2.5,
     `çizim ${ort(once.a, 'cizim').toFixed(1)}ms → ${ort(sonra.a, 'cizim').toFixed(1)}ms · `
-    + `kare ${ort(once.a, 'kare').toFixed(0)}ms → ${ort(sonra.a, 'kare').toFixed(0)}ms`,
-  );
-  kontrol(
-    'kısıt kare süresine de yansıdı',
-    ort(sonra.a, 'kare') > ort(once.a, 'kare') * 1.05,
-    `${ort(once.a, 'kare').toFixed(1)}ms → ${ort(sonra.a, 'kare').toFixed(1)}ms`,
+    + `kare ${ort(once.a, 'kare').toFixed(1)}ms → ${ort(sonra.a, 'kare').toFixed(1)}ms`,
   );
 
   /*
