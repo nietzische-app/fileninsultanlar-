@@ -339,18 +339,31 @@ if (once.a.length > 10 && sonra.a.length > 10) {
    * Ölçülen oran (ping artışı ÷ kare artışı):
    *   doğru hâl        5.0 – 7.8
    *   damga bozukken   1.4
-   * 3 katı ikisini rahatça ayırıyor. Alt taban (8 ms) kısıt hiç iş
-   * yapmadığında testin kendiliğinden geçmesini engelliyor.
+   * 3 katı ikisini rahatça ayırıyor.
+   *
+   * ALT TABAN 8 DEĞİL 5 ms. 8 yazmıştım ve CI'da düştü: ping +7 ms
+   * çıktı, oran 23.6x. Yani ölçmek istediğim etki fazlasıyla ORADAYDI,
+   * eşiği ıskalayan taban değerdi. Sebebi makine: hızlı bir koşucuda
+   * aynı kısıt daha küçük bir MUTLAK yavaşlama üretiyor (kendi
+   * makinemde ping +22, CI'da +7) ve mutlak bir taban bunu göremez.
+   *
+   * 5 ms, kontrol istemcisinin kendi kaymasının (±2-3 ms) üstünde
+   * kalıyor — yani gürültüyü hâlâ eliyor. "Kısıt hiç iş yapmadı"
+   * ihtimalini de bu taban değil, yukarıdaki çizim süresi denetimi
+   * kapatıyor; o ölçüt kare bütçesinden bağımsız.
+   *
+   * Bozuk damgayla (girdi `this.time` ile damgalanınca) doğrulandı:
+   * ping artışı oranı 1.4'e düşüyor ve denetim düşüyor.
    */
   const pingArtisi = (ort(sonra.a, 'ping') - ort(once.a, 'ping'))
     - (ort(sonra.b, 'ping') - ort(once.b, 'ping'));
   const kareArtisi = ort(sonra.a, 'kare') - ort(once.a, 'kare');
   kontrol(
     'PING yavaşlayan cihazda artıyor (kare saatinden okunmuyor)',
-    pingArtisi > Math.max(8, kareArtisi * 3),
+    pingArtisi > Math.max(5, kareArtisi * 3),
     `ping +${pingArtisi.toFixed(0)} ms · kare +${kareArtisi.toFixed(1)} ms · `
     + `oran ${(pingArtisi / Math.max(0.1, kareArtisi)).toFixed(1)}x `
-    + `(eşik ${Math.max(8, kareArtisi * 3).toFixed(0)} ms)`,
+    + `(eşik ${Math.max(5, kareArtisi * 3).toFixed(0)} ms)`,
   );
 
   /*
