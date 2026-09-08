@@ -25,6 +25,7 @@
     "olcum:kare-hizi": "node tests/olcum/kare-hizi.mjs",
     "olcum:toparlanma": "node tests/olcum/toparlanma.mjs",
     "olcum:tampon-tabani": "node tests/olcum/tampon-tabani.mjs",
+    "olcum:ekran-hizi": "node tests/olcum/ekran-hizi.mjs",
     "vercel-build": "vite build",
     "build:portal": "node scripts/build-portal.mjs",
     "rele": "node sunucu/index.js",

@@ -1630,8 +1630,49 @@ export default class Game {
    */
   agCizimKaydirma(player) {
     if (!this.agTahmin || !this.agYuvam || player.controlSlot !== this.agYuvam) return null;
-    if (this.agSapma.x === 0 && this.agSapma.y === 0) return null;
-    return this.agSapma;
+
+    /*
+     * ALT ADIM İLERİ SARMA — yüksek tazeleme hızlı ekranlar için.
+     *
+     * Fizik sabit 60 Hz adımda koşuyor; ekran 144 Hz ise karelerin
+     * ancak %42'sinde bir adım atılıyor ve kalan karelerde kendi
+     * oyuncumuz TAM OLARAK aynı yerde çiziliyor. Rakip ve top öyle
+     * değil: onlar `agAradegerle` ile kare başına akıyor. Yani
+     * kontrol ettiğin şey — en çok baktığın şey — sahnenin geri
+     * kalanından daha kesikli görünüyordu.
+     *
+     * Ölçüldü (tests/olcum/ekran-hizi.mjs, kendi oyuncumuzun çizim
+     * konumundaki dalgalanma / kıpırdamayan kare oranı; rakip aynı
+     * koşumda kontrol grubu ve her satırda 0.02 · %0):
+     *      ekran      önce          sonra
+     *       60 Hz   0.11 · %0     0.11 · %0   (değişmiyor)
+     *       90 Hz   0.70 · %23    0.54 · %12
+     *      120 Hz   0.97 · %45    0.63 · %15
+     *      144 Hz   1.15 · %54    0.73 · %13
+     *
+     * 60 Hz'de TAM OLARAK aynı çıkıyor ve bu tesadüf değil: orada her
+     * karede tam bir adım atılıyor, yani `accumulator` sıfır ve ek
+     * terim de sıfır. Gecikme ölçümü (olcum:gecikme) de birebir aynı
+     * kaldı — tepki 17 ms, hata p95 değişmedi.
+     *
+     * `accumulator` henüz simüle EDİLMEMİŞ gerçek zaman, yani konumun
+     * son tam adımdan ne kadar ilerisinde olması gerektiği. Hızla
+     * çarpıp ekleyince ara kareler de akıyor.
+     *
+     * İLERİ SARMA, GERİ ARA DEĞERLEME DEĞİL: iki adım arasını
+     * yumuşatmanın klasik yolu bir adım GERİDEN çizmek, ama bu
+     * oturumun tamamı o gecikmeyi düşürmekle geçti — kendi oyuncumuza
+     * 16.7 ms eklemek yanlış takas olurdu. İleri sarmanın bedeli yön
+     * değiştirirken en fazla bir adımlık aşma ve o da bir sonraki
+     * adımda kapanıyor.
+     */
+    const artik = Math.max(0, Math.min(PHYSICS.step, this.accumulator));
+    const x = this.agSapma.x + (player.vx ?? 0) * artik;
+    const y = this.agSapma.y + (player.onGround ? 0 : (player.vy ?? 0) * artik);
+
+    if (x === 0 && y === 0) return null;
+    // Yeni nesne: `agSapma` canlı durum, çağıran onu bozmamalı
+    return { x, y };
   }
 
   /**
