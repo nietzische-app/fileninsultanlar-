@@ -37,21 +37,9 @@
  * oyunun çalışmaya devam etmesi buna bağlı.
  */
 
-/** Datagramla gidebilecek paket türleri — bkz. yukarıdaki gerekçe. */
-const DATAGRAM_TURLERI = new Set(['durum', 'girdi']);
+import { datagramlik } from '../game/snapshot.js';
 
-/**
- * Bir paket datagramla gidebilir mi?
- *
- * Ayrı fonksiyon çünkü sınanabilir olması gerekiyor: yanlış tarafa
- * düşen tek bir tür ya oyunu hiç başlatmaz (kontrol mesajı kaybolur)
- * ya da kazancı yok eder (durum paketi sırada bekler).
- *
- * @param {object} paket
- */
-export function datagramlik(paket) {
-  return DATAGRAM_TURLERI.has(paket?.t);
-}
+export { datagramlik };
 
 /**
  * WebSocket adresinden WebTransport adresi türetir.

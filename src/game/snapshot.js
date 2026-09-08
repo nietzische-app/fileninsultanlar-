@@ -24,6 +24,34 @@
  */
 export const PAKET_SURUM = 2;
 
+/**
+ * DATAGRAMLA gidebilecek paket türleri.
+ *
+ * WebTransport iki kanal sunuyor: güvenilir akış ve güvenilmez
+ * datagram. Ayrım burada, protokolün tanımıyla aynı dosyada duruyor
+ * çünkü bu bir TAŞIMA tercihi değil PROTOKOL gerçeği: hangi mesajın
+ * kaybolmayı kaldırabileceğini paketin anlamı belirliyor.
+ *
+ * `durum` ve `girdi` her kare tazeleniyor — kaybolanın yerine 17 ms
+ * sonra yenisi geliyor ve eskisini yeniden göndermenin değeri yok.
+ * Geri kalan her şey (kimlik, oda, maç, bitiş, puan) BİR KEZ oluyor;
+ * biri kaybolursa oyun hiç başlamaz.
+ *
+ * TEK KAYNAK OLMASI ŞART: istemci ile röle ayrı listeler tutsaydı biri
+ * değişip diğeri unutulduğunda paketler yanlış kanala düşerdi — ve iki
+ * yönde de sessiz arıza (maç kurulmaz ya da kazanç yok olur).
+ */
+const DATAGRAM_TURLERI = new Set(['durum', 'girdi']);
+
+/**
+ * Bu paket datagramla gidebilir mi?
+ *
+ * @param {object} paket
+ */
+export function datagramlik(paket) {
+  return DATAGRAM_TURLERI.has(paket?.t);
+}
+
 /** Yön kısaltmaları — 'home'/'away' yerine tek harf. */
 const YON_KISA = { home: 'h', away: 'a' };
 const YON_UZUN = { h: 'home', a: 'away' };

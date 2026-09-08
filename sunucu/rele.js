@@ -30,6 +30,7 @@ import { EslesmeSirasi } from './sira.js';
 import { AD_UZUNLUK, adTemizle } from './protokol.js';
 import { Depo, genelGorunum } from './depo.js';
 import { puanDegisimi } from './puan.js';
+import { wtBaslat } from './wt.js';
 import { Mac } from './mac.js';
 import { PAKET_SURUM } from '../src/game/snapshot.js';
 import { agAyarOzeti } from '../src/game/Game.js';
@@ -120,6 +121,15 @@ export async function baslat({
    * testleri yazı-tura atmış olurdu.
    */
   yaziTura = () => Math.random() < 0.5,
+  /**
+   * WebTransport (QUIC) dinleyicisi — `{ port, cert, privKey }`.
+   *
+   * VARSAYILAN KAPALI (`null`). Açmak ayrı bir UDP portu, ayrı
+   * sertifika ve güvenlik duvarında ayrı bir kural demek; çalışan bir
+   * üretim hizmetini bunun için değiştirmek isteğe bağlı olmalı.
+   * Kapalıyken istemci kendiliğinden WebSocket'e düşüyor.
+   */
+  wt = null,
   /** Veri dizini — testte geçici bir dizine yönlendiriliyor. */
   veriDizini,
   /** IP başına bağlantı sınırı — testte küçültülüyor. */
@@ -190,6 +200,14 @@ export async function baslat({
   });
 
   const wss = new WebSocketServer({ server: http, maxPayload: AZAMI_MESAJ });
+
+  /*
+   * WebTransport oturumları AYNI `connection` kancasına giriyor.
+   * Röleye ikinci bir bağlantı yolu açmak yerine, taşımayı soket
+   * arayüzünün arkasına saklamak: oda, eşleşme, hız sınırı ve maç
+   * mantığının hiçbiri hangi boruyla geldiğini bilmiyor ve bilmemeli.
+   */
+  let wtSunucu = null;
 
   /** Odadaki iki sokete de yollar. */
   function odayaYolla(oda, paket) {
@@ -726,6 +744,17 @@ export async function baslat({
    * kadar dolu kalır ve kimse o koda katılamaz.
    */
   const nabiz = setInterval(() => {
+    /*
+     * WebTransport oturumları `wss.clients` içinde DEĞİL — o küme
+     * `ws` kütüphanesinin kendi defteri. İkisini birleştirmek yerine
+     * ikisi de süpürülüyor; unutulsaydı QUIC oturumları hiç
+     * temizlenmez ve odaları sonsuza kadar dolu tutardı.
+     */
+    wtSunucu?.istemciler.forEach((soket) => {
+      if (!soket.canli) { soket.terminate(); return; }
+      soket.canli = false;
+      soket.ping();
+    });
     wss.clients.forEach((soket) => {
       if (!soket.canli) {
         soket.terminate();
@@ -753,13 +782,31 @@ export async function baslat({
 
   await new Promise((coz) => http.listen(port, coz));
 
-  const kapat = () =>
-    new Promise((coz) => {
-      clearInterval(nabiz);
-      clearInterval(siraSaati);
+  /*
+   * WebTransport dinleyicisi EN SON başlıyor: `wss.on('connection')`
+   * kancası kurulmadan bir oturum gelirse mesajları dinleyen kimse
+   * olmazdı. Sırayı bozmak, ilk bağlanan oyuncunun sessizce
+   * kaybolması demek olurdu.
+   */
+  if (wt?.port && wt?.cert && wt?.privKey) {
+    wtSunucu = await wtBaslat({
+      ...wt,
+      baglandi: (soket, istek) => wss.emit('connection', soket, istek),
+      gunluk: (m) => console.log(`[rele] ${m}`),
+    });
+  }
+
+  const kapat = async () => {
+    clearInterval(nabiz);
+    clearInterval(siraSaati);
+    await wtSunucu?.kapat();
+    await new Promise((coz) => {
       wss.clients.forEach((soket) => soket.terminate());
       wss.close(() => http.close(coz));
     });
+  };
 
-  return { http, wss, defter, sira, depo, ipSayaci, port: http.address().port, kapat };
+  return {
+    http, wss, defter, sira, depo, ipSayaci, wtSunucu, port: http.address().port, kapat,
+  };
 }

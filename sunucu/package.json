@@ -12,5 +12,9 @@
   "dependencies": {
     "ws": "^8.21.3"
   },
-  "type": "module"
+  "type": "module",
+  "optionalDependencies": {
+    "@fails-components/webtransport": "^1.6.8",
+    "@fails-components/webtransport-transport-http3-quiche": "^1.6.8"
+  }
 }

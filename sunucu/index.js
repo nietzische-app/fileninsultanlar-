@@ -3,12 +3,46 @@
  *
  *   node sunucu/index.js
  *
- * Ortam değişkeni: PORT (varsayılan 8787).
+ * Ortam değişkenleri:
+ *   PORT      WebSocket portu (varsayılan 8787)
+ *   WT_PORT   WebTransport/QUIC UDP portu — VERİLMEZSE KAPALI
+ *   WT_CERT   TLS sertifikası dosya yolu (PEM)
+ *   WT_KEY    Özel anahtar dosya yolu (PEM)
+ *   WT_SECRET QUIC oturum gizli anahtarı (isteğe bağlı)
  */
 
+import { readFileSync } from 'node:fs';
 import { baslat } from './rele.js';
 
-const { port, kapat, depo } = await baslat({ port: Number(process.env.PORT ?? 8787) });
+/**
+ * WebTransport ayarını ortamdan okur.
+ *
+ * ÜÇÜ BİRDEN gerekiyor; biri eksikse KAPALI. Yarım yapılandırmayla
+ * açmaya çalışmak, rölenin açılışta çökmesi demek olurdu — ve o an
+ * kaybedilen şey isteğe bağlı bir özellik değil, çalışan WebSocket
+ * hizmeti olurdu.
+ */
+function wtAyari() {
+  const port = Number(process.env.WT_PORT ?? 0);
+  const certYol = process.env.WT_CERT;
+  const anahtarYol = process.env.WT_KEY;
+  if (!port || !certYol || !anahtarYol) return null;
+  try {
+    return {
+      port,
+      cert: readFileSync(certYol, 'utf8'),
+      privKey: readFileSync(anahtarYol, 'utf8'),
+    };
+  } catch (hata) {
+    console.warn(`UYARI: WebTransport sertifikası okunamadı (${hata.message}) — kapalı.`);
+    return null;
+  }
+}
+
+const { port, kapat, depo } = await baslat({
+  port: Number(process.env.PORT ?? 8787),
+  wt: wtAyari(),
+});
 console.log(`Röle ayakta — ws://localhost:${port} · sağlık: http://localhost:${port}/saglik`);
 
 /*

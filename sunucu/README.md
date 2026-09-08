@@ -855,6 +855,72 @@ hızlandırıyor ve bu ekranda sıçrama olarak görünüyor. Şikâyet "kasma"
 olduğu için o sütuna ağırlık verildi — `saatCekisiGeri` 0.35 yerine
 0.15 seçildi (sıçrama 1.40 yerine 1.21, toparlanma 17 yerine 85 ms).
 
+### WebTransport (QUIC) — isteğe bağlı, varsayılan KAPALI
+
+WebSocket TCP üstünde ve TCP'de kaybolan paket arkasındakileri de
+bekletiyor. Ölçüldü (`npm run olcum:tasima`, aynı ağda ortalama gerilik):
+
+| kayıp | UDP | TCP |
+| --- | --- | --- |
+| %0 | 38 ms | 38 ms |
+| %0.5 | 38 ms | 43 ms |
+| %2 | 38 ms | 56 ms |
+| %5 | 39 ms | 79 ms |
+
+Kazanç KAYIP ORANIYLA ORANTILI. Tipik ev bağlantısında (%0.5 altı)
+~5 ms; yani çoğu oyuncu için küçük, kötü bağlantılı oyuncular için
+belirgin.
+
+**Açmak için** röleye üç ortam değişkeni:
+
+```bash
+WT_PORT=8788            # UDP portu
+WT_CERT=/etc/.../fullchain.pem
+WT_KEY=/etc/.../privkey.pem
+```
+
+Üçü birden verilmezse kapalı kalır. Sertifika Caddy'nin ürettiği
+gerçek sertifika olabilir — WebTransport CA imzalı sertifikayı olduğu
+gibi kabul ediyor.
+
+**Güvenlik duvarında UDP portunu açmayı unutma**; QUIC TCP değil.
+
+#### Neden varsayılan kapalı
+
+Çalışan bir üretim hizmetini "belki iyi olur" diye değiştirmek doğru
+takas değil. Kapalıyken istemci kendiliğinden WebSocket'e düşüyor ve
+hiçbir şey değişmiyor. Bağımlılık da `optionalDependencies`: kurulu
+değilse röle yine açılıyor, yalnız günlüğe bir satır düşüyor.
+
+#### Sessiz geri düşüş
+
+İstemci önce WebTransport deniyor, olmazsa WebSocket'e dönüyor —
+**hata vermeden**. Bu ARIZA DEĞİL beklenen sonuç:
+
+- Safari'de WebTransport yok (iOS'ta oyunun çalışması buna bağlı)
+- Kurum ağlarının çoğu UDP/443'ü kapatıyor
+
+Hangi taşımanın kullanıldığı `?tani=1` katmanının sağ üstünde yazıyor:
+**WT** (yeşil) ya da **WS** (gri). Görünmeseydi "açık mı" sorusu yine
+tahmine kalırdı — bu proje aynı tuzağa röle sürümüyle bir kez düştü.
+
+#### Hangi mesaj hangi kanaldan
+
+Ayrım `src/game/snapshot.js` içindeki `datagramlik()` ile, yani
+protokolün tanımıyla aynı dosyada — istemci ve röle onu ORTAK içe
+aktarıyor. Ayrı listeler tutsaydı biri değişip diğeri unutulduğunda
+paketler yanlış kanala düşerdi ve iki yönde de sessiz arıza olurdu.
+
+| kanal | paketler | neden |
+| --- | --- | --- |
+| datagram (güvenilmez) | `durum`, `girdi` | her kare tazeleniyor; kaybolanın yerine 17 ms sonra yenisi geliyor |
+| akış (güvenilir) | kimlik, oda, maç, bitiş, puan, sıralama | bir kez oluyor; kaybolursa oyun hiç başlamaz |
+
+Gerçek QUIC üstünden uçtan uca sınanıyor (`sunucu/wt.test.js`):
+sertifika üretiliyor, röle açılıyor, gerçek bir QUIC istemcisi bağlanıp
+kimlik el sıkışmasını tamamlıyor. Mutasyonla doğrulandı — kimlik cevabı
+datagrama düşürülünce test zaman aşımına uğruyor.
+
 ### Elle sınamanın yerine: `npm run e2e dayanim`
 
 Bu bölümdeki arızaların hepsi bir insanın telefonunda bulundu ve
