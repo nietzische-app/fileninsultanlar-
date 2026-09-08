@@ -192,8 +192,19 @@ export async function wtBaslat({
      * DİNAMİK İÇE AKTARIM. Statik olsaydı paket kurulu değilken röle
      * hiç açılmazdı — yani isteğe bağlı bir özellik zorunlu bir
      * bağımlılığa dönerdi.
+     *
+     * Paket adı DEĞİŞKENDE ve `@vite-ignore` var: Vite içe aktarımları
+     * ÇALIŞMADAN ÖNCE, kaynağı dönüştürürken çözüyor ve paket kurulu
+     * değilse dosyayı hiç yükleyemiyor. Yani `try/catch` devreye bile
+     * girmiyordu; bu dosyayı içe aktaran her şey çöküyordu.
+     *
+     * CI tam olarak bunu gösterdi: kökteki `npm ci` `sunucu/`nun
+     * isteğe bağlı bağımlılıklarını kurmuyor ve rölenin BÜTÜN test
+     * dosyası yüklenemedi. Yerelde görünmedi çünkü paket
+     * `sunucu/node_modules` altında duruyor.
      */
-    ({ Http3Server, quicheLoaded } = await import('@fails-components/webtransport'));
+    const paket = '@fails-components/webtransport';
+    ({ Http3Server, quicheLoaded } = await import(/* @vite-ignore */ paket));
     await quicheLoaded;
   } catch (hata) {
     gunluk(`webtransport kapalı: bağımlılık yüklenemedi (${hata.message})`);

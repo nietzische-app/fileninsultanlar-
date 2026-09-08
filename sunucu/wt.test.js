@@ -80,9 +80,28 @@ afterAll(async () => {
   if (dizin) rmSync(dizin, { recursive: true, force: true });
 });
 
+/**
+ * QUIC paketi kurulu mu.
+ *
+ * `optionalDependencies` ve yalnız `sunucu/` altında: kökteki
+ * `npm ci` onu kurmuyor, yani CI'da yok. Testin bunu bilmesi gerek —
+ * ama "yoksa geç" demek de yetmez, o yüzden aşağıda ayrı bir denetim
+ * paketin YOKLUĞUNDA rölenin açıldığını sınıyor.
+ */
+async function paketVar() {
+  try {
+    const ad = '@fails-components/webtransport';
+    await import(/* @vite-ignore */ ad);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Node tarafında bir WebTransport istemcisi açar. */
 async function istemciAc() {
-  const { WebTransport } = await import('@fails-components/webtransport');
+  const ad = '@fails-components/webtransport';
+  const { WebTransport } = await import(/* @vite-ignore */ ad);
   const wt = new WebTransport(`https://127.0.0.1:${WT_PORT}/wt`, {
     serverCertificateHashes: [{ algorithm: 'sha-256', value: parmakIzi }],
   });
@@ -104,17 +123,27 @@ describe('webtransport dinleyicisi', () => {
     await yedek.kapat();
   });
 
-  it('QUIC üstünden kimlik el sıkışması TAMAMLANIYOR', async () => {
+  it('QUIC üstünden kimlik el sıkışması TAMAMLANIYOR', async (ctx) => {
+    /*
+     * Paket hiç kurulu değilse (CI, native derleyicisi olmayan makine)
+     * bu test ATLANIYOR ve atlandığı yazıyor. Sessizce geçmesi değil:
+     * vitest onu "skipped" olarak gösteriyor.
+     *
+     * Atlamanın bir şeyi örtmemesi için üstteki denetim paketsiz
+     * durumu ZATEN sınıyor — röle o hâlde de açılmalı. Paket kuruluysa
+     * (yerel geliştirme, üretim) test gerçek QUIC ile koşuyor ve
+     * bağlanamazsa DÜŞÜYOR: yeşil kalan ama hiçbir şey sınamayan bir
+     * test, hiç test olmamasından kötü.
+     */
+    if (!(await paketVar())) {
+      ctx.skip('@fails-components/webtransport kurulu değil (sunucu/npm install)');
+      return;
+    }
+
     let baglanti;
     try {
       baglanti = await istemciAc();
     } catch (hata) {
-      /*
-       * Bu ortamda UDP kapalıysa test DÜŞÜYOR, sessizce geçmiyor.
-       * Yeşil kalan ama hiçbir şey sınamayan bir test, hiç test
-       * olmamasından kötü — bu projede bir gecikme enjeksiyonu tam
-       * olarak öyle haftalarca tablolar üretti.
-       */
       throw new Error(`QUIC istemcisi bağlanamadı: ${hata.message}`);
     }
 
