@@ -585,6 +585,54 @@ mevcut dosyayı truncate edip AYNI inode'a yazıyor:
 sed -E 's/eski/yeni/' /opt/aegis/Caddyfile > /tmp/cf && cat /tmp/cf > /opt/aegis/Caddyfile
 ```
 
+#### PAYLAŞILAN CADDY TUZAĞI — blok bir gün kayboluyor
+
+Bu Caddyfile bu kutudaki BAŞKA bir projeye ait. O proje her
+dağıtıldığında dosyayı kendi kaynağından yeniden yazabiliyor ve bizim
+eklediğimiz site bloğu sessizce siliniyor. Yaşandı: oyun bir gün
+"bağlantı koptu" vermeye başladı.
+
+Belirtiler, en tepeden aşağı:
+
+```
+tarayıcı konsolu → WebSocket connection to 'wss://rele...' failed
+curl -sS -I https://rele...  → curl: (35) tlsv1 alert internal error
+curl http://127.0.0.1:8787/saglik → ÇALIŞIYOR   ← röle sağlam
+docker ps → aegis-caddy "Up 43 minutes", filenin-rele "Up 27 hours"
+grep rele /opt/aegis/Caddyfile → BOŞ            ← sebep bu
+```
+
+Ayırt edici üçlü: **röle kendi portundan cevap veriyor**, **Caddy
+röleden çok daha yeni**, **blok dosyada yok**. TLS hatası "sertifika
+süresi doldu" değil — Caddy o alan adını hiç tanımıyor, o yüzden el
+sıkışma daha başlarken düşüyor.
+
+Geri koymak (`>>` inode'u korur, yukarıdaki tuzağa düşmez):
+
+```bash
+cat >> /opt/aegis/Caddyfile <<'EOF'
+
+rele.retrovoleybol.online {
+	reverse_proxy filenin-rele:8787
+}
+EOF
+docker exec aegis-caddy caddy validate --config /etc/caddy/Caddyfile
+docker exec aegis-caddy caddy reload --config /etc/caddy/Caddyfile
+sleep 5 && curl -s https://rele.retrovoleybol.online/saglik; echo
+```
+
+**Ama elle geri koymak çözüm değil, erteleme.** Kalıcı olanı ikisinden
+biri:
+
+1. Bloğu diğer projenin KENDİ kaynağına taşı — Caddyfile'ı o üretiyorsa
+   bizim tanımımız da onun deposunda dursun.
+2. O Caddyfile'a bir kez `import /etc/caddy/conf.d/*.caddy` ekle ve
+   bizim bloğu ayrı bir dosyaya (`/opt/aegis/conf.d/rele.caddy`) koy.
+
+Ve **dışarıdan bir uptime kontrolü** şart: `/saglik` adresini dakikada
+bir yoklayan ücretsiz bir servis yeterli. Bu kesinti 43 dakika sürdü ve
+ancak oynamaya çalışınca fark edildi; yayında bunu oyuncular fark eder.
+
 Caddy ilk istekte bu domain için otomatik Let's Encrypt sertifikası
 alır — certbot'a hiç gerek yok. `tls-alpn-01` doğrulaması 443 üzerinden
 yürüdüğü için ek bir port açmak da gerekmiyor; onay 10-20 saniye
