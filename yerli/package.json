@@ -1,0 +1,19 @@
+{
+  "name": "retro-voleybol-yerli",
+  "version": "1.0.0",
+  "description": "Retro Voleybol — tarayıcısız masaüstü istemcisi",
+  "type": "module",
+  "main": "index.mjs",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@kmamal/sdl": "^0.11.5",
+    "canvas": "^3.2.0",
+    "ws": "^8.21.3"
+  },
+  "optionalDependencies": {
+    "@fails-components/webtransport": "^1.6.8",
+    "@fails-components/webtransport-transport-http3-quiche": "^1.6.8"
+  }
+}
