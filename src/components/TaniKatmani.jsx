@@ -80,10 +80,14 @@ export default function TaniKatmani({ oyun }) {
       <Satir ad="seğirme" deger={veri.segirme} renkli={renk(veri.segirme, 15, 40)} />
       {/*
         Paket aralığı ÖLÇÜLEN değer, ayardan okunan değil: röle eski
-        sürümdeyse burada 30 Hz yerine daha uzun bir aralık görünür ve
-        "iki taraf aynı kodda mı" sorusu tek bakışta cevaplanır.
+        sürümdeyse burada beklenenden uzun bir aralık görünür ve "iki
+        taraf aynı kodda mı" sorusu tek bakışta cevaplanır.
+
+        Eşikler 60 Hz'e göre: beklenen ~17 ms. 30 ms'nin üstü SARI,
+        çünkü orası büyük ihtimalle 30 Hz'de kalmış bir röle — arıza
+        değil ama bilinmesi gereken bir şey.
       */}
-      <Satir ad="paket" deger={veri.paketAralik} renkli={renk(veri.paketAralik, 40, 70)} />
+      <Satir ad="paket" deger={veri.paketAralik} renkli={renk(veri.paketAralik, 22, 40)} />
       <Satir ad="sessizlik" deger={veri.sessizlik} renkli={renk(veri.sessizlik, 200, 600)} />
 
       {/* --- Ara değerleme --- */}

@@ -257,13 +257,18 @@ describe('uzlaştırma', () => {
 
   it('sunucunun konumundan başlayıp bekleyen adımları yeniden oynar', () => {
     const sunucu = sunucuKur();
-    const istemci = istemciKur();
+    /*
+     * Saat ENJEKTE ediliyor: tahmin penceresi `agSaat`ten okunuyor
+     * (girdi damgasıyla aynı saat). `istemci.time` yazmak pencereyi
+     * artık sürmüyor; enjekte edilmezse duvar saati okunur ve pencere
+     * `azamiTahmin`e dayanır — test sessizce anlamsızlaşır.
+     */
+    const istemci = istemciKur({ agSaat: () => 1.0 });
     ralliye(sunucu);
     ralliye(istemci);
 
     // İstemcinin saati 1.0 sn; sunucu 0.5 sn önceki girdiyi işlemiş ve
     // damga sunucuda 0.1 sn beklemiş → pencere = 1.0 - 0.5 - 0.1 = 0.4
-    istemci.time = 1.0;
     istemci.agGirdiGecmisi = [{ an: 0, tuslar: { right: true } }];
     istemci.inputs.p1.right = true;
 
@@ -296,9 +301,9 @@ describe('uzlaştırma', () => {
     temelPaket.az = [0.5, null];
 
     const kur = () => {
-      const istemci = istemciKur();
+      // Saat enjekte: pencere `agSaat`ten geliyor (bkz. yukarıdaki test)
+      const istemci = istemciKur({ agSaat: () => 1.0 });
       ralliye(istemci);
-      istemci.time = 1.0;
       istemci.agGirdiGecmisi = [{ an: 0, tuslar: { right: true } }];
       istemci.inputs.p1.right = true;
       return istemci;
@@ -325,9 +330,8 @@ describe('uzlaştırma', () => {
     paket.az = [0, null];
     paket.ay = [0, 0];
 
-    const istemci = istemciKur();
+    const istemci = istemciKur({ agSaat: () => 30 }); // 30 saniyelik boşluk
     ralliye(istemci);
-    istemci.time = 30; // 30 saniyelik boşluk
     istemci.agGirdiGecmisi = [{ an: 0, tuslar: { right: true } }];
 
     const t0 = Date.now();

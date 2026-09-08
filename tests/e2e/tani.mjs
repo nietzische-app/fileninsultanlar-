@@ -16,6 +16,7 @@
  */
 
 import { baslat } from '../../sunucu/rele.js';
+import { agAyarOzeti } from '../../src/game/Game.js';
 import { vekilKur } from './_gecikmeli-vekil.mjs';
 import {
   tarayiciAc, masaustuBaglam, URL, VARSAYILAN_TERCIH, kontrolcu,
@@ -93,15 +94,17 @@ kontrol('teşhis katmanı görünüyor', veri !== null, JSON.stringify(veri));
 
 if (veri) {
   /*
-   * PAKET ARALIĞI, katmanın en değerli satırı: röle 30 Hz gönderiyorsa
-   * ~33 ms olmalı. Bu sayı AYARDAN değil ÖLÇÜMDEN geliyor, yani röle
-   * eski sürümdeyse burada büyür ve "iki taraf aynı kodda mı" sorusu
-   * tek bakışta cevaplanır.
+   * PAKET ARALIĞI, katmanın en değerli satırı. Beklenen değer AYARDAN
+   * türetiliyor ama okunan sayı ÖLÇÜMDEN geliyor: röle eski sürümdeyse
+   * ikisi ayrışır ve "iki taraf aynı kodda mı" sorusu tek bakışta
+   * cevaplanır. Sabit yazsaydık ayar değiştiğinde test kırılır ve
+   * asıl soruyu sormayı bırakırdı.
    */
+  const beklenenAralik = 1000 / agAyarOzeti().durumHz;
   kontrol(
-    'paket aralığı 30 Hz ile tutarlı',
-    veri.paket >= 25 && veri.paket <= 45,
-    `${veri.paket} ms (beklenen ~33)`,
+    `paket aralığı ${agAyarOzeti().durumHz} Hz ile tutarlı`,
+    veri.paket >= beklenenAralik * 0.7 && veri.paket <= beklenenAralik * 1.4,
+    `${veri.paket} ms (beklenen ~${Math.round(beklenenAralik)})`,
   );
 
   /*
@@ -116,13 +119,18 @@ if (veri) {
   );
 
   /*
-   * TAMPON, ölçülen seğirmeye göre uyarlanıyor ve tabanı 1.5 paket
-   * aralığı (~50 ms). Sabit gecikmede tavana yaklaşmamalı.
+   * TAMPON, ölçülen seğirmeye göre uyarlanıyor ve tabanı ayardan
+   * geliyor (`tamponTabanMs`). Alt sınır o taban, üst sınır tavan:
+   * sabit gecikmede tavana yaklaşmamalı. İkisi de AYARDAN türetiliyor,
+   * çünkü sabit yazılan sınır anlık görüntü hızı değişince test
+   * kırıyordu — ve kırılan test, kodun değil kendisinin bayatladığını
+   * söylüyordu.
    */
+  const tamponTabani = agAyarOzeti().tamponTabanMs;
   kontrol(
     'tampon makul aralıkta',
-    veri.tampon >= 40 && veri.tampon <= 200,
-    `${veri.tampon} ms`,
+    veri.tampon >= tamponTabani * 0.9 && veri.tampon <= 200,
+    `${veri.tampon} ms (taban ${tamponTabani} ms)`,
   );
 
   /*

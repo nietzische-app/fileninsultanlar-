@@ -187,7 +187,7 @@ görüyordu. `npm run olcum:ping` hatayı yeniden üretti:
 | 400 ms | — | 400 ms |
 
 Önce **sistematik olarak eksik**; sonra ±2 adım salınım, ortalama sapma
-+6 ms. Kalan salınım kuantizasyon (60 Hz döngü, 30 Hz anlık görüntü).
++6 ms. Kalan salınım kuantizasyon (60 Hz döngü, anlık görüntü aralığı).
 
 Gösterge artık `agDongu`yu okuyor — `agPencere` tahminde kalıyor. İki
 alan bilerek ayrı; bir birim testi ikisine FARKLI değer atayıp
@@ -269,6 +269,31 @@ varsayılmadı, ölçüldü: uyarlanan tamponla 20 Hz'de kalınsaydı
 hissedilen gecikme 83 ms, top sapması p50/p95 14.9/48.4 px, dalgalanma
 0.11-0.15 olurdu — yani fazladan paketin karşılığı her üç ölçütte de
 görünüyor.
+
+**4. Anlık görüntü 30 → 60 Hz.** Burada uzun süre "60 Hz hissedilir bir
+şey kazandırmıyor" yazıyordu. O gerekçe dayandığı dünyayla birlikte
+geçersizleşti: tampon o zamanlar sabitti, şimdi **paket aralığı
+cinsinden** ölçülüyor. Aralık yarıya inince tampon da yarıya iniyor —
+yani 60 Hz'in kazancı topun akıcılığından değil tamponun küçülmesinden
+geliyor.
+
+| ölçüt | 30 Hz | 60 Hz |
+| --- | --- | --- |
+| hissedilen gecikme (ağ 0 ms) | 67 ms | **33 ms** |
+| hissedilen gecikme (ağ 100 ms) | 100 ms | **67 ms** |
+| hissedilen gecikme (ağ 200 ms) | 133 ms | **117 ms** |
+| gerilik (sakin ağ) | 71 ms | **46 ms** |
+| bant genişliği (maç başına) | 22.2 KB/sn | 44.2 KB/sn |
+| donan kare (saniyede 1 hıçkırık) | %0.5 | %1.1 |
+
+Son iki satır bedel. Bant genişliği iki katı — oyuncunun mobil verisi
+de öyle, 10 dakikalık maçta ~13 → ~26 MB. Hıçkırık toleransı düşüyor
+çünkü tampon MUTLAK olarak küçülüyor: seğirme ortalamasının henüz
+öğrenmediği tek bir gecikmiş paketi karşılayacak pay azalıyor.
+
+Hıçkırık rahatsız ederse ayar düğmesi `AG.tamponTaban` — büyütmek
+toleransı geri alır, karşılığında gecikmeyi geri verir. `olcum:tampon-tabani`
+tam olarak bu takası ölçüyor.
 
 ## Teşhis katmanı — `?tani=1`
 
@@ -741,7 +766,7 @@ oluyor ve dışarıdan hangisinin eski olduğu görünmüyor.
 
 | | rakip ekranıma (ağ 0 ms) | istemcinin tamponu | rölenin gerçek paket aralığı |
 |---|---|---|---|
-| yeni istemci + **yeni röle** | 50 ms | 50 ms | hep 2 adım (30 Hz) |
+| yeni istemci + **yeni röle** | 50 ms | 50 ms | hep sabit adım (`ag.durumAdim`) |
 | yeni istemci + **eski röle** | **100 ms** | **96 ms** | 4 adım ×78, 3 adım ×11 (~15 Hz) |
 
 Sebebi: eski rölenin gönderme kapısı süre karşılaştırıyordu ve kayan
@@ -790,7 +815,7 @@ Nasıl okunur:
 
 | Ölçüm | İyi | Kötüyse ne yapılır |
 |---|---|---|
-| `ag.durumAdim` | `2` | Röleyi yeniden dağıt — bedava ve en büyük kazanç |
+| `ag.durumAdim` | `/saglik`teki değer istemcininkiyle aynı | Röleyi yeniden dağıt — bedava ve en büyük kazanç |
 | tik p95 | < 25 ms, geç tik %5 altı | CPU sınırını yükselt ya da komşu servisleri seyrelt |
 | ping (TR → Almanya) | 40-60 ms | Ancak bu 100 ms'i aşıyorsa sunucu taşımak konuşulur |
 
@@ -1007,7 +1032,7 @@ kaçınılmaz. Tanımadığı mesajlar hâlâ karşı tarafa ham hâliyle aktar�
 | ← | `{t:'oda', kod, rol}` | Oda kuruldu / katılındı |
 | ← | `{t:'eslesme', rol}` | İki taraf da hazır |
 | ← | `{t:'mac', cfg, yuva, rakip}` | Maç kuruldu; `yuva` seni, `rakip` karşındakini söyler |
-| ← | `{t:'durum', ...}` | Anlık görüntü (30 Hz); `az`/`ay` girdi onayı |
+| ← | `{t:'durum', ...}` | Anlık görüntü (`AG.durumHz`); `az`/`ay` girdi onayı |
 | ← | `{t:'bitis', sonuc}` | Maç bitti |
 | ← | `{t:'ayrildi', kapandi}` | Karşı taraf gitti |
 | ← | `{t:'hata', sebep}` | İstek reddedildi |

@@ -115,10 +115,8 @@ const BG_REFRESH = 1 / 10;
 /**
  * Ağ ayarları.
  *
- * 30 Hz durum: 60 Hz göndermek bant genişliğini iki katına çıkarıp
- * hissedilir bir şey kazandırmıyor — top zaten karelerin arasında
- * yumuşak görünecek kadar yavaş yer değiştiriyor. Tuşlar ise
- * değiştiği anda gidiyor, orada gecikme doğrudan hissediliyor.
+ * Durum 60 Hz. Bir zamanlar 20, sonra 30 idi; her adımın gerekçesi
+ * ölçüm ve her biri `durumHz`in yanında yazılı.
  */
 const AG = {
   /**
@@ -134,20 +132,44 @@ const AG = {
    *     ölçülüyor (aşağıda), yani aralık küçülünce o da küçülüyor
    *
    * Bedeli bant genişliği ve ölçüldü (olcum:kapasite, 32 eşzamanlı maç):
-   * 472 → 702 KB/sn, paket 1279 → 1913/sn, yani %49. Röle darboğazı
-   * zaten işlemci değil paket, o yüzden ciddiye alınacak bir sayı —
-   * 60 Hz'e çıkmamanın sebebi de bu.
+   * 472 → 702 KB/sn, paket 1279 → 1913/sn, yani %49.
    *
    * KARŞILIĞINI VERİYOR MU diye ölçüldü, varsayılmadı. Uyarlanan
    * tamponla birlikte 20 Hz'de kalınsaydı: hissedilen gecikme 83 ms
    * (30 Hz'de 67), top sapması p50 14.9 / p95 48.4 px (30 Hz'de
-   * 10.2 / 37.2), dalgalanma 0.11-0.15 (30 Hz'de 0.07-0.08). Yani
-   * fazladan paketin karşılığı her üç ölçütte de görünüyor.
+   * 10.2 / 37.2), dalgalanma 0.11-0.15 (30 Hz'de 0.07-0.08).
    *
-   * 60 Hz seçilemezdi ayrıca: adım sayısı tam bölünmeli (bkz.
-   * `durumAdim`) ve 60 Hz her karede paket demekti.
+   * SONRA 60 Hz'E ÇIKILDI ve burada eskiden "60 Hz hissedilir bir şey
+   * kazandırmıyor" yazıyordu. O gerekçe artık geçerli değil, çünkü
+   * dayandığı dünya değişti: tampon o zamanlar SABİTTİ, şimdi PAKET
+   * ARALIĞI cinsinden ölçülüyor (`tamponTaban`). Aralık yarıya inince
+   * tampon da yarıya iniyor, yani 60 Hz'in kazancı topun akıcılığından
+   * değil TAMPONUN KÜÇÜLMESİNDEN geliyor.
+   *
+   * Ölçüldü (olcum:hissedilen — rakip sunucuda kıpırdadı, ekranıma kaç
+   * ms sonra geldi):
+   *      ağ RTT      30 Hz     60 Hz
+   *        0 ms      67 ms     33 ms
+   *       67 ms      83 ms     50 ms
+   *      100 ms     100 ms     67 ms
+   *      200 ms     133 ms    117 ms
+   *
+   * Gerilik 71 → 46 ms (olcum:tampon-tabani, sakin ağ).
+   *
+   * BEDELİ İKİ TANE, ikisi de dürüstçe:
+   *   · Bant genişliği iki katı: maç başına 22.2 → 43.5 KB/sn. Röle
+   *     darboğazı işlemci değil paket (32 maçta işlemci %5, tik p95
+   *     0 ms — sıkışan yer ağ). Oyuncunun mobil verisi de iki katı:
+   *     10 dakikalık maçta ~13 → ~26 MB.
+   *   · Hıçkırık toleransı biraz düşüyor: tampon MUTLAK olarak
+   *     küçüldüğü için, seğirme ortalamasının henüz öğrenmediği tek
+   *     bir gecikmiş paket daha kolay kurutuyor. Saniyede bir
+   *     hıçkırıkta donan kare oranı %0.5 → %1.1.
+   *
+   * `durumAdim` burada 1 oluyor, yani her fizik adımında bir paket.
+   * Daha yükseği bu mimaride mümkün değil.
    */
-  durumHz: 30,
+  durumHz: 60,
 
   /**
    * Kaç ADIMDA bir durum yollanacağı — `durumHz`den türetiliyor.

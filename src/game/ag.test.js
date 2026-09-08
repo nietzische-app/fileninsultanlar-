@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import Game from './Game.js';
+import Game, { agAyarOzeti } from './Game.js';
 import { paketle } from './snapshot.js';
 import { stepBall } from './ballstep.js';
 import { PHYSICS, PLAYER, GROUND_Y } from './constants.js';
@@ -345,6 +345,15 @@ describe('topu ileri sarma', () => {
     g.agPaketAl(topluPaket(s, { x: 200, y: 240, vx: 600, vy: 0 }, 20));
     g.agPaketAl(topluPaket(s, { x: 210, y: 240, vx: 600, vy: 0 }, 21));
 
+    /*
+     * TAMPON SABİTLENİYOR. Bu test ileri sarmanın GEOMETRİSİNİ sınıyor,
+     * tamponun boyunu değil; sınırları da o geometriye göre ölçülüp
+     * kondu (mutasyon ayrımı birkaç piksel). Tampon `durumHz`e bağlı
+     * olduğu için sabitlenmezse ayar her değiştiğinde bu sayılar kayar
+     * ve test, sınadığını sandığı şeyi bırakıp ayarı sınamaya başlar.
+     */
+    g.agTamponBoyu = 1.5 / 30;
+
     // Kendi oyuncumuz topun YOLUNDA duruyor
     g.players.forEach((p) => { p.x = -5000; p.y = -5000; });
     const ben = g.players.find((p) => p.controlSlot === g.agYuvam);
@@ -584,6 +593,15 @@ describe('topu ileri sarma', () => {
      */
     g.agPaketAl(topluPaket(s, { x: 300, y: GROUND_Y - 80, vx: 300, vy: 400 }, 20));
     g.agPaketAl(topluPaket(s, { x: 305, y: GROUND_Y - 73, vx: 300, vy: 400 }, 21));
+
+    /*
+     * TAMPON SABİTLENİYOR. Bu test ileri sarmanın GEOMETRİSİNİ sınıyor,
+     * tamponun boyunu değil; sınırları da o geometriye göre ölçülüp
+     * kondu (mutasyon ayrımı birkaç piksel). Tampon `durumHz`e bağlı
+     * olduğu için sabitlenmezse ayar her değiştiğinde bu sayılar kayar
+     * ve test, sınadığını sandığı şeyi bırakıp ayarı sınamaya başlar.
+     */
+    g.agTamponBoyu = 1.5 / 30;
     oyunculariUzaklastir(g);
     akit(g, 0.05);
 
@@ -764,7 +782,14 @@ describe('bağlantı gecikmesi ölçümü', () => {
      * Bu testi mutasyon istedi: korumayı kaldırdığımda hiçbir test
      * düşmüyordu, yani kod doğrulanmamış duruyordu.
      */
-    const g = misafirKur();
+    /*
+     * SAAT ENJEKTE EDİLİYOR: gidiş-dönüş ölçüsü artık `agSaat`ten
+     * okunuyor (girdi damgasıyla aynı saat, bkz. `agSaat`). `g.time`
+     * yazmak bu ölçüyü artık sürmüyor — test geçmeye devam ederdi ama
+     * adının söylediği şeyi sınamayı bırakırdı.
+     */
+    let saat = 0;
+    const g = misafirKur({ agSaat: () => saat });
     const s2 = sunucuKur();
 
     /*
@@ -783,18 +808,18 @@ describe('bağlantı gecikmesi ölçümü', () => {
     };
 
     // İlk ölçüm: damga 1.0, istemci saati ilerledi
-    g.time = 1.2;
+    saat = 1.2;
     g.agPaketAl(paketYap(1.0, 0), 'p2');
     const ilk = g.agDongu;
     expect(ilk).toBeGreaterThan(0);
 
     // AYNI damga, ama istemci saati epey ilerledi
-    g.time = 1.6;
+    saat = 1.6;
     g.agPaketAl(paketYap(1.0, 0), 'p2');
     expect(g.agDongu).toBe(ilk);
 
     // Yeni damga gelince ölçüm yeniden işliyor
-    g.time = 1.7;
+    saat = 1.7;
     g.agPaketAl(paketYap(1.6, 0), 'p2');
     expect(g.agDongu).not.toBe(ilk);
   });
@@ -1281,11 +1306,16 @@ describe('durum gönderme sıklığı', () => {
     expect([...new Set(araliklar)]).toHaveLength(1);
 
     /*
-     * Ve gerçek hız ayarla uyuşmalı. Aralık sayısını kontrol etmek tek
-     * başına yetmez: her karede gönderen bir kod da "düzenli" olurdu.
+     * Ve gerçek hız AYARLA uyuşmalı. Sabit sayı yazmıyoruz: sınanan
+     * şey "kaç Hz" değil, "ayarın söylediği hız gerçekten çıkıyor mu".
+     * Düzelttiğimiz arıza tam olarak buydu — ayar 30 diyordu, gerçek
+     * hız 22.5'ti.
      */
+    const { durumHz, durumAdim } = agAyarOzeti();
     const hz = araliklar.length / (600 * PHYSICS.step);
-    expect(hz).toBeGreaterThan(29);
-    expect(hz).toBeLessThan(31);
+    expect(hz).toBeGreaterThan(durumHz - 1);
+    expect(hz).toBeLessThan(durumHz + 1);
+    // Ve aralık tam olarak ayarın gerektirdiği adım sayısı olmalı
+    expect(araliklar[0]).toBe(durumAdim);
   });
 });

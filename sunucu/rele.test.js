@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { baslat } from './rele.js';
+import { agAyarOzeti } from '../src/game/Game.js';
 import { PAKET_SURUM } from '../src/game/snapshot.js';
 
 /**
@@ -374,12 +375,20 @@ describe('röle', () => {
      */
     const veri = await (await fetch(`http://localhost:${sunucu.port}/saglik`)).json();
 
-    expect(veri.ag.durumHz).toBe(30);
-    expect(veri.ag.durumAdim).toBe(2);
     /*
-     * Ve bu iki sayı TUTARLI olmalı: 60 Hz döngüde 30 Hz göndermek
-     * tam 2 adım demek. Biri diğerine bakmadan değiştirilirse gerçek
-     * hız ayarın söylediği şey olmaz — düzelttiğimiz arıza tam da buydu.
+     * Sabit sayı YAZILMIYOR: sınanan şey "röle ne kadar hızlı
+     * gönderiyor" değil, "röle BİZİM koştuğumuz kodun ayarlarını mı
+     * bildiriyor". Sabit yazılsaydı ayar her değiştiğinde test kırılır
+     * ve asıl soruyu sormayı bırakırdı.
+     */
+    const beklenen = agAyarOzeti();
+    expect(veri.ag.durumHz).toBe(beklenen.durumHz);
+    expect(veri.ag.durumAdim).toBe(beklenen.durumAdim);
+    /*
+     * Ve bu iki sayı TUTARLI olmalı: 60 Hz döngüde 30 Hz göndermek tam
+     * 2 adım, 60 Hz göndermek 1 adım demek. Biri diğerine bakmadan
+     * değiştirilirse gerçek hız ayarın söylediği şey olmaz —
+     * düzelttiğimiz arıza tam da buydu.
      */
     expect(Math.round(1 / (veri.ag.durumAdim * (1 / 60)))).toBe(veri.ag.durumHz);
 

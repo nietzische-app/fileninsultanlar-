@@ -6,10 +6,10 @@
  * tamponun tabanını belirleyen şey SEĞİRME DEĞİL, PAKET ARALIĞI.
  *
  * Ara değerleme çizilecek anın elimizdeki iki paketin ARASINDA
- * kalmasını gerektiriyor. Paketler 33 ms arayla geliyorsa, tampon bir
- * tam aralıktan küçük olduğu anda çizim saati en yeni paketi geçiyor
- * ve tampon KURUYOR — ekran son bilinen kareyi tutuyor, yani donuyor.
- * 30 ms'lik bir tampon 33 ms'lik akışta her aralıkta kuruyor demek.
+ * kalmasını gerektiriyor, yani tabanı SEĞİRME değil PAKET ARALIĞI
+ * belirliyor. Tampon küçüldükçe çizim saati en yeni pakete yaklaşıyor
+ * ve bir noktada onu geçiyor: tampon KURUYOR, ekran son bilinen kareyi
+ * tutuyor, yani donuyor.
  *
  * NEDEN AYRI BİR ÖLÇÜM: elimizdeki iki araç bu soruyu göremiyor.
  *   · `olcum:akicilik` seğirme enjekte ediyor (±5 ila ±40 ms) ve
@@ -25,7 +25,7 @@
  *
  * Kullanım: npm run olcum:tampon-tabani
  */
-import Game from '../../src/game/Game.js';
+import Game, { agAyarOzeti } from '../../src/game/Game.js';
 import { PHYSICS } from '../../src/game/constants.js';
 
 /** Ölçüm uzunluğu (sn). */
@@ -176,7 +176,7 @@ function olc(taban, segirmeMs, tokezHz = 0) {
 }
 
 console.log('\nTAMPONUN TABANI — nereye kadar inebilir?\n');
-console.log('Paket aralığı 33 ms (30 Hz). Taban PAKET ARALIĞI cinsinden.');
+console.log(`Paket aralığı ${Math.round(1000 / agAyarOzeti().durumHz)} ms (${agAyarOzeti().durumHz} Hz). Taban PAKET ARALIĞI cinsinden.`);
 console.log('"kuruma" = tamponun boşaldığı ve ekranın son kareyi TUTTUĞU kare oranı.\n');
 
 const SENARYO = [
