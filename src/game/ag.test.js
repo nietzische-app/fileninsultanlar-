@@ -712,6 +712,13 @@ describe('bağlantı gecikmesi ölçümü', () => {
       agRol: 'misafir',
       agYuvam: 'p1',
       agGonder: yolla('yukari'),
+      /*
+       * SİMÜLE SAAT ŞART. Bu döngü 300 adımı milisaniyeler içinde
+       * bitiriyor, yani duvar saatinde neredeyse hiç zaman geçmiyor.
+       * Girdi damgası `agSaat`ten geldiği için enjekte edilmezse ölçüm
+       * "1 ms gidiş-dönüş" der ve test kodu değil KENDİNİ sınamış olur.
+       */
+      agSaat: () => adim * PHYSICS.step,
     });
     istemci.start();
 
@@ -1091,6 +1098,158 @@ describe('ara değerleme tamponu — ölçülen seğirmeye göre', () => {
     const kucuk = oku(0.04);
     const buyuk = oku(0.16);
     expect(buyuk).toBeGreaterThan(kucuk + 0.08);
+  });
+
+  /**
+   * Aynı ağda kare hızını değiştirip çizim saatinin geri kalıp
+   * kalmadığına bakar.
+   *
+   * @param {number} kareSuresi Cihazın bir kareyi çizme süresi (sn)
+   * @returns {number} `gerilik - tampon` — tamponla AÇIKLANAMAYAN gecikme
+   */
+  const fazlaGecikme = (kareSuresi) => {
+    let saat = 0;
+    const g = misafirKur({ agSaat: () => saat });
+    const s = sunucuKur();
+    let sonrakiPaket = 0;
+    const olculen = [];
+
+    // 6 saniye duvar saati — tampon ve çekiş otursun
+    for (let kare = 0; kare * kareSuresi < 6; kare += 1) {
+      saat = kare * kareSuresi;
+      /*
+       * Paket akışı DUVAR SAATİNDE, 30 Hz ve seğirmesiz. Ağ her iki
+       * çağrıda birebir aynı; değişen tek şey karelerin uzunluğu.
+       */
+      while (sonrakiPaket <= saat) {
+        s.ball.x = 300; s.ball.y = 200; s.ball.vx = 0; s.ball.vy = 0;
+        s.adim = Math.round(sonrakiPaket / PHYSICS.step);
+        g.agPaketAl(paketle(s));
+        sonrakiPaket += 1 / 30;
+      }
+      g.ilerlet(kareSuresi);
+      if (saat > 3) {
+        const t = g.agTaniOzeti();
+        if (t.gerilik !== null) olculen.push(t.gerilik - t.tampon);
+      }
+    }
+    return olculen.reduce((a, b) => a + b, 0) / olculen.length;
+  };
+
+  it('DÜŞÜK KARE HIZI çizim saatini geriletmiyor', () => {
+    /*
+     * Bir oyuncunun teşhis ekranı: `kare 33 ms · uzun kare %97.6` ve
+     * `gerilik 323 ms` — oysa tamponun tavanı 200 ms. Aradaki 120 ms'in
+     * kaynağı `PHYSICS.maxCatchUp`: 33.3 ms'yi aşan her karede gerçek
+     * zaman atılıyor ve ara değerleme saati o kırpılmış zamanla
+     * beslenirse sunucudan yavaş akıyor.
+     *
+     * Fizik için kırpma DOĞRU (sekmeden dönünce top fileden geçmesin).
+     * Çizim saati için karşılıksız gecikme. Bu yüzden ara değerleme
+     * sabit adım döngüsünün dışında, kırpılmamış süreyle koşuyor.
+     *
+     * Mutasyon `ilerlet` içinde `gercekSure` yerine `elapsed` yazmak;
+     * ölçülen (tests/olcum/toparlanma.mjs, ağ dört satırda da aynı):
+     *   60 fps düzgün     0 ms      30 fps titrek     14 ms
+     *   30 fps düzgün    -2 ms      30 fps takılmalı  47 ms (zirve 151)
+     */
+    const hizli = fazlaGecikme(1 / 60);
+    const yavas = fazlaGecikme(1 / 12); // 83 ms kare — kırpmanın 2.5 katı
+
+    /*
+     * Eşik ölçülerek kondu. Kırpılmış saatle bu düzenekte fark 60 ms'i
+     * aşıyor; doğru hâlde birkaç ms. 25 ms ikisini kesin ayırıyor ve
+     * kare başına bir adımlık kuantalama gürültüsüne yer bırakıyor.
+     */
+    expect(
+      Math.abs(yavas - hizli),
+      `hızlı ${hizli.toFixed(1)}ms, yavaş ${yavas.toFixed(1)}ms fazla gecikme`,
+    ).toBeLessThan(25);
+  });
+
+  it('DÜŞÜK KARE HIZI gidiş-dönüşü KÜÇÜK göstermiyor', () => {
+    /*
+     * Aynı arızanın ikinci yüzü. Girdi damgası `this.time`dan gelirken
+     * ölçünün İKİ UCU da kırpılmış saatteydi, yani kare hızı düştükçe
+     * gidiş-dönüş KISALIYOR gibi görünüyordu — ağ iyileşmiş gibi.
+     *
+     * Ölçüldü (ağ dört satırda da 100 ms gidiş-dönüş):
+     *   60 fps düzgün → 108 ms      30 fps titrek    →  93 ms
+     *   30 fps düzgün →  98 ms      30 fps takılmalı →  79 ms
+     *
+     * İki zararı vardı: teşhis katmanı oyuncuya yanlış ping gösteriyor,
+     * ve aynı ölçüden türeyen `agPencere` topu az ileri sarıyordu —
+     * yani top ekranda geride kalıyordu.
+     */
+    const TEK_YON = 0.05; // sn — enjekte edilen tek yön gecikme
+
+    const olc = (kareSuresi) => {
+      let saat = 0;
+      const kuyruk = { yukari: [], asagi: [] };
+      const yolla = (ad) => (p) => kuyruk[ad].push({
+        varis: saat + TEK_YON, veri: JSON.stringify(p),
+      });
+      const al = (ad) => {
+        const c = [];
+        while (kuyruk[ad].length && kuyruk[ad][0].varis <= saat) {
+          c.push(JSON.parse(kuyruk[ad].shift().veri));
+        }
+        return c;
+      };
+
+      const ortak = {
+        mode: '1v1', format: 'single', difficulty: 'normal', playMode: 'vs', bassiz: true,
+      };
+      const s = new Game(null, { ...ortak, agRol: 'ev', agGonder: yolla('asagi') });
+      s.start();
+      const g = new Game(null, {
+        ...ortak,
+        opponentId: s.opponent.id,
+        homeIds: [...s.homeIds],
+        agRol: 'misafir',
+        agYuvam: 'p1',
+        agGonder: yolla('yukari'),
+        agSaat: () => saat,
+      });
+      g.start();
+
+      /*
+       * SUNUCU her zaman 60 Hz: kırpmadan etkilenen taraf istemci.
+       * İstemci kendi kare hızında koşuyor, ikisi de aynı duvar
+       * saatinden sürülüyor.
+       */
+      let sonrakiTik = 0;
+      let sonrakiKare = 0;
+      for (let n = 0; n * 0.001 < 8; n += 1) {
+        saat = n * 0.001;
+        if (saat >= sonrakiTik) {
+          al('yukari').forEach((p) => s.agPaketAl(p, 'p1'));
+          s.ilerlet(PHYSICS.step);
+          s.agAkis();
+          sonrakiTik += PHYSICS.step;
+        }
+        if (saat >= sonrakiKare) {
+          al('asagi').forEach((p) => g.agPaketAl(p, 'p2'));
+          // Girdi DEĞİŞSİN — damga tazelensin, ölçüm yenilensin
+          g.inputs.p1.right = Math.floor(saat * 4) % 2 === 0;
+          g.ilerlet(kareSuresi);
+          g.agAkis();
+          sonrakiKare = saat + kareSuresi;
+        }
+      }
+      return g.agGidisDonus();
+    };
+
+    const hizli = olc(1 / 60);
+    const yavas = olc(1 / 12); // 83 ms kare — kırpmanın 2.5 katı
+
+    /*
+     * Yavaş cihazın ölçüsü hızlınınkinden BÜYÜK olabilir (kendi girdisi
+     * de kare kadar kuyrukta bekliyor, bu gerçek); KÜÇÜK olamaz. Eşik
+     * ölçülerek kondu: kırpılmış saatle yavaş taraf 40 ms'in altına
+     * düşüyor, doğru hâlde hızlıya eşit ya da üstünde.
+     */
+    expect(yavas, `hızlı ${hizli}ms, yavaş ${yavas}ms`).toBeGreaterThan(hizli - 15);
   });
 });
 

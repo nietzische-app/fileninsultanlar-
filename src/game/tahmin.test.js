@@ -94,13 +94,23 @@ describe('girdi paketi', () => {
 
   it('damga değişmemiş girdide de tazelenir', () => {
     const yollananlar = [];
-    const istemci = istemciKur();
+    /*
+     * SİMÜLE SAAT ŞART: gönderme kapısı "damga kaç saniye önce gitti"
+     * diye soruyor ve o soruyu GERÇEK saate soruyor (bkz. `agSaat`).
+     * Bu döngü 60 kareyi milisaniyeler içinde bitiriyor, yani duvar
+     * saatinde hiç zaman geçmiyor — enjekte edilmezse tek paket gider
+     * ve test kodu değil kendi hızını ölçmüş olur.
+     */
+    let saat = 0;
+    const istemci = istemciKur({ agSaat: () => saat });
     istemci.agGonder = (p) => yollananlar.push(p);
     ralliye(istemci);
 
     istemci.inputs.p1.right = true;
     // 1 saniye boyunca TEK bir tuş değişikliği var
     for (let i = 0; i < 60; i += 1) {
+      // Kare BİTTİKTEN sonraki an — `agAkis` gerçek döngüde de öyle görüyor
+      saat = (i + 1) * PHYSICS.step;
       istemci.misafirGuncelle(PHYSICS.step);
       istemci.agAkis();
     }

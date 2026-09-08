@@ -110,9 +110,16 @@ function enBuyukSapma(a, b) {
   );
 }
 
-/** Misafirin kare döngüsü — paketleri işledikten sonra çizime hazırlar. */
+/**
+ * Misafirin kare döngüsü — paketleri işledikten sonra çizime hazırlar.
+ *
+ * `ilerlet` çağrılıyor, `misafirGuncelle` değil: ara değerleme sabit
+ * adım döngüsünün DIŞINDA, kare başına bir kez koşuyor (gerekçe
+ * `ilerlet`in içinde). Doğrudan `misafirGuncelle` çağırmak gerçek kare
+ * döngüsünün yarısını atlar ve test, üretimde olmayan bir yolu sınardı.
+ */
 function misafirKare(misafir, kare = 1) {
-  for (let i = 0; i < kare; i += 1) misafir.misafirGuncelle(PHYSICS.step);
+  for (let i = 0; i < kare; i += 1) misafir.ilerlet(PHYSICS.step);
 }
 
 describe('anlık görüntü', () => {
@@ -284,7 +291,7 @@ describe('anlık görüntü', () => {
     const once = { x: misafir.ball.x, y: misafir.ball.y, adim: misafir.adim };
 
     // Misafirin kendi döngüsü — süslemeler akmalı, fizik akmamalı
-    for (let i = 0; i < 60; i += 1) misafir.misafirGuncelle(PHYSICS.step);
+    misafirKare(misafir, 60);
 
     expect(misafir.ball.x).toBe(once.x);
     expect(misafir.ball.y).toBe(once.y);

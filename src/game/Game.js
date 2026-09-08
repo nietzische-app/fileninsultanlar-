@@ -596,6 +596,28 @@ export default class Game {
      *
      * Enjekte edilebilir olması ölçüm için: Node düzenekleri zamanı
      * adım adım simüle ediyor, duvar saati onlar için anlamsız.
+     *
+     * GİRDİ DAMGASI DA BU SAATTEN. Damga eskiden `this.time` idi ve o
+     * saat sabit adım döngüsünden besleniyor, yani `PHYSICS.maxCatchUp`
+     * (33.3 ms) üstündeki her kareden zaman KAYBEDİYOR. Damga oradan
+     * gelince gidiş-dönüş ölçüsü de aynı oranda küçülüyordu: kare hızı
+     * düştükçe ağ İYİLEŞMİŞ gibi görünüyordu.
+     *
+     * Ölçüldü (ağ dört satırda da aynı, 100 ms gidiş-dönüş):
+     *   60 fps düzgün    → ping 108 ms
+     *   30 fps düzgün    → ping  98 ms
+     *   30 fps titrek    → ping  93 ms
+     *   30 fps takılmalı → ping  79 ms   (%27 eksik)
+     *
+     * İkisi de zararlıydı: teşhis katmanı oyuncuya YANLIŞ ping
+     * gösteriyordu, ve aynı ölçüden türeyen `agPencere` topu olması
+     * gerekenden az ileri sarıyordu — yani top ekranda geride kalıyordu.
+     * Tam olarak oyuncunun tarif ettiği şey.
+     *
+     * Damganın mutlak değeri önemsiz: sunucu onu olduğu gibi geri
+     * yolluyor ve yalnız AYNI saatteki iki an çıkarılıyor (bkz.
+     * snapshot.js `az`). Değişmesi gereken tek şey hangi saatin
+     * kullanıldığıydı.
      */
     this.agSaat = options.agSaat ?? (() => performance.now() / 1000);
     /**
@@ -1204,15 +1226,32 @@ export default class Game {
      * bilgisi taşımıyor, istemcinin saat damgasını da taşıyor ve
      * tahmin penceresi o damganın tazeliğine bağlı (bkz. AG.onayHz).
      */
-    const damgaEskidi = this.time - this.agSonGirdiAn >= 1 / AG.onayHz;
+    /*
+     * EŞİKTE YARIM ADIM PAY — "az kaldıysa yine de yolla".
+     *
+     * Paysız hâlde kapı, aynı `PHYSICS.stepSlack`in çözdüğü tuzağa
+     * düşüyor: gönderim anı her seferinde o karenin saatine yazılıyor
+     * ve kare süresi eşiğe tam bölünmediğinde her turda biraz artık
+     * kalıyor. Artık birikince bir gönderim komple atlanıyor.
+     *
+     * Ölçüldü (60 fps, 1 sn): paysız 16 gönderim, paylı 20 — yani
+     * "20 Hz" ayarı gerçekte 16 Hz'di. Damga seyrekleşince tahmin
+     * penceresi bayatlıyor, yani ayarın yalan söylemesi doğrudan
+     * gecikmeye dönüyor. Aynı arıza DURUM kapısında da vardı ve orada
+     * 30 Hz'i 22.5 Hz yapıyordu (bkz. `agAkis`).
+     *
+     * 30 fps'te sonuç yine 15: kare 33 ms iken 20 Hz zaten mümkün
+     * değil. Pay imkânsızı zorlamıyor, yalnız artığı temizliyor.
+     */
+    const damgaEskidi = this.agSaat() - this.agSonGirdiAn >= 1 / AG.onayHz - PHYSICS.step / 2;
     if (!zorla && !degisti && !damgaEskidi) return;
 
     if (degisti) {
       this.agSonGirdi = imza;
       this.agGirdiGecmisiYaz(tuslar);
     }
-    this.agSonGirdiAn = this.time;
-    this.agGonder(girdiPaketle(tuslar, this.actionPresses.p1, this.time));
+    this.agSonGirdiAn = this.agSaat();
+    this.agGonder(girdiPaketle(tuslar, this.actionPresses.p1, this.agSaat()));
   }
 
   /**
@@ -1224,8 +1263,8 @@ export default class Game {
    * süresini yerdi.
    */
   agGirdiGecmisiYaz(tuslar) {
-    this.agGirdiGecmisi.push({ an: this.time, tuslar: { ...tuslar } });
-    const sinir = this.time - AG.azamiTahmin * 2;
+    this.agGirdiGecmisi.push({ an: this.agSaat(), tuslar: { ...tuslar } });
+    const sinir = this.agSaat() - AG.azamiTahmin * 2;
     while (this.agGirdiGecmisi.length > 1 && this.agGirdiGecmisi[1].an < sinir) {
       this.agGirdiGecmisi.shift();
     }
@@ -1477,7 +1516,7 @@ export default class Game {
        * her pakette birkaç adım fazla ileri sarıp geri sıçrıyor.
        */
       const bekleme = paket.ay?.[yuvaSira] ?? 0;
-      const pencere = Math.max(0, Math.min(AG.azamiTahmin, this.time - onay - bekleme));
+      const pencere = Math.max(0, Math.min(AG.azamiTahmin, this.agSaat() - onay - bekleme));
       /*
        * Aynı pencere TOPU ileri sarmak için de gerekiyor: top ekranda
        * oyuncuyla aynı ana denk gelsin diye ne kadar sarılacağını bu
@@ -1514,7 +1553,7 @@ export default class Game {
        */
       if (onay !== this.agSonOnay) {
         this.agSonOnay = onay;
-        const dongu = Math.max(0, this.time - onay);
+        const dongu = Math.max(0, this.agSaat() - onay);
         this.agDongu = (this.agDongu ?? dongu) * 0.85 + dongu * 0.15;
       }
       const adet = Math.round(pencere / PHYSICS.step);
@@ -1707,6 +1746,36 @@ export default class Game {
       if (this.agRol === 'misafir') this.misafirGuncelle(PHYSICS.step);
       else this.update(PHYSICS.step);
     }
+
+    /*
+     * ARA DEĞERLEME KIRPILMAMIŞ GERÇEK ZAMANLA, ve sabit adım
+     * döngüsünün DIŞINDA.
+     *
+     * Sebebi ölçüldü (tests/olcum/toparlanma.mjs). Yukarıdaki `elapsed`
+     * kırpılmış: `maxCatchUp` (33.3 ms) üstündeki gerçek zaman ATILIYOR
+     * ve bu fizik için DOĞRU — sekme arkaya alınıp geri gelindiğinde
+     * biriken saniyeler tek karede kapatılırsa top fileden geçer.
+     *
+     * Ama çizim saati fizik değil. O saat sunucunun damgalarını
+     * kovalıyor ve sunucu GERÇEK zamanda yürüyor. Kırpılmış zamanla
+     * beslenince saat sunucudan yavaş akıyor, geride kalıyor, ve kare
+     * başına %5'lik yumuşak çekiş onu geri getirmiyor — bir DENGE
+     * HATASINDA tutuyor. Ekranda karşılıksız gecikme oluyor: ağdan
+     * gelmiyor, tamponun payı da değil, sırf cihaz kare kaçırdığı için.
+     *
+     * Aynı ağda (50 ms tek yön) ölçülen fazlalık:
+     *     60 fps düzgün     0 ms      30 fps titrek     14 ms
+     *     30 fps düzgün    -2 ms      30 fps takılmalı  47 ms (zirve 151)
+     *
+     * Bir oyuncunun teşhis ekranında `kare 33 ms · uzun kare %97.6` ve
+     * `gerilik 323 ms` görülmüştü — tamponun tavanı 200 ms olduğu hâlde.
+     * Aradaki 120 ms'in kaynağı bu.
+     *
+     * Döngünün DIŞINDA olmasının ikinci faydası: 120 Hz ekranda bazı
+     * kareler hiç adım atmıyor ve ara değerleme o karelerde hiç
+     * çalışmıyordu — rakip duruyordu. Artık her kare çiziliyor.
+     */
+    if (this.agRol === 'misafir') this.agAradegerle(gercekSure);
   }
 
   /**
@@ -1719,11 +1788,12 @@ export default class Game {
   misafirGuncelle(dt) {
     this.basisKenariHesapla();
     this.time += dt;
-    this.agAradegerle(dt);
     /*
-     * Ara değerlemeden SONRA: tahmin edilen oyuncu hedef listesinde
-     * yok, kendi adımını burada atıyor. Sıranın tersi olsaydı ara
-     * değerleme bir sonraki karede onu geri çekerdi.
+     * Ara değerleme burada DEĞİL: kare başına bir kez, kırpılmamış
+     * gerçek zamanla `ilerlet`in sonunda koşuyor (gerekçe orada).
+     * Kendi oyuncumuz zaten ara değerlemeye girmiyor — paketteki yuvası
+     * `agKonumHedefle`de null'a çevriliyor — o yüzden ikisinin sırası
+     * tahmini geri çekmiyor.
      */
     this.agTahminAdimla(dt);
     this.updateParticles(dt);
@@ -1928,8 +1998,19 @@ export default class Game {
      * Çok uzaksa (maç başı, uzun donma) yumuşak çekiş dakikalar sürer;
      * o durumda saat doğrudan hizalanıyor. Sınır bir tampon boyu.
      */
-    if (Math.abs(sapma) > this.agTamponBoyu * 2) this.agCizimSaati = hedefNokta;
-    else this.agCizimSaati += sapma * AG.saatCekisi;
+    if (Math.abs(sapma) > this.agTamponBoyu * 2) {
+      this.agCizimSaati = hedefNokta;
+    } else {
+      /*
+       * Çekiş SÜREYE bağlı, kare sayısına değil. `saatCekisi` bir 60 Hz
+       * adımının karşılığı; 30 fps'te kare başına iki katı, 120 Hz'de
+       * yarısı uygulanıyor. Sabit katsayı bırakılsaydı düşük kare
+       * hızında hizalanma yarı yavaş olur ve tam da en çok gereken
+       * cihazda en az çalışırdı.
+       */
+      const kat = 1 - (1 - AG.saatCekisi) ** (dt / PHYSICS.step);
+      this.agCizimSaati += sapma * kat;
+    }
 
     const hedefZaman = this.agCizimSaati;
 

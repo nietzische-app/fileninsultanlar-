@@ -189,7 +189,14 @@ export default function MatchScreen({
         delete window.__sfx;
       }
     };
-  }, [config]);
+    /*
+     * `taniAcik` adres çubuğundan okunuyor ve sayfa ömrü boyunca
+     * değişmiyor; bağımlılıkta olması efekti yeniden çalıştırmaz.
+     * Listeye yazılmasının sebebi kuralın susturulması değil: kural
+     * haklı, çünkü çıkarılırsa ileride değişken bir değere döndüğünde
+     * hata sessizce oluşur.
+     */
+  }, [config, taniAcik]);
 
   // --- Maç sırasında sayfa kaydırmasını kilitle (mobil) ---
   useEffect(() => {

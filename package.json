@@ -23,6 +23,7 @@
     "olcum:cevrimici-kare": "node tests/olcum/cevrimici-kare.mjs",
     "olcum:vurus": "node tests/olcum/vurus.mjs",
     "olcum:kare-hizi": "node tests/olcum/kare-hizi.mjs",
+    "olcum:toparlanma": "node tests/olcum/toparlanma.mjs",
     "vercel-build": "vite build",
     "build:portal": "node scripts/build-portal.mjs",
     "rele": "node sunucu/index.js",

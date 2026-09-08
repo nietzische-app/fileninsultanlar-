@@ -799,6 +799,35 @@ normaldir ve tek başına "oynanmaz" demek değildir. Kodun eklediği
 gecikme bir zamanlar bunun iki katıydı — önce onu bitir, sunucunun yeri
 en son bakılacak şey.
 
+### Dördüncü kaynak: OYUNCUNUN KARE HIZI
+
+Üç kaynağın hiçbiri suçlu çıkmayabilir ve şikâyet yine sürebilir.
+Dördüncüsü sunucuda değil, **oyuncunun cihazında** ve `?tani=1`
+katmanından okunuyor:
+
+```
+kare 33ms · uzun kare %97.6 · tampon 170ms · gerilik 323ms
+```
+
+Bu tablo iki ayrı arıza ortaya çıkardı, ikisi de aynı kökten:
+motorun kare döngüsü `PHYSICS.maxCatchUp` (33.3 ms) üstündeki gerçek
+zamanı **atıyor** — fizik için doğru (sekmeden dönünce top fileden
+geçmesin), ama o kırpılmış zamanı okuyan her ölçü yanılıyor.
+
+| Ne yanılıyordu | Sonucu |
+|---|---|
+| Ara değerleme saati (`agCizimSaati`) | Ekran, tamponun izin verdiğinden 47 ms (zirve 151) fazla geride — ağla ilgisi yok |
+| Girdi damgası (gidiş-dönüş ölçüsü) | 100 ms'lik ağda 12 fps cihaz **33 ms** rapor ediyordu; topu o kadar az ileri sarıyordu |
+
+İkisi de düzeltildi (`tests/olcum/toparlanma.mjs` ölçüyor, `ag.test.js`
+mutasyonla koruyor). Pratik sonucu: **`gerilik` sayısı artık `tampon`a
+yakın olmalı.** Aralarında 100 ms'i aşan fark görürsen bu sınıftan yeni
+bir sızıntı var demektir — sunucuya bakmadan önce oraya bak.
+
+Not: düşük kare hızının kendisi hâlâ cihazda. Kod artık onu
+**gecikmeye çevirmiyor**, ama 30 fps çizen bir telefon 30 fps çizmeye
+devam ediyor.
+
 ### Neden `ls /veri` ile doğrulanmıyor
 
 Denemek isteyebilirsin ama **hiçbir şey söylemiyor**: veri dizini ilk
