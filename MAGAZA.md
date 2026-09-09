@@ -12,19 +12,17 @@ Kadro ve ad **kurgusallaştırıldı**: gerçek sporcuların adları,
 benzerlikleri ve "Filenin Sultanları" adı çıkarıldı. Arayüz ikonları da
 kendi çizimimizle değiştirildi.
 
-Kalan iki varlık:
+Kalan iki varlık da **değiştirildi**:
 
-| Varlık | Ne | Boyut | Durum |
+| Varlık | Neydi | Şimdi | Durum |
 |---|---|---|---|
-| Arka plan fotoğrafı | Basın görseli | 84 KB | 🔸 değiştirilecek |
-| Giriş müziği | Yayınlanmış bir şarkı | 722 KB | 🔸 değiştirilecek |
+| Arka plan fotoğrafı | Basın görseli, 84 KB | `ArenaBackdrop` — kodla çizilen salon | ✅ |
+| Giriş müziği | Yayınlanmış bir şarkı, 722 KB | `src/game/muzik.js` — kodla üretilen tema | ✅ |
 
-İkisi de tamamen bizim elimizde: fotoğraf yerine kodla çizilmiş salon,
-müzik yerine kendi ürettiğimiz tema. Projenin baştan beri geçerli kuralı
-(her şey kodda üretilsin) zaten buydu; bu ikisi istisnaydı.
+Depoda artık tek bir görsel ya da ses dosyası yok; tek ikili varlık
+yazı tipi (`docs/yazitipi.md`, OFL lisanslı).
 
-Bunlar da bitince mağazaya çıkmanın önünde telif kaynaklı bir engel
-kalmıyor.
+**Mağazaya çıkmanın önünde telif kaynaklı bir engel kalmadı.**
 
 ---
 

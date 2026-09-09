@@ -557,8 +557,8 @@ Ortam değişkeni, backend ya da veritabanı yok; tamamen statik bir SPA.
 | UI / ekranlar | React 18 |
 | Stil | Tailwind CSS 3 |
 | Oyun | HTML5 Canvas 2D + `requestAnimationFrame` |
-| Grafik | Oyunun tamamı %100 kod — `drawImage` yok. Tek istisna: giriş ekranı arka plan fotoğrafı |
-| Ses | Web Audio API — katmanlı motor (master → sfx/tribün/müzik bus). Efektler dosyasız üretilir; tek istisna giriş müziği |
+| Grafik | Oyunun tamamı %100 kod — `drawImage` yok, tek bir görsel dosyası yok (giriş ekranının fotoğrafı da `ArenaBackdrop` ile koda taşındı) |
+| Ses | Web Audio API — katmanlı motor (master → sfx/tribün/müzik bus). Efektler de giriş müziği de dosyasız üretiliyor (`muzik.js`) |
 | Arayüz ikonları | Kendi çizimimiz — 16×16 piksel ızgarasında SVG dikdörtgenleri, dosya yok |
 | Font | Arayüzde Press Start 2P (gömülü alt küme — bkz. `docs/yazitipi.md`); forma numaraları kendi piksel fontumuz |
 
