@@ -14,7 +14,11 @@ başlık, sağda yazacağın/işaretleyeceğin şey.
 | `tablet-1-menu / 3-mac .png` | sohbette gönderildi |
 
 Paket adı: **`app.retrovoleybol.oyun`** (`.aab`'den otomatik okunur,
-elle girmen gerekmez). Sürüm: **0.1.0 (100)**.
+elle girmen gerekmez). Sürüm: **0.1.1 (101)**.
+
+> 0.1.0 (100) Play tarafından reddedildi: hedef API düzeyi 35'ti, artık
+> en az 36 isteniyor. Düzeltildi ve sürüm artırıldı — aynı sürüm kodunu
+> ikinci kez yüklemek zaten reddedilir.
 
 ---
 
@@ -36,9 +40,9 @@ elle girmen gerekmez). Sürüm: **0.1.0 (100)**.
 
 1. **Test and release → Testing → Closed testing → Create new release**
 2. Play App Signing çıkarsa → **Kabul et** (Continue).
-3. `app-release.aab` dosyasını sürükle. Yükleme bitince **0.1.0 (100)**
+3. `app-release.aab` dosyasını sürükle. Yükleme bitince **0.1.1 (101)**
    yazmalı.
-4. **Release name:** `0.1.0 (100)` (kendiliğinden gelir, dokunma)
+4. **Release name:** `0.1.1 (101)` (kendiliğinden gelir, dokunma)
 5. **Release notes** — `<tr-TR>` bloğunun içine:
 
    ```
@@ -188,6 +192,6 @@ Closed testing sürümüne dön → **Save** → **Review release** →
 
 ## Sonraki sürümler
 
-`package.json` içindeki `version` artırılır (`0.1.0` → `0.1.1`),
+`package.json` içindeki `version` artırılır (`0.1.1` → `0.1.2`),
 `main`'e girer, Actions → android aab → Run workflow. `versionCode`
-sürümden türetiliyor (`0.1.1` → `101`), elle artırmak gerekmiyor.
+sürümden türetiliyor (`0.1.2` → `102`), elle artırmak gerekmiyor.

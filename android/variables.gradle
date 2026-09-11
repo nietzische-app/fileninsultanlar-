@@ -17,9 +17,23 @@ ext {
      * DİKKAT: bu sayı zamanla eskiyor. Yüklemeden önce Play Console'un
      * söylediği güncel asgariyi doğrula; reddedilirse tek yapılacak
      * şey bu satırı yükseltip yeniden derlemek.
+     *
+     * VE ÖYLE OLDU: 35 ile üretilen paket 11 Eylül 2026'da yüklenirken
+     * "hedeflemesi gereken en düşük API düzeyi 36" hatasıyla reddedildi.
+     * 36'ya çıkıldı.
+     *
+     * Kullandığımız Android Gradle eklentisi (8.2.1) resmen 34'e kadar
+     * sınanmış; 35'te yalnız UYARI verip derledi ve 36'da da aynısını
+     * yapıyor. Uyarı `gradle.properties` içinde susturuldu — eklentiyi
+     * yükseltmek Capacitor şablonunun bütün araç zincirine dokunmak
+     * demek ve buradaki kazanç yalnız bir uyarı satırı.
+     *
+     * DAVRANIŞ DEĞİŞİKLİĞİ YOK: 36'nın getirdiği başlıca şey kenardan
+     * kenara (edge-to-edge) zorlaması, o da 35'ten beri zaten geçerli
+     * ve uygulamada devre dışı bırakan bir bayrak hiç olmadı.
      */
-    compileSdkVersion = 35
-    targetSdkVersion = 35
+    compileSdkVersion = 36
+    targetSdkVersion = 36
     androidxActivityVersion = '1.8.0'
     androidxAppCompatVersion = '1.6.1'
     androidxCoordinatorLayoutVersion = '1.2.0'
