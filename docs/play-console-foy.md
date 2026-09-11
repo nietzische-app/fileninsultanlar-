@@ -148,7 +148,7 @@ Hepsi **Hayır**.
 | Alan | Değer |
 |---|---|
 | App name | `Retro Voleybol` |
-| Short description (max 80) | `8 bit piksel voleybol. Tek kişilik, çevrimiçi, turnuva ve hayatta kalma.` |
+| Short description (80 sınır · 72 karakter) | `8 bit piksel voleybol. Tek kişilik, çevrimiçi, turnuva ve hayatta kalma.` |
 | App icon | `play-store-ikon-512.png` |
 | Feature graphic | `one-cikan-1024x500.png` |
 | Phone screenshots | `telefon-1-menu`, `telefon-2-kadro`, `telefon-3-mac` |
@@ -159,7 +159,11 @@ Hepsi **Hayır**.
 | Contact email | kendi e-postan |
 | Website (isteğe bağlı) | `https://retrovoleybol.online` |
 
-**Full description** (olduğu gibi yapıştır):
+**Full description** (4000 sınır · 693 karakter — olduğu gibi yapıştır):
+
+> Metinde "sultanlar" kelimesi GEÇMEZ. Kurgusallaştırmada tam da o ad
+> kaldırılmıştı; mağaza metninde durması, koddan temizlenen çağrışımı
+> geri getirirdi.
 
 ```
 Kırmızı-beyaz bir saha, bayraklarla dolu bir tribün ve gerçek voleybol
@@ -174,7 +178,7 @@ kuralları üzerine kurulu 8 bit bir arcade.
 Üç temas kuralı, servis gücü ve nişanı, dalış, plase, blok ve tam
 zamanında vuruş komboları: voleybolun ritmi olduğu gibi duruyor.
 
-Oyundaki her şey — sultanlar, top, file, tribün — kodla çizilmiş piksel
+Oyundaki her şey — oyuncular, top, file, tribün — kodla çizilmiş piksel
 sanatı. Kadro kurgusaldır; gerçek bir kişiyi ya da takımı temsil etmez.
 
 Yatay tutuş gerekir.
