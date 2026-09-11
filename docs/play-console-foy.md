@@ -36,9 +36,20 @@ elle girmen gerekmez). Sürüm: **0.1.1 (101)**.
 
 ---
 
-## 2. Closed testing → Create new release
+## 2. Dahili test (Internal testing) → Yeni sürüm oluştur
 
-1. **Test and release → Testing → Closed testing → Create new release**
+> **Dahili test mi kapalı test mi?** Dahili test daha hızlı: inceleme
+> beklemiyor, en fazla 100 test kullanıcısı alıyor ve **asgari test
+> kullanıcısı sayısı ya da asgari süre şartı yok**. Kendi telefonunda
+> denemek için doğru kanal bu.
+>
+> 12 kullanıcı / 14 gün şartı **kapalı test** içindir ve yalnız
+> **kişisel** geliştirici hesaplarını bağlar: üretime (Production)
+> çıkmadan önce tamamlanması gerekir. Kurumsal hesaplar muaf. Kendi
+> hesabına hangisinin uygulandığını Play Console → Pano → "Üretim
+> erişimi" bölümü açıkça yazıyor.
+
+1. **Test and release → Testing → Internal testing → Create new release**
 2. Play App Signing çıkarsa → **Kabul et** (Continue).
 3. `app-release.aab` dosyasını sürükle. Yükleme bitince **0.1.1 (101)**
    yazmalı.
@@ -173,16 +184,26 @@ Yatay tutuş gerekir.
 
 ## 5. Gönder
 
-Closed testing sürümüne dön → **Save** → **Review release** →
-**Start rollout to Closed testing**.
+Dahili test sürümüne dön → **Kaydet** → **Sürümü incele** →
+**Dahili teste sunmaya başla**.
 
-İnceleme kapalı testte genelde birkaç saat, bazen birkaç gün.
+Dahili testte inceleme beklenmiyor; kurulabilir hale gelmesi genelde
+birkaç dakika (bazen bir saate kadar) sürüyor.
+
+Kanal özetinde **"Etkin değil"** yazıyorsa sürüm henüz yayına
+alınmamıştır — yukarıdaki adım tamamlanmamış demektir.
+
+Uygulama adı orada `app.retrovoleybol.oyun (unreviewed)` görünüyorsa
+sebebi mağaza listesinin (bölüm 4) henüz doldurulmamış olması; listeyi
+tamamlayınca **Retro Voleybol** olur.
 
 ---
 
 ## 6. Onaylanınca
 
-1. Telefonda **katılım bağlantısını** aç, testi kabul et.
+1. Telefonda **katılım bağlantısını** aç, testi kabul et. Tarayıcıda
+   **listedeki e-postayla giriş yapmış olman** şart, yoksa bağlantı
+   "test kullanıcısı değilsin" der.
 2. Play Store'dan kur (bağlantının altındaki "Download it on Google Play").
 3. **Çevrimiçi modu dene** — röle 60 Hz'de çalışıyor, akıcılık farkı
    orada görünür.
