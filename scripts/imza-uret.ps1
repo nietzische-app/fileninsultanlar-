@@ -164,7 +164,7 @@ Write-Host @"
      KEY_PASSWORD        -> ayni parola
 
    "Variables" sekmesi, "New repository variable" ile BIR tane:
-     VITE_RELE_URL       -> wss://rele-178-104-2-249.sslip.io
+     VITE_RELE_URL       -> wss://rele.retrovoleybol.online
 
    $panoNotu
 

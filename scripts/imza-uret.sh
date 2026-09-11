@@ -172,7 +172,7 @@ cat <<SONRAKI
 
    "Variables" sekmesine BİR tane (New repository variable):
 
-     VITE_RELE_URL       → wss://rele-178-104-2-249.sslip.io
+     VITE_RELE_URL       → wss://rele.retrovoleybol.online
 
    Metni panoya almak için:
      Linux : xclip -sel clip < $B64
