@@ -1157,10 +1157,9 @@ export default class Game {
   /**
    * Bir tuşu doğrudan bir yuvaya yazar.
    *
-   * Dokunmatik butonlar tek telefonda oynandığı için hep p1'e gider;
-   * yuva yine de parametre çünkü girdinin tek giriş kapısı burası
-   * olmalı. Ağdan gelen ikinci oyuncunun tuşları da p2 diyerek buradan
-   * girecek — klavye/dokunmatik/ağ arasında ayrı yol yok.
+   * Yuva parametre: yerel Co-Op/VS'te dokunmatik takımlar p1 ve p2'ye
+   * ayrı ayrı yazar, ağdan gelen ikinci oyuncunun tuşları da p2
+   * diyerek buradan girer. Klavye/dokunmatik/ağ arasında ayrı yol yok.
    *
    * @param {'left'|'right'|'up'|'down'|'action'|'dive'} name
    * @param {boolean} pressed
