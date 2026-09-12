@@ -27,7 +27,7 @@ async function modaGir(page, { name, start, wait = 2400 } = {}) {
 function tuslar(page) {
   return page.evaluate(() => {
     const out = { p1: {}, p2: {}, hepsi: [] };
-    document.querySelectorAll('.touch-button').forEach((n) => {
+    document.querySelectorAll('.control-strip .touch-button').forEach((n) => {
       const r = n.getBoundingClientRect();
       if (r.width <= 0) return;
       const slot = n.getAttribute('data-slot') || 'p1';
@@ -70,6 +70,29 @@ async function bas(page, ctx, kutu) {
     mode: '2v2',
     format: 'practice',
   });
+  const gorunen = await page.evaluate(() => {
+    const h = window.innerHeight;
+    const adlar = ['HIZLI MAÇ', 'TURNUVA', 'CO-OP', 'KARŞILIKLI', 'HAYATTA KALMA'];
+    return adlar.map((ad) => {
+      const el = [...document.querySelectorAll('button')].find((b) =>
+        (b.textContent || '').includes(ad));
+      if (!el) return { ad, var: false, gorunur: false };
+      const r = el.getBoundingClientRect();
+      return {
+        ad,
+        var: true,
+        gorunur: r.height > 0 && r.top < h && r.bottom > 0,
+        top: Math.round(r.top),
+      };
+    });
+  });
+  const eksik = gorunen.filter((m) => !m.gorunur).map((m) => `${m.ad}@${m.top}`);
+  check(
+    'yatay telefonda öbür mod tuşları ilk bakışta görünür',
+    eksik.length === 0,
+    eksik.length ? eksik.join(' ') : gorunen.map((m) => m.ad).join(' · '),
+  );
+
   await modaGir(page, { name: /CO-OP/, start: /İKİ KİŞİ BAŞLA/ });
 
   check('Co-Op maç ekranı açıldı', Boolean(await page.evaluate(() => window.__game)));

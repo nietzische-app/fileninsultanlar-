@@ -114,7 +114,7 @@ export default function StartScreen({
   };
 
   return (
-    <div className="relative isolate flex min-h-full flex-col items-center justify-center gap-6 px-4 py-8 sm:gap-8 sm:py-10">
+    <div className="relative isolate flex min-h-full flex-col items-center justify-center gap-6 px-4 py-8 short:justify-start short:gap-3 short:py-3 sm:gap-8 sm:py-10">
       <TeamBackdrop />
 
       <div className="absolute right-4 top-4 z-10 flex items-center gap-2 sm:right-6 sm:top-6">
@@ -130,20 +130,20 @@ export default function StartScreen({
         düğme 270 px yer kaplıyor, geriye yazı için yer kalmıyor. Geniş
         ekranda çakışma yok, orada boşluk da yok.
       */}
-      <div className="mt-10 text-center sm:mt-0">
-        <p className="mb-2 text-[8px] tracking-[0.35em] text-white/50 sm:mb-3 sm:text-[9px]">
+      <div className="mt-10 text-center short:order-1 short:mt-2 sm:mt-0">
+        <p className="mb-2 text-[8px] tracking-[0.35em] text-white/50 short:mb-1 short:hidden sm:mb-3 sm:text-[9px]">
           8 BİT PİKSEL VOLEYBOL
         </p>
-        <h1 className="text-2xl leading-relaxed text-turkiye-red text-outline-red sm:text-4xl md:text-5xl">
+        <h1 className="text-2xl leading-relaxed text-turkiye-red text-outline-red short:text-xl short:leading-tight sm:text-4xl md:text-5xl">
           RETRO
           <br />
           VOLEYBOL
         </h1>
-        <div className="mx-auto mt-4 h-1 w-32 bg-white/80 sm:mt-5 sm:w-40" />
+        <div className="mx-auto mt-4 h-1 w-32 bg-white/80 short:mt-2 short:w-24 sm:mt-5 sm:w-40" />
       </div>
 
       {/* Gurur Tablosu — yerel rekorlar veya onur mesajı */}
-      <div className="retro-panel w-full max-w-xl px-5 py-4 text-center">
+      <div className="retro-panel w-full max-w-xl px-5 py-4 text-center short:order-5">
         <p className="mb-3 text-[8px] tracking-widest text-retro-accent">★ GURUR TABLOSU ★</p>
         {hasRecords || hasSurvivalRecord ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -167,7 +167,7 @@ export default function StartScreen({
 
       {/* Rozetler — bir tanesi bile açıldıysa göster */}
       {achievements.length > 0 && (
-        <div className="retro-panel w-full max-w-xl px-5 py-4">
+        <div className="retro-panel w-full max-w-xl px-5 py-4 short:order-6">
           <p className="mb-3 text-center text-[8px] tracking-widest text-retro-accent">
             ★ ROZETLER · {achievements.length}/{ACHIEVEMENTS.length} ★
           </p>
@@ -176,7 +176,7 @@ export default function StartScreen({
       )}
 
       {/* Vitrin */}
-      <div className="flex items-end justify-center gap-5 sm:gap-10">
+      <div className="flex items-end justify-center gap-5 short:order-7 short:hidden sm:gap-10">
         {showcase.map((player, i) => (
           <div
             key={player.id}
@@ -200,7 +200,7 @@ export default function StartScreen({
         olsaydı bu bilgi, karar zaten verildikten sonra gelirdi.
       */}
       {hedef && (
-        <div className="retro-panel w-full max-w-xl px-5 py-3">
+        <div className="retro-panel w-full max-w-xl px-5 py-3 short:order-8">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <span className="text-[7px] tracking-widest text-white/40">FORMA PUANI</span>
             <span className="text-[10px] text-retro-accent">
@@ -225,7 +225,7 @@ export default function StartScreen({
       {resumeTournament && (
         <button
           type="button"
-          className="retro-button w-full max-w-xl px-6 py-3 text-[9px]"
+          className="retro-button w-full max-w-xl px-6 py-3 text-[9px] short:order-2"
           onClick={() => {
             Sfx.unlock();
             Sfx.confirm();
@@ -236,8 +236,16 @@ export default function StartScreen({
         </button>
       )}
 
-      {/* Mod seçimi */}
-      <div className="flex w-full max-w-xl flex-col gap-3">
+      {/*
+        Mod seçimi.
+
+        Kısa yatay ekranda (telefon yan çevrilmiş) vitrin ve gurur
+        tablosu ilk bakışta tuşları aşağı itiyordu — "öbür modların
+        tuşu yok" şikayetinin bir kaynağı buydu. `short:order-3`
+        başlığın hemen altına alır; açıklama satırı da gizlenir ki
+        beş mod bir bakışta sığsın.
+      */}
+      <div className="flex w-full max-w-xl flex-col gap-3 short:order-3 short:gap-2">
         {modlar.map((mode, i) => (
           <button
             key={mode.id}
@@ -249,7 +257,7 @@ export default function StartScreen({
              * metnini yutuyordu. Opaklık yerine bulanıklık, fotoğrafın
              * varlığını koruyup okunurluğu geri getiriyor.
              */
-            className={`group flex w-full items-center gap-3 border-4 px-4 py-3 text-left backdrop-blur-[3px] transition ${
+            className={`group flex w-full items-center gap-3 border-4 px-4 py-3 text-left backdrop-blur-[3px] transition short:py-2 ${
               i === 0
                 ? 'border-turkiye-red bg-turkiye-red/30 hover:bg-turkiye-red/40'
                 : 'border-white/20 bg-retro-panel/75 hover:border-white/55'
@@ -257,7 +265,7 @@ export default function StartScreen({
           >
             <div className="min-w-0 flex-1">
               <p className="text-[10px] text-white sm:text-xs">{mode.label}</p>
-              <p className="mt-1.5 text-[7px] leading-relaxed text-white/55">
+              <p className="mt-1.5 text-[7px] leading-relaxed text-white/55 short:hidden">
                 {mode.description}
               </p>
             </div>
@@ -268,7 +276,7 @@ export default function StartScreen({
         ))}
       </div>
 
-      <div className="flex flex-col items-center gap-3">
+      <div className="flex flex-col items-center gap-3 short:order-4 short:gap-2">
         <div className="flex flex-wrap items-center justify-center gap-3">
           <button
             type="button"
@@ -296,7 +304,7 @@ export default function StartScreen({
       </div>
 
       {/* Kontroller özeti */}
-      <div className="retro-panel px-4 py-3">
+      <div className="retro-panel px-4 py-3 short:order-9">
         <p className="mb-2 text-center text-[8px] text-white/50">KONTROLLER</p>
         <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-[7px] text-white/70 sm:grid-cols-3">
           <span>← → / A D · HAREKET</span>
@@ -306,7 +314,7 @@ export default function StartScreen({
         </div>
       </div>
 
-      <footer className="max-w-md text-center text-[7px] leading-relaxed text-white/30">
+      <footer className="max-w-md text-center text-[7px] leading-relaxed text-white/30 short:order-10">
         Voleybola saygıyla yapılmış, ticari olmayan bağımsız bir oyundur.
         Takımlar ve oyuncular kurgusaldır.
       </footer>
