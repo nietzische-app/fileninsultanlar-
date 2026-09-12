@@ -1,0 +1,20 @@
+{
+  "name": "Retro Voleybol",
+  "install": "npm ci && npm ci --prefix sunucu && npx playwright install --with-deps chromium",
+  "terminals": [
+    {
+      "name": "vite-dev",
+      "command": "npm run dev",
+      "description": "Vite dev server for the game UI at http://localhost:5173"
+    },
+    {
+      "name": "relay-server",
+      "command": "cd sunucu && npm start",
+      "description": "WebSocket relay (röle) for online matches at ws://localhost:8787 (health: /saglik)"
+    }
+  ],
+  "ports": [
+    { "name": "vite-dev", "port": 5173 },
+    { "name": "relay", "port": 8787 }
+  ]
+}
