@@ -24,6 +24,11 @@ export default function TouchControls({
   disabled = false,
   overlay = false,
   strip = false,
+  /**
+   * Yerel Co-Op / VS: solda 1. oyuncu, sağda 2. oyuncu.
+   * Tek takımı gizlemek bu modları telefonda oynanamaz bırakıyordu.
+   */
+  dual = false,
   settings = { scale: 1, opacity: 0.85, swap: false },
   preview = false,
   dimWhenDisabled = true,
@@ -73,6 +78,7 @@ export default function TouchControls({
       hint="Aşağı kaydır: dalış"
       disabled={disabled}
       dragDive
+      dataSlot="p1"
       className={`tb-dir ${buttonTone}`}
     />
   );
@@ -85,6 +91,7 @@ export default function TouchControls({
       hint="Aşağı kaydır: dalış"
       disabled={disabled}
       dragDive
+      dataSlot="p1"
       className={`tb-dir ${buttonTone}`}
     />
   );
@@ -96,6 +103,7 @@ export default function TouchControls({
       label={<span className="tb-label">VUR</span>}
       srLabel="Vur"
       disabled={disabled}
+      dataSlot="p1"
       className={`tb-act ${buttonTone}`}
     />
   );
@@ -106,6 +114,7 @@ export default function TouchControls({
       label={<GameIcon name="ArrowRight" size="48%" rotate={-90} />}
       srLabel="Zıpla"
       disabled={disabled}
+      dataSlot="p1"
       className={`tb-jump ${buttonTone}`}
     />
   );
@@ -164,15 +173,52 @@ export default function TouchControls({
   }
 
   if (strip) {
+    const stripClass = `control-strip flex select-none justify-between gap-3 ${
+      preview ? '' : 'fine:hidden'
+    } ${disabled ? 'pointer-events-none' : ''} ${dim ? 'opacity-40' : ''}`;
+
+    /*
+     * Çift takım: her oyuncu kendi 2×2 kümesini kullanır. Sekiz tuşu
+     * tek sıraya dizmek yatay telefonda sığmıyor; ızgara hem başparmağın
+     * altında kalıyor hem şeridi iki sıraya indiriyor.
+     *
+     * `swap` burada uygulanmaz — 1 her zaman solda, 2 her zaman sağda
+     * (VS'te saha tarafıyla da örtüşür). Solak düzen tek kişilik
+     * şeritte kalır.
+     */
+    if (dual) {
+      return (
+        <div
+          className={`${stripClass} control-strip-dual items-end`}
+          style={styleVars}
+          aria-disabled={disabled || undefined}
+          onPointerDown={unlock}
+        >
+          <PlayerPad
+            onInput={onInput}
+            slot="p1"
+            badge="1"
+            disabled={disabled}
+            buttonTone={buttonTone}
+          />
+          <PlayerPad
+            onInput={onInput}
+            slot="p2"
+            badge="2"
+            disabled={disabled}
+            buttonTone={buttonTone}
+          />
+        </div>
+      );
+    }
+
     // `swap`: yön tuşları sağa, aksiyonlar sola — solaklar için
     const stripLeft = settings.swap ? actions : dpad;
     const stripRight = settings.swap ? dpad : actions;
 
     return (
       <div
-        className={`control-strip flex select-none items-center justify-between gap-3 ${
-          preview ? '' : 'fine:hidden'
-        } ${disabled ? 'pointer-events-none' : ''} ${dim ? 'opacity-40' : ''}`}
+        className={`${stripClass} items-center`}
         style={styleVars}
         aria-disabled={disabled || undefined}
         onPointerDown={unlock}
@@ -199,6 +245,69 @@ export default function TouchControls({
 }
 
 /**
+ * Tek oyuncunun 2×2 tuş kümesi — yerel Co-Op/VS'te solda 1, sağda 2.
+ */
+function PlayerPad({ onInput, slot, badge, disabled, buttonTone }) {
+  const emit = useCallback(
+    (action, pressed) => onInput(action, pressed, slot),
+    [onInput, slot],
+  );
+  const sr = (name) => `${badge}. oyuncu ${name}`;
+
+  return (
+    <div className="tb-cluster tb-gap flex flex-col items-center" data-slot={slot}>
+      <span className="tb-badge" aria-hidden="true">
+        {badge}
+      </span>
+      <div className="tb-gap flex items-center">
+        <HoldButton
+          onInput={emit}
+          action="left"
+          label={<GameIcon name="ArrowLeft" size="45%" />}
+          srLabel={sr('Sola git')}
+          hint="Aşağı kaydır: dalış"
+          disabled={disabled}
+          dragDive
+          dataSlot={slot}
+          className={`tb-dir ${buttonTone}`}
+        />
+        <HoldButton
+          onInput={emit}
+          action="right"
+          label={<GameIcon name="ArrowRight" size="45%" />}
+          srLabel={sr('Sağa git')}
+          hint="Aşağı kaydır: dalış"
+          disabled={disabled}
+          dragDive
+          dataSlot={slot}
+          className={`tb-dir ${buttonTone}`}
+        />
+      </div>
+      <div className="tb-gap flex items-center">
+        <HoldButton
+          onInput={emit}
+          action="action"
+          label={<span className="tb-label">VUR</span>}
+          srLabel={sr('Vur')}
+          disabled={disabled}
+          dataSlot={slot}
+          className={`tb-act ${buttonTone}`}
+        />
+        <HoldButton
+          onInput={emit}
+          action="up"
+          label={<GameIcon name="ArrowRight" size="48%" rotate={-90} />}
+          srLabel={sr('Zıpla')}
+          disabled={disabled}
+          dataSlot={slot}
+          className={`tb-jump ${buttonTone}`}
+        />
+      </div>
+    </div>
+  );
+}
+
+/**
  * @param {object} props
  * @param {import('react').ReactNode} props.label Tuşun içeriği (ikon ya da yazı)
  * @param {string} [props.srLabel] Ekran okuyucu etiketi. İkonlu tuşlarda
@@ -214,6 +323,7 @@ function HoldButton({
   className = '',
   disabled = false,
   dragDive = false,
+  dataSlot,
 }) {
   const pressedRef = useRef(false);
   const buttonRef = useRef(null);
@@ -331,6 +441,7 @@ function HoldButton({
       aria-label={srLabel ?? (typeof label === 'string' ? label : undefined)}
       title={hint}
       disabled={disabled}
+      data-slot={dataSlot}
       className={`touch-button ${className}`}
       onPointerDown={press}
       onPointerMove={dragDive ? move : undefined}

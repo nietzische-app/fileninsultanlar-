@@ -548,6 +548,45 @@
   }
 
   /*
+   * Yerel iki oyunculu şerit — 2×2 küme, solda 1 sağda 2.
+   *
+   * Tuşlar tek kişiliktekine göre küçülür: sekiz adet 5.35rem tuş
+   * yatay telefonda sığmaz ve iki sıra da sahanın oynanan bandını
+   * yer. `--tb-cluster-size` hem küme tuşlarını hem şerit boyunu
+   * besler; sahne de aynı değişkeni okuduğu için canvas küçülür ve
+   * zemin çizgisi yine şeridin üst kenarına oturur.
+   */
+  .match-stage-dual,
+  .control-strip-dual {
+    --tb-cluster-size: calc(min(3.35rem, 11.5vh) * var(--touch-scale, 1));
+    --strip-h: calc(
+      var(--tb-cluster-size) * 2
+      + (0.85rem * var(--touch-scale, 1) * var(--tb-gap, 1))
+      + 1.7rem
+      + env(safe-area-inset-bottom)
+    );
+  }
+
+  .tb-cluster .tb-dir,
+  .tb-cluster .tb-act,
+  .tb-cluster .tb-jump {
+    width: var(--tb-cluster-size, calc(min(3.35rem, 11.5vh) * var(--touch-scale, 1)));
+    height: var(--tb-cluster-size, calc(min(3.35rem, 11.5vh) * var(--touch-scale, 1)));
+  }
+
+  .tb-cluster .tb-label {
+    font-size: calc(0.72rem * var(--touch-scale, 1));
+  }
+
+  .tb-badge {
+    font-size: calc(0.55rem * var(--touch-scale, 1));
+    letter-spacing: 0.14em;
+    line-height: 1;
+    color: rgba(255, 210, 74, 0.92);
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.7);
+  }
+
+  /*
    * Canvas oranını koruyarak sahneye sığdır (letterbox).
    *
    * Üst sınır şeride göre hesaplanır ama şeridin yüksekliği DOĞRUDAN

@@ -97,7 +97,11 @@ export default function CharacterSelect({
       : 'random'
   );
   const [selected, setSelected] = useState(() =>
-    sanitizeHomeIds(initialHomeIds, initialMode === '2v2' ? '2v2' : '1v1', ilerleme.acilanlar)
+    sanitizeHomeIds(
+      initialHomeIds,
+      playMode === 'coop' || initialMode === '2v2' ? '2v2' : '1v1',
+      ilerleme.acilanlar,
+    )
   );
   const [focused, setFocused] = useState(() => selected[0] ?? DEFAULT_PLAYER_ID);
 
@@ -286,15 +290,17 @@ export default function CharacterSelect({
                 <div className="mt-2 grid gap-1 text-[7px] leading-relaxed text-white/60 sm:grid-cols-2">
                   <span>
                     <b className="text-white/80">1. OYUNCU</b> — W A S D · BOŞLUK vur
+                    {' · '}mobilde SOL tuşlar
                   </span>
                   <span>
                     <b className="text-white/80">2. OYUNCU</b> — ok tuşları · ENTER vur
+                    {' · '}mobilde SAĞ tuşlar
                   </span>
                 </div>
                 <p className="mt-2 text-[7px] leading-relaxed text-white/45">
                   {playMode === 'coop'
-                    ? 'İki oyuncu aynı takımda; rakip yapay zekâ.'
-                    : '2. oyuncu rakip takımı sürer.'}
+                    ? 'İki oyuncu aynı takımda; rakip yapay zekâ. Telefonda solda 1, sağda 2.'
+                    : '2. oyuncu rakip takımı sürer. Telefonda solda 1, sağda 2.'}
                 </p>
               </>
             )}

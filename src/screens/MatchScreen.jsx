@@ -14,6 +14,7 @@ import useFullscreen from '../hooks/useFullscreen.js';
 import useViewport from '../hooks/useViewport.js';
 import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
+import { yerelCift } from '../game/modes.js';
 
 /**
  * Misafirde bu kadar saniye paket gelmezse "rakip bekleniyor" denir.
@@ -459,26 +460,26 @@ export default function MatchScreen({
     confirmCancelRef.current?.focus?.();
   }, [quitConfirm]);
 
-  const handleTouchInput = useCallback((name, pressed) => {
+  const handleTouchInput = useCallback((name, pressed, slot = 'p1') => {
     if (paused || quitConfirm) return;
     Sfx.unlock();
-    gameRef.current?.setInput(name, pressed);
+    gameRef.current?.setInput(name, pressed, slot);
   }, [paused, quitConfirm]);
 
   const squad = config.homeIds.map((id) => getPlayerById(id)).filter(Boolean);
   const controlsLocked = paused || quitConfirm;
   /*
-   * "İki kişi AYNI cihazda" mı — dokunmatik tuşların gizlenme ölçütü bu.
-   * Tek telefonda iki kişi oynayamaz, tuşları göstermek 2. oyuncunun
-   * kontrolü yokmuş gibi yanıltıcı olurdu.
+   * Aynı cihazda iki insan mı — çift dokunmatik takımın ölçütü bu.
    *
-   * Çevrimiçi maç motor açısından `vs` ama iki oyuncu AYRI cihazlarda ve
-   * her biri kendi ekranında tek başına. `agRol` denetimi olmadan
-   * telefondan katılan oyuncuya hiç tuş çıkmıyordu — oyuna girip
-   * hareket edemiyordu.
+   * Eskiden tuşlar bu durumda GİZLENİYORDU: "tek telefonda iki kişi
+   * oynayamaz" varsayımı. Sonuç, Co-Op/VS'e giren mobil oyuncunun
+   * sahada hiç tuşu olmamasıydı. Şimdi solda 1. oyuncu, sağda 2.
+   *
+   * Çevrimiçi maç motor açısından `vs` ama iki oyuncu AYRI cihazlarda;
+   * her biri kendi ekranında tek takım kullanır. `agRol` doluysa
+   * `yerelCift` false döner.
    */
-  const twoPlayer =
-    !config.agRol && (config.playMode === 'coop' || config.playMode === 'vs');
+  const twoPlayer = yerelCift(config.playMode, config.agRol);
 
   // Ham id değil etiket: upper('classic') Türkçe eşlemede "CLASSİC" veriyordu
   const matchLabel =
@@ -582,7 +583,7 @@ export default function MatchScreen({
         önlük şeridin altına değil ortaya denk gelirdi.
       */}
       <div
-        className="match-stage scanlines relative w-full max-w-[1180px] shrink fine:w-fit border-4 border-white/85 bg-black touch:absolute touch:inset-0 touch:flex touch:max-w-none touch:flex-col touch:items-center touch:justify-start touch:border-0"
+        className={`match-stage scanlines relative w-full max-w-[1180px] shrink fine:w-fit border-4 border-white/85 bg-black touch:absolute touch:inset-0 touch:flex touch:max-w-none touch:flex-col touch:items-center touch:justify-start touch:border-0${twoPlayer ? ' match-stage-dual' : ''}`}
         /*
          * Ölçek SAHNEDE de tanımlı olmalı: `--strip-h` ve canvas'ın üst
          * sınırı buradan hesaplanıyor. Yalnızca tuş bileşenine
@@ -636,17 +637,16 @@ export default function MatchScreen({
           oturur, canvas da `.stage-canvas` içindeki üst sınır sayesinde
           zemin çizgisini şeridin üstünde bırakacak kadar büyür.
         */}
-        {!twoPlayer && (
-          <div className="absolute inset-x-0 bottom-0 z-10 fine:hidden">
-            <TouchControls
-              onInput={handleTouchInput}
-              disabled={controlsLocked}
-              dimWhenDisabled={!settingsOpen}
-              settings={controls}
-              strip
-            />
-          </div>
-        )}
+        <div className="absolute inset-x-0 bottom-0 z-10 fine:hidden">
+          <TouchControls
+            onInput={handleTouchInput}
+            disabled={controlsLocked}
+            dimWhenDisabled={!settingsOpen}
+            settings={controls}
+            strip
+            dual={twoPlayer}
+          />
+        </div>
 
         {/* Dikey ekranda saha ile tuşlar arasındaki bandı künye doldurur */}
         <div className="pointer-events-none absolute inset-x-0 bottom-[12.5rem] z-10 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-3 text-center text-[7px] text-white/40 fine:hidden landscape:hidden">
