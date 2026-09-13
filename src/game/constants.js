@@ -379,21 +379,69 @@ export const PALETTE = {
 
 /**
  * Zorluk kademeleri — karakter seçim ekranından ayarlanır.
-
  *
- * `error`, yapay zekânın tahmini düşüş noktasına eklediği sapmadır ve
- * asıl zorluk kolu budur: temas dairesinin yarıçapı ~53px olduğu için
- * bu değerin altındaki sapmalar ıskaya dönüşmez, rakip hiç sayı vermez.
+ * İki ayrı bant var, çünkü tek kol her şeyi birlikte düşürünce rakip
+ * servisi de tutamaz oluyordu:
+ *
+ *   Hücum / ralli — `error`, `speed`, `reaction`, `power`, `placement`,
+ *   `blockSkill`, `serveSkill`. Bunlar oyunun "zor gelmesini" üretir.
+ *   Temas dairesi ~53px; ralli `error` bunun üstünde kalır, rakip
+ *   rallide sayı verir.
+ *
+ *   Servis karşılama — `receiveError`, `receiveSpeed`, `receiveReaction`.
+ *   Servis en hızlı toptur ve nişan kayması as'a dönüşür. Zor kademede
+ *   `receiveError` temas eşiğinin altında kalır (rakip tutar); kolayda
+ *   üstündedir (bazı as'lar normaldir). Hız/tepki tabanı, hücumu
+ *   yumuşatırken rakibin servise yetişmesini korur.
  */
 export const DIFFICULTY = {
   // placement: vuruşu rakibin boş bıraktığı alana yerleştirme becerisi
   //            (0 = tamamen rastgele, 1 = her zaman en uzak boşluğa)
   // blockSkill: file dibinde gelen hücuma blok için sıçrama olasılığı
   // diveSkill: yetişemeyeceği topa dalma olasılığı
-  // serveSkill: servis gücü ve nişan tutarlılığı
-  kolay: { label: 'KOLAY', speed: 0.68, reaction: 0.4, error: 130, power: 0.85, placement: 0.12, diveSkill: 0.12, serveSkill: 0.25, blockSkill: 0.25 },
-  normal: { label: 'NORMAL', speed: 0.82, reaction: 0.29, error: 98, power: 0.97, placement: 0.4, diveSkill: 0.48, serveSkill: 0.55, blockSkill: 0.5 },
-  zor: { label: 'ZOR', speed: 0.94, reaction: 0.2, error: 82, power: 1.06, placement: 0.62, diveSkill: 0.6, serveSkill: 0.88, blockSkill: 0.72 },
+  // serveSkill: servis gücü ve nişan tutarlılığı (rakibin KENDİ servisi)
+  kolay: {
+    label: 'KOLAY',
+    speed: 0.62,
+    reaction: 0.46,
+    error: 145,
+    power: 0.76,
+    placement: 0.08,
+    diveSkill: 0.1,
+    serveSkill: 0.18,
+    blockSkill: 0.14,
+    receiveError: 70,
+    receiveSpeed: 0.86,
+    receiveReaction: 0.22,
+  },
+  normal: {
+    label: 'NORMAL',
+    speed: 0.74,
+    reaction: 0.34,
+    error: 112,
+    power: 0.88,
+    placement: 0.28,
+    diveSkill: 0.38,
+    serveSkill: 0.42,
+    blockSkill: 0.34,
+    receiveError: 48,
+    receiveSpeed: 0.92,
+    receiveReaction: 0.16,
+  },
+  zor: {
+    label: 'ZOR',
+    speed: 0.88,
+    reaction: 0.24,
+    error: 92,
+    power: 0.98,
+    placement: 0.5,
+    diveSkill: 0.52,
+    serveSkill: 0.72,
+    blockSkill: 0.58,
+    receiveError: 34,
+    receiveSpeed: 0.97,
+    receiveReaction: 0.12,
+  },
 };
 
 /**
@@ -403,7 +451,9 @@ export const DIFFICULTY = {
  * güçlenmeli; ama üç sabit kademe arasında zıplamak kaba duruyor.
  * Bunun yerine her kolu ayrı ayrı, kendi doğal yönünde kaydırıyoruz:
  * `error` ve `reaction` küçüldükçe, `speed`/`power`/`placement` büyüdükçe
- * rakip zorlaşır.
+ * rakip zorlaşır. Servis karşılama (`receive*`) yarı hızda ve tabanlı
+ * kayar: hayatta kalmanın yumuşak 1. dalgası rakibi as'a düşürmesin,
+ * geç dalgalar da serviste kusursuzlaşmasın.
  *
  * Adım negatif olabilir: hayatta kalma seçilen kademenin altından
  * başlayıp yukarı tırmanır, yoksa ilk ralliden itibaren tam güçte bir
@@ -426,6 +476,22 @@ export function scaleDifficulty(base, step = 0) {
     placement: clampRange(base.placement + 0.14 * t, 0.02, 0.92),
     diveSkill: clampRange(base.diveSkill + 0.12 * t, 0, 0.9),
     blockSkill: clampRange((base.blockSkill ?? 0.5) + 0.1 * t, 0.1, 0.92),
+    serveSkill: clampRange((base.serveSkill ?? 0.5) + 0.08 * t, 0.08, 0.95),
+    receiveError: clampRange(
+      (base.receiveError ?? base.error) * (1 - 0.08 * t),
+      24,
+      95,
+    ),
+    receiveSpeed: clampRange(
+      (base.receiveSpeed ?? base.speed) * (1 + 0.03 * t),
+      0.78,
+      1.08,
+    ),
+    receiveReaction: clampRange(
+      (base.receiveReaction ?? base.reaction) * (1 - 0.08 * t),
+      0.1,
+      0.35,
+    ),
   };
 }
 
