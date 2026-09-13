@@ -93,6 +93,9 @@ describe('zorluk rampası', () => {
         expect(d.error).toBeGreaterThan(0);
         expect(d.placement).toBeLessThanOrEqual(0.92);
         expect(d.diveSkill).toBeLessThanOrEqual(0.9);
+        expect(d.receiveSpeed).toBeGreaterThanOrEqual(0.78);
+        expect(d.receiveError).toBeGreaterThanOrEqual(24);
+        expect(d.receiveError).toBeLessThanOrEqual(95);
       }
     });
   });
@@ -102,6 +105,14 @@ describe('zorluk rampası', () => {
     expect(survivalDifficulty(DIFFICULTY.kolay, wave).error).toBeGreaterThan(
       survivalDifficulty(DIFFICULTY.zor, wave).error
     );
+  });
+
+  it('1. dalga servis karşılamayı as tabanına düşürmez', () => {
+    const w1 = survivalDifficulty(DIFFICULTY.kolay, 1);
+    expect(w1.receiveSpeed).toBeGreaterThanOrEqual(0.78);
+    expect(w1.receiveError).toBeLessThan(w1.error);
+    const zorW1 = survivalDifficulty(DIFFICULTY.zor, 1);
+    expect(zorW1.receiveError).toBeLessThan(52);
   });
 });
 
