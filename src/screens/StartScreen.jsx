@@ -20,6 +20,20 @@ const PRIDE_MESSAGES = [
   'HER SMAÇTA BİR MİLLETİN ALKIŞI',
 ];
 
+/*
+ * Mod tuşunun sol şeridi — kısa ekranda ızgara karolarını birbirinden
+ * ayırır. Hepsi aynı koyu panel olunca "hangisi turnuva" okunmuyordu.
+ */
+const MODE_ACCENT = {
+  hemen: '#E30A17',
+  online: '#E30A17',
+  match: '#FFFFFF',
+  tournament: '#FFD24A',
+  coop: '#FF7A18',
+  versus: '#9BB0FF',
+  survival: '#9BE7FF',
+};
+
 export default function StartScreen({
   onStart,
   onTutorial,
@@ -130,16 +144,16 @@ export default function StartScreen({
         düğme 270 px yer kaplıyor, geriye yazı için yer kalmıyor. Geniş
         ekranda çakışma yok, orada boşluk da yok.
       */}
-      <div className="mt-10 text-center short:order-1 short:mt-2 sm:mt-0">
+      <div className="mt-10 text-center short:order-1 short:mt-1 short:px-2 short:pr-40 sm:mt-0">
         <p className="mb-2 text-[8px] tracking-[0.35em] text-white/50 short:mb-1 short:hidden sm:mb-3 sm:text-[9px]">
           8 BİT PİKSEL VOLEYBOL
         </p>
-        <h1 className="text-2xl leading-relaxed text-turkiye-red text-outline-red short:text-xl short:leading-tight sm:text-4xl md:text-5xl">
+        <h1 className="text-2xl leading-relaxed text-turkiye-red text-outline-red short:text-lg short:leading-none sm:text-4xl md:text-5xl">
           RETRO
-          <br />
-          VOLEYBOL
+          <br className="short:hidden" />
+          <span className="short:ml-2">VOLEYBOL</span>
         </h1>
-        <div className="mx-auto mt-4 h-1 w-32 bg-white/80 short:mt-2 short:w-24 sm:mt-5 sm:w-40" />
+        <div className="mx-auto mt-4 h-1 w-32 bg-white/80 short:mt-2 short:w-20 sm:mt-5 sm:w-40" />
       </div>
 
       {/* Gurur Tablosu — yerel rekorlar veya onur mesajı */}
@@ -242,10 +256,14 @@ export default function StartScreen({
         Kısa yatay ekranda (telefon yan çevrilmiş) vitrin ve gurur
         tablosu ilk bakışta tuşları aşağı itiyordu — "öbür modların
         tuşu yok" şikayetinin bir kaynağı buydu. `short:order-3`
-        başlığın hemen altına alır; açıklama satırı da gizlenir ki
-        beş mod bir bakışta sığsın.
+        başlığın hemen altına alır.
+
+        Kısa ekranda ızgara: ilk (öne çıkan) tuş tam genişlik, gerisi
+        iki sütun. Tek sütun beş aynı koyu çubuk, arcade menü gibi
+        durmuyordu; açıklama zaten gizli olduğu için o genişliğe
+        ihtiyaç da yok.
       */}
-      <div className="flex w-full max-w-xl flex-col gap-3 short:order-3 short:gap-2">
+      <div className="flex w-full max-w-xl flex-col gap-3 short:order-3 short:grid short:grid-cols-2 short:gap-2">
         {modlar.map((mode, i) => (
           <button
             key={mode.id}
@@ -257,11 +275,16 @@ export default function StartScreen({
              * metnini yutuyordu. Opaklık yerine bulanıklık, fotoğrafın
              * varlığını koruyup okunurluğu geri getiriyor.
              */
-            className={`group flex w-full items-center gap-3 border-4 px-4 py-3 text-left backdrop-blur-[3px] transition short:py-2 ${
+            className={`group flex w-full items-center gap-3 border-4 px-4 py-3 text-left backdrop-blur-[3px] transition ${
               i === 0
-                ? 'border-turkiye-red bg-turkiye-red/30 hover:bg-turkiye-red/40'
-                : 'border-white/20 bg-retro-panel/75 hover:border-white/55'
+                ? 'short:col-span-2 border-turkiye-red bg-turkiye-red/30 hover:bg-turkiye-red/40'
+                : 'short:flex-col short:items-start short:gap-1.5 short:px-3 short:py-2.5 border-white/20 bg-retro-panel/75 hover:border-white/55'
             }`}
+            style={
+              i === 0
+                ? undefined
+                : { boxShadow: `inset 4px 0 0 ${MODE_ACCENT[mode.id] ?? '#FFFFFF'}` }
+            }
           >
             <div className="min-w-0 flex-1">
               <p className="text-[10px] text-white sm:text-xs">{mode.label}</p>
@@ -269,7 +292,11 @@ export default function StartScreen({
                 {mode.description}
               </p>
             </div>
-            <span className="shrink-0 border-2 border-white/25 px-2 py-1 text-[6px] text-retro-accent">
+            <span
+              className={`shrink-0 border-2 border-white/25 px-2 py-1 text-[6px] text-retro-accent ${
+                i === 0 ? '' : 'short:border-0 short:px-0 short:py-0 short:text-white/50'
+              }`}
+            >
               {mode.tagline}
             </span>
           </button>
@@ -300,7 +327,7 @@ export default function StartScreen({
             ⚙ AYARLAR
           </button>
         </div>
-        <p className="animate-blink text-[8px] text-white/50">BİR MOD SEÇ</p>
+        <p className="animate-blink text-[8px] text-white/50 short:hidden">BİR MOD SEÇ</p>
       </div>
 
       {/* Kontroller özeti */}

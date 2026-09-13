@@ -256,7 +256,10 @@ function PlayerPad({ onInput, slot, badge, disabled, buttonTone }) {
 
   return (
     <div className="tb-cluster tb-gap flex flex-col items-center" data-slot={slot}>
-      <span className="tb-badge" aria-hidden="true">
+      <span
+        className={`jersey-mark tb-badge ${slot === 'p2' ? 'jersey-mark-p2' : ''}`}
+        aria-hidden="true"
+      >
         {badge}
       </span>
       <div className="tb-gap flex items-center">
