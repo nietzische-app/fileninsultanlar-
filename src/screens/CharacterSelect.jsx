@@ -97,7 +97,11 @@ export default function CharacterSelect({
       : 'random'
   );
   const [selected, setSelected] = useState(() =>
-    sanitizeHomeIds(initialHomeIds, initialMode === '2v2' ? '2v2' : '1v1', ilerleme.acilanlar)
+    sanitizeHomeIds(
+      initialHomeIds,
+      playMode === 'coop' || initialMode === '2v2' ? '2v2' : '1v1',
+      ilerleme.acilanlar,
+    )
   );
   const [focused, setFocused] = useState(() => selected[0] ?? DEFAULT_PLAYER_ID);
 
@@ -283,13 +287,21 @@ export default function CharacterSelect({
               </>
             ) : (
               <>
-                <div className="mt-2 grid gap-1 text-[7px] leading-relaxed text-white/60 sm:grid-cols-2">
-                  <span>
-                    <b className="text-white/80">1. OYUNCU</b> — W A S D · BOŞLUK vur
-                  </span>
-                  <span>
-                    <b className="text-white/80">2. OYUNCU</b> — ok tuşları · ENTER vur
-                  </span>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  <div className="flex items-start gap-2 bg-black/30 px-2 py-2">
+                    <span className="jersey-mark mt-px" aria-hidden="true">1</span>
+                    <span className="text-[7px] leading-relaxed text-white/65">
+                      <b className="text-white">W A S D · BOŞLUK</b>
+                      <span className="mt-1 block text-white/40">Mobilde SOL tuşlar</span>
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-2 bg-black/30 px-2 py-2">
+                    <span className="jersey-mark jersey-mark-p2 mt-px" aria-hidden="true">2</span>
+                    <span className="text-[7px] leading-relaxed text-white/65">
+                      <b className="text-white">OK TUŞLARI · ENTER</b>
+                      <span className="mt-1 block text-white/40">Mobilde SAĞ tuşlar</span>
+                    </span>
+                  </div>
                 </div>
                 <p className="mt-2 text-[7px] leading-relaxed text-white/45">
                   {playMode === 'coop'

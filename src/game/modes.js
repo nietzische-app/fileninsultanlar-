@@ -134,3 +134,20 @@ export const GAME_MODES = [
 export function getGameMode(id) {
   return GAME_MODES.find((mode) => mode.id === id) ?? GAME_MODES[0];
 }
+
+/**
+ * Aynı cihazda iki insan mı oynuyor?
+ *
+ * Çevrimiçi maç motor açısından `vs` olsa da oyuncular ayrı cihazlarda
+ * ve her biri kendi tuş takımını kullanır. `agRol` doluysa bu yerel
+ * eşleşme değildir — dokunmatik tuşlar tek takım olarak kalmalı.
+ *
+ * Yerel Co-Op/VS'te tuşları gizlemek, telefonda o modlara giren
+ * oyuncuyu sahaya tuşsuz bırakıyordu. Çift takımın ölçütü bu.
+ *
+ * @param {string} [playMode]
+ * @param {string|null} [agRol]
+ */
+export function yerelCift(playMode, agRol) {
+  return !agRol && (playMode === 'coop' || playMode === 'vs');
+}

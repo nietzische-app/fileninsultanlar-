@@ -548,6 +548,92 @@
   }
 
   /*
+   * Yerel iki oyunculu şerit — 2×2 küme, solda 1 sağda 2.
+   *
+   * Tuşlar tek kişiliktekine göre küçülür: sekiz adet 5.35rem tuş
+   * yatay telefonda sığmaz ve iki sıra da sahanın oynanan bandını
+   * yer. `--tb-cluster-size` hem küme tuşlarını hem şerit boyunu
+   * besler; sahne de aynı değişkeni okuduğu için canvas küçülür ve
+   * zemin çizgisi yine şeridin üst kenarına oturur.
+   */
+  .match-stage-dual,
+  .control-strip-dual {
+    --tb-cluster-size: calc(min(3.35rem, 11.5vh) * var(--touch-scale, 1));
+    --strip-h: calc(
+      var(--tb-cluster-size) * 2
+      + (0.85rem * var(--touch-scale, 1) * var(--tb-gap, 1))
+      + 2.15rem
+      + env(safe-area-inset-bottom)
+    );
+  }
+
+  .tb-cluster .tb-dir,
+  .tb-cluster .tb-act,
+  .tb-cluster .tb-jump {
+    width: var(--tb-cluster-size, calc(min(3.35rem, 11.5vh) * var(--touch-scale, 1)));
+    height: var(--tb-cluster-size, calc(min(3.35rem, 11.5vh) * var(--touch-scale, 1)));
+  }
+
+  .tb-cluster .tb-label {
+    font-size: calc(0.72rem * var(--touch-scale, 1));
+  }
+
+  /*
+   * Çift takım kümesi bir KUMANDA gibi dursun: dört tuş + forma
+   * numarası. Yalnızca "1" yazısı havada asılıyken hangi tarafın kimin
+   * olduğu bir bakışta okunmuyordu.
+   *
+   * Kimlik HALKADA değil ÇERÇEVEDE: yön kırmızı / aksiyon altın kuralı
+   * tek kişiliktekiyle aynı kalsın, yoksa 2. oyuncu altın VUR'u
+   * kaybederdi. P1 kırmızı, P2 mavi — saha taraflarının rengi.
+   */
+  .tb-cluster {
+    padding: calc(0.28rem * var(--touch-scale, 1)) calc(0.34rem * var(--touch-scale, 1))
+      calc(0.34rem * var(--touch-scale, 1));
+    background: rgba(8, 8, 16, 0.48);
+    box-shadow:
+      inset 0 0 0 2px rgba(255, 66, 87, 0.62),
+      3px 3px 0 rgba(0, 0, 0, 0.45);
+  }
+
+  .tb-cluster[data-slot='p2'] {
+    box-shadow:
+      inset 0 0 0 2px rgba(155, 176, 255, 0.78),
+      3px 3px 0 rgba(0, 0, 0, 0.45);
+  }
+
+  /*
+   * Forma numarası — kadro kartındaki seçim rozetiyle aynı dil:
+   * küçük piksel plaka, gölgeli. `tb-badge` ölçeği tuş ayarına bağlar.
+   */
+  .jersey-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.2rem;
+    height: 1.1rem;
+    padding: 0 0.22rem;
+    font-size: 0.62rem;
+    line-height: 1;
+    letter-spacing: 0;
+    color: #fff;
+    background: #e30a17;
+    border: 2px solid #0b0b12;
+    box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.55);
+  }
+
+  .jersey-mark-p2 {
+    background: #2b3a8f;
+  }
+
+  .tb-badge.jersey-mark {
+    min-width: calc(1.15rem * var(--touch-scale, 1));
+    height: calc(1.05rem * var(--touch-scale, 1));
+    font-size: calc(0.58rem * var(--touch-scale, 1));
+    margin-bottom: calc(0.08rem * var(--touch-scale, 1));
+  }
+
+  /*
    * Canvas oranını koruyarak sahneye sığdır (letterbox).
    *
    * Üst sınır şeride göre hesaplanır ama şeridin yüksekliği DOĞRUDAN
