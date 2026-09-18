@@ -1,7 +1,7 @@
 {
   "name": "retro-voleybol",
   "private": true,
-  "version": "0.1.3",
+  "version": "0.1.4",
   "type": "module",
   "description": "Retro Voleybol'na adanmış retro piksel voleybol oyunu",
   "scripts": {

@@ -139,7 +139,7 @@ export default function StartScreen({
         görünüyor, mod tuşları için aşağı kaydırmak gerekiyordu.
         Şimdi başlık bir satır; tuşlar hemen altında.
       */}
-      <header className="relative z-10 flex shrink-0 items-center justify-between gap-3 px-3 py-2 sm:px-5 sm:py-3">
+      <header className="relative z-10 flex shrink-0 items-center justify-between gap-3 py-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-[max(0.5rem,env(safe-area-inset-top))] sm:py-3">
         <div className="min-w-0">
           <p className="mb-1 hidden text-[6px] tracking-[0.28em] text-white/45 tall:block">
             8 BİT PİKSEL VOLEYBOL
@@ -161,7 +161,7 @@ export default function StartScreen({
         `flex-1` + `justify-center` masaüstünde tuşları dikey ortalar;
         kısa yatay telefonda `short:justify-start` boşluk yemez.
       */}
-      <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-3 px-3 pb-3 short:justify-start short:gap-2 sm:gap-4 sm:px-4">
+      <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-3 pb-3 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] short:justify-start short:gap-2 sm:gap-4">
         {resumeTournament && (
           <button
             type="button"
@@ -216,7 +216,7 @@ export default function StartScreen({
       </div>
 
       {/* İkinci bakış — kaydırınca; ilk ekranı tıkamaz */}
-      <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-col items-center gap-4 px-3 pb-8 sm:gap-5 sm:px-4">
+      <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-col items-center gap-4 pb-8 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(2rem,env(safe-area-inset-bottom))] sm:gap-5">
         <div className="retro-panel w-full px-5 py-4 text-center">
           <p className="mb-3 text-[8px] tracking-widest text-retro-accent">★ GURUR TABLOSU ★</p>
           {hasRecords || hasSurvivalRecord ? (

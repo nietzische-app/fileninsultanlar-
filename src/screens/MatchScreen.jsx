@@ -492,14 +492,14 @@ export default function MatchScreen({
   return (
     <div
       ref={stageRef}
-      className="match-screen mx-auto flex min-h-full w-full max-w-[1180px] flex-col items-center justify-center gap-3 px-2 py-3 touch:fixed touch:inset-0 touch:z-40 touch:block touch:h-[100dvh] touch:w-screen touch:max-w-none touch:overflow-hidden touch:overscroll-none touch:bg-black touch:p-0 sm:gap-4 sm:px-3 sm:py-5"
+      className="match-screen mx-auto flex min-h-full w-full max-w-[1180px] flex-col items-center justify-center gap-3 px-2 py-3 touch:fixed touch:inset-0 touch:z-40 touch:block touch:h-[100dvh] touch:w-screen touch:max-w-none touch:overflow-hidden touch:overscroll-none touch:bg-[#0b0b12] touch:p-0 sm:gap-4 sm:px-3 sm:py-5"
     >
       {/*
         Üst HUD. Mobilde skor tablosu ve hızlı düğmeler tek bir saydam
         katmanda sahnenin üstüne biner; masaüstünde eskisi gibi akışta
         durur.
       */}
-      <div className="match-hud w-full shrink-0 touch:pointer-events-none touch:absolute touch:inset-x-0 touch:top-0 touch:z-20 touch:flex touch:flex-col touch:gap-1 touch:px-1 touch:pt-[env(safe-area-inset-top)]">
+      <div className="match-hud w-full shrink-0 touch:pointer-events-none touch:absolute touch:inset-x-0 touch:top-0 touch:z-20 touch:flex touch:flex-col touch:gap-1 touch:px-1 touch:pl-[env(safe-area-inset-left)] touch:pr-[env(safe-area-inset-right)] touch:pt-[env(safe-area-inset-top)]">
         <div className="flex w-full items-start gap-1">
           <Scoreboard
             score={hud.score}
@@ -536,7 +536,7 @@ export default function MatchScreen({
           {taniAcik && <TaniKatmani oyun={taniOyun} tasima={config.baglanti?.tasimaAdi ?? null} />}
 
           {/* Duraklat / tam ekran / çık — yalnızca mobil */}
-          <div className="pointer-events-auto flex shrink-0 gap-1 pr-[env(safe-area-inset-right)] fine:hidden">
+          <div className="pointer-events-auto flex shrink-0 gap-1 fine:hidden">
             {fullscreen.supported && (
               <button
                 type="button"
@@ -583,7 +583,7 @@ export default function MatchScreen({
         önlük şeridin altına değil ortaya denk gelirdi.
       */}
       <div
-        className={`match-stage scanlines relative w-full max-w-[1180px] shrink fine:w-fit border-4 border-white/85 bg-black touch:absolute touch:inset-0 touch:flex touch:max-w-none touch:flex-col touch:items-center touch:justify-start touch:border-0${twoPlayer ? ' match-stage-dual' : ''}`}
+        className={`match-stage scanlines relative w-full max-w-[1180px] shrink fine:w-fit border-4 border-white/85 bg-[#0b0b12] touch:absolute touch:inset-0 touch:flex touch:max-w-none touch:flex-col touch:items-center touch:justify-start touch:border-0${twoPlayer ? ' match-stage-dual' : ''}`}
         /*
          * Ölçek SAHNEDE de tanımlı olmalı: `--strip-h` ve canvas'ın üst
          * sınırı buradan hesaplanıyor. Yalnızca tuş bileşenine
@@ -603,7 +603,7 @@ export default function MatchScreen({
           ref={canvasRef}
           width={GAME_WIDTH}
           height={GAME_HEIGHT}
-          className="pixelated relative z-[1] block h-auto max-h-full w-full touch:stage-canvas touch:w-auto"
+          className="pixelated relative z-[1] block h-auto max-h-full w-full bg-[#0b0b12] touch:stage-canvas touch:w-auto"
           style={{ aspectRatio: `${GAME_WIDTH} / ${GAME_HEIGHT}` }}
           aria-label="Retro Voleybol voleybol sahası"
         />
