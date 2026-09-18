@@ -76,8 +76,22 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            /*
+             * R8 — Play Console "optimizasyon: düşük / karartma %2"
+             * uyarısının sebebi buydu: minify kapalıydı, kabuktaki
+             * AndroidX/Capacitor sınıfları olduğu gibi gidiyordu.
+             *
+             * Oyun kodu JS; R8 yalnız yerel kabuğu (DEX) küçültür.
+             * AGP 9'a çıkmak Capacitor 6 şablonunun bütün araç
+             * zincirini kırar ve bu kabuk için kazanç yok — minify
+             * AGP 8.2'de de çalışır. Full mode AGP 8'de varsayılan.
+             *
+             * Capacitor kendi consumer keep kurallarını AAR ile
+             * getiriyor; uygulama kuralları `proguard-rules.pro`.
+             */
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             /*
              * Anahtar yoksa imzasız üretiliyor. Sessizce debug
              * anahtarıyla imzalamak DAHA KÖTÜ olurdu: dosya geçerli
