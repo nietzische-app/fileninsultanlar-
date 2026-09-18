@@ -21,8 +21,8 @@ const PRIDE_MESSAGES = [
 ];
 
 /*
- * Mod tuşunun sol şeridi — kısa ekranda ızgara karolarını birbirinden
- * ayırır. Hepsi aynı koyu panel olunca "hangisi turnuva" okunmuyordu.
+ * Mod tuşunun sol şeridi — ızgara karolarını birbirinden ayırır.
+ * Hepsi aynı koyu panel olunca "hangisi turnuva" okunmuyordu.
  */
 const MODE_ACCENT = {
   hemen: '#E30A17',
@@ -128,224 +128,217 @@ export default function StartScreen({
   };
 
   return (
-    <div className="relative isolate flex min-h-full flex-col items-center justify-center gap-6 px-4 py-8 short:justify-start short:gap-3 short:py-3 sm:gap-8 sm:py-10">
+    <div className="relative isolate flex min-h-full flex-col">
       <TeamBackdrop />
 
-      <div className="absolute right-4 top-4 z-10 flex items-center gap-2 sm:right-6 sm:top-6">
-        <MusicVolume value={musicVolume} onChange={onMusicVolume} muted={muted} />
-        <MuteButton muted={muted} onToggle={onToggleMute} />
-      </div>
-
       {/*
-        Başlık.
+        Üst şerit — kelime işareti, dev açılış yazısı değil.
 
-        `mt-10 sm:mt-0`: dar ekranda ses düğmeleri (sağ üstte, `top-4`)
-        ortalanmış üst satırın ÜSTÜNE biniyordu — 390 px genişlikte iki
-        düğme 270 px yer kaplıyor, geriye yazı için yer kalmıyor. Geniş
-        ekranda çakışma yok, orada boşluk da yok.
+        Eskiden RETRO / VOLEYBOL iki satır, 4xl/5xl, üstüne gurur
+        tablosu ve vitrin biniyordu. İlk bakışta yalnız başlık
+        görünüyor, mod tuşları için aşağı kaydırmak gerekiyordu.
+        Şimdi başlık bir satır; tuşlar hemen altında.
       */}
-      <div className="mt-10 text-center short:order-1 short:mt-1 short:px-2 short:pr-40 sm:mt-0">
-        <p className="mb-2 text-[8px] tracking-[0.35em] text-white/50 short:mb-1 short:hidden sm:mb-3 sm:text-[9px]">
-          8 BİT PİKSEL VOLEYBOL
-        </p>
-        <h1 className="text-2xl leading-relaxed text-turkiye-red text-outline-red short:text-lg short:leading-none sm:text-4xl md:text-5xl">
-          RETRO
-          <br className="short:hidden" />
-          <span className="short:ml-2">VOLEYBOL</span>
-        </h1>
-        <div className="mx-auto mt-4 h-1 w-32 bg-white/80 short:mt-2 short:w-20 sm:mt-5 sm:w-40" />
-      </div>
-
-      {/* Gurur Tablosu — yerel rekorlar veya onur mesajı */}
-      <div className="retro-panel w-full max-w-xl px-5 py-4 text-center short:order-5">
-        <p className="mb-3 text-[8px] tracking-widest text-retro-accent">★ GURUR TABLOSU ★</p>
-        {hasRecords || hasSurvivalRecord ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <RecordStat label="GALİBİYET" value={records.wins} />
-            <RecordStat label="EN İYİ SERİ" value={records.bestWinStreak} />
-            <RecordStat label="KUPA" value={records.tournamentsWon ?? 0} />
-            <RecordStat
-              label="HAYATTA KALMA"
-              value={records.bestSurvivalPoints ?? 0}
-            />
-          </div>
-        ) : (
-          <p
-            key={messageIndex}
-            className="text-[9px] leading-relaxed text-white/85 sm:text-[11px]"
-          >
-            {PRIDE_MESSAGES[messageIndex]}
+      <header className="relative z-10 flex shrink-0 items-center justify-between gap-3 px-3 py-2 sm:px-5 sm:py-3">
+        <div className="min-w-0">
+          <p className="mb-1 hidden text-[6px] tracking-[0.28em] text-white/45 sm:block">
+            8 BİT PİKSEL VOLEYBOL
           </p>
-        )}
-      </div>
-
-      {/* Rozetler — bir tanesi bile açıldıysa göster */}
-      {achievements.length > 0 && (
-        <div className="retro-panel w-full max-w-xl px-5 py-4 short:order-6">
-          <p className="mb-3 text-center text-[8px] tracking-widest text-retro-accent">
-            ★ ROZETLER · {achievements.length}/{ACHIEVEMENTS.length} ★
-          </p>
-          <AchievementGrid unlocked={achievements} />
+          <h1 className="truncate text-[11px] leading-none text-turkiye-red text-outline-red sm:text-sm">
+            RETRO VOLEYBOL
+          </h1>
         </div>
-      )}
-
-      {/* Vitrin */}
-      <div className="flex items-end justify-center gap-5 short:order-7 short:hidden sm:gap-10">
-        {showcase.map((player, i) => (
-          <div
-            key={player.id}
-            className="flex flex-col items-center gap-2 animate-float"
-            style={{ animationDelay: `${i * 0.35}s` }}
-          >
-            <PixelAvatar player={player} scale={4} pose={i === 0 ? 'cheer' : 'idle'} />
-            <span className="text-[7px] text-white/75 text-shadow-pixel">{upper(player.name)}</span>
-            {player.captain && (
-              <span className="text-[6px] text-retro-accent text-shadow-pixel">★ KAPTAN</span>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/*
-        Cüzdan ve sıradaki hedef.
-
-        Menüde durmasının sebebi: oyuncu maça BAŞLAMADAN önce bir sonraki
-        oyuncuya ne kadar kaldığını görsün. Yalnızca seçim ekranında
-        olsaydı bu bilgi, karar zaten verildikten sonra gelirdi.
-      */}
-      {hedef && (
-        <div className="retro-panel w-full max-w-xl px-5 py-3 short:order-8">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <span className="text-[7px] tracking-widest text-white/40">FORMA PUANI</span>
-            <span className="text-[10px] text-retro-accent">
-              {(ilerleme?.puan ?? 0).toLocaleString('tr-TR')} FP
-            </span>
-          </div>
-          <div className="mt-2 h-2 w-full border border-white/20 bg-black/40">
-            <div
-              className="h-full bg-retro-accent transition-[width] duration-500"
-              style={{ width: `${Math.round(hedef.oran * 100)}%` }}
-            />
-          </div>
-          <p className="mt-2 text-[7px] text-white/45">
-            {hedef.kalan > 0
-              ? `${upper(getPlayerById(hedef.id)?.name ?? '')} İÇİN ${hedef.kalan} FP`
-              : `${upper(getPlayerById(hedef.id)?.name ?? '')} AÇILMAYA HAZIR`}
-          </p>
+        <div className="flex shrink-0 items-center gap-2">
+          <MusicVolume value={musicVolume} onChange={onMusicVolume} muted={muted} />
+          <MuteButton muted={muted} onToggle={onToggleMute} />
         </div>
-      )}
-
-      {/* Yarım kalan turnuva — varsa her şeyin üstünde */}
-      {resumeTournament && (
-        <button
-          type="button"
-          className="retro-button w-full max-w-xl px-6 py-3 text-[9px] short:order-2"
-          onClick={() => {
-            Sfx.unlock();
-            Sfx.confirm();
-            onResumeTournament?.();
-          }}
-        >
-          ★ TURNUVAYA DEVAM ET · {resumeTournament.roundIndex + 1}. TUR ★
-        </button>
-      )}
+      </header>
 
       {/*
-        Mod seçimi.
+        Asıl menü: ilk ekranı doldurur. Gurur / vitrin / kontroller
+        bunun ALTINDA — kaydırınca gelir, tuşların yerini yemez.
 
-        Kısa yatay ekranda (telefon yan çevrilmiş) vitrin ve gurur
-        tablosu ilk bakışta tuşları aşağı itiyordu — "öbür modların
-        tuşu yok" şikayetinin bir kaynağı buydu. `short:order-3`
-        başlığın hemen altına alır.
-
-        Kısa ekranda ızgara: ilk (öne çıkan) tuş tam genişlik, gerisi
-        iki sütun. Tek sütun beş aynı koyu çubuk, arcade menü gibi
-        durmuyordu; açıklama zaten gizli olduğu için o genişliğe
-        ihtiyaç da yok.
+        `flex-1` + `justify-center` masaüstünde tuşları dikey ortalar;
+        kısa yatay telefonda `short:justify-start` boşluk yemez.
       */}
-      <div className="flex w-full max-w-xl flex-col gap-3 short:order-3 short:grid short:grid-cols-2 short:gap-2">
-        {modlar.map((mode, i) => (
+      <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-3 px-3 pb-3 short:justify-start short:gap-2 sm:gap-4 sm:px-4">
+        {resumeTournament && (
           <button
-            key={mode.id}
             type="button"
-            onClick={() => handleStart(mode.id)}
-            /*
-             * `backdrop-blur`: arka plan fotoğrafı düğmelerin altından
-             * geçiyor; bulanıklık olmadan kalabalık kare açıklama
-             * metnini yutuyordu. Opaklık yerine bulanıklık, fotoğrafın
-             * varlığını koruyup okunurluğu geri getiriyor.
-             */
-            className={`group flex w-full items-center gap-3 border-4 px-4 py-3 text-left backdrop-blur-[3px] transition ${
-              i === 0
-                ? 'short:col-span-2 border-turkiye-red bg-turkiye-red/30 hover:bg-turkiye-red/40'
-                : 'short:flex-col short:items-start short:gap-1.5 short:px-3 short:py-2.5 border-white/20 bg-retro-panel/75 hover:border-white/55'
-            }`}
-            style={
-              i === 0
-                ? undefined
-                : { boxShadow: `inset 4px 0 0 ${MODE_ACCENT[mode.id] ?? '#FFFFFF'}` }
-            }
+            className="retro-button w-full px-4 py-2 text-[8px] sm:py-3 sm:text-[9px]"
+            onClick={() => {
+              Sfx.unlock();
+              Sfx.confirm();
+              onResumeTournament?.();
+            }}
           >
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] text-white sm:text-xs">{mode.label}</p>
-              <p className="mt-1.5 text-[7px] leading-relaxed text-white/55 short:hidden">
-                {mode.description}
-              </p>
-            </div>
-            <span
-              className={`shrink-0 border-2 border-white/25 px-2 py-1 text-[6px] text-retro-accent ${
-                i === 0 ? '' : 'short:border-0 short:px-0 short:py-0 short:text-white/50'
-              }`}
-            >
-              {mode.tagline}
-            </span>
+            ★ TURNUVAYA DEVAM ET · {resumeTournament.roundIndex + 1}. TUR ★
           </button>
-        ))}
-      </div>
+        )}
 
-      <div className="flex flex-col items-center gap-3 short:order-4 short:gap-2">
-        <div className="flex flex-wrap items-center justify-center gap-3">
+        <div
+          data-mod-izgara
+          className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3"
+        >
+          {modlar.map((mode, i) => (
+            <ModeTile
+              key={mode.id}
+              mode={mode}
+              featured={i === 0}
+              onClick={() => handleStart(mode.id)}
+            />
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
           <button
             type="button"
-            className="retro-button-ghost px-5 py-2 text-[8px]"
+            className="retro-button-ghost px-3 py-1.5 text-[7px] sm:px-5 sm:py-2 sm:text-[8px]"
             onClick={onTutorial}
           >
             NASIL OYNANIR
           </button>
           <button
             type="button"
-            className="retro-button-ghost px-5 py-2 text-[8px]"
+            className="retro-button-ghost px-3 py-1.5 text-[7px] sm:px-5 sm:py-2 sm:text-[8px]"
             onClick={onCollection}
           >
             KOLEKSİYON
           </button>
           <button
             type="button"
-            className="retro-button-ghost px-5 py-2 text-[8px]"
+            className="retro-button-ghost px-3 py-1.5 text-[7px] sm:px-5 sm:py-2 sm:text-[8px]"
             onClick={onSettings}
           >
             ⚙ AYARLAR
           </button>
         </div>
-        <p className="animate-blink text-[8px] text-white/50 short:hidden">BİR MOD SEÇ</p>
       </div>
 
-      {/* Kontroller özeti */}
-      <div className="retro-panel px-4 py-3 short:order-9">
-        <p className="mb-2 text-center text-[8px] text-white/50">KONTROLLER</p>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-[7px] text-white/70 sm:grid-cols-3">
-          <span>← → / A D · HAREKET</span>
-          <span>↑ / W · ZIPLA</span>
-          <span>BOŞLUK / Z · VUR</span>
-          <span className="text-[#9BE7FF]">↓ / S · DALIŞ (HAVADA PLASE)</span>
+      {/* İkinci bakış — kaydırınca; ilk ekranı tıkamaz */}
+      <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-col items-center gap-4 px-3 pb-8 sm:gap-5 sm:px-4">
+        <div className="retro-panel w-full px-5 py-4 text-center">
+          <p className="mb-3 text-[8px] tracking-widest text-retro-accent">★ GURUR TABLOSU ★</p>
+          {hasRecords || hasSurvivalRecord ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <RecordStat label="GALİBİYET" value={records.wins} />
+              <RecordStat label="EN İYİ SERİ" value={records.bestWinStreak} />
+              <RecordStat label="KUPA" value={records.tournamentsWon ?? 0} />
+              <RecordStat
+                label="HAYATTA KALMA"
+                value={records.bestSurvivalPoints ?? 0}
+              />
+            </div>
+          ) : (
+            <p
+              key={messageIndex}
+              className="text-[9px] leading-relaxed text-white/85 sm:text-[11px]"
+            >
+              {PRIDE_MESSAGES[messageIndex]}
+            </p>
+          )}
         </div>
-      </div>
 
-      <footer className="max-w-md text-center text-[7px] leading-relaxed text-white/30 short:order-10">
-        Voleybola saygıyla yapılmış, ticari olmayan bağımsız bir oyundur.
-        Takımlar ve oyuncular kurgusaldır.
-      </footer>
+        {achievements.length > 0 && (
+          <div className="retro-panel w-full px-5 py-4">
+            <p className="mb-3 text-center text-[8px] tracking-widest text-retro-accent">
+              ★ ROZETLER · {achievements.length}/{ACHIEVEMENTS.length} ★
+            </p>
+            <AchievementGrid unlocked={achievements} />
+          </div>
+        )}
+
+        <div className="flex items-end justify-center gap-5 short:hidden sm:gap-10">
+          {showcase.map((player, i) => (
+            <div
+              key={player.id}
+              className="flex flex-col items-center gap-2 animate-float"
+              style={{ animationDelay: `${i * 0.35}s` }}
+            >
+              <PixelAvatar player={player} scale={4} pose={i === 0 ? 'cheer' : 'idle'} />
+              <span className="text-[7px] text-white/75 text-shadow-pixel">{upper(player.name)}</span>
+              {player.captain && (
+                <span className="text-[6px] text-retro-accent text-shadow-pixel">★ KAPTAN</span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {hedef && (
+          <div className="retro-panel w-full px-5 py-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="text-[7px] tracking-widest text-white/40">FORMA PUANI</span>
+              <span className="text-[10px] text-retro-accent">
+                {(ilerleme?.puan ?? 0).toLocaleString('tr-TR')} FP
+              </span>
+            </div>
+            <div className="mt-2 h-2 w-full border border-white/20 bg-black/40">
+              <div
+                className="h-full bg-retro-accent transition-[width] duration-500"
+                style={{ width: `${Math.round(hedef.oran * 100)}%` }}
+              />
+            </div>
+            <p className="mt-2 text-[7px] text-white/45">
+              {hedef.kalan > 0
+                ? `${upper(getPlayerById(hedef.id)?.name ?? '')} İÇİN ${hedef.kalan} FP`
+                : `${upper(getPlayerById(hedef.id)?.name ?? '')} AÇILMAYA HAZIR`}
+            </p>
+          </div>
+        )}
+
+        <div className="retro-panel px-4 py-3">
+          <p className="mb-2 text-center text-[8px] text-white/50">KONTROLLER</p>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-[7px] text-white/70 sm:grid-cols-3">
+            <span>← → / A D · HAREKET</span>
+            <span>↑ / W · ZIPLA</span>
+            <span>BOŞLUK / Z · VUR</span>
+            <span className="text-[#9BE7FF]">↓ / S · DALIŞ (HAVADA PLASE)</span>
+          </div>
+        </div>
+
+        <footer className="max-w-md text-center text-[7px] leading-relaxed text-white/30">
+          Voleybola saygıyla yapılmış, ticari olmayan bağımsız bir oyundur.
+          Takımlar ve oyuncular kurgusaldır.
+        </footer>
+      </div>
     </div>
+  );
+}
+
+function ModeTile({ mode, featured, onClick }) {
+  const accent = MODE_ACCENT[mode.id] ?? '#FFFFFF';
+  return (
+    <button
+      type="button"
+      data-mode={mode.id}
+      onClick={onClick}
+      className={`group flex min-h-[2.85rem] flex-col items-stretch justify-center gap-1 border-4 px-3 py-2 text-left backdrop-blur-[3px] transition short:min-h-[2.5rem] short:px-2.5 short:py-1.5 tall:min-h-[4.25rem] tall:px-4 tall:py-3 ${
+        featured
+          ? 'col-span-2 border-turkiye-red bg-turkiye-red/35 hover:bg-turkiye-red/50'
+          : 'border-white/20 bg-retro-panel/80 hover:border-white/55 hover:bg-retro-panel/95'
+      }`}
+      style={
+        featured
+          ? undefined
+          : { boxShadow: `inset 4px 0 0 ${accent}` }
+      }
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <p
+          className={`min-w-0 text-white ${
+            featured ? 'text-[11px] sm:text-sm' : 'text-[9px] sm:text-[11px]'
+          }`}
+        >
+          {mode.label}
+        </p>
+        <span className="shrink-0 text-[6px] text-retro-accent sm:text-[7px]">
+          {mode.tagline}
+        </span>
+      </div>
+      <p className="mt-0.5 hidden text-[6px] leading-relaxed text-white/55 tall:block sm:text-[7px]">
+        {mode.description}
+      </p>
+    </button>
   );
 }
 
