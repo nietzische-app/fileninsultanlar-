@@ -52,7 +52,7 @@ function installIcons() {
         scope: `${origin}/`,
         display: 'standalone',
         background_color: '#0b0b12',
-        theme_color: '#E30A17',
+        theme_color: '#0b0b12',
         lang: 'tr',
         // Saha 9:5 — dikeyde oynanmıyor. Ana ekrana eklenen kısayol
         // doğrudan yatay açılsın; tarayıcıda ise RotateGate devreye girer.

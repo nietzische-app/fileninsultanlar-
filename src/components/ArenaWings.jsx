@@ -73,7 +73,7 @@ export default function ArenaWings({ canvasRef }) {
     <canvas
       ref={wingRef}
       aria-hidden="true"
-      className="pixelated pointer-events-none absolute left-0 w-full fine:hidden"
+      className="pixelated pointer-events-none absolute left-0 w-full bg-[#0b0b12] fine:hidden"
       style={{ zIndex: 0 }}
     />
   );

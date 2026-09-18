@@ -657,7 +657,7 @@ export default function App() {
   }, [campaign, abandonTournament, agiKapat]);
 
   return (
-    <div className="min-h-full">
+    <div className="min-h-[100dvh] w-full bg-[#0b0b12]">
       {/*
         Yatay kapısı en üstte dursun: altındaki ekranlar mount kalır
         (maç motoru durumunu kaybetmez) ama tamamen kapanır.

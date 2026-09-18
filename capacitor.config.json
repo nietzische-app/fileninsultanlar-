@@ -3,10 +3,10 @@
   "appName": "Retro Voleybol",
   "webDir": "dist",
   "android": {
-    "backgroundColor": "#0E0E1A"
+    "backgroundColor": "#0b0b12"
   },
   "ios": {
-    "backgroundColor": "#0E0E1A",
+    "backgroundColor": "#0b0b12",
     "contentInset": "never"
   },
   "server": {
