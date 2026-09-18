@@ -141,7 +141,7 @@ export default function StartScreen({
       */}
       <header className="relative z-10 flex shrink-0 items-center justify-between gap-3 px-3 py-2 sm:px-5 sm:py-3">
         <div className="min-w-0">
-          <p className="mb-1 hidden text-[6px] tracking-[0.28em] text-white/45 sm:block">
+          <p className="mb-1 hidden text-[6px] tracking-[0.28em] text-white/45 tall:block">
             8 BİT PİKSEL VOLEYBOL
           </p>
           <h1 className="truncate text-[11px] leading-none text-turkiye-red text-outline-red sm:text-sm">
