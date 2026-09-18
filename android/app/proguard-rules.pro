@@ -1,21 +1,21 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
+# Retro Voleybol — yayın (R8) kuralları.
 #
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Oyun JS; R8 yalnız Capacitor kabuğunu karartır. Capacitor AAR'ı
+# consumer keep kurallarını zaten taşıyor (eklenti yansıması). Burada
+# yalnızca kabuğun kırılmaması ve Play kilitlenme raporlarının
+# okunması için gerekenler var.
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Satır numarası kalsın: karartılmış iz Play'de "a.b.c" olmasın.
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Ana aktivite manifestte exported; R8 onu silmez ama Bridge
+# yansımayla eklenti sınıflarını yükler — üst sınıfı tut.
+-keep class app.retrovoleybol.oyun.MainActivity { *; }
+-keep class com.getcapacitor.BridgeActivity { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# WebView / JS köprüsü (Capacitor Bridge @JavascriptInterface kullanır)
+-keepattributes JavascriptInterface
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}

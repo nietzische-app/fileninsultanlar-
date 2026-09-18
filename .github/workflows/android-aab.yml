@@ -165,11 +165,25 @@ jobs:
             exit 1
           fi
 
+      # mapping.txt: R8 açıkken Play kilitlenme izlerini çözmek için.
+      # AAB ile birlikte artifact'ta durur; Console → Uygulama bütünlüğü
+      # → yükleme (deobfuscation file) alanına bu dosya gider.
+      - name: Haritayı doğrula
+        run: |
+          MAP=android/app/build/outputs/mapping/release/mapping.txt
+          if [ ! -f "$MAP" ]; then
+            echo "::error::mapping.txt yok — minify kapalı kalmış olabilir."
+            exit 1
+          fi
+          echo "mapping: $(wc -l < "$MAP") satır"
+
       - name: Paketi yükle
         uses: actions/upload-artifact@v5
         with:
           name: retro-voleybol-aab
-          path: android/app/build/outputs/bundle/release/*.aab
+          path: |
+            android/app/build/outputs/bundle/release/*.aab
+            android/app/build/outputs/mapping/release/mapping.txt
           if-no-files-found: error
           # 90 gün Play Console'a yüklemek için fazlasıyla yeterli;
           # dosya zaten yeniden üretilebilir.
