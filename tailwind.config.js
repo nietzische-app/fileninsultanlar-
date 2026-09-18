@@ -47,6 +47,12 @@ export default {
          * Skor tablosu 393px'lik bir ekranın %40'ını yiyordu.
          */
         short: { raw: '(max-height: 480px)' },
+        /*
+         * Yeterince yüksek ekran — giriş menüsünde açıklama satırı
+         * ancak burada açılır. `sm:` genişliğe bakıyor; yatay telefon
+         * sm sayılıp açıklamayı açınca tuşlar yine taşıyordu.
+         */
+        tall: { raw: '(min-height: 640px)' },
       },
     },
   },
