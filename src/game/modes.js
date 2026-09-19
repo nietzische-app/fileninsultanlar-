@@ -50,7 +50,7 @@ export const GAME_MODES = [
      */
     id: 'hemen',
     campaign: 'match',
-    label: 'HEMEN OYNA',
+    label: 'ONLINE',
     tagline: 'RAKİP BUL',
     description: 'Tek dokunuş. Sunucu seni bekleyen bir oyuncuyla eşleştirir.',
     pickOpponent: true,
@@ -83,7 +83,7 @@ export const GAME_MODES = [
     id: 'match',
     campaign: 'match',
     playMode: 'solo',
-    label: 'HIZLI MAÇ',
+    label: 'SINGLEPLAYER',
     tagline: 'TEK MAÇ',
     description: 'Rakibi, formatı ve zorluğu sen seç. Klasik dostluk maçı.',
     pickOpponent: true,

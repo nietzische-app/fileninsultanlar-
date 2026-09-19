@@ -50,7 +50,7 @@ if (!FP_ACIK) {
 
   kontrol('menüde FP cüzdanı YOK', !(await metin()).includes('FORMA PUANI'));
 
-  await page.getByRole('button', { name: /HIZLI MAÇ/ }).first().click();
+  await page.getByRole('button', { name: /SINGLEPLAYER/ }).first().click();
   await page.waitForTimeout(600);
 
   /*
@@ -119,7 +119,7 @@ if (!FP_ACIK) {
 // ===================================================================
 // 1) Yeni oyuncu: kadro kilitli mi?
 // ===================================================================
-await page.getByRole('button', { name: /HIZLI MAÇ/ }).first().click();
+await page.getByRole('button', { name: /SINGLEPLAYER/ }).first().click();
 await page.waitForTimeout(500);
 
 const kilitliKartlar = () => page.evaluate(() =>
@@ -223,7 +223,7 @@ await page.evaluate((alt) => {
 await page.reload({ waitUntil: 'load' });
 await page.waitForTimeout(1000);
 
-await page.getByRole('button', { name: /HIZLI MAÇ/ }).first().click();
+await page.getByRole('button', { name: /SINGLEPLAYER/ }).first().click();
 await page.waitForTimeout(400);
 await page.getByRole('button', { name: /MAÇA BAŞLA/ }).last().click();
 await page.waitForTimeout(2500);
@@ -281,7 +281,7 @@ await page.evaluate(() => {
 await page.reload({ waitUntil: 'load' });
 await page.waitForTimeout(1000);
 
-await page.getByRole('button', { name: /HIZLI MAÇ/ }).first().click();
+await page.getByRole('button', { name: /SINGLEPLAYER/ }).first().click();
 await page.waitForTimeout(500);
 
 // Kilitli bir oyuncuya odaklan, sonra künye kartından satın al

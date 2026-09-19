@@ -60,7 +60,7 @@ check('tercihe yazıldı', (await prefs()).controls?.gap === 2.4, `kayıtlı=${(
 // --- Maça yansıyor mu ---
 await page.getByRole('button', { name: /GERİ/ }).click();
 await page.waitForTimeout(600);
-await page.getByRole('button', { name: /HIZLI MAÇ/ }).first().click();
+await page.getByRole('button', { name: /SINGLEPLAYER/ }).first().click();
 await page.waitForTimeout(500);
 await page.getByRole('button', { name: /MAÇA BAŞLA/ }).last().click();
 await page.waitForTimeout(2400);

@@ -55,9 +55,9 @@ async function oyuncuAc() {
 const a = await oyuncuAc();
 const b = await oyuncuAc();
 
-await a.page.getByRole('button', { name: /HEMEN OYNA/ }).first().click();
+await a.page.getByRole('button', { name: /ONLINE/ }).first().click();
 await a.page.waitForTimeout(700);
-await b.page.getByRole('button', { name: /HEMEN OYNA/ }).first().click();
+await b.page.getByRole('button', { name: /ONLINE/ }).first().click();
 await b.page.waitForTimeout(2500);
 
 const kuruldu = await a.page.evaluate(() => Boolean(window.__game));

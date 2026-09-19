@@ -373,7 +373,7 @@ for (const [etiket, en, boy, olcek] of BOYUTLAR) {
   await cek(page, '1-menu', etiket);
 
   // 2) Kadro seçimi — sultanları gösteriyor
-  await page.getByRole('button', { name: /HIZLI MAÇ|OYNA/ }).first().click();
+  await page.getByRole('button', { name: /SINGLEPLAYER/ }).first().click();
   await page.waitForTimeout(900);
   await cek(page, '2-kadro', etiket);
 

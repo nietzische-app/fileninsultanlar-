@@ -93,9 +93,9 @@ async function oyuncuAc() {
 const kisitli = await oyuncuAc();
 const normal = await oyuncuAc();
 
-await kisitli.getByRole('button', { name: /HEMEN OYNA/ }).first().click();
+await kisitli.getByRole('button', { name: /ONLINE/ }).first().click();
 await kisitli.waitForTimeout(700);
-await normal.getByRole('button', { name: /HEMEN OYNA/ }).first().click();
+await normal.getByRole('button', { name: /ONLINE/ }).first().click();
 await normal.waitForTimeout(4000);
 
 kontrol('maç kuruldu', await kisitli.evaluate(() => Boolean(window.__game)));

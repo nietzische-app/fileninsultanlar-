@@ -54,9 +54,9 @@ async function oyuncuAc(tani) {
 const a = await oyuncuAc(true);
 const b = await oyuncuAc(false);
 
-await a.getByRole('button', { name: /HEMEN OYNA/ }).first().click();
+await a.getByRole('button', { name: /ONLINE/ }).first().click();
 await a.waitForTimeout(700);
-await b.getByRole('button', { name: /HEMEN OYNA/ }).first().click();
+await b.getByRole('button', { name: /ONLINE/ }).first().click();
 await b.waitForTimeout(3000);
 
 kontrol('maç kuruldu', await a.evaluate(() => Boolean(window.__game)));

@@ -64,27 +64,27 @@ const b = await oyuncuAc('B');
 // 1) HEMEN OYNA — kadro ekranını ve lobi seçimini atlıyor mu?
 // ===================================================================
 kontrol(
-  'menüde HEMEN OYNA en üstte',
+  'menüde ONLINE en üstte',
   await a.page.evaluate(() => {
     const modlar = [...document.querySelectorAll('button')]
       .map((x) => x.textContent.trim())
-      .filter((t) => /HEMEN OYNA|HIZLI MAÇ|ARKADAŞLA OYNA/.test(t));
-    return modlar[0]?.startsWith('HEMEN OYNA') ?? false;
+      .filter((t) => /ONLINE|SINGLEPLAYER|ARKADAŞLA OYNA/.test(t));
+    return modlar[0]?.startsWith('ONLINE') ?? false;
   }),
 );
 
-await a.page.getByRole('button', { name: /HEMEN OYNA/ }).first().click();
+await a.page.getByRole('button', { name: /ONLINE/ }).first().click();
 await a.page.waitForTimeout(900);
 
 const aMetin = await a.page.evaluate(() => document.body.innerText);
 kontrol(
-  'HEMEN OYNA doğrudan eşleşmeye gidiyor (kadro ekranı YOK)',
+  'ONLINE doğrudan eşleşmeye gidiyor (kadro ekranı YOK)',
   !aMetin.includes('KADRONU SEÇ') && /RAKİP ARANIYOR|SIRADA|ARANIYOR/.test(aMetin),
   aMetin.split('\n').slice(0, 2).join(' · '),
 );
 
 // İkinci oyuncu da aynı yoldan girsin — eşleşmeliler
-await b.page.getByRole('button', { name: /HEMEN OYNA/ }).first().click();
+await b.page.getByRole('button', { name: /ONLINE/ }).first().click();
 await b.page.waitForTimeout(2500);
 
 const ilkA = await durum(a.page);

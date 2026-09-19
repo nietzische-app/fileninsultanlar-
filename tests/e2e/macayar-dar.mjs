@@ -23,7 +23,7 @@ for (const [name, w, h] of [['iPhone SE', 667, 375], ['Galaxy S20', 800, 360]]) 
     controls: { scale: 1.4, opacity: 1, swap: false } })));
   await page.reload({ waitUntil: 'load' });
   await page.waitForTimeout(1300);
-  await page.getByRole('button', { name: /HIZLI MAÇ/ }).first().click();
+  await page.getByRole('button', { name: /SINGLEPLAYER/ }).first().click();
   await page.waitForTimeout(500);
   await page.getByRole('button', { name: /MAÇA BAŞLA/ }).last().click();
   await page.waitForTimeout(2300);

@@ -74,7 +74,7 @@ export async function sayfaAc(ctx, tercih = {}) {
 
 /** Giriş ekranından maça girer. */
 export async function macaGir(page) {
-  await page.getByRole('button', { name: /HIZLI MAÇ/ }).first().click();
+  await page.getByRole('button', { name: /SINGLEPLAYER/ }).first().click();
   await page.waitForTimeout(400);
   await page.getByRole('button', { name: /MAÇA BAŞLA/ }).last().click();
   await page.waitForTimeout(2300);
