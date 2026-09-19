@@ -49,7 +49,7 @@ const gateState = (page) =>
   // Kapı açıkken menüye ulaşılabiliyor mu? (ulaşılmamalı)
   const reachable = await page.evaluate(() => {
     const btn = Array.from(document.querySelectorAll('button')).find((b) =>
-      /HIZLI MAÇ/.test(b.textContent)
+      /SINGLEPLAYER/.test(b.textContent)
     );
     if (!btn) return 'düğme yok';
     const r = btn.getBoundingClientRect();
@@ -74,7 +74,7 @@ const gateState = (page) =>
 
   console.log('\n[yatay] kapı:', (await gateState(page)).visible ? 'VAR ✗' : 'yok ✓');
 
-  await page.getByRole('button', { name: /HIZLI MAÇ/ }).first().click();
+  await page.getByRole('button', { name: /SINGLEPLAYER/ }).first().click();
   await page.waitForTimeout(500);
   await page.getByRole('button', { name: /MAÇA BAŞLA/ }).last().click();
   await page.waitForTimeout(2200);

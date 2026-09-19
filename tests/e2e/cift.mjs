@@ -72,7 +72,7 @@ async function bas(page, ctx, kutu) {
   });
   const gorunen = await page.evaluate(() => {
     const h = window.innerHeight;
-    const adlar = ['HIZLI MAÇ', 'TURNUVA', 'CO-OP', 'KARŞILIKLI', 'HAYATTA KALMA'];
+    const adlar = ['SINGLEPLAYER', 'TURNUVA', 'CO-OP', 'KARŞILIKLI', 'HAYATTA KALMA'];
     return adlar.map((ad) => {
       const el = [...document.querySelectorAll('button')].find((b) =>
         (b.textContent || '').includes(ad));

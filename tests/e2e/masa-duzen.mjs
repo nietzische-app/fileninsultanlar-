@@ -25,7 +25,7 @@ for (const [w, h] of [[1280, 600], [1366, 768], [1536, 864], [1920, 1080]]) {
     format: 'practice', opponentId: 'atlas', homeIds: ['gizel-orgen'] })));
   await page.reload({ waitUntil: 'load' });
   await page.waitForTimeout(1200);
-  await page.getByRole('button', { name: /HIZLI MAÇ/ }).first().click();
+  await page.getByRole('button', { name: /SINGLEPLAYER/ }).first().click();
   await page.waitForTimeout(400);
   await page.getByRole('button', { name: /MAÇA BAŞLA/ }).last().click();
   await page.waitForTimeout(2200);

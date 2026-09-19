@@ -13,7 +13,7 @@ for (const [name, w, h, scale] of [['SE', 667, 375, 1], ['SE %70', 667, 375, 0.7
     opponentId: 'atlas', homeIds: ['gizel-orgen'], controls: { scale: sc, opacity: 1, swap: false } })), scale);
   await page.reload({ waitUntil: 'load' });
   await page.waitForTimeout(1200);
-  await page.getByRole('button', { name: /HIZLI MAÇ/ }).first().click();
+  await page.getByRole('button', { name: /SINGLEPLAYER/ }).first().click();
   await page.waitForTimeout(500);
   await page.getByRole('button', { name: /MAÇA BAŞLA/ }).last().click();
   await page.waitForTimeout(2200);

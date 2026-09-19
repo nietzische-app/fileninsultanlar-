@@ -88,7 +88,7 @@ check('solak düzeni tarafları değiştiriyor',
 // --- Maça yansıyor mu ---
 await page.getByRole('button', { name: /GERİ/ }).click();
 await page.waitForTimeout(600);
-await page.getByRole('button', { name: /HIZLI MAÇ/ }).first().click();
+await page.getByRole('button', { name: /SINGLEPLAYER/ }).first().click();
 await page.waitForTimeout(500);
 await page.getByRole('button', { name: /MAÇA BAŞLA/ }).last().click();
 await page.waitForTimeout(2400);

@@ -31,7 +31,7 @@ await page.evaluate(() => localStorage.setItem('retro-voleybol-prefs', JSON.stri
   format: 'practice', opponentId: 'atlas', homeIds: ['gizel-orgen'] })));
 await page.reload({ waitUntil: 'load' });
 await page.waitForTimeout(1400);
-await page.getByRole('button', { name: /HIZLI MAÇ/ }).first().click();
+await page.getByRole('button', { name: /SINGLEPLAYER/ }).first().click();
 await page.waitForTimeout(500);
 await page.getByRole('button', { name: /MAÇA BAŞLA/ }).last().click();
 await page.waitForTimeout(2500);

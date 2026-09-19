@@ -25,7 +25,7 @@ async function olc(gap) {
     opponentId: 'atlas', homeIds: ['gizel-orgen'], controls: { scale: 1, opacity: 1, gap: g, swap: false } })), gap);
   await page.reload({ waitUntil: 'load' });
   await page.waitForTimeout(1200);
-  await page.getByRole('button', { name: /HIZLI MAÇ/ }).first().click();
+  await page.getByRole('button', { name: /SINGLEPLAYER/ }).first().click();
   await page.waitForTimeout(400);
   await page.getByRole('button', { name: /MAÇA BAŞLA/ }).last().click();
   await page.waitForTimeout(2300);
