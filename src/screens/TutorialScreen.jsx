@@ -1,43 +1,22 @@
 import { useState } from 'react';
 import MuteButton from '../components/MuteButton.jsx';
 import Sfx from '../game/audio.js';
+import { t } from '../i18n/index.js';
 
-/** Tutorial adımları — dig → set → spike ritmi ve temel kontroller. */
-const STEPS = [
-  {
-    title: 'MANŞET → PAS → SMAÇ',
-    body: 'Sert gelen topa önce manşetle karşılarsın (tuşa basmadan). İkinci temasta Boşluk ile pas, üçüncüde zıpla + vur = smaç. En fazla 3 temas; dördüncüsü faul.',
-    accent: '#9BE7FF',
-  },
-  {
-    title: 'DALIŞ KURTARİŞİ',
-    body: 'Yetişemeyeceğin topa dal: klavyede ↓ / S, mobilde yön tuşundan parmağını AŞAĞI KAYDIR — karakter o yöne dalar. Temas alanı alçalıp genişler; kurtarılan top yakına kalkar. Iskalanan dalış seni kısa süre yerde bırakır, son çare olarak kullan.',
-    accent: '#9BE7FF',
-  },
-  {
-    title: 'TAM VURUŞ VE KOMBO',
-    body: 'Vuruş tuşuna topa değmeden HEMEN önce bas — tuşu basılı tutarsan olmaz. Zamanı tutturursan TAM VURUŞ: daha sert vuruş ve daha hızlı dolan bar. Tam vuruş, blok ve kurtarış komboyu büyütür; kombo sayı bitince sıfırlanır.',
-    accent: '#FFD24A',
-  },
-  {
-    title: 'PLASE',
-    body: 'Havadayken ↓ / S ile (mobilde yön tuşunu aşağı kaydırarak) smaç yerine plase yaparsın: top filenin hemen ötesine yumuşak düşer. Blok zıpladıysa bedava sayı; savunma file dibinde bekliyorsa kolay lokma olursun.',
-    accent: '#9BE7FF',
-  },
-  {
-    title: 'KONTROLLER',
-    body: '← → / A D hareket · ↑ / W zıpla · ↓ / S dalış (havada plase) · Boşluk / Z vur · ESC / P duraklat. Mobilde tuşlar sahanın altındaki şeritte çıkar; dalış için yön tuşundan aşağı kaydır. Oyun yatay tutuş ister.',
-    accent: '#FFFFFF',
-  },
-];
+const STEP_KEYS = [0, 1, 2, 3, 4];
+const STEP_ACCENT = ['#9BE7FF', '#9BE7FF', '#FFD24A', '#9BE7FF', '#FFFFFF'];
 
 /**
  * Nasıl oynanır — ilk açılışta veya menüden.
  */
 export default function TutorialScreen({ onDone, onBack, muted, onToggleMute }) {
   const [step, setStep] = useState(0);
-  const current = STEPS[step];
-  const isLast = step === STEPS.length - 1;
+  const current = {
+    title: t(`tut.${step}.title`),
+    body: t(`tut.${step}.body`),
+    accent: STEP_ACCENT[step],
+  };
+  const isLast = step === STEP_KEYS.length - 1;
 
   const finish = (skipped) => {
     if (skipped) Sfx.select();
@@ -73,15 +52,15 @@ export default function TutorialScreen({ onDone, onBack, muted, onToggleMute }) 
       </div>
 
       <div className="text-center">
-        <p className="mb-2 text-[8px] tracking-widest text-retro-accent">NASIL OYNANIR</p>
+        <p className="mb-2 text-[8px] tracking-widest text-retro-accent">{t('tut.kicker')}</p>
         <h2 className="text-lg text-turkiye-red text-outline-red sm:text-xl">
-          OYUN REHBERİ
+          {t('tut.title')}
         </h2>
       </div>
 
       {/* Adım göstergesi */}
       <div className="flex items-center gap-2" aria-hidden="true">
-        {STEPS.map((_, i) => (
+        {STEP_KEYS.map((_, i) => (
           <span
             key={i}
             className={`h-2 w-6 border-2 ${
@@ -97,7 +76,7 @@ export default function TutorialScreen({ onDone, onBack, muted, onToggleMute }) 
 
       <div className="retro-panel w-full px-5 py-6">
         <p className="text-[8px] text-white/40">
-          ADIM {step + 1} / {STEPS.length}
+          {t('tut.step', { n: step + 1, toplam: STEP_KEYS.length })}
         </p>
         <h3
           className="mt-3 text-sm leading-relaxed sm:text-base"
@@ -120,14 +99,14 @@ export default function TutorialScreen({ onDone, onBack, muted, onToggleMute }) 
               onClick={prev}
               disabled={step === 0 && !onBack}
             >
-              {step === 0 ? (onBack ? '← GERİ' : '←') : '← ÖNCEKİ'}
+              {step === 0 ? (onBack ? t('nav.back') : '←') : t('tut.prev')}
             </button>
             <button
               type="button"
               className="retro-button min-h-12 flex-[1.4] px-8 py-3 text-[9px] sm:flex-none"
               onClick={next}
             >
-              {isLast ? 'ANLADIM' : 'SONRAKİ →'}
+              {isLast ? t('tut.done') : t('tut.next')}
             </button>
           </div>
           <button
@@ -135,7 +114,7 @@ export default function TutorialScreen({ onDone, onBack, muted, onToggleMute }) 
             className="min-h-10 px-3 py-2 text-[8px] text-white/45 underline-offset-2 hover:text-white/70 hover:underline"
             onClick={() => finish(true)}
           >
-            ATLA VE MAÇA GEÇ
+            {t('tut.skip')}
           </button>
         </div>
       </div>

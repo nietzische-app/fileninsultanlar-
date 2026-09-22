@@ -1,4 +1,5 @@
 import Sfx from '../game/audio.js';
+import { t } from '../i18n/index.js';
 
 /**
  * Ses aç/kapa — tüm ekranlarda aynı görünüm.
@@ -13,9 +14,9 @@ export default function MuteButton({ muted, onToggle, className = '' }) {
         onToggle();
       }}
       aria-pressed={muted}
-      aria-label={muted ? 'Sesi aç' : 'Sesi kapat'}
+      aria-label={muted ? t('mute.enable') : t('mute.disable')}
     >
-      SES: {muted ? 'KAPALI' : 'AÇIK'}
+      {muted ? t('mute.off') : t('mute.on')}
     </button>
   );
 }

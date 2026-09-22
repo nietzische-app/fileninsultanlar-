@@ -4,10 +4,11 @@ import MuteButton from '../components/MuteButton.jsx';
 import { drawTrophy } from '../game/sprites.js';
 import { getPlayerById } from '../game/players.js';
 import { FORMATS } from '../game/constants.js';
-import { survivalRank } from '../game/survival.js';
+import { survivalRankKey } from '../game/survival.js';
 import { getAchievement } from '../game/achievements.js';
 import { TOURNAMENT_ROUNDS, tournamentSummary } from '../game/tournament.js';
 import { upper } from '../utils/text.js';
+import { t, sayiYazi, achYazi, turYazi, kalemYazi } from '../i18n/index.js';
 
 const CONFETTI_COLORS = ['#E30A17', '#FFFFFF', '#FFD24A', '#FF7A18', '#9BE7FF'];
 
@@ -49,7 +50,9 @@ export default function ResultScreen({
 
   // Hayatta kalmada "kazanma" yok; turnuvada asıl zafer kupadır.
   const won = tournament ? tournament.champion : result.winner === 'home';
-  const formatLabel = FORMATS[result.format]?.label ?? result.format ?? 'KLASİK';
+  const formatLabel = t(`format.${result.format}`) !== `format.${result.format}`
+    ? t(`format.${result.format}`)
+    : (FORMATS[result.format]?.label ?? result.format ?? t('format.classic'));
   const practice = result.format === 'practice';
 
   const squad = useMemo(
@@ -60,18 +63,18 @@ export default function ResultScreen({
   const newRecords = useMemo(() => {
     if (!brokenRecords) return [];
     const labels = [];
-    if (brokenRecords.firstWin) labels.push('İLK GALİBİYET');
-    if (brokenRecords.bestWinStreak) labels.push('YENİ GALİBİYET SERİSİ');
-    if (brokenRecords.longestRally) labels.push('EN UZUN RALLİ');
-    if (brokenRecords.mostSpikes) labels.push('EN ÇOK SMAÇ');
-    if (brokenRecords.mostBlocks) labels.push('EN ÇOK BLOK');
-    if (brokenRecords.mostSaves) labels.push('EN ÇOK KURTARIŞ');
-    if (brokenRecords.bestSurvivalPoints) labels.push('EN YÜKSEK PUAN');
-    if (brokenRecords.bestSurvivalWave) labels.push('EN İLERİ DALGA');
-    if (brokenRecords.tournamentWon) labels.push('KUPA');
-    if (brokenRecords.bestTournamentRound) labels.push('EN İLERİ TUR');
+    if (brokenRecords.firstWin) labels.push(t('rec.firstWin'));
+    if (brokenRecords.bestWinStreak) labels.push(t('rec.streak'));
+    if (brokenRecords.longestRally) labels.push(t('rec.rally'));
+    if (brokenRecords.mostSpikes) labels.push(t('rec.spikes'));
+    if (brokenRecords.mostBlocks) labels.push(t('rec.blocks'));
+    if (brokenRecords.mostSaves) labels.push(t('rec.saves'));
+    if (brokenRecords.bestSurvivalPoints) labels.push(t('rec.survPts'));
+    if (brokenRecords.bestSurvivalWave) labels.push(t('rec.survWave'));
+    if (brokenRecords.tournamentWon) labels.push(t('rec.cup'));
+    if (brokenRecords.bestTournamentRound) labels.push(t('rec.round'));
     return labels;
-  }, [brokenRecords]);
+  }, [brokenRecords, /* t current lang */]);
 
   // Konfeti parçaları — yalnızca zaferde
   const confetti = useMemo(() => {
@@ -121,7 +124,7 @@ export default function ResultScreen({
         */}
         {puan && (
           <div className="order-first w-full max-w-xs border-4 border-retro-accent/40 bg-black/50 px-4 py-3 text-center">
-            <p className="text-[7px] tracking-widest text-white/45">ÇEVRİMİÇİ PUAN</p>
+            <p className="text-[7px] tracking-widest text-white/45">{t('result.elo')}</p>
             <p className="mt-2 text-[18px] text-retro-accent">
               {puan.ben?.puan}
               <span
@@ -134,8 +137,8 @@ export default function ResultScreen({
               </span>
             </p>
             <p className="mt-2 text-[7px] text-white/45">
-              {puan.ben?.galibiyet}G {puan.ben?.maglubiyet}M
-              {puan.sira ? ` · ${puan.sira}. SIRA` : ''}
+              {t('result.eloLine', { g: puan.ben?.galibiyet, m: puan.ben?.maglubiyet })}
+              {puan.sira ? t('online.rank', { n: puan.sira }) : ''}
             </p>
           </div>
         )}
@@ -147,24 +150,24 @@ export default function ResultScreen({
               won ? 'text-retro-accent text-outline-red' : 'text-white/80'
             }`}
           >
-            {survival ? 'KOŞU BİTTİ' : tournament ? (won ? 'KUPA BİZİM!' : 'ELENDİK') : won ? 'ŞAMPİYON!' : 'MAÇ BİTTİ'}
+            {survival ? t('result.runOver') : tournament ? (won ? t('result.cupOurs') : t('result.out')) : won ? t('result.champ') : t('result.over')}
           </h2>
           <p className="mt-3 text-[9px] text-white/55">
             {survival
-              ? `${survivalRank(survival.points)} · ${survival.points} PUAN`
+              ? t('result.survLine', { rank: t(`rank.${survivalRankKey(survival.points)}`), n: survival.points })
               : tournament
                 ? won
-                  ? 'RETRO VOLEYBOL KUPAYI KALDIRDI'
-                  : `${tournament.lastRoundLabel} TURUNDA VEDA`
+                  ? t('result.cupLift')
+                  : t('result.bye', { label: turYazi({ id: tournament.lastRoundId, label: tournament.lastRoundLabel }) })
                 : won
-                  ? 'RETRO VOLEYBOL KAZANDI'
-                  : `${result.opponent?.name ?? 'RAKİP'} BU MAÇI ALDI`}
+                  ? t('result.won')
+                  : t('result.lost', { ad: result.opponent?.name ?? t('hud.away') })}
           </p>
           <p className="mt-2 text-[7px] tracking-widest text-white/35">
             {survival
-              ? `HAYATTA KALMA · ${survival.wave}. DALGA`
+              ? t('result.survMeta', { n: survival.wave })
               : tournament
-                ? `TURNUVA · ${tournament.wins}/${tournament.total} TUR`
+                ? t('result.tourMeta', { n: tournament.wins, toplam: tournament.total })
                 : formatLabel}
             {!survival && !tournament && result.opponent?.shortName
               ? ` · vs ${result.opponent.shortName}`
@@ -173,7 +176,7 @@ export default function ResultScreen({
                 rekorları (en uzun ralli, en çok smaç...) geçerlidir —
                 "REKORLARA YAZILMAZ" demek yanlıştı, aynı ekranda
                 "YENİ REKOR" rozetleri çıkıyordu. */}
-            {practice && !survival && !tournament ? ' · GALİBİYETE SAYILMAZ' : ''}
+            {practice && !survival && !tournament ? t('result.practice') : ''}
           </p>
         </div>
 
@@ -185,30 +188,30 @@ export default function ResultScreen({
           {survival ? (
             <div className="flex items-center justify-center gap-8">
               <div className="text-center">
-                <p className="text-[9px] text-turkiye-red">PUAN</p>
+                <p className="text-[9px] text-turkiye-red">{t('hud.points')}</p>
                 <p className="mt-2 text-3xl text-shadow-pixel">{survival.points}</p>
               </div>
               <div className="text-center">
-                <p className="text-[9px] text-retro-accent">DALGA</p>
+                <p className="text-[9px] text-retro-accent">{t('result.wave')}</p>
                 <p className="mt-2 text-3xl text-shadow-pixel">{survival.wave}</p>
               </div>
               <div className="text-center">
-                <p className="text-[9px] text-[#9BB0FF]">RÜTBE</p>
+                <p className="text-[9px] text-[#9BB0FF]">{t('result.rank')}</p>
                 <p className="mt-3 text-[9px] text-white/80">
-                  {survivalRank(survival.points)}
+                  {t(`rank.${survivalRankKey(survival.points)}`)}
                 </p>
               </div>
             </div>
           ) : (
             <div className="flex items-center justify-center gap-6">
               <div className="text-center">
-                <p className="text-[9px] text-turkiye-red">TÜRKİYE</p>
+                <p className="text-[9px] text-turkiye-red">{t('hud.home')}</p>
                 <p className="mt-2 text-3xl text-shadow-pixel">{result.sets.home}</p>
               </div>
               <span className="text-lg text-white/30">—</span>
               <div className="text-center">
                 <p className="text-[9px] text-[#9BB0FF]">
-                  {result.opponent?.shortName ?? 'RAKİP'}
+                  {result.opponent?.shortName ?? t('hud.away')}
                 </p>
                 <p className="mt-2 text-3xl text-shadow-pixel">{result.sets.away}</p>
               </div>
@@ -227,7 +230,7 @@ export default function ResultScreen({
                       : 'border-[#9BB0FF]/60 text-[#9BB0FF]'
                   }`}
                 >
-                  {i + 1}. SET {set.home}-{set.away}
+                  {t('hud.setLine', { n: i + 1, a: set.home, b: set.away })}
                 </span>
               ))}
             </div>
@@ -235,11 +238,11 @@ export default function ResultScreen({
 
           {/* Maç istatistikleri */}
           <div className="mt-5 grid grid-cols-2 gap-3 border-t-2 border-white/15 pt-4 text-center sm:grid-cols-4">
-            <Stat label="SMAÇ" value={result.stats.spikes} highlight={brokenRecords?.mostSpikes} />
-            <Stat label="BLOK" value={result.stats.blocks} highlight={brokenRecords?.mostBlocks} />
-            <Stat label="KURTARIŞ" value={result.stats.saves} highlight={brokenRecords?.mostSaves} />
+            <Stat label={t("stat.spike")} value={result.stats.spikes} highlight={brokenRecords?.mostSpikes} />
+            <Stat label={t("stat.block")} value={result.stats.blocks} highlight={brokenRecords?.mostBlocks} />
+            <Stat label={t("stat.save")} value={result.stats.saves} highlight={brokenRecords?.mostSaves} />
             <Stat
-              label="EN UZUN RALLİ"
+              label={t("stat.rally")}
               value={result.stats.longestRally}
               highlight={brokenRecords?.longestRally}
             />
@@ -248,12 +251,12 @@ export default function ResultScreen({
           {/* Beceri satırı — kombo / tam vuruş / plase */}
           <div className="mt-4 grid grid-cols-3 gap-3 border-t-2 border-white/15 pt-4 text-center">
             <Stat
-              label="EN İYİ KOMBO"
+              label={t("stat.combo")}
               value={result.stats.bestCombo ?? 0}
               highlight={brokenRecords?.bestCombo}
             />
-            <Stat label="TAM VURUŞ" value={result.stats.perfects ?? 0} />
-            <Stat label="PLASE" value={result.stats.tips ?? 0} />
+            <Stat label={t("stat.perfect")} value={result.stats.perfects ?? 0} />
+            <Stat label={t("stat.tip")} value={result.stats.tips ?? 0} />
           </div>
         </div>
 
@@ -261,7 +264,7 @@ export default function ResultScreen({
         {tournamentState && (
           <div className="retro-panel w-full px-4 py-4">
             <p className="mb-3 text-[7px] tracking-widest text-retro-accent">
-              KUPA YOLU
+{t('result.path')}
             </p>
             <div className="flex flex-col gap-1.5">
               {tournamentState.results.map((entry, i) => (
@@ -275,7 +278,7 @@ export default function ResultScreen({
                 >
                   <span className="w-3">{entry.won ? '✓' : '✗'}</span>
                   <span className="flex-1 truncate">
-                    {TOURNAMENT_ROUNDS[i]?.label ?? `${i + 1}. TUR`}
+                    {TOURNAMENT_ROUNDS[i] ? turYazi(TOURNAMENT_ROUNDS[i]) : t('round.r1').replace('1', String(i+1))}
                   </span>
                   <span>
                     {entry.sets.home}-{entry.sets.away}
@@ -289,7 +292,7 @@ export default function ResultScreen({
         {/* Yeni rekorlar */}
         {newRecords.length > 0 && (
           <div className="w-full border-2 border-retro-accent/80 bg-retro-accent/10 px-4 py-3 text-center">
-            <p className="text-[8px] tracking-widest text-retro-accent">★ YENİ REKOR ★</p>
+            <p className="text-[8px] tracking-widest text-retro-accent">{t('result.newRec')}</p>
             <div className="mt-2 flex flex-wrap justify-center gap-2">
               {newRecords.map((label) => (
                 <span
@@ -310,7 +313,7 @@ export default function ResultScreen({
         {freshAchievements.length > 0 && (
           <div className="w-full border-2 border-[#9BE7FF]/70 bg-[#9BE7FF]/10 px-4 py-3 text-center">
             <p className="text-[8px] tracking-widest text-[#9BE7FF]">
-              ★ YENİ ROZET ★
+{t('result.newBadge')}
             </p>
             <div className="mt-3 flex flex-wrap justify-center gap-2">
               {freshAchievements.map((id) => {
@@ -323,7 +326,7 @@ export default function ResultScreen({
                     title={badge.description}
                   >
                     <span aria-hidden="true">{badge.icon}</span>
-                    {badge.label}
+                    {achYazi(badge).label}
                   </span>
                 );
               })}
@@ -350,14 +353,14 @@ export default function ResultScreen({
         {/* Onurlandırma mesajı */}
         <div className="retro-panel w-full px-5 py-5 text-center">
           <p className="mb-3 text-[8px] tracking-widest text-retro-accent">
-            ★ RETRO VOLEYBOL&apos;NA ★
+{t('result.dedicate')}
           </p>
           <p className="text-[8px] leading-relaxed text-white/75 sm:text-[9px]">
-            Bir topun peşinde koşarken bir milletin umudunu taşıdınız.
+            {t('result.honor')}
             <br />
-            Her blokta yürek, her smaçta gurur verdiniz.
+            {t('result.honor2')}
             <br />
-            <span className="text-turkiye-red">İyi oyundu.</span>
+            <span className="text-turkiye-red">{t('result.goodGame')}</span>
           </p>
         </div>
 
@@ -377,7 +380,7 @@ export default function ResultScreen({
           <div className="w-full max-w-sm border-2 border-retro-accent/60 bg-retro-accent/10 px-4 py-3 text-center">
             {rovans.ayrildi ? (
               <p className="text-[8px] leading-relaxed text-white/55">
-                RAKİP AYRILDI — RÖVANŞ YOK
+{t('result.oppLeft')}
               </p>
             ) : (
               <>
@@ -387,14 +390,14 @@ export default function ResultScreen({
                   disabled={rovans.bekleniyor}
                   onClick={onRovans}
                 >
-                  {rovans.bekleniyor ? 'RAKİP BEKLENİYOR…' : '★ RÖVANŞ ★'}
+                  {rovans.bekleniyor ? t('result.rematchWait') : t('result.rematch')}
                 </button>
                 <p className="mt-2 text-[7px] leading-relaxed text-white/50">
                   {rovans.rakip && !rovans.ben
-                    ? 'RAKİBİN RÖVANŞ İSTİYOR — SIRA SENDE'
+                    ? t('result.oppWants')
                     : rovans.bekleniyor
-                      ? 'İKİNİZ DE İSTEYİNCE MAÇ BAŞLAR'
-                      : 'AYNI RAKİPLE YENİ MAÇ'}
+                      ? t('result.bothNeed')
+                      : t('result.sameOpp')}
                 </p>
               </>
             )}
@@ -410,11 +413,11 @@ export default function ResultScreen({
           */}
           {!rovans && (
             <button type="button" className="retro-button px-8 py-4" onClick={onRematch}>
-              {survival ? 'YENİDEN DENE' : tournament ? 'YENİ TURNUVA' : 'TEKRAR OYNA'}
+              {survival ? t('result.retry') : tournament ? t('result.newTour') : t('result.again')}
             </button>
           )}
           <button type="button" className="retro-button-ghost px-8 py-4" onClick={onHome}>
-            ANA MENÜ
+{t('nav.home')}
           </button>
         </div>
       </div>
@@ -458,7 +461,7 @@ function PixelTrophy() {
       width={width}
       height={height}
       className="pixelated animate-float"
-      aria-label="Şampiyonluk kupası"
+      aria-label={t('result.trophyAria')}
     />
   );
 }
@@ -477,8 +480,8 @@ function FormaPuani({ kazanc }) {
   return (
     <div className="w-full border-2 border-[#FFD24A]/70 bg-[#FFD24A]/10 px-4 py-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-[8px] tracking-widest text-[#FFD24A]">FORMA PUANI</p>
-        <p className="text-base text-[#FFD24A]">+{sayac.toLocaleString('tr-TR')}</p>
+        <p className="text-[8px] tracking-widest text-[#FFD24A]">{t('result.fp')}</p>
+        <p className="text-base text-[#FFD24A]">+{sayiYazi(sayac)}</p>
       </div>
 
       {/*
@@ -488,14 +491,14 @@ function FormaPuani({ kazanc }) {
         onlara uygulanmıyor (bkz. ilerleme.js `satirlariKur`).
       */}
       <div className="mt-3 flex flex-col gap-1">
-        {kazanc.satirlar.map((k) => (
+        {kazanc.satirlar.map((k, i) => (
           <div
-            key={k.ad}
+            key={`${k.id ?? k.ad}-${i}`}
             className={`flex justify-between gap-3 text-[7px] ${
               k.carpan ? 'text-[#FFD24A]/80' : 'text-white/60'
             }`}
           >
-            <span>{k.ad}</span>
+            <span>{kalemYazi(k)}</span>
             <span className={k.carpan ? '' : 'text-white/80'}>
               {k.puan < 0 ? '' : '+'}{k.puan}
             </span>
@@ -505,7 +508,7 @@ function FormaPuani({ kazanc }) {
 
       {typeof kazanc.bakiye === 'number' && (
         <p className="mt-2 border-t border-white/10 pt-2 text-right text-[7px] text-white/45">
-          CÜZDAN: {kazanc.bakiye.toLocaleString('tr-TR')} FP
+          {t('result.wallet', { n: sayiYazi(kazanc.bakiye) })}
         </p>
       )}
 
@@ -518,13 +521,13 @@ function FormaPuani({ kazanc }) {
       {kazanc.yeni?.length > 0 && (
         <div className="mt-3 border-2 border-retro-accent bg-retro-accent/15 px-3 py-2">
           <p className="text-[8px] tracking-widest text-retro-accent">
-            ★ YENİ OYUNCU AÇABİLİRSİN ★
+{t('result.canUnlock')}
           </p>
           <p className="mt-1 text-[7px] leading-relaxed text-white/75">
             {kazanc.yeni.slice(0, 3).map((p) => upper(p.name)).join(' · ')}
             {kazanc.yeni.length > 3 && ` +${kazanc.yeni.length - 3}`}
           </p>
-          <p className="mt-1 text-[7px] text-white/40">KADRO EKRANINDAN AL</p>
+          <p className="mt-1 text-[7px] text-white/40">{t('result.buyHint')}</p>
         </div>
       )}
     </div>

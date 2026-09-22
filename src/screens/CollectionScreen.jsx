@@ -13,6 +13,7 @@ import {
 import { getPlayerById } from '../game/players.js';
 import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
+import { t, sayiYazi, mevkiYazi } from '../i18n/index.js';
 
 /**
  * KOLEKSİYON — kadronun tamamı, kademe kademe.
@@ -67,10 +68,10 @@ export default function CollectionScreen({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base text-turkiye-red text-outline-red sm:text-xl">
-            KOLEKSİYON
+{t('col.title')}
           </h2>
           <p className="mt-1 text-[7px] text-white/50 sm:mt-2 sm:text-[8px]">
-            {FP_ACIK ? 'KADRONUN TAMAMI · FORMA PUANIYLA AÇILIR' : 'KADRONUN TAMAMI'}
+            {FP_ACIK ? t('col.subFp') : t('col.sub')}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -80,7 +81,7 @@ export default function CollectionScreen({
             className="retro-button-ghost px-3 py-2 text-[8px]"
             onClick={onBack}
           >
-            ← GERİ
+{t('nav.back')}
           </button>
         </div>
       </div>
@@ -95,10 +96,10 @@ export default function CollectionScreen({
             <span className="text-sm text-white">
               {ozet.acik}
               <span className="text-white/40"> / {ozet.toplam}</span>
-              <span className="ml-2 text-[8px] text-white/45">OYUNCU AÇIK</span>
+              <span className="ml-2 text-[8px] text-white/45">{t('col.open')}</span>
             </span>
             <span className="text-sm text-retro-accent">
-              {puan.toLocaleString('tr-TR')} FP
+              {sayiYazi(puan)} {t('fp.unit')}
             </span>
           </div>
 
@@ -116,20 +117,20 @@ export default function CollectionScreen({
           */}
           {hedef ? (
             <p className="text-[8px] leading-relaxed text-white/60">
-              SIRADAKİ:{' '}
+{t('col.next')}{' '}
               <span className="text-white/85">
                 {upper(getPlayerById(hedef.id)?.name ?? '')}
               </span>
               {' · '}
               {hedef.kalan > 0 ? (
-                <span className="text-white/45">{hedef.kalan} FP KALDI</span>
+                <span className="text-white/45">{t('col.fpLeft', { n: hedef.kalan })}</span>
               ) : (
-                <span className="text-retro-accent">AÇILMAYA HAZIR</span>
+                <span className="text-retro-accent">{t('col.ready')}</span>
               )}
             </p>
           ) : (
             <p className="text-[8px] text-retro-accent">
-              ★ KADRONUN TAMAMI AÇIK ★
+{t('col.all')}
             </p>
           )}
         </div>
@@ -140,12 +141,16 @@ export default function CollectionScreen({
         <section key={grup.bedel} className="flex flex-col gap-2 sm:gap-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2 border-b-2 border-white/10 pb-1">
             <h3 className="text-[9px] tracking-widest text-retro-accent">
-              {grup.ad}
+              {grup.bedel === 0
+                ? t('col.starter')
+                : String(grup.ad).startsWith('KADEME')
+                  ? t('col.tier', { n: gruplar.indexOf(grup) })
+                  : t('fp.amount', { n: grup.bedel })}
             </h3>
             {/* Sayaç yalnız FP açıkken anlamlı: kapalıyken hepsi açık */}
             {FP_ACIK && (
               <span className="text-[7px] text-white/40">
-                {grup.acik} / {grup.toplam} AÇIK
+{t('col.tierOpen', { acik: grup.acik, toplam: grup.toplam })}
               </span>
             )}
           </div>
@@ -214,7 +219,7 @@ function OyuncuKarti({ oyuncu, acik, fiyat, puan, onAl }) {
             {oyuncu.captain && ' · ★'}
           </span>
         </div>
-        <p className="mt-[2px] text-[7px] text-white/40">{oyuncu.position}</p>
+        <p className="mt-[2px] text-[7px] text-white/40">{mevkiYazi(oyuncu.position)}</p>
 
         <p
           className="mt-2 border-l-2 pl-2 text-[7px] leading-relaxed"
@@ -228,22 +233,22 @@ function OyuncuKarti({ oyuncu, acik, fiyat, puan, onAl }) {
         </p>
 
         <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
-          <StatBar label="SMAÇ" value={oyuncu.stats.attack} compact />
-          <StatBar label="BLOK" value={oyuncu.stats.block} compact color="#FFC633" />
-          <StatBar label="SAVUNMA" value={oyuncu.stats.defense} compact color="#5FC2E8" />
-          <StatBar label="HIZ" value={oyuncu.stats.speed} compact color="#B7F5C6" />
+          <StatBar label={t("stat.spike")} value={oyuncu.stats.attack} compact />
+          <StatBar label={t("stat.block")} value={oyuncu.stats.block} compact color="#FFC633" />
+          <StatBar label={t("stat.defense")} value={oyuncu.stats.defense} compact color="#5FC2E8" />
+          <StatBar label={t("stat.speed")} value={oyuncu.stats.speed} compact color="#B7F5C6" />
         </div>
 
         {/* 4) Nasıl alırım */}
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {acik ? (
-            <span className="text-[7px] text-retro-accent">✔ KADRONDA</span>
+            <span className="text-[7px] text-retro-accent">{t('col.inRoster')}</span>
           ) : (
             <>
               <span
                 className={`text-[8px] ${alinabilir ? 'text-[#FFD24A]' : 'text-white/40'}`}
               >
-                {fiyat} FP
+                {fiyat} {t('fp.unit')}
               </span>
               <button
                 type="button"
@@ -251,7 +256,7 @@ function OyuncuKarti({ oyuncu, acik, fiyat, puan, onAl }) {
                 disabled={!alinabilir}
                 onClick={() => onAl(oyuncu.id)}
               >
-                {alinabilir ? 'AÇ' : `${fiyat - puan} FP EKSİK`}
+                {alinabilir ? t('col.openBtn') : t('select.short', { n: fiyat - puan })}
               </button>
             </>
           )}

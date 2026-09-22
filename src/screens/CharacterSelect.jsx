@@ -19,13 +19,14 @@ import { getGameMode } from '../game/modes.js';
 import { TOURNAMENT_ROUNDS } from '../game/tournament.js';
 import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
+import { t, sayiYazi, mevkiYazi, modeYazi } from '../i18n/index.js';
 
 const MODES = [
-  { id: '1v1', label: '1 vs 1', description: 'Tek oyuncu, tek rakip.' },
+  { id: '1v1', label: '1 vs 1', descKey: 'select.1v1.desc' },
   {
     id: '2v2',
     label: '2 vs 2',
-    description: 'İki oyuncu — sen + AI takım arkadaşı.',
+    descKey: 'select.2v2.desc',
   },
 ];
 
@@ -80,6 +81,11 @@ export default function CharacterSelect({
   onUnlock,
 }) {
   const gameMode = getGameMode(modeId);
+  const modYazi = modeYazi(gameMode, {
+    n: TOURNAMENT_ROUNDS.length,
+    lives: SURVIVAL.lives,
+    wave: SURVIVAL.waveLength,
+  });
   const twoPlayer = playMode === 'coop' || playMode === 'vs';
   // Turnuvada rakip ve format turlara bağlı, hayatta kalmada dalgalara —
   // ikisi de oyuncunun seçeceği şey değil.
@@ -239,17 +245,17 @@ export default function CharacterSelect({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base text-turkiye-red text-outline-red sm:text-xl">
-            KADRONU SEÇ
+            {t('select.title')}
           </h2>
           <p className="mt-1 text-[7px] text-white/50 sm:mt-2 sm:text-[8px]">
             {!picksMatchup && (
-              <span className="text-retro-accent">{gameMode.label} · </span>
+              <span className="text-retro-accent">{modYazi.label} · </span>
             )}
             {required === 2
               ? playMode === 'coop'
-                ? 'İKİ OYUNCU · 1. VE 2. KİŞİ'
-                : 'İKİ OYUNCU · 1. SEN, 2. AI'
-              : 'BİR OYUNCU SEÇ'}{' '}
+                ? t('select.coopTwo')
+                : t('select.aiTwo')
+              : t('select.one')}{' '}
             ·{' '}
             {selected.length}/{required}
           </p>
@@ -257,7 +263,7 @@ export default function CharacterSelect({
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <MuteButton muted={muted} onToggle={onToggleMute} />
           <button type="button" className="retro-button-ghost px-3 py-2 text-[8px]" onClick={onBack}>
-            ← GERİ
+            {t('nav.back')}
           </button>
         </div>
       </div>
@@ -267,7 +273,7 @@ export default function CharacterSelect({
         {twoPlayer ? (
           <div className="border-l-4 border-retro-accent/70 py-1 pl-3">
             <p className="text-[8px] text-retro-accent">
-              {gameMode.label} · {playMode === 'coop' ? '2 vs 2' : '1 vs 1'}
+              {modYazi.label} · {playMode === 'coop' ? '2 vs 2' : '1 vs 1'}
             </p>
             {/*
               Çevrimiçide iki oyuncu aynı klavyede değil: herkes kendi
@@ -278,11 +284,10 @@ export default function CharacterSelect({
             {gameMode.online ? (
               <>
                 <p className="mt-2 text-[7px] leading-relaxed text-white/60">
-                  <b className="text-white/80">SENİN TUŞLARIN</b> — W A S D · BOŞLUK vur
+                  <b className="text-white/80">{t('select.yourKeys')}</b> — {t('select.yourKeysBody')}
                 </p>
                 <p className="mt-2 text-[7px] leading-relaxed text-white/45">
-                  Rakibin kendi cihazında aynı tuşları kullanır. Seçtiğin kadro
-                  ve rakip takım odayı açan taraf olarak ikinize de geçerlidir.
+                  {t('select.onlineKeysHint')}
                 </p>
               </>
             ) : (
@@ -291,34 +296,34 @@ export default function CharacterSelect({
                   <div className="flex items-start gap-2 bg-black/30 px-2 py-2">
                     <span className="jersey-mark mt-px" aria-hidden="true">1</span>
                     <span className="text-[7px] leading-relaxed text-white/65">
-                      <b className="text-white">W A S D · BOŞLUK</b>
-                      <span className="mt-1 block text-white/40">Mobilde SOL tuşlar</span>
+                      <b className="text-white">{t('select.p1Keys')}</b>
+                      <span className="mt-1 block text-white/40">{t('select.p1Mobile')}</span>
                     </span>
                   </div>
                   <div className="flex items-start gap-2 bg-black/30 px-2 py-2">
                     <span className="jersey-mark jersey-mark-p2 mt-px" aria-hidden="true">2</span>
                     <span className="text-[7px] leading-relaxed text-white/65">
-                      <b className="text-white">OK TUŞLARI · ENTER</b>
-                      <span className="mt-1 block text-white/40">Mobilde SAĞ tuşlar</span>
+                      <b className="text-white">{t('select.p2Keys')}</b>
+                      <span className="mt-1 block text-white/40">{t('select.p2Mobile')}</span>
                     </span>
                   </div>
                 </div>
                 <p className="mt-2 text-[7px] leading-relaxed text-white/45">
                   {playMode === 'coop'
-                    ? 'İki oyuncu aynı takımda; rakip yapay zekâ.'
-                    : '2. oyuncu rakip takımı sürer.'}
+                    ? t('select.coopHint')
+                    : t('select.vsHint')}
                 </p>
               </>
             )}
           </div>
         ) : (
-          <ChipRow label="MOD">
+<ChipRow label={t("select.chipMode")}>
             {MODES.map((item) => (
               <Chip
                 key={item.id}
                 active={mode === item.id}
                 onClick={() => handleModeChange(item.id)}
-                title={item.description}
+                title={t(item.descKey)}
               >
                 {item.label}
               </Chip>
@@ -326,8 +331,8 @@ export default function CharacterSelect({
           </ChipRow>
         )}
 
-        <ChipRow label="ZORLUK">
-          {Object.entries(DIFFICULTY).map(([key, value]) => (
+<ChipRow label={t("select.chipDiff")}>
+          {Object.keys(DIFFICULTY).map((key) => (
             <Chip
               key={key}
               active={difficulty === key}
@@ -336,14 +341,14 @@ export default function CharacterSelect({
                 setDifficulty(key);
               }}
             >
-              {value.label}
+{t(`diff.${key}`)}
             </Chip>
           ))}
         </ChipRow>
 
         {picksMatchup ? (
           <>
-            <ChipRow label="FORMAT">
+<ChipRow label={t("select.chipFormat")}>
               {Object.values(FORMATS).map((item) => (
                 <Chip
                   key={item.id}
@@ -352,14 +357,14 @@ export default function CharacterSelect({
                     Sfx.select();
                     setFormat(item.id);
                   }}
-                  title={item.description}
+                  title={t(`format.${item.id}.desc`)}
                 >
-                  {item.label}
+{t(`format.${item.id}`)}
                 </Chip>
               ))}
             </ChipRow>
 
-            <ChipRow label="RAKİP" wrap>
+<ChipRow label={t("select.chipOpp")} wrap>
               <Chip
                 active={opponentId === 'random'}
                 onClick={() => {
@@ -367,7 +372,7 @@ export default function CharacterSelect({
                   setOpponentId('random');
                 }}
               >
-                RASTGELE
+{t("select.random")}
               </Chip>
               {OPPONENT_TEAMS.map((team) => (
                 <Chip
@@ -390,11 +395,11 @@ export default function CharacterSelect({
           </>
         ) : (
           <div className="border-l-4 border-retro-accent/70 py-1 pl-3">
-            <p className="text-[8px] text-retro-accent">{gameMode.label}</p>
+            <p className="text-[8px] text-retro-accent">{modYazi.label}</p>
             <p className="mt-1 text-[7px] leading-relaxed text-white/60">
               {campaign === 'tournament'
-                ? `${TOURNAMENT_ROUNDS.length} tur, ${TOURNAMENT_ROUNDS.length} rakip. Rakip ve format turlara göre belirlenir; zorluk her turda bir tık artar.`
-                : `${SURVIVAL.lives} can. Her ${SURVIVAL.waveLength} puanda yeni dalga: rakip değişir ve sertleşir. Seçtiğin zorluk başlangıç seviyesidir.`}
+                ? t('select.tourHint', { n: TOURNAMENT_ROUNDS.length })
+                : t('select.survHint', { lives: SURVIVAL.lives, wave: SURVIVAL.waveLength })}
             </p>
           </div>
         )}
@@ -409,14 +414,14 @@ export default function CharacterSelect({
       {FP_ACIK && (
         <div className="retro-panel flex flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div>
-            <p className="text-[7px] tracking-widest text-white/40">FORMA PUANI</p>
-            <p className="mt-1 text-sm text-retro-accent">{puan.toLocaleString('tr-TR')} FP</p>
+            <p className="text-[7px] tracking-widest text-white/40">{t('start.fp')}</p>
+            <p className="mt-1 text-sm text-retro-accent">{sayiYazi(puan)} {t('fp.unit')}</p>
           </div>
           {hedef && (
             <div className="min-w-[140px] flex-1 sm:max-w-xs">
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-[7px] text-white/45">
-                  {hedef.kalan > 0 ? 'SIRADAKİ' : 'AÇILABİLİR'}
+                  {hedef.kalan > 0 ? t('select.next') : t('select.unlockable')}
                 </span>
                 <span className="text-[7px] text-white/70">
                   {upper(getPlayerById(hedef.id)?.name ?? '')}
@@ -434,7 +439,7 @@ export default function CharacterSelect({
                 />
               </div>
               <p className="mt-1 text-right text-[7px] text-white/45">
-                {hedef.kalan > 0 ? `${hedef.kalan} FP KALDI` : 'HAZIR'}
+                {hedef.kalan > 0 ? t('select.fpLeft', { n: hedef.kalan }) : t('select.ready')}
               </p>
             </div>
           )}
@@ -443,7 +448,7 @@ export default function CharacterSelect({
 
       {/* Aktif kadro */}
       <RosterGrid
-        title="AKTİF KADRO"
+        title={t("select.active")}
         players={activeRoster}
         selected={selected}
         focused={focused}
@@ -457,9 +462,9 @@ export default function CharacterSelect({
       {bonusRoster.length > 0 && (
         <div className="flex flex-col gap-2 sm:gap-3">
           <div>
-            <p className="text-[8px] tracking-widest text-retro-accent">★ BONUS KADRO ★</p>
+            <p className="text-[8px] tracking-widest text-retro-accent">{t('select.bonus')}</p>
             <p className="mt-1 text-[7px] text-white/40">
-              Özel eklenti oyuncular
+              {t('select.bonusHint')}
             </p>
           </div>
           <RosterGrid
@@ -486,9 +491,9 @@ export default function CharacterSelect({
         <div className="flex-1">
           <h3 className="text-sm text-white">{upper(focusedPlayer.name)}</h3>
           <p className="mt-1 text-[8px] text-white/50">
-            {focusedPlayer.position}
-            {focusedPlayer.captain && ' · KAPTAN'}
-            {focusedPlayer.guest && ' · BONUS'}
+            {mevkiYazi(focusedPlayer.position)}
+            {focusedPlayer.captain && ` · ${t('select.captain')}`}
+            {focusedPlayer.guest && ` · ${t('tag.bonus')}`}
           </p>
 
           {/*
@@ -500,43 +505,43 @@ export default function CharacterSelect({
           {kutlama === focusedPlayer.id && (
             <div className="mt-3 animate-pulse-gold border-2 border-retro-accent bg-retro-accent/20 px-3 py-2">
               <p className="text-[9px] tracking-widest text-retro-accent">
-                ★ KADRONA KATILDI ★
+{t('select.joined')}
               </p>
               <p className="mt-1 text-[7px] text-white/70">
-                Seçili kadroya da alındı — doğrudan maça çıkabilirsin.
+{t('select.joinedHint')}
               </p>
             </div>
           )}
 
           {!odakAcik && (
             <div className="mt-3 flex flex-wrap items-center gap-3 border-2 border-[#FFD24A]/40 bg-black/30 px-3 py-2">
-              <span className="text-[9px] text-[#FFD24A]">{odakBedel} FP</span>
+              <span className="text-[9px] text-[#FFD24A]">{odakBedel} {t('fp.unit')}</span>
               <button
                 type="button"
                 className="retro-button px-4 py-2 text-[8px] disabled:opacity-40"
                 disabled={puan < odakBedel || !onUnlock}
                 onClick={() => satinAl(focusedPlayer.id)}
               >
-                {puan >= odakBedel ? 'KADROYA KAT' : `${odakBedel - puan} FP EKSİK`}
+                {puan >= odakBedel ? t('select.join') : t('select.short', { n: odakBedel - puan })}
               </button>
               <span className="text-[7px] text-white/40">
-                CÜZDAN: {puan.toLocaleString('tr-TR')} FP
+                {t('select.wallet', { n: sayiYazi(puan) })}
               </span>
             </div>
           )}
 
           <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-[7px] sm:grid-cols-4">
-            <Fact label="DOĞUM" value={formatBirthDate(focusedPlayer)} />
+            <Fact label={t("select.born")} value={formatBirthDate(focusedPlayer)} />
             <Fact
-              label="YAŞ"
+              label={t("select.age")}
               value={getAge(focusedPlayer) !== null ? `${getAge(focusedPlayer)}` : '—'}
             />
             <Fact
-              label="BOY"
+              label={t("select.height")}
               value={focusedPlayer.height ? `${focusedPlayer.height} cm` : '—'}
             />
             <Fact
-              label="KİLO"
+              label={t("select.weight")}
               value={focusedPlayer.weight ? `${focusedPlayer.weight} kg` : '—'}
             />
           </dl>
@@ -546,7 +551,7 @@ export default function CharacterSelect({
             style={{ borderColor: focusedPlayer.colors.accent }}
           >
             <p className="text-[8px]" style={{ color: focusedPlayer.colors.accent }}>
-              BONUS: {upper(focusedPlayer.bonus.name)}
+              {t('select.bonusLabel', { ad: upper(focusedPlayer.bonus.name) })}
             </p>
             <p className="mt-1 text-[7px] leading-relaxed text-white/60">
               {focusedPlayer.bonus.description}
@@ -554,12 +559,12 @@ export default function CharacterSelect({
           </div>
 
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            <StatBar label="SMAÇ" value={focusedPlayer.stats.attack} compact />
-            <StatBar label="BLOK" value={focusedPlayer.stats.block} compact color="#FFC633" />
-            <StatBar label="SERVİS" value={focusedPlayer.stats.serve} compact color="#FF7A18" />
-            <StatBar label="SAVUNMA" value={focusedPlayer.stats.defense} compact color="#5FC2E8" />
-            <StatBar label="HIZ" value={focusedPlayer.stats.speed} compact color="#B7F5C6" />
-            <StatBar label="DAYANIM" value={focusedPlayer.stats.stamina} compact color="#FF9ED2" />
+            <StatBar label={t("stat.spike")} value={focusedPlayer.stats.attack} compact />
+            <StatBar label={t("stat.block")} value={focusedPlayer.stats.block} compact color="#FFC633" />
+            <StatBar label={t("stat.serve")} value={focusedPlayer.stats.serve} compact color="#FF7A18" />
+            <StatBar label={t("stat.defense")} value={focusedPlayer.stats.defense} compact color="#5FC2E8" />
+            <StatBar label={t("stat.speed")} value={focusedPlayer.stats.speed} compact color="#B7F5C6" />
+            <StatBar label={t("stat.stamina")} value={focusedPlayer.stats.stamina} compact color="#FF9ED2" />
           </div>
         </div>
       </div>
@@ -574,19 +579,18 @@ export default function CharacterSelect({
             disabled={!canStart}
           >
             {campaign === 'tournament'
-              ? 'KUPA YOLUNA ÇIK'
+              ? t('select.goCup')
               : campaign === 'survival'
-                ? 'SAHAYA ÇIK'
+                ? t('select.goCourt')
                 : gameMode.online
-                  ? 'ODA KUR'
+                  ? t('select.openRoom')
                   : twoPlayer
-                    ? 'İKİ KİŞİ BAŞLA'
-                    : 'MAÇA BAŞLA'}
+                    ? t('select.startTwo')
+                    : t('select.startMatch')}
           </button>
           {!canStart && (
             <p className="text-[7px] text-white/45 sm:text-[8px]">
-              {playMode === 'coop' ? 'CO-OP' : '2v2'} İÇİN{' '}
-              {required - selected.length} OYUNCU DAHA
+              {t('select.needMore', { mod: playMode === 'coop' ? 'CO-OP' : '2v2', n: required - selected.length })}
             </p>
           )}
         </div>
@@ -648,7 +652,7 @@ function RosterGrid({
               type="button"
               onClick={() => onSelect(player.id)}
               onMouseEnter={() => onFocus(player.id)}
-              aria-label={kilitli ? `${player.name} — kilitli, ${fiyat} FP` : player.name}
+              aria-label={kilitli ? t('select.locked', { ad: player.name, n: fiyat }) : player.name}
               className={`relative flex flex-col items-center gap-1 border-4 px-1 py-2 transition sm:gap-2 sm:px-2 sm:py-3 ${
                 isSelected
                   ? 'border-retro-accent bg-turkiye-red/25'
@@ -679,7 +683,7 @@ function RosterGrid({
                     alinabilir ? 'text-[#FFD24A]' : 'text-white/40'
                   }`}
                 >
-                  {alinabilir ? '★ ' : ''}{fiyat} FP
+                  {alinabilir ? '★ ' : ''}{fiyat} {t('fp.unit')}
                 </span>
               )}
               {isSelected && (
@@ -694,7 +698,7 @@ function RosterGrid({
               )}
               {guest && !player.captain && (
                 <span className="absolute right-0.5 top-0.5 text-[5px] text-[#FFD24A]/80 sm:text-[6px]">
-                  BONUS
+                  {t('tag.bonus')}
                 </span>
               )}
 
@@ -719,7 +723,7 @@ function RosterGrid({
                 {upper(player.name)}
               </span>
               <span className="hidden text-[7px] text-white/45 sm:block">
-                #{player.number} · {player.position}
+                #{player.number} · {mevkiYazi(player.position)}
               </span>
             </button>
           );

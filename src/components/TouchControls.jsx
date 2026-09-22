@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import Sfx from '../game/audio.js';
 import GameIcon from './GameIcon.jsx';
+import { t } from '../i18n/index.js';
 
 /** Yön tuşundan bu kadar px aşağı kaydırınca dalış tetiklenir. */
 const DIVE_DRAG = 26;
@@ -74,8 +75,8 @@ export default function TouchControls({
       onInput={onInput}
       action="left"
       label={<GameIcon name="ArrowLeft" size="45%" />}
-      srLabel="Sola git"
-      hint="Aşağı kaydır: dalış"
+      srLabel={t('touch.left')}
+      hint={t('touch.diveHint')}
       disabled={disabled}
       dragDive
       dataSlot="p1"
@@ -87,8 +88,8 @@ export default function TouchControls({
       onInput={onInput}
       action="right"
       label={<GameIcon name="ArrowRight" size="45%" />}
-      srLabel="Sağa git"
-      hint="Aşağı kaydır: dalış"
+      srLabel={t('touch.right')}
+      hint={t('touch.diveHint')}
       disabled={disabled}
       dragDive
       dataSlot="p1"
@@ -100,8 +101,8 @@ export default function TouchControls({
     <HoldButton
       onInput={onInput}
       action="action"
-      label={<span className="tb-label">VUR</span>}
-      srLabel="Vur"
+      label={<span className="tb-label">{t('touch.hitLabel')}</span>}
+      srLabel={t('touch.hit')}
       disabled={disabled}
       dataSlot="p1"
       className={`tb-act ${buttonTone}`}
@@ -112,7 +113,7 @@ export default function TouchControls({
       onInput={onInput}
       action="up"
       label={<GameIcon name="ArrowRight" size="48%" rotate={-90} />}
-      srLabel="Zıpla"
+      srLabel={t('touch.jump')}
       disabled={disabled}
       dataSlot="p1"
       className={`tb-jump ${buttonTone}`}
@@ -252,7 +253,7 @@ function PlayerPad({ onInput, slot, badge, disabled, buttonTone }) {
     (action, pressed) => onInput(action, pressed, slot),
     [onInput, slot],
   );
-  const sr = (name) => `${badge}. oyuncu ${name}`;
+  const sr = (name) => t('touch.pN', { n: badge, aksiyon: name });
 
   return (
     <div className="tb-cluster tb-gap flex flex-col items-center" data-slot={slot}>
@@ -267,8 +268,8 @@ function PlayerPad({ onInput, slot, badge, disabled, buttonTone }) {
           onInput={emit}
           action="left"
           label={<GameIcon name="ArrowLeft" size="45%" />}
-          srLabel={sr('Sola git')}
-          hint="Aşağı kaydır: dalış"
+          srLabel={sr(t('touch.left'))}
+          hint={t('touch.diveHint')}
           disabled={disabled}
           dragDive
           dataSlot={slot}
@@ -278,8 +279,8 @@ function PlayerPad({ onInput, slot, badge, disabled, buttonTone }) {
           onInput={emit}
           action="right"
           label={<GameIcon name="ArrowRight" size="45%" />}
-          srLabel={sr('Sağa git')}
-          hint="Aşağı kaydır: dalış"
+          srLabel={sr(t('touch.right'))}
+          hint={t('touch.diveHint')}
           disabled={disabled}
           dragDive
           dataSlot={slot}
@@ -290,8 +291,8 @@ function PlayerPad({ onInput, slot, badge, disabled, buttonTone }) {
         <HoldButton
           onInput={emit}
           action="action"
-          label={<span className="tb-label">VUR</span>}
-          srLabel={sr('Vur')}
+          label={<span className="tb-label">{t('touch.hitLabel')}</span>}
+          srLabel={sr(t('touch.hit'))}
           disabled={disabled}
           dataSlot={slot}
           className={`tb-act ${buttonTone}`}
@@ -300,7 +301,7 @@ function PlayerPad({ onInput, slot, badge, disabled, buttonTone }) {
           onInput={emit}
           action="up"
           label={<GameIcon name="ArrowRight" size="48%" rotate={-90} />}
-          srLabel={sr('Zıpla')}
+          srLabel={sr(t('touch.jump'))}
           disabled={disabled}
           dataSlot={slot}
           className={`tb-jump ${buttonTone}`}

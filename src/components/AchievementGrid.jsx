@@ -1,4 +1,5 @@
 import { ACHIEVEMENTS } from '../game/achievements.js';
+import { t, achYazi } from '../i18n/index.js';
 
 /**
  * Rozet ızgarası — açılanlar renkli, kilitliler sönük.
@@ -17,11 +18,12 @@ export default function AchievementGrid({ unlocked = [], compact = false }) {
       }`}
     >
       {ACHIEVEMENTS.map((item) => {
+        const yazi = achYazi(item);
         const has = owned.has(item.id);
         return (
           <div
             key={item.id}
-            title={`${item.label} — ${item.description}`}
+            title={`${yazi.label} — ${yazi.description}`}
             className={`flex flex-col items-center gap-1 border-2 px-1 py-2 text-center transition ${
               has
                 ? 'border-retro-accent/70 bg-retro-accent/10'
@@ -42,11 +44,11 @@ export default function AchievementGrid({ unlocked = [], compact = false }) {
                   has ? 'text-white/80' : 'text-white/40'
                 }`}
               >
-                {item.label}
+                {yazi.label}
               </span>
             )}
             <span className="sr-only">
-              {item.label}: {has ? 'açıldı' : 'kilitli'} — {item.description}
+              {yazi.label}: {has ? t('ach.open') : t('ach.locked')} — {yazi.description}
             </span>
           </div>
         );

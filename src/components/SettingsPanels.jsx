@@ -1,7 +1,7 @@
 import MuteButton from './MuteButton.jsx';
 import TouchControls from './TouchControls.jsx';
 import Sfx from '../game/audio.js';
-import { upper } from '../utils/text.js';
+import { t, yuzde } from '../i18n/index.js';
 
 /**
  * Ayar bölümleri — hem tam ekran Ayarlar ekranı hem de maç içindeki
@@ -23,7 +23,7 @@ export function Slider({
   max = 1,
   step = 0.05,
   disabled = false,
-  format = (v) => `%${Math.round(v * 100)}`,
+  format = (v) => yuzde(v * 100),
 }) {
   return (
     <div className={`mt-4 first:mt-0 ${disabled ? 'opacity-40' : ''}`}>
@@ -62,22 +62,22 @@ export function AudioSettings({
     <>
       <div className="flex items-center justify-between gap-3 border-b-2 border-white/10 pb-3">
         <div>
-          <p className="text-[9px] text-white">TÜM SESLER</p>
-          <p className="mt-1 text-[7px] text-white/45">Kapatınca müzik de susar</p>
+          <p className="text-[9px] text-white">{t('settings.allSound')}</p>
+          <p className="mt-1 text-[7px] text-white/45">{t('settings.allSoundHint')}</p>
         </div>
         <MuteButton muted={muted} onToggle={onToggleMute} />
       </div>
 
       <Slider
-        label="MÜZİK"
-        hint="Giriş ekranındaki şarkı"
+        label={t('settings.music')}
+        hint={t('settings.musicHint')}
         value={musicVolume}
         onChange={onMusicVolume}
         disabled={muted}
       />
       <Slider
-        label="EFEKTLER"
-        hint="Vuruş, ıslık ve tribün"
+        label={t('settings.sfx')}
+        hint={t('settings.sfxHint')}
         value={sfxVolume}
         onChange={onSfxVolume}
         disabled={muted}
@@ -100,13 +100,13 @@ export function ControlSettings({ controls, onControls, showPreview = true }) {
   return (
     <>
       <Slider
-        label="BOYUT"
-        hint="Küçük ekranda tuşlar sahayı kapatmasın"
+        label={t('settings.size')}
+        hint={t('settings.sizeHint')}
         value={controls.scale}
         min={0.7}
         max={1.4}
         step={0.05}
-        format={(v) => `${Math.round(v * 100)}%`}
+        format={(v) => yuzde(v * 100)}
         onChange={(v) => setControl({ scale: v })}
       />
       {/*
@@ -115,33 +115,33 @@ export function ControlSettings({ controls, onControls, showPreview = true }) {
         çalarken aralığı açmak çalmıyor.
       */}
       <Slider
-        label="TUŞ ARALIĞI"
-        hint="Sağ ve sol tuş birbirine yakınsa yanlışlıkla diğerine basılır"
+        label={t('settings.gap')}
+        hint={t('settings.gapHint')}
         value={controls.gap}
         min={0.5}
         max={3}
         step={0.1}
-        format={(v) => `${Math.round(v * 100)}%`}
+        format={(v) => yuzde(v * 100)}
         onChange={(v) => setControl({ gap: v })}
       />
       <Slider
-        label="SAYDAMLIK"
-        hint="Tuşlar sahanın üstünde durur"
+        label={t('settings.opacity')}
+        hint={t('settings.opacityHint')}
         value={controls.opacity}
         min={0.35}
         max={1}
         step={0.05}
-        format={(v) => `${Math.round(v * 100)}%`}
+        format={(v) => yuzde(v * 100)}
         onChange={(v) => setControl({ opacity: v })}
       />
 
       <div className="mt-4 flex items-center justify-between gap-3 border-t-2 border-white/10 pt-4">
         <div className="min-w-0">
-          <p className="text-[9px] text-white">TUŞ DÜZENİ</p>
+          <p className="text-[9px] text-white">{t('settings.layout')}</p>
           <p className="mt-1 text-[7px] text-white/45">
             {controls.swap
-              ? 'Yön tuşları sağda · solak düzeni'
-              : 'Yön tuşları solda · varsayılan'}
+              ? t('settings.layoutSwap')
+              : t('settings.layoutDefault')}
           </p>
         </div>
         <button
@@ -152,7 +152,7 @@ export function ControlSettings({ controls, onControls, showPreview = true }) {
             setControl({ swap: !controls.swap });
           }}
         >
-          {controls.swap ? 'SAĞ ELE AL' : 'SOL ELE AL'}
+          {controls.swap ? t('settings.toRight') : t('settings.toLeft')}
         </button>
       </div>
 
@@ -170,7 +170,7 @@ export function ControlSettings({ controls, onControls, showPreview = true }) {
 function ControlsPreview({ settings }) {
   return (
     <div className="mt-4">
-      <p className="mb-2 text-[7px] tracking-widest text-white/40">ÖNİZLEME</p>
+      <p className="mb-2 text-[7px] tracking-widest text-white/40">{t('settings.preview')}</p>
       {/*
         Kutu artık 9:5 değil, ŞERİDE göre boyutlanıyor.
         Sabit oranda tuşlar gerçek boyutlarında kalıp kutunun altından
@@ -203,7 +203,7 @@ function ControlsPreview({ settings }) {
         </div>
       </div>
       <p className="mt-2 text-[6px] leading-relaxed text-white/30">
-        {upper('Tuşlar maçtaki gerçek boyutlarındadır')}
+        {t('settings.previewHint')}
       </p>
     </div>
   );

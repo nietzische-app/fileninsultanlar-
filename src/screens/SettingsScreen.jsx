@@ -1,6 +1,8 @@
 import { AudioSettings, ControlSettings } from '../components/SettingsPanels.jsx';
 import Sfx from '../game/audio.js';
 import { gizlilikBaglantisi, yerelKabukMu } from '../utils/gizlilik.js';
+import { t } from '../i18n/index.js';
+import DilSecici from '../i18n/DilSecici.jsx';
 
 /**
  * Ayarlar ekranı — menüden açılan tam sayfa hâli.
@@ -24,18 +26,24 @@ export default function SettingsScreen({
     <div className="relative mx-auto flex min-h-full w-full max-w-2xl flex-col gap-5 px-4 py-8 sm:py-10">
       <header className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg text-turkiye-red text-outline-red sm:text-2xl">AYARLAR</h1>
+          <h1 className="text-lg text-turkiye-red text-outline-red sm:text-2xl">{t('settings.title')}</h1>
           <p className="mt-1 text-[7px] tracking-widest text-white/40">
-            TERCİHLER BU CİHAZDA SAKLANIR
+            {t('settings.saved')}
           </p>
         </div>
         <button type="button" className="retro-button-ghost px-4 py-2 text-[8px]" onClick={onBack}>
-          ← GERİ
+          {t('nav.back')}
         </button>
       </header>
 
       <section className="retro-panel px-5 py-4">
-        <h2 className="mb-4 text-[8px] tracking-widest text-retro-accent">★ SES ★</h2>
+        <h2 className="mb-4 text-[8px] tracking-widest text-retro-accent">{t('lang.section')}</h2>
+        <p className="mb-4 text-[7px] leading-relaxed text-white/45">{t('lang.hint')}</p>
+        <DilSecici />
+      </section>
+
+      <section className="retro-panel px-5 py-4">
+        <h2 className="mb-4 text-[8px] tracking-widest text-retro-accent">{t('settings.audio')}</h2>
         <AudioSettings
           muted={muted}
           onToggleMute={onToggleMute}
@@ -48,22 +56,19 @@ export default function SettingsScreen({
 
       <section className="retro-panel px-5 py-4">
         <h2 className="mb-1 text-[8px] tracking-widest text-retro-accent">
-          ★ DOKUNMATİK TUŞLAR ★
+          {t('settings.touch')}
         </h2>
         <p className="mb-4 text-[7px] leading-relaxed text-white/45">
-          Yalnızca dokunmatik cihazlarda görünür. Aşağıdaki önizleme
-          gerçek tuşları gösterir. Maç sırasında duraklatıp da
-          ayarlayabilirsin — orada gerçek tuşlar zaten ekranda olur.
+          {t('settings.touchHint')}
         </p>
         <ControlSettings controls={controls} onControls={onControls} />
       </section>
 
       <section className="retro-panel px-5 py-4">
-        <h2 className="mb-3 text-[8px] tracking-widest text-retro-accent">★ SIFIRLA ★</h2>
+        <h2 className="mb-3 text-[8px] tracking-widest text-retro-accent">{t('settings.reset')}</h2>
         <div className="flex items-center justify-between gap-3">
           <p className="text-[7px] leading-relaxed text-white/45">
-            Ses ve tuş ayarlarını fabrika değerlerine döndürür.
-            Rekorlara ve rozetlere dokunmaz.
+            {t('settings.resetHint')}
           </p>
           <button
             type="button"
@@ -73,7 +78,7 @@ export default function SettingsScreen({
               onReset();
             }}
           >
-            VARSAYILAN
+            {t('settings.defaults')}
           </button>
         </div>
       </section>
@@ -92,7 +97,7 @@ export default function SettingsScreen({
       */}
       <p className="text-center text-[7px] leading-relaxed text-white/35">
         <a className="underline hover:text-white/70" {...gizlilikBaglantisi(yerelKabukMu())}>
-          GİZLİLİK POLİTİKASI
+          {t('settings.privacy')}
         </a>
       </p>
 
@@ -110,7 +115,7 @@ export default function SettingsScreen({
         rahatsız etmeyen ama sorulduğunda okunabilen yer.
       */}
       <p className="text-center text-[6px] tracking-widest text-white/20">
-        YAPIM {__SURUM__}
+        {t('settings.build', { v: __SURUM__ })}
       </p>
     </div>
   );

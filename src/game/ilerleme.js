@@ -126,9 +126,14 @@ export function macKazanci(sonuc) {
   if (sonuc.campaign === 'survival') {
     const puan = sayi(sonuc.survival?.points);
     if (puan > 0) {
-      kalemler.push({ ad: `${puan} PUAN`, puan: puan * KAZANC.hayattaKalma });
+      kalemler.push({
+        id: 'fp.points',
+        vars: { n: puan },
+        ad: `${puan} PUAN`,
+        puan: puan * KAZANC.hayattaKalma,
+      });
     }
-    kalemler.push({ ad: 'KOŞU', puan: KAZANC.taban });
+    kalemler.push({ id: 'fp.run', ad: 'KOŞU', puan: KAZANC.taban });
     const perf = performansKalemi(stats);
     if (perf) kalemler.push(perf);
     const toplam = kalemler.reduce((a, k) => a + k.puan, 0);
@@ -138,11 +143,18 @@ export function macKazanci(sonuc) {
   const kazandi = sonuc.winner === 'home';
   const antrenman = sonuc.format === 'practice';
 
-  kalemler.push({ ad: 'MAÇ', puan: KAZANC.taban });
-  if (kazandi) kalemler.push({ ad: 'GALİBİYET', puan: KAZANC.galibiyet });
+  kalemler.push({ id: 'fp.match', ad: 'MAÇ', puan: KAZANC.taban });
+  if (kazandi) kalemler.push({ id: 'fp.win', ad: 'GALİBİYET', puan: KAZANC.galibiyet });
 
   const set = sayi(sonuc.sets?.home);
-  if (set > 0) kalemler.push({ ad: `${set} SET`, puan: set * KAZANC.setBasi });
+  if (set > 0) {
+    kalemler.push({
+      id: 'fp.sets',
+      vars: { n: set },
+      ad: `${set} SET`,
+      puan: set * KAZANC.setBasi,
+    });
+  }
 
   const perf = performansKalemi(stats);
   if (perf) kalemler.push(perf);
@@ -154,7 +166,7 @@ export function macKazanci(sonuc) {
    * olarak.
    */
   if (kazandi && sonuc.playMode === 'online') {
-    kalemler.push({ ad: 'ÇEVRİMİÇİ GALİBİYET', puan: KAZANC.cevrimiciGalibiyet });
+    kalemler.push({ id: 'fp.onlineWin', ad: 'ÇEVRİMİÇİ GALİBİYET', puan: KAZANC.cevrimiciGalibiyet });
   }
 
   const zorluk = zorlukCarpani(sonuc.difficulty);
@@ -189,7 +201,13 @@ function satirlariKur(kalemler, toplam, carpanAd, carpan) {
   const ham = kalemler.reduce((a, k) => a + k.puan, 0);
   return [
     ...kalemler,
-    { ad: `${carpanAd} ×${carpan}`, puan: toplam - ham, carpan: true },
+    {
+      id: 'fp.mult',
+      vars: { ad: carpanAd, n: carpan },
+      ad: `${carpanAd} ×${carpan}`,
+      puan: toplam - ham,
+      carpan: true,
+    },
   ];
 }
 
@@ -201,7 +219,7 @@ function performansKalemi(stats) {
     + sayi(stats.saves) * PERFORMANS.kurtaris
     + sayi(stats.tipPoints) * PERFORMANS.plase;
   if (ham <= 0) return null;
-  return { ad: 'PERFORMANS', puan: Math.min(PERFORMANS.tavan, ham) };
+  return { id: 'fp.perf', ad: 'PERFORMANS', puan: Math.min(PERFORMANS.tavan, ham) };
 }
 
 /**
@@ -215,7 +233,7 @@ function performansKalemi(stats) {
  */
 export function turnuvaKazanci(durum) {
   if (durum?.status !== 'won') return { toplam: 0, kalemler: [], satirlar: [] };
-  const kalemler = [{ ad: 'KUPA', puan: KAZANC.kupa }];
+  const kalemler = [{ id: 'fp.cup', ad: 'KUPA', puan: KAZANC.kupa }];
   return { toplam: KAZANC.kupa, kalemler, satirlar: [...kalemler] };
 }
 
@@ -231,7 +249,12 @@ export function turnuvaKazanci(durum) {
 export function rozetKazanci(yeniRozetler) {
   const n = Array.isArray(yeniRozetler) ? yeniRozetler.length : 0;
   if (n === 0) return { toplam: 0, kalemler: [], satirlar: [] };
-  const kalemler = [{ ad: n === 1 ? 'ROZET' : `${n} ROZET`, puan: n * KAZANC.rozet }];
+  const kalemler = [{
+    id: n === 1 ? 'fp.badge' : 'fp.badges',
+    vars: { n },
+    ad: n === 1 ? 'ROZET' : `${n} ROZET`,
+    puan: n * KAZANC.rozet,
+  }];
   return { toplam: n * KAZANC.rozet, kalemler, satirlar: [...kalemler] };
 }
 

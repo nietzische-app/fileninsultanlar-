@@ -53,6 +53,19 @@ describe('storage prefs', () => {
     expect(prefs.format).toBe('practice');
   });
 
+  it('eski kayıtlarda dil yoksa Türkçe varsayar', () => {
+    localStorage.setItem(
+      'retro-voleybol-prefs',
+      JSON.stringify({ muted: false, mode: '1v1', homeIds: ['gizel-orgen'] })
+    );
+    expect(loadPrefs().lang).toBe('tr');
+  });
+
+  it('en dilini saklar', () => {
+    savePrefs({ lang: 'en' });
+    expect(loadPrefs().lang).toBe('en');
+  });
+
   it('eski easy/hard anahtarlarını kolay/zor çevirir', () => {
     localStorage.setItem(
       'retro-voleybol-prefs',

@@ -43,6 +43,7 @@ import {
   FP_ACIK,
 } from './game/ilerleme.js';
 import { getGameMode } from './game/modes.js';
+import { useDil } from './i18n/DilBaglami.jsx';
 
 /**
  * Ekran akışı:
@@ -55,6 +56,7 @@ import { getGameMode } from './game/modes.js';
  * kupa ya da elenmeyle kapandığında sonuç ekranına geçilir.
  */
 export default function App() {
+  const { lang } = useDil();
   const initialPrefs = loadPrefs();
   const [screen, setScreen] = useState('start');
   const [campaign, setCampaign] = useState('match');
@@ -657,7 +659,7 @@ export default function App() {
   }, [campaign, abandonTournament, agiKapat]);
 
   return (
-    <div className="min-h-[100dvh] w-full bg-[#0b0b12]">
+    <div className="min-h-[100dvh] w-full bg-[#0b0b12]" data-lang={lang}>
       {/*
         Yatay kapısı en üstte dursun: altındaki ekranlar mount kalır
         (maç motoru durumunu kaybetmez) ama tamamen kapanır.

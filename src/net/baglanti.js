@@ -13,6 +13,7 @@
  */
 
 import { PAKET_SURUM } from '../game/snapshot.js';
+import { t } from '../i18n/index.js';
 import { tasimaKur } from './tasima.js';
 
 /**
@@ -57,7 +58,10 @@ export const HATA_METNI = {
 };
 
 export function hataMetni(sebep) {
-  return HATA_METNI[sebep] ?? 'Bilinmeyen bir sorun oldu.';
+  const key = `net.${sebep}`;
+  const ceviri = t(key);
+  if (ceviri !== key) return ceviri;
+  return HATA_METNI[sebep] ?? t('net.unknown');
 }
 
 export class Baglanti {

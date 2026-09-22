@@ -1,4 +1,4 @@
-import { upper } from '../utils/text.js';
+import { t, yuzde } from '../i18n/index.js';
 
 /**
  * Giriş müziği ses kaydırıcısı.
@@ -22,7 +22,7 @@ export default function MusicVolume({ value, onChange, muted = false }) {
         muted ? 'border-white/20 opacity-50' : 'border-white/70'
       }`}
       style={{ boxShadow: '4px 4px 0 0 rgba(0, 0, 0, 0.6)' }}
-      title={muted ? upper('Ses kapalı') : `${upper('Müzik')} · %${percent}`}
+      title={muted ? t('music.muted') : t('music.title', { n: percent })}
     >
       <span aria-hidden className="text-[9px] leading-none text-retro-accent">
         ♪
@@ -34,13 +34,13 @@ export default function MusicVolume({ value, onChange, muted = false }) {
         step="5"
         value={percent}
         disabled={muted}
-        aria-label={upper('Müzik sesi')}
+        aria-label={t('music.aria')}
         onChange={(event) => onChange(Number(event.target.value) / 100)}
         className="retro-range w-16 sm:w-24"
       />
       {/* Yüzde sabit genişlikte: değer değişince kaydırıcı yerinden oynamasın */}
       <span className="w-7 text-right text-[7px] tabular-nums text-white/60">
-        %{percent}
+        {yuzde(percent)}
       </span>
     </label>
   );

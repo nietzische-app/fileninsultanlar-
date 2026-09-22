@@ -1,4 +1,5 @@
 import { Component } from 'react';
+import { t } from '../i18n/index.js';
 
 /**
  * Yakalanmamış React hatalarında boş ekran yerine
@@ -11,7 +12,7 @@ export default class ErrorBoundary extends Component {
   }
 
   static getDerivedStateFromError(error) {
-    return { hasError: true, message: error?.message || 'Bilinmeyen hata' };
+    return { hasError: true, message: error?.message || t('err.unknown') };
   }
 
   componentDidCatch(error, info) {
@@ -24,7 +25,7 @@ export default class ErrorBoundary extends Component {
     return (
       <div className="flex min-h-full flex-col items-center justify-center gap-6 px-6 py-10 text-center">
         <h1 className="text-xl text-turkiye-red text-outline-red sm:text-3xl">
-          BİR ŞEYLER TERS GİTTİ
+          {t('err.title')}
         </h1>
         <p className="max-w-md text-[9px] leading-relaxed text-white/55 sm:text-[10px]">
           {this.state.message}
@@ -34,7 +35,7 @@ export default class ErrorBoundary extends Component {
           className="retro-button px-8 py-4"
           onClick={() => window.location.reload()}
         >
-          YENİDEN YÜKLE
+          {t('err.reload')}
         </button>
       </div>
     );

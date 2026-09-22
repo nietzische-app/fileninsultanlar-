@@ -2,6 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+import { DilSaglayici } from './i18n/DilBaglami.jsx';
+import { getLang } from './i18n/index.js';
 import { createAppIconDataUrl, createFaviconDataUrl } from './game/sprites.js';
 import './index.css';
 
@@ -53,7 +55,7 @@ function installIcons() {
         display: 'standalone',
         background_color: '#0b0b12',
         theme_color: '#0b0b12',
-        lang: 'tr',
+        lang: getLang() === 'en' ? 'en' : 'tr',
         // Saha 9:5 — dikeyde oynanmıyor. Ana ekrana eklenen kısayol
         // doğrudan yatay açılsın; tarayıcıda ise RotateGate devreye girer.
         orientation: 'landscape',
@@ -147,8 +149,10 @@ registerServiceWorker();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
+    <DilSaglayici>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </DilSaglayici>
   </React.StrictMode>
 );

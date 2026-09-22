@@ -4,6 +4,7 @@ import { Baglanti, hataMetni } from '../net/baglanti.js';
 import { kimlikYukle, kimlikSunucudan, adDegistir, adUret, AD_UZUNLUK } from '../net/kimlik.js';
 import { KOD_UZUNLUK } from '../../sunucu/protokol.js';
 import { upper } from '../utils/text.js';
+import { t } from '../i18n/index.js';
 
 /**
  * Çevrimiçi lobi.
@@ -318,7 +319,7 @@ export default function OnlineScreen({ config, onStart, onBack }) {
     <div className="flex min-h-dvh flex-col items-center justify-center gap-6 px-4 py-8">
       <div className="w-full max-w-md border-4 border-white/20 bg-retro-panel/85 p-5">
         <p className="text-center text-[11px] text-white">
-          {config?.hizli ? 'RAKİP ARANIYOR' : 'ARKADAŞLA OYNA'}
+          {config?.hizli ? t('online.finding') : t('online.friend')}
         </p>
 
         {/* Takma ad — rakibin ekranında bu görünüyor */}
@@ -331,8 +332,8 @@ export default function OnlineScreen({ config, onStart, onBack }) {
               setAdDuzenle(true);
             }}
           >
-            {upper('Adın')}: <span className="text-retro-accent">{kimlik.ad}</span>
-            <span className="ml-2 text-white/35">{upper('(değiştir)')}</span>
+            {upper(t('online.yourName'))}: <span className="text-retro-accent">{kimlik.ad}</span>
+            <span className="ml-2 text-white/35">{upper(t('online.change'))}</span>
           </button>
         )}
 
@@ -343,8 +344,8 @@ export default function OnlineScreen({ config, onStart, onBack }) {
         */}
         {durum === DURUM.secim && !adDuzenle && istatistik?.mac > 0 && (
           <p className="mt-1 text-center text-[7px] text-white/40">
-            {istatistik.puan} PUAN · {istatistik.galibiyet}G {istatistik.maglubiyet}M
-            {istatistik.sira ? ` · ${istatistik.sira}. SIRA` : ''}
+            {t('online.stats', { puan: istatistik.puan, g: istatistik.galibiyet, m: istatistik.maglubiyet })}
+            {istatistik.sira ? t('online.rank', { n: istatistik.sira }) : ''}
           </p>
         )}
 
@@ -359,7 +360,7 @@ export default function OnlineScreen({ config, onStart, onBack }) {
         {durum === DURUM.secim && (
           <div className="mt-6 flex flex-col gap-3">
             {/*
-              ODA KODU ARTIK BAŞTA. Bu ekrana gelen oyuncu menüden
+{t('online.code')} ARTIK BAŞTA. Bu ekrana gelen oyuncu menüden
               "ARKADAŞLA OYNA"yı seçmiş; yani ne istediğini söyledi.
               Rakip aramayı en üste koymak, sorduğu şeyi ikinci sıraya
               itmek olurdu. Hızlı eşleşme yine burada, ama altta —
@@ -371,7 +372,7 @@ export default function OnlineScreen({ config, onStart, onBack }) {
                 className="retro-button flex-1 py-3 text-[9px]"
                 onClick={odaAc}
               >
-                ODA AÇ
+{t('online.openRoom')}
               </button>
               <button
                 type="button"
@@ -381,11 +382,11 @@ export default function OnlineScreen({ config, onStart, onBack }) {
                   setDurum(DURUM.kodGir);
                 }}
               >
-                KODLA KATIL
+{t('online.joinCode')}
               </button>
             </div>
             <p className="text-center text-[7px] leading-relaxed text-white/40">
-              {upper('Oda açan kodu paylaşır; ayarlar odayı açanın seçimidir')}
+              {upper(t('online.roomHint'))}
             </p>
 
             <div className="mt-2 border-t-4 border-white/10 pt-4">
@@ -394,7 +395,7 @@ export default function OnlineScreen({ config, onStart, onBack }) {
                 className="retro-button-ghost w-full py-3 text-[8px]"
                 onClick={hizliEsles}
               >
-                RASTGELE RAKİP BUL
+{t('online.quick')}
               </button>
             </div>
 
@@ -403,7 +404,7 @@ export default function OnlineScreen({ config, onStart, onBack }) {
               className="retro-button-ghost mt-1 w-full py-2 text-[8px]"
               onClick={tabloAc}
             >
-              SKOR TABLOSU
+{t('online.board')}
             </button>
           </div>
         )}
@@ -436,20 +437,20 @@ export default function OnlineScreen({ config, onStart, onBack }) {
               disabled={girilenKod.length !== KOD_UZUNLUK}
               onClick={odayaGir}
             >
-              KATIL
+{t('online.join')}
             </button>
           </div>
         )}
 
         {durum === DURUM.baglaniyor && (
-          <p className="mt-8 text-center text-[9px] text-retro-accent">BAĞLANIYOR…</p>
+          <p className="mt-8 text-center text-[9px] text-retro-accent">{t('online.connecting')}</p>
         )}
 
         {durum === DURUM.sirada && (
           <div className="mt-6 text-center">
-            <p className="text-[9px] text-retro-accent">RAKİP ARANIYOR…</p>
+            <p className="text-[9px] text-retro-accent">{t('online.searching')}</p>
             <p className="mt-2 text-[8px] text-white/45" aria-live="off">
-              {gecen} SANİYE
+{t('online.seconds', { n: gecen })}
             </p>
 
             {/*
@@ -460,14 +461,14 @@ export default function OnlineScreen({ config, onStart, onBack }) {
             {rakipYok && (
               <div className="mt-5 border-4 border-white/15 bg-black/40 p-4">
                 <p className="text-[7px] leading-relaxed text-white/65">
-                  {upper('Şu an bekleyen başka oyuncu yok. Beklemeye devam edebilir ya da yapay zekâya karşı oynayabilirsin.')}
+                  {upper(t('online.nobody'))}
                 </p>
                 <button
                   type="button"
                   className="retro-button mt-3 w-full py-3 text-[8px]"
                   onClick={botaKarsi}
                 >
-                  YAPAY ZEKÂYA KARŞI OYNA
+{t('online.vsAi')}
                 </button>
               </div>
             )}
@@ -477,22 +478,22 @@ export default function OnlineScreen({ config, onStart, onBack }) {
               className="retro-button-ghost mt-4 w-full py-2 text-[8px]"
               onClick={bastanBasla}
             >
-              VAZGEÇ
+{t('online.cancel')}
             </button>
           </div>
         )}
 
         {durum === DURUM.bekliyor && (
           <div className="mt-6 text-center">
-            <p className="text-[7px] text-white/55">ARKADAŞINA BU KODU SÖYLE</p>
+            <p className="text-[7px] text-white/55">{t('online.tellCode')}</p>
             <p className="mt-3 text-[28px] tracking-[0.3em] text-retro-accent">{kod}</p>
-            <p className="mt-4 text-[8px] text-white/70">RAKİP BEKLENİYOR…</p>
+            <p className="mt-4 text-[8px] text-white/70">{t('online.waiting')}</p>
             <button
               type="button"
               className="retro-button-ghost mt-5 w-full py-2 text-[8px]"
               onClick={bastanBasla}
             >
-              VAZGEÇ
+              {t('online.cancel')}
             </button>
           </div>
         )}
@@ -505,14 +506,14 @@ export default function OnlineScreen({ config, onStart, onBack }) {
               className="retro-button-ghost mt-4 w-full py-3 text-[9px]"
               onClick={bastanBasla}
             >
-              TEKRAR DENE
+{t('online.retry')}
             </button>
           </div>
         )}
       </div>
 
       <button type="button" className="retro-button-ghost px-6 py-2 text-[8px]" onClick={onBack}>
-        GERİ
+{t('online.back')}
       </button>
     </div>
   );
@@ -535,11 +536,11 @@ function SkorTablosu({ tablo, onGeri }) {
 
   return (
     <div className="mt-6">
-      {!tablo && <p className="text-center text-[9px] text-retro-accent">YÜKLENİYOR…</p>}
+      {!tablo && <p className="text-center text-[9px] text-retro-accent">{t('online.loading')}</p>}
 
       {tablo && liste.length === 0 && (
         <p className="text-center text-[7px] leading-relaxed text-white/50">
-          {upper('Henüz kimse maç oynamamış. İlk sen ol.')}
+          {upper(t('online.empty'))}
         </p>
       )}
 
@@ -583,7 +584,7 @@ function SkorTablosu({ tablo, onGeri }) {
       )}
 
       <p className="mt-3 text-center text-[6px] leading-relaxed text-white/30">
-        {upper('Yalnız hızlı eşleşme maçları sayılır. Sonucu sunucu yazar.')}
+        {upper(t('online.boardHint'))}
       </p>
 
       <button
@@ -591,7 +592,7 @@ function SkorTablosu({ tablo, onGeri }) {
         className="retro-button-ghost mt-4 w-full py-2 text-[8px]"
         onClick={onGeri}
       >
-        GERİ
+        {t('online.back')}
       </button>
     </div>
   );
@@ -604,7 +605,7 @@ function AdKutusu({ baslangic, onKaydet, onVazgec }) {
   return (
     <div className="mt-4 flex flex-col gap-2">
       <label className="text-[7px] text-white/55" htmlFor="takma-ad">
-        {upper('Takma adın — rakibin bunu görecek')}
+        {upper(t('online.nick'))}
       </label>
       <input
         id="takma-ad"
@@ -625,14 +626,14 @@ function AdKutusu({ baslangic, onKaydet, onVazgec }) {
           className="retro-button-ghost flex-1 py-2 text-[7px]"
           onClick={() => setTaslak(adUret())}
         >
-          RASTGELE
+{t('online.randomName')}
         </button>
         <button
           type="button"
           className="retro-button flex-1 py-2 text-[7px]"
           onClick={() => onKaydet(taslak)}
         >
-          KAYDET
+{t('online.save')}
         </button>
       </div>
     </div>
