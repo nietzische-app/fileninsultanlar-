@@ -3,7 +3,6 @@ import MuteButton from '../components/MuteButton.jsx';
 import PixelAvatar from '../components/PixelAvatar.jsx';
 import { getPlayerById } from '../game/players.js';
 import { roundStrength, tournamentLadder } from '../game/tournament.js';
-import { FORMATS } from '../game/constants.js';
 import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
 import { t, turYazi } from '../i18n/index.js';

@@ -60,7 +60,7 @@ export function ilgiEki(value) {
   const sonHarf = ad[ad.length - 1];
   if (UNLULER[sonHarf]) ek = `n${ek}`;
 
-  return `${ad}'${upper(ek)}`;
+  return `${ad}'${ek.toLocaleUpperCase('tr-TR')}`;
 }
 
 /**

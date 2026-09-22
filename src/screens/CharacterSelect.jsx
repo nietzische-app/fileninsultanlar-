@@ -332,7 +332,7 @@ export default function CharacterSelect({
         )}
 
 <ChipRow label={t("select.chipDiff")}>
-          {Object.entries(DIFFICULTY).map(([key, value]) => (
+          {Object.keys(DIFFICULTY).map((key) => (
             <Chip
               key={key}
               active={difficulty === key}

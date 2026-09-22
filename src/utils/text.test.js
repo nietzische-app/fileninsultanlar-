@@ -36,6 +36,8 @@ describe('iyelik', () => {
  * ("TÜRKİYE'NİN"), rakip tarafı değildi.
  */
 describe('ilgiEki — Türkçe ilgi eki', () => {
+  beforeEach(() => setLang('tr'));
+
   it('ünlü uyumuna göre ek seçer', () => {
     expect(ilgiEki('ATLAS')).toBe("ATLAS'IN");   // son ünlü A → ın
     expect(ilgiEki('NORDİK')).toBe("NORDİK'İN"); // son ünlü İ → in

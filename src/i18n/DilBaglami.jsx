@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- sağlayıcı + useDil */
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { loadPrefs, savePrefs } from '../utils/storage.js';
 import {
@@ -67,5 +68,3 @@ export function DilSaglayici({ children }) {
 export function useDil() {
   return useContext(DilContext);
 }
-
-export { t, getLang, yuzde, sayiYazi } from './index.js';
