@@ -1,4 +1,5 @@
 import { RULES } from '../game/constants.js';
+import { t } from '../i18n/index.js';
 
 /**
  * Maç skor tablosu — Türkiye vs rakip takım, set takibi.
@@ -16,8 +17,8 @@ export default function Scoreboard({
    * rakibinin adını görüyordu. Motor artık iki etiketi de kendisi
    * hesaplıyor (bkz. Game `emitState`).
    */
-  homeName = 'TÜRKİYE',
-  awayName = 'RAKİP',
+  homeName = t('hud.home'),
+  awayName = t('hud.away'),
   awayAccent = 'text-[#9BB0FF]',
   pointsPerSet = RULES.pointsPerSet,
   compact = false,
@@ -47,7 +48,7 @@ export default function Scoreboard({
           flag
           points={survival ? survival.points : score.home}
           sets={sets.home}
-          subLabel={survival ? 'PUAN' : undefined}
+          subLabel={survival ? t('hud.points') : undefined}
           accent="text-turkiye-red"
           align="left"
           compact={compact}
@@ -56,20 +57,20 @@ export default function Scoreboard({
         {survival ? (
           <div className="flex shrink-0 flex-col items-center gap-1">
             <span className="text-[8px] text-white/50">
-              {survival.wave}. DALGA
+              {t('hud.wave', { n: survival.wave })}
             </span>
             <Hearts lives={survival.lives} maxLives={survival.maxLives} />
-            <span className="text-[7px] text-white/35">CAN</span>
+            <span className="text-[7px] text-white/35">{t('hud.lives')}</span>
           </div>
         ) : (
           <div className="flex shrink-0 flex-col items-center gap-1">
             <span className="text-[8px] text-white/50">
-              {roundLabel ?? `SET ${setNumber}`}
+              {roundLabel ?? t('hud.set', { n: setNumber })}
             </span>
             <span className="text-[9px] text-retro-accent sm:text-[11px] short:text-[9px]">
               {sets.home} — {sets.away}
             </span>
-            <span className="text-[7px] text-white/35">{pointsPerSet} SAYI</span>
+            <span className="text-[7px] text-white/35">{t('hud.to', { n: pointsPerSet })}</span>
           </div>
         )}
 
@@ -77,7 +78,7 @@ export default function Scoreboard({
           name={awayName}
           points={score.away}
           sets={sets.away}
-          subLabel={survival ? 'KAYIP' : undefined}
+          subLabel={survival ? t('hud.lost') : undefined}
           accent={accentClass ?? 'text-[#9BB0FF]'}
           accentStyle={accentStyle}
           align="right"
@@ -96,7 +97,7 @@ export default function Scoreboard({
                   : 'border-[#9BB0FF]/60 text-[#9BB0FF]'
               }`}
             >
-              {i + 1}. SET {set.home}-{set.away}
+              {t('hud.setLine', { n: i + 1, a: set.home, b: set.away })}
             </span>
           ))}
         </div>
@@ -119,7 +120,7 @@ export default function Scoreboard({
 /** Kalan can — dolu/boş piksel kare. */
 function Hearts({ lives = 0, maxLives = 3 }) {
   return (
-    <span className="flex items-center gap-1" aria-label={`${lives} can kaldı`}>
+    <span className="flex items-center gap-1" aria-label={t('hud.livesAria', { n: lives })}>
       {Array.from({ length: Math.max(maxLives, lives) }, (_, i) => (
         <span
           key={i}
@@ -167,7 +168,7 @@ function TeamBlock({
           {name}
         </span>
         <span className="text-[7px] text-white/40 sm:text-[8px] short:text-[6px]">
-          {subLabel ?? `${sets} SET`}
+          {subLabel ?? t('hud.sets', { n: sets })}
         </span>
       </div>
       <span

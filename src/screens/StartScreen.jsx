@@ -6,19 +6,17 @@ import MusicVolume from '../components/MusicVolume.jsx';
 import { vitrinKadro, sonrakiHedef, FP_ACIK } from '../game/ilerleme.js';
 import { getPlayerById } from '../game/players.js';
 import { GAME_MODES } from '../game/modes.js';
+import { SURVIVAL } from '../game/constants.js';
+import { TOURNAMENT_ROUNDS } from '../game/tournament.js';
 import { onlineAcik } from '../net/baglanti.js';
 import AchievementGrid from '../components/AchievementGrid.jsx';
 import { ACHIEVEMENTS } from '../game/achievements.js';
 import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
+import { t, modeYazi, sayiYazi } from '../i18n/index.js';
+import DilSecici from '../i18n/DilSecici.jsx';
 
-/** Gurur Tablosu — dönüşümlü onur mesajları (henüz maç yokken). */
-const PRIDE_MESSAGES = [
-  'FİLENİN İKİ YANINDA, TEK BİR YÜREK',
-  'SAHADA YÜREK, FİLEDE ZAFER',
-  'KIRMIZI BEYAZ, DÜNYANIN ZİRVESİNDE',
-  'HER SMAÇTA BİR MİLLETİN ALKIŞI',
-];
+const PRIDE_KEYS = ['start.pride.0', 'start.pride.1', 'start.pride.2', 'start.pride.3'];
 
 /*
  * Mod tuşunun sol şeridi — ızgara karolarını birbirinden ayırır.
@@ -84,7 +82,7 @@ export default function StartScreen({
   useEffect(() => {
     if (hasRecords) return undefined;
     const timer = setInterval(() => {
-      setMessageIndex((i) => (i + 1) % PRIDE_MESSAGES.length);
+      setMessageIndex((i) => (i + 1) % PRIDE_KEYS.length);
     }, 3800);
     return () => clearInterval(timer);
   }, [hasRecords]);
@@ -142,13 +140,14 @@ export default function StartScreen({
       <header className="relative z-10 flex shrink-0 items-center justify-between gap-3 py-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-[max(0.5rem,env(safe-area-inset-top))] sm:py-3">
         <div className="min-w-0">
           <p className="mb-1 hidden text-[6px] tracking-[0.28em] text-white/45 tall:block">
-            8 BİT PİKSEL VOLEYBOL
+            {t('brand.sub')}
           </p>
           <h1 className="truncate text-[11px] leading-none text-turkiye-red text-outline-red sm:text-sm">
-            RETRO VOLEYBOL
+            {t('brand.title')}
           </h1>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <DilSecici compact />
           <MusicVolume value={musicVolume} onChange={onMusicVolume} muted={muted} />
           <MuteButton muted={muted} onToggle={onToggleMute} />
         </div>
@@ -172,7 +171,7 @@ export default function StartScreen({
               onResumeTournament?.();
             }}
           >
-            ★ TURNUVAYA DEVAM ET · {resumeTournament.roundIndex + 1}. TUR ★
+            {t('start.resume', { n: resumeTournament.roundIndex + 1 })}
           </button>
         )}
 
@@ -196,21 +195,21 @@ export default function StartScreen({
             className="retro-button-ghost px-3 py-1.5 text-[7px] sm:px-5 sm:py-2 sm:text-[8px]"
             onClick={onTutorial}
           >
-            NASIL OYNANIR
+            {t('nav.how')}
           </button>
           <button
             type="button"
             className="retro-button-ghost px-3 py-1.5 text-[7px] sm:px-5 sm:py-2 sm:text-[8px]"
             onClick={onCollection}
           >
-            KOLEKSİYON
+            {t('nav.collection')}
           </button>
           <button
             type="button"
             className="retro-button-ghost px-3 py-1.5 text-[7px] sm:px-5 sm:py-2 sm:text-[8px]"
             onClick={onSettings}
           >
-            ⚙ AYARLAR
+            ⚙ {t('nav.settings')}
           </button>
         </div>
       </div>
@@ -218,14 +217,14 @@ export default function StartScreen({
       {/* İkinci bakış — kaydırınca; ilk ekranı tıkamaz */}
       <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-col items-center gap-4 pb-8 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(2rem,env(safe-area-inset-bottom))] sm:gap-5">
         <div className="retro-panel w-full px-5 py-4 text-center">
-          <p className="mb-3 text-[8px] tracking-widest text-retro-accent">★ GURUR TABLOSU ★</p>
+          <p className="mb-3 text-[8px] tracking-widest text-retro-accent">{t('start.pride')}</p>
           {hasRecords || hasSurvivalRecord ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <RecordStat label="GALİBİYET" value={records.wins} />
-              <RecordStat label="EN İYİ SERİ" value={records.bestWinStreak} />
-              <RecordStat label="KUPA" value={records.tournamentsWon ?? 0} />
+              <RecordStat label={t('start.wins')} value={records.wins} />
+              <RecordStat label={t('start.streak')} value={records.bestWinStreak} />
+              <RecordStat label={t('start.cups')} value={records.tournamentsWon ?? 0} />
               <RecordStat
-                label="HAYATTA KALMA"
+                label={t('start.survival')}
                 value={records.bestSurvivalPoints ?? 0}
               />
             </div>
@@ -234,7 +233,7 @@ export default function StartScreen({
               key={messageIndex}
               className="text-[9px] leading-relaxed text-white/85 sm:text-[11px]"
             >
-              {PRIDE_MESSAGES[messageIndex]}
+              {t(PRIDE_KEYS[messageIndex])}
             </p>
           )}
         </div>
@@ -242,7 +241,7 @@ export default function StartScreen({
         {achievements.length > 0 && (
           <div className="retro-panel w-full px-5 py-4">
             <p className="mb-3 text-center text-[8px] tracking-widest text-retro-accent">
-              ★ ROZETLER · {achievements.length}/{ACHIEVEMENTS.length} ★
+              {t('start.badges', { n: achievements.length, toplam: ACHIEVEMENTS.length })}
             </p>
             <AchievementGrid unlocked={achievements} />
           </div>
@@ -258,7 +257,7 @@ export default function StartScreen({
               <PixelAvatar player={player} scale={4} pose={i === 0 ? 'cheer' : 'idle'} />
               <span className="text-[7px] text-white/75 text-shadow-pixel">{upper(player.name)}</span>
               {player.captain && (
-                <span className="text-[6px] text-retro-accent text-shadow-pixel">★ KAPTAN</span>
+                <span className="text-[6px] text-retro-accent text-shadow-pixel">{t('start.captain')}</span>
               )}
             </div>
           ))}
@@ -267,9 +266,9 @@ export default function StartScreen({
         {hedef && (
           <div className="retro-panel w-full px-5 py-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <span className="text-[7px] tracking-widest text-white/40">FORMA PUANI</span>
+              <span className="text-[7px] tracking-widest text-white/40">{t('start.fp')}</span>
               <span className="text-[10px] text-retro-accent">
-                {(ilerleme?.puan ?? 0).toLocaleString('tr-TR')} FP
+                {sayiYazi(ilerleme?.puan ?? 0)} {t('fp.unit')}
               </span>
             </div>
             <div className="mt-2 h-2 w-full border border-white/20 bg-black/40">
@@ -280,25 +279,24 @@ export default function StartScreen({
             </div>
             <p className="mt-2 text-[7px] text-white/45">
               {hedef.kalan > 0
-                ? `${upper(getPlayerById(hedef.id)?.name ?? '')} İÇİN ${hedef.kalan} FP`
-                : `${upper(getPlayerById(hedef.id)?.name ?? '')} AÇILMAYA HAZIR`}
+                ? t('start.fpNeed', { ad: upper(getPlayerById(hedef.id)?.name ?? ''), n: hedef.kalan })
+                : t('start.fpReady', { ad: upper(getPlayerById(hedef.id)?.name ?? '') })}
             </p>
           </div>
         )}
 
         <div className="retro-panel px-4 py-3">
-          <p className="mb-2 text-center text-[8px] text-white/50">KONTROLLER</p>
+          <p className="mb-2 text-center text-[8px] text-white/50">{t('start.controls')}</p>
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-[7px] text-white/70 sm:grid-cols-3">
-            <span>← → / A D · HAREKET</span>
-            <span>↑ / W · ZIPLA</span>
-            <span>BOŞLUK / Z · VUR</span>
-            <span className="text-[#9BE7FF]">↓ / S · DALIŞ (HAVADA PLASE)</span>
+            <span>{t('start.move')}</span>
+            <span>{t('start.jump')}</span>
+            <span>{t('start.hit')}</span>
+            <span className="text-[#9BE7FF]">{t('start.dive')}</span>
           </div>
         </div>
 
         <footer className="max-w-md text-center text-[7px] leading-relaxed text-white/30">
-          Voleybola saygıyla yapılmış, ticari olmayan bağımsız bir oyundur.
-          Takımlar ve oyuncular kurgusaldır.
+          {t('start.footer')}
         </footer>
       </div>
     </div>
@@ -307,6 +305,11 @@ export default function StartScreen({
 
 function ModeTile({ mode, featured, onClick }) {
   const accent = MODE_ACCENT[mode.id] ?? '#FFFFFF';
+  const yazi = modeYazi(mode, {
+    n: mode.id === 'survival' ? SURVIVAL.lives : TOURNAMENT_ROUNDS.length,
+    lives: SURVIVAL.lives,
+    wave: SURVIVAL.waveLength,
+  });
   return (
     <button
       type="button"
@@ -329,14 +332,14 @@ function ModeTile({ mode, featured, onClick }) {
             featured ? 'text-[11px] sm:text-sm' : 'text-[9px] sm:text-[11px]'
           }`}
         >
-          {mode.label}
+          {yazi.label}
         </p>
         <span className="shrink-0 text-[6px] text-retro-accent sm:text-[7px]">
-          {mode.tagline}
+          {yazi.tagline}
         </span>
       </div>
       <p className="mt-0.5 hidden text-[6px] leading-relaxed text-white/55 tall:block sm:text-[7px]">
-        {mode.description}
+        {yazi.description}
       </p>
     </button>
   );

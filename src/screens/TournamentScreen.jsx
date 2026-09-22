@@ -6,6 +6,7 @@ import { roundStrength, tournamentLadder } from '../game/tournament.js';
 import { FORMATS } from '../game/constants.js';
 import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
+import { t, turYazi } from '../i18n/index.js';
 
 /**
  * Kupa yolu — turlar arasında görülen bracket ekranı.
@@ -35,10 +36,10 @@ export default function TournamentScreen({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base text-turkiye-red text-outline-red sm:text-xl">
-            KUPA YOLU
+{t('tour.title')}
           </h2>
           <p className="mt-2 text-[7px] tracking-widest text-white/50 sm:text-[8px]">
-            {wins}/{ladder.length} TUR GEÇİLDİ
+{t('tour.passed', { n: wins, toplam: ladder.length })}
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
@@ -51,7 +52,7 @@ export default function TournamentScreen({
               onQuit();
             }}
           >
-            TURNUVADAN ÇIK
+{t('tour.quit')}
           </button>
         </div>
       </div>
@@ -66,7 +67,7 @@ export default function TournamentScreen({
       {/* Sıradaki maç */}
       {next && (
         <div className="retro-panel px-4 py-4">
-          <p className="text-[7px] tracking-widest text-retro-accent">SIRADAKİ</p>
+          <p className="text-[7px] tracking-widest text-retro-accent">{t('tour.next')}</p>
           <div className="mt-3 grid grid-cols-[auto_1fr] items-center gap-4 sm:grid-cols-[auto_1fr_auto]">
             <div className="flex items-center gap-2">
               {squad.map((player) => (
@@ -78,11 +79,11 @@ export default function TournamentScreen({
             </div>
 
             <div className="text-center">
-              <p className="text-sm text-white sm:text-lg">{next.label}</p>
+              <p className="text-sm text-white sm:text-lg">{turYazi(next)}</p>
               <p className="mt-1 text-[7px] text-white/45">
-                {FORMATS[next.format]?.label ?? next.format} ·{' '}
-                {next.rules.pointsPerSet} SAYI
-                {next.rules.setsToWin > 1 ? ` · 3 SETTE ${next.rules.setsToWin}` : ''}
+                {t(`format.${next.format}`)} ·{' '}
+                {t('tour.points', { n: next.rules.pointsPerSet })}
+                {next.rules.setsToWin > 1 ? t('tour.bestOf', { n: next.rules.setsToWin }) : ''}
               </p>
             </div>
 
@@ -92,7 +93,7 @@ export default function TournamentScreen({
                 className="text-[9px]"
                 style={{ color: next.opponent?.colors.accent ?? '#9BB0FF' }}
               >
-                {next.opponent?.name ?? 'RAKİP'}
+{next.opponent?.name ?? t('tour.opp')}
               </p>
               <p className="mt-1 text-[7px] leading-relaxed text-white/45 sm:max-w-[150px]">
                 {next.opponent?.blurb ?? ''}
@@ -102,7 +103,7 @@ export default function TournamentScreen({
                 hissediyordu. Yıldızlar rampayı görünür kılıyor.
               */}
               <p className="mt-2 text-[7px] tracking-widest text-retro-accent sm:text-right">
-                GÜÇ <GucYildizi seviye={roundStrength(next)} />
+                {t('tour.power')} <GucYildizi seviye={roundStrength(next)} />
               </p>
             </div>
           </div>
@@ -119,7 +120,7 @@ export default function TournamentScreen({
             onPlay();
           }}
         >
-          {wins === 0 ? 'TURNUVAYA BAŞLA' : 'SONRAKİ TURA ÇIK'}
+          {wins === 0 ? t('tour.start') : t('tour.advance')}
         </button>
       </div>
     </div>
@@ -151,7 +152,7 @@ function LadderRow({ round }) {
         {badge}
       </span>
       <span className="w-24 shrink-0 text-[7px] text-white/70 sm:w-28 sm:text-[8px]">
-        {round.label}
+{turYazi(round)}
       </span>
       <span
         className="mr-1 inline-block h-2.5 w-2.5 shrink-0 border border-black/40"
@@ -182,7 +183,7 @@ function GucYildizi({ seviye }) {
   const dolu = '★'.repeat(seviye);
   const bos = '☆'.repeat(5 - seviye);
   return (
-    <span aria-label={`Rakip gücü: 5 üzerinden ${seviye}`} title={`Güç ${seviye}/5`}>
+    <span aria-label={t('tour.powerAria', { n: seviye })} title={`${t('tour.power')} ${seviye}/5`}>
       {dolu}
       <span className="text-white/25">{bos}</span>
     </span>

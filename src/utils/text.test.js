@@ -1,10 +1,32 @@
-import { describe, expect, it } from 'vitest';
-import { ilgiEki, upper } from './text.js';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { ilgiEki, iyelik, upper } from './text.js';
+import { setLang } from '../i18n/index.js';
 
 describe('upper — Türkçe büyük harf', () => {
+  beforeEach(() => setLang('tr'));
+
   it('noktalı/noktasız I ayrımını korur', () => {
     expect(upper('Gizem')).toBe('GİZEM');
     expect(upper('ışık')).toBe('IŞIK');
+  });
+
+  it('İngilizcede noktasız I kullanır', () => {
+    setLang('en');
+    expect(upper('Gizem')).toBe('GIZEM');
+  });
+});
+
+describe('iyelik', () => {
+  beforeEach(() => setLang('tr'));
+
+  it('Türkçede ilgi eki takar', () => {
+    expect(iyelik('NORDİK')).toBe("NORDİK'İN");
+  });
+
+  it('İngilizcede apostrof s takar', () => {
+    setLang('en');
+    expect(iyelik('NORDIK')).toBe("NORDIK's");
+    expect(iyelik('ATLAS')).toBe("ATLAS'");
   });
 });
 

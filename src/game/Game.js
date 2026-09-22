@@ -31,7 +31,6 @@ import {
 import {
   survivalDifficulty,
   waveForPoints,
-  waveLabel,
   waveOpponent,
 } from './survival.js';
 import {
@@ -95,7 +94,8 @@ import {
 } from './effects.js';
 import Sfx from './audio.js';
 import { paketle, uygula, girdiPaketle, oyuncuFizikUygula } from './snapshot.js';
-import { ilgiEki, upper } from '../utils/text.js';
+import { iyelik, upper } from '../utils/text.js';
+import { t } from '../i18n/index.js';
 
 /**
  * Klavye eşlemeleri.
@@ -2916,12 +2916,12 @@ export default class Game {
       const receiver = ball.lastHitSide === 'home' ? 'away' : 'home';
 
       if (ball.serveUntouched && ball.serveOut) {
-        this.awardPoint(receiver, landedSide, 'AUT!');
+        this.awardPoint(receiver, landedSide, t('game.out'));
         return;
       }
       if (ball.serveUntouched && landedSide === ball.lastHitSide) {
         // Fileyi aşamadan kendi sahasına düştü
-        this.awardPoint(receiver, landedSide, 'FİLEDE!');
+        this.awardPoint(receiver, landedSide, t('game.net'));
         return;
       }
 
@@ -2984,7 +2984,7 @@ export default class Game {
 
     if (touchResult.foul) {
       const opponent = player.side === 'home' ? 'away' : 'home';
-      this.awardPoint(opponent, player.side, 'ÜÇ TEMAS!');
+      this.awardPoint(opponent, player.side, t('game.three'));
       return;
     }
 
@@ -3174,10 +3174,10 @@ export default class Game {
 
       if (type === 'dive') {
         this.stats.saves += 1;
-        this.message = { text: 'KURTARIŞ!', timer: 0.8, color: '#9BE7FF' };
+        this.message = { text: t('game.save'), timer: 0.8, color: '#9BE7FF' };
       } else if (isBlock) {
         this.stats.blocks += 1;
-        this.message = { text: 'BLOK!', timer: 0.7, color: PALETTE.gold };
+        this.message = { text: t('game.block'), timer: 0.7, color: PALETTE.gold };
       }
 
       if (perfect) {
@@ -3286,7 +3286,7 @@ export default class Game {
       elapsed: 0,
     };
 
-    this.message = { text: 'SERVİS', timer: 1, color: PALETTE.gold };
+    this.message = { text: t('game.serve'), timer: 1, color: PALETTE.gold };
     this.ses.whistle();
     this.emitState(true);
   }
@@ -3395,7 +3395,7 @@ export default class Game {
 
       this.ses.select();
       this.message = {
-        text: serve.safeAim ? 'NİŞAN' : 'GÜÇ YETMEDİ!',
+        text: serve.safeAim ? t('game.aim') : t('game.noPower'),
         timer: 0.8,
         color: serve.safeAim ? '#9BE7FF' : PALETTE.turkishRed,
       };
@@ -3472,7 +3472,7 @@ export default class Game {
 
     const tier = comboTierAt(this.combo);
     if (tier) {
-      this.message = { text: tier.label, timer: 1, color: tier.color };
+      this.message = { text: t(`combo.${tier.at}`), timer: 1, color: tier.color };
       this.hype = Math.max(this.hype, 0.7);
       this.ses.combo(this.combo);
     }
@@ -3567,7 +3567,7 @@ export default class Game {
       this.message = {
         text:
           reason ??
-          (this.streak.count > 2 ? `${this.streak.count} SAYI ÜST ÜSTE!` : 'SAYI!'),
+          (this.streak.count > 2 ? t('game.streak', { n: this.streak.count }) : t('game.point')),
         timer: this.rules.servePause,
         color: reason ? PALETTE.gold : PALETTE.turkishRed,
       };
@@ -3579,14 +3579,14 @@ export default class Game {
       // düşülseydi tabelada hâlâ eski can sayısı duruyor olurdu.
       this.lives = Math.max(0, this.lives - 1);
       this.message = {
-        text: this.lives > 0 ? `CAN GİTTİ · ${this.lives} KALDI` : 'SON CAN',
+        text: this.lives > 0 ? t('game.lifeLost', { n: this.lives }) : t('game.lastLife'),
         timer: this.rules.servePause,
         color: this.opponent.colors.accent,
       };
       this.ses.pointLost();
     } else {
       this.message = {
-        text: reason ?? `SAYI ${ilgiEki(this.opponent.shortName)}`,
+        text: reason ?? t('game.pointOpp', { ad: iyelik(this.opponent.shortName) }),
         timer: this.rules.servePause,
         color: reason ? PALETTE.gold : this.opponent.colors.accent,
       };
@@ -3617,8 +3617,8 @@ export default class Game {
       this.message = {
         text:
           winner === 'home'
-            ? `${this.setNumber}. SET TÜRKİYE'NİN!`
-            : `${this.setNumber}. SET ${ilgiEki(this.opponent.shortName)}`,
+            ? t('game.setHome', { n: this.setNumber })
+            : t('game.setAway', { n: this.setNumber, ad: iyelik(this.opponent.shortName) }),
         timer: 2.6,
         color: winner === 'home' ? PALETTE.gold : this.opponent.colors.accent,
       };
@@ -3660,7 +3660,7 @@ export default class Game {
     this.phase = PHASE.READY;
     this.phaseTimer = this.rules.readyPause;
     this.message = {
-      text: `${this.setNumber}. SET`,
+      text: t('game.setN', { n: this.setNumber }),
       timer: this.rules.readyPause,
       color: '#FFFFFF',
     };
@@ -3743,7 +3743,7 @@ export default class Game {
     this.phase = PHASE.READY;
     this.phaseTimer = SURVIVAL.waveAnnounce;
     this.message = {
-      text: `${waveLabel(wave)} · ${upper(this.opponent.shortName)}`,
+      text: `${t('hud.wave', { n: Math.max(1, Math.floor(wave)) })} · ${upper(this.opponent.shortName)}`,
       timer: SURVIVAL.waveAnnounce,
       color: PALETTE.gold,
     };
@@ -4114,7 +4114,7 @@ export default class Game {
     ctx.fillStyle = '#FFFFFF';
     ctx.font = '7px "Press Start 2P", monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(aiming ? 'NİŞAN' : 'GÜÇ', x + barW / 2, y + barH + 11);
+    ctx.fillText(aiming ? t('game.aim') : t('game.power'), x + barW / 2, y + barH + 11);
     ctx.textAlign = 'left';
   }
 
@@ -4271,7 +4271,7 @@ export default class Game {
       ctx.fillStyle = '#FFFFFF';
       ctx.font = '12px "Press Start 2P", monospace';
       ctx.fillText(
-        this.message?.text ?? 'HAZIR OL',
+        this.message?.text ?? t('game.ready'),
         GAME_WIDTH / 2,
         GAME_HEIGHT / 2 + 38
       );

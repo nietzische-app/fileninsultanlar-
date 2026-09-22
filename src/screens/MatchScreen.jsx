@@ -15,6 +15,7 @@ import useViewport from '../hooks/useViewport.js';
 import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
 import { yerelCift } from '../game/modes.js';
+import { t, turYazi } from '../i18n/index.js';
 
 /**
  * Misafirde bu kadar saniye paket gelmezse "rakip bekleniyor" denir.
@@ -153,14 +154,14 @@ export default function MatchScreen({
         }),
       );
       // Karşı taraf gidince maç donup kalmasın — sebebi söylenmeli
-      cozucular.push(config.baglanti.on('ayrildi', () => setAgKopuk('RAKİP AYRILDI')));
+      cozucular.push(config.baglanti.on('ayrildi', () => setAgKopuk(t('match.left'))));
       /*
        * Sunucudaki simülasyon hata verdi. `ayrildi` demek YANLIŞ olurdu:
        * rakip yerinde duruyor ve oyuncu onu suçlardı. Sebebi doğru
        * söylemek, "neden koptu" diye birbirlerine sormalarını önlüyor.
        */
-      cozucular.push(config.baglanti.on('mac-hata', () => setAgKopuk('MAÇ SUNUCUDA DURDU')));
-      cozucular.push(config.baglanti.on('kapandi', () => setAgKopuk('BAĞLANTI KOPTU')));
+      cozucular.push(config.baglanti.on('mac-hata', () => setAgKopuk(t('match.serverStop'))));
+      cozucular.push(config.baglanti.on('kapandi', () => setAgKopuk(t('match.dropped'))));
     }
 
     game.start();
@@ -484,10 +485,12 @@ export default function MatchScreen({
   // Ham id değil etiket: upper('classic') Türkçe eşlemede "CLASSİC" veriyordu
   const matchLabel =
     config.campaign === 'survival'
-      ? 'HAYATTA KALMA'
+      ? t('match.survival')
       : config.roundLabel
-        ? `TURNUVA · ${config.roundLabel}`
-        : (FORMATS[config.format]?.label ?? FORMATS.classic.label);
+        ? t('match.tour', { label: config.roundLabel })
+        : t(`format.${config.format}`) !== `format.${config.format}`
+          ? t(`format.${config.format}`)
+          : (FORMATS[config.format]?.label ?? FORMATS.classic.label);
 
   return (
     <div
@@ -511,7 +514,11 @@ export default function MatchScreen({
             awayAccent={hud.opponentAccent}
             pointsPerSet={hud.pointsPerSet}
             survival={hud.survival}
-            roundLabel={hud.roundLabel}
+            roundLabel={
+              config.roundId
+                ? turYazi({ id: config.roundId, label: config.roundLabel ?? hud.roundLabel })
+                : hud.roundLabel
+            }
             compact
             overlay={coarse}
           />
@@ -542,7 +549,7 @@ export default function MatchScreen({
                 type="button"
                 className="touch-button touch-button-overlay h-9 w-9"
                 onClick={fullscreen.toggle}
-                aria-label={fullscreen.active ? 'Tam ekrandan çık' : 'Tam ekran'}
+                aria-label={fullscreen.active ? t('match.fsExit') : t('match.fsEnter')}
               >
                 {fullscreen.active ? '⤡' : '⛶'}
               </button>
@@ -551,7 +558,7 @@ export default function MatchScreen({
               type="button"
               className="touch-button touch-button-overlay h-9 w-9"
               onClick={togglePause}
-              aria-label={paused ? 'Devam et' : 'Duraklat'}
+              aria-label={paused ? t('match.resume') : t('match.pause')}
             >
               <GameIcon name={paused ? 'Play' : 'Pause'} size="45%" />
             </button>
@@ -559,7 +566,7 @@ export default function MatchScreen({
               type="button"
               className="touch-button touch-button-overlay h-9 w-9"
               onClick={requestQuit}
-              aria-label="Maçtan çık"
+              aria-label={t('match.quitAria')}
             >
               <GameIcon name="Home" size="42%" />
             </button>
@@ -605,7 +612,7 @@ export default function MatchScreen({
           height={GAME_HEIGHT}
           className="pixelated relative z-[1] block h-auto max-h-full w-full bg-[#0b0b12] touch:stage-canvas touch:w-auto"
           style={{ aspectRatio: `${GAME_WIDTH} / ${GAME_HEIGHT}` }}
-          aria-label="Retro Voleybol voleybol sahası"
+          aria-label={t('match.courtAria')}
         />
 
         {/*
@@ -626,7 +633,7 @@ export default function MatchScreen({
               ×{hud.combo}
             </span>
             <span className="mt-1 block text-[6px] leading-none opacity-70">
-              {hud.comboTier?.label ?? 'KOMBO'}
+              {hud.comboTier ? t(`combo.${hud.comboTier.at}`) : t('match.combo')}
             </span>
           </div>
         )}
@@ -670,7 +677,7 @@ export default function MatchScreen({
             className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-black/80 px-3"
             role="dialog"
             aria-modal="true"
-            aria-label={cevrimici ? 'Maç menüsü' : 'Oyun duraklatıldı'}
+            aria-label={cevrimici ? t('match.menuAria') : t('match.pausedAria')}
           >
             {/*
               Çevrimiçide "DURAKLATILDI" yazmak yalan olurdu: maç karşı
@@ -678,16 +685,16 @@ export default function MatchScreen({
               ayarlara/çıkışa erişim için duruyor, adı da onu söylüyor.
             */}
             <p className="text-lg text-retro-accent">
-              {cevrimici ? 'MAÇ MENÜSÜ' : 'DURAKLATILDI'}
+              {cevrimici ? t('match.menu') : t('match.paused')}
             </p>
             {cevrimici && (
               <p className="max-w-xs text-center text-[7px] leading-relaxed text-turkiye-red sm:text-[8px]">
-                ÇEVRİMİÇİ MAÇ DURMAZ — RAKİBİN OYNAMAYA DEVAM EDİYOR
+                {t('match.onlineWarn')}
               </p>
             )}
             <div className="flex flex-wrap justify-center gap-3">
               <button type="button" className="retro-button" onClick={resumeGame}>
-                {cevrimici ? 'SAHAYA DÖN' : 'DEVAM ET'}
+                {cevrimici ? t('match.backCourt') : t('match.continue')}
               </button>
               <button
                 type="button"
@@ -697,11 +704,11 @@ export default function MatchScreen({
                   setSettingsOpen(true);
                 }}
               >
-                ⚙ AYARLAR
+                {t('match.settings')}
               </button>
               <MuteButton muted={muted} onToggle={onToggleMute} />
               <button type="button" className="retro-button-ghost" onClick={requestQuit}>
-                MAÇTAN ÇIK
+                {t('match.quit')}
               </button>
             </div>
           </div>
@@ -721,7 +728,7 @@ export default function MatchScreen({
             className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center px-3 pt-2"
             role="dialog"
             aria-modal="true"
-            aria-label="Maç ayarları"
+            aria-label={t('match.settingsAria')}
           >
             {/*
               Kartın yüksekliği tuşların GERÇEK yüksekliğine bağlı.
@@ -741,7 +748,7 @@ export default function MatchScreen({
               }}
             >
               <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="text-[9px] tracking-widest text-retro-accent">⚙ AYARLAR</p>
+                <p className="text-[9px] tracking-widest text-retro-accent">{t('match.settings')}</p>
                 <button
                   type="button"
                   className="retro-button-ghost px-3 py-1.5 text-[8px]"
@@ -750,12 +757,12 @@ export default function MatchScreen({
                     setSettingsOpen(false);
                   }}
                 >
-                  KAPAT
+                  {t('nav.close')}
                 </button>
               </div>
 
               <p className="mb-3 text-[7px] leading-relaxed text-white/45">
-                Tuşlar aşağıda duruyor; ayarı çekerken değiştiklerini görürsün.
+                {t('settings.matchHint')}
               </p>
               <ControlSettings
                 controls={controls}
@@ -764,7 +771,7 @@ export default function MatchScreen({
               />
 
               <div className="mt-5 border-t-2 border-white/10 pt-4">
-                <p className="mb-3 text-[8px] tracking-widest text-retro-accent">SES</p>
+                <p className="mb-3 text-[8px] tracking-widest text-retro-accent">{t('match.audio')}</p>
                 <AudioSettings
                   muted={muted}
                   onToggleMute={onToggleMute}
@@ -790,9 +797,9 @@ export default function MatchScreen({
           >
             {agSurumSorunu && (
               <p className="mx-auto inline-block max-w-xs border-4 border-white/25 bg-black/85 px-4 py-2 text-[9px] leading-relaxed text-turkiye-red">
-                SÜRÜM UYUŞMUYOR
+                {t('match.verMismatch')}
                 <span className="mt-2 block text-[7px] text-white/60">
-                  Sayfayı yenile. Sorun sürerse iki taraf da yenilesin.
+                  {t('match.verHint')}
                 </span>
               </p>
             )}
@@ -804,16 +811,15 @@ export default function MatchScreen({
             */}
             {!agSurumSorunu && agHicBaslamadi && (
               <p className="mx-auto inline-block max-w-xs border-4 border-white/25 bg-black/85 px-4 py-2 text-[9px] leading-relaxed text-turkiye-red">
-                MAÇ SUNUCUDA BAŞLAMADI
+                {t('match.notStarted')}
                 <span className="mt-2 block text-[7px] text-white/60">
-                  Bağlantı ayakta ama oyun durumu gelmiyor. Menüye dönüp
-                  yeniden dene; sürerse sunucu güncellenmeli.
+                  {t('match.notStartedHint')}
                 </span>
               </p>
             )}
             {!agSurumSorunu && !agHicBaslamadi && (
               <p className="mx-auto inline-block border-4 border-white/25 bg-black/85 px-4 py-2 text-[9px] text-retro-accent">
-                RAKİP BEKLENİYOR…
+                {t('match.oppWait')}
               </p>
             )}
           </div>
@@ -825,14 +831,14 @@ export default function MatchScreen({
             className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-black/90 px-4"
             role="dialog"
             aria-modal="true"
-            aria-label="Bağlantı sonlandı"
+            aria-label={t('match.dropAria')}
           >
             <p className="text-center text-sm text-turkiye-red sm:text-lg">{agKopuk}</p>
             <p className="max-w-xs text-center text-[7px] leading-relaxed text-white/55 sm:text-[8px]">
-              Çevrimiçi maç iki tarafla sürer. Menüye dönüp yeni bir oda açabilirsin.
+              {t('match.dropHint')}
             </p>
             <button type="button" className="retro-button" onClick={onQuit}>
-              MENÜYE DÖN
+              {t('match.toMenu')}
             </button>
           </div>
         )}
@@ -846,14 +852,14 @@ export default function MatchScreen({
             aria-labelledby="quit-confirm-title"
           >
             <p id="quit-confirm-title" className="text-center text-sm text-white sm:text-lg">
-              MAÇTAN ÇIKILSIN MI?
+              {t('match.quitTitle')}
             </p>
             <p className="max-w-xs text-center text-[7px] leading-relaxed text-white/55 sm:text-[8px]">
               {config.campaign === 'tournament'
-                ? 'Turnuvadan çekilmiş sayılırsın, kupa yolu kapanır.'
+                ? t('match.quitTour')
                 : config.campaign === 'survival'
-                  ? 'Koşu burada biter, puanın kaydedilmez.'
-                  : 'Skor kaydedilmez. Kadro seçimine dönersin.'}
+                  ? t('match.quitSurv')
+                  : t('match.quitMatch')}
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               <button
@@ -862,14 +868,14 @@ export default function MatchScreen({
                 className="retro-button px-6 py-3"
                 onClick={cancelQuit}
               >
-                DEVAM ET
+                {t('match.continue')}
               </button>
               <button
                 type="button"
                 className="retro-button-ghost px-6 py-3"
                 onClick={confirmQuit}
               >
-                ÇIK
+                {t('match.exit')}
               </button>
             </div>
           </div>
@@ -917,7 +923,7 @@ export default function MatchScreen({
               className="retro-button-ghost px-4 py-2 text-[8px]"
               onClick={fullscreen.toggle}
             >
-              {fullscreen.active ? 'TAM EKRANDAN ÇIK' : 'TAM EKRAN'}
+              {fullscreen.active ? t('match.fsOff') : t('match.fs')}
             </button>
           )}
           <button
@@ -925,22 +931,22 @@ export default function MatchScreen({
             className="retro-button-ghost px-4 py-2 text-[8px]"
             onClick={togglePause}
           >
-            {paused ? 'DEVAM' : 'DURAKLAT'}
+            {paused ? t('match.resumeBtn') : t('match.pauseBtn')}
           </button>
           <button
             type="button"
             className="retro-button-ghost px-4 py-2 text-[8px]"
             onClick={requestQuit}
           >
-            ÇIK
+            {t('match.exit')}
           </button>
         </div>
       </div>
 
       <p className="hidden text-center text-[7px] leading-relaxed text-white/35 fine:block">
         {twoPlayer
-          ? '1. OYUNCU: W A S D · BOŞLUK VUR   ·   2. OYUNCU: ← → ↑ ↓ · ENTER VUR   ·   ESC DURAKLAT'
-          : '← → HAREKET · ↑ ZIPLA · ↓ DALIŞ (HAVADA PLASE) · BOŞLUK VUR (TAM ZAMANINDA BAS!) · ESC DURAKLAT'}
+          ? t('match.keysDual')
+          : t('match.keysSolo')}
       </p>
     </div>
   );

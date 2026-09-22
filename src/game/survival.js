@@ -72,15 +72,31 @@ export function waveLabel(wave) {
 }
 
 /**
+ * Rütbe anahtarı — çeviri `rank.{key}` üzerinden.
+ * @param {number} points
+ */
+export function survivalRankKey(points) {
+  if (points >= 60) return 'efsane';
+  if (points >= 40) return 'sultan';
+  if (points >= 25) return 'milli';
+  if (points >= 15) return 'pro';
+  if (points >= 7) return 'genc';
+  return 'caylak';
+}
+
+/**
  * Koşu sonunda gösterilecek rütbe. Tamamen kozmetik ama bir hedef
  * duygusu veriyor: "23 puan" tek başına iyi mi kötü mü belli değil.
  * @param {number} points
  */
 export function survivalRank(points) {
-  if (points >= 60) return 'EFSANE';
-  if (points >= 40) return 'SULTAN';
-  if (points >= 25) return 'MİLLÎ OYUNCU';
-  if (points >= 15) return 'PROFESYONEL';
-  if (points >= 7) return 'GENÇ TAKIM';
-  return 'ÇAYLAK';
+  const TR = {
+    efsane: 'EFSANE',
+    sultan: 'SULTAN',
+    milli: 'MİLLÎ OYUNCU',
+    pro: 'PROFESYONEL',
+    genc: 'GENÇ TAKIM',
+    caylak: 'ÇAYLAK',
+  };
+  return TR[survivalRankKey(points)];
 }

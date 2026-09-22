@@ -244,5 +244,6 @@ export function tournamentSummary(state) {
     champion,
     /** Oynanan son turun adı — şampiyonlukta final. */
     lastRoundLabel: TOURNAMENT_ROUNDS[lastIndex].label,
+    lastRoundId: TOURNAMENT_ROUNDS[lastIndex].id,
   };
 }

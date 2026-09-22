@@ -1,4 +1,5 @@
 import { lockLandscape } from '../utils/fullscreen.js';
+import { t } from '../i18n/index.js';
 
 /**
  * Yatay zorunluluğu.
@@ -24,12 +25,12 @@ export default function RotateGate() {
         {/* Büyük başlıklardaki `text-outline-red` bu punto da bulanık
             okunuyor; düz piksel gölgesi daha net. */}
         <h2 id="rotate-gate-title" className="text-shadow-pixel text-sm leading-relaxed text-turkiye-red">
-          CİHAZI YATAY ÇEVİR
+          {t('rotate.title')}
         </h2>
         <p className="mt-4 text-[8px] leading-relaxed text-white/60">
-          Retro Voleybol yatay ekran için tasarlandı.
+          {t('rotate.body')}
           <br />
-          Sahanın tamamını görmek için telefonunu yan çevir.
+          {t('rotate.body2')}
         </p>
       </div>
 
@@ -45,11 +46,11 @@ export default function RotateGate() {
           lockLandscape();
         }}
       >
-        YATAYA KİLİTLE
+        {t('rotate.lock')}
       </button>
 
       <p className="max-w-[16rem] text-[7px] leading-relaxed text-white/30">
-        Ekran döndürme kilidi açıksa cihaz ayarlarından kapatman gerekebilir.
+        {t('rotate.hint')}
       </p>
     </div>
   );

@@ -48,7 +48,8 @@ eskiVeriyiTasi();
  * @typedef {{ scale: number, opacity: number, swap: boolean }} ControlPrefs
  * @typedef {{ muted: boolean, musicVolume: number, sfxVolume: number,
  *   controls: ControlPrefs, mode: string, difficulty: string, format: string,
- *   opponentId: string, homeIds: string[], tutorialSeen: boolean }} Prefs
+ *   opponentId: string, homeIds: string[], tutorialSeen: boolean,
+ *   lang: 'tr'|'en'|null }} Prefs
  */
 
 /**
@@ -91,6 +92,11 @@ export const DEFAULT_PREFS = {
   opponentId: 'random',
   homeIds: ['gizel-orgen'],
   tutorialSeen: false,
+  /**
+   * Arayüz dili. `null` = henüz seçilmedi; ilk açılışta tarayıcı
+   * dilinden tahmin edilir. Eski kayıtlarda alan yoksa Türkçe.
+   */
+  lang: null,
 };
 
 /** @type {Records} */
@@ -160,6 +166,10 @@ export function loadPrefs() {
       opponentId: typeof parsed.opponentId === 'string' ? parsed.opponentId : DEFAULT_PREFS.opponentId,
       homeIds,
       tutorialSeen: Boolean(parsed.tutorialSeen),
+      lang:
+        parsed.lang === 'en' || parsed.lang === 'tr'
+          ? parsed.lang
+          : 'tr',
     };
   } catch {
     return freshDefaults();

@@ -1,4 +1,5 @@
 import { kaliteAdi } from '../game/baglantiKalite.js';
+import { t } from '../i18n/index.js';
 
 /**
  * Bağlantı kalitesi göstergesi — üç piksel çubuk.
@@ -37,7 +38,7 @@ export default function BaglantiGostergesi({ ms, className = '' }) {
   return (
     <div
       className={`flex items-end gap-[3px] ${className}`}
-      title={`Bağlantı: ${ms} ms`}
+      title={t('net.ping', { n: ms })}
     >
       {/*
         Çubuklar SVG değil düz div: üçü de tam sayı yükseklikte ve

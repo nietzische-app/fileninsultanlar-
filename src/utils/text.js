@@ -1,19 +1,21 @@
 /**
- * Türkçe metin yardımcıları.
+ * Dil-duyarlı metin yardımcıları.
  */
 
+import { getLang, dilLocale } from '../i18n/index.js';
+
 /**
- * Türkçe kurallara göre büyük harfe çevirir.
+ * Geçerli dile göre büyük harfe çevirir.
  *
  * JavaScript'in varsayılan `toUpperCase()` metodu İngilizce eşlemesi
  * yapar: "Gizem" → "GIZEM" (noktasız I). Türkçede doğrusu "GİZEM"dir.
- * Oyunun arayüzü tamamen Türkçe olduğu için her yerde bu kullanılmalı.
+ * İngilizce arayüzde ise noktasız I doğrudur.
  *
  * @param {string} value
  * @returns {string}
  */
 export function upper(value) {
-  return String(value ?? '').toLocaleUpperCase('tr-TR');
+  return String(value ?? '').toLocaleUpperCase(dilLocale());
 }
 
 /** Türkçe ünlüler, kalınlık ve yuvarlaklığa göre. */
@@ -59,4 +61,18 @@ export function ilgiEki(value) {
   if (UNLULER[sonHarf]) ek = `n${ek}`;
 
   return `${ad}'${upper(ek)}`;
+}
+
+/**
+ * Ada iyelik takısı: TR `NORDİK'İN`, EN `NORDIK'S`.
+ *
+ * @param {string} value
+ */
+export function iyelik(value) {
+  if (getLang() === 'en') {
+    const ad = String(value ?? '').trim();
+    if (!ad) return '';
+    return /s$/i.test(ad) ? `${ad}'` : `${ad}'s`;
+  }
+  return ilgiEki(value);
 }

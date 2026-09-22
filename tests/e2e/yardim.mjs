@@ -22,6 +22,9 @@ export const VARSAYILAN_TERCIH = {
   format: 'practice',
   opponentId: 'atlas',
   homeIds: ['gizel-orgen'],
+  // Playwright Chromium en-US; dil yoksa tarayıcı İngilizceye çeker
+  // ve AYARLAR / MAÇA BAŞLA arayan testler kırılır.
+  lang: 'tr',
 };
 
 export async function tarayiciAc() {
