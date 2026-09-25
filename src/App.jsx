@@ -706,6 +706,7 @@ export default function App() {
           controls={controls}
           onControls={changeControls}
           onReset={resetSettings}
+          onTutorial={openTutorial}
         />
       )}
 
@@ -715,6 +716,8 @@ export default function App() {
           onBack={tutorialFromMenu ? goHome : undefined}
           muted={muted}
           onToggleMute={toggleMute}
+          controls={controls}
+          onControls={changeControls}
         />
       )}
 
