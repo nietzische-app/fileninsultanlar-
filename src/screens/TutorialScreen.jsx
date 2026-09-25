@@ -12,7 +12,7 @@ import {
 } from '../components/tutorialAnim.js';
 
 const STEP_COUNT = 2;
-const GLOW_MS = 1500;
+const GLOW_MS = 2400;
 
 /**
  * Piksel parmak — 16×16, işaret parmağı sol-altta dursun diye
@@ -68,6 +68,8 @@ export default function TutorialScreen({
   const areaRef = useRef(null);
   const padRef = useRef(null);
   const grabRef = useRef({ dx: 0, dy: 0, ox: 0, oy: 0 });
+  const draggingRef = useRef(false);
+  const userPosRef = useRef(null);
   const reducedRef = useRef(false);
 
   useEffect(() => {
@@ -160,6 +162,8 @@ export default function TutorialScreen({
     const rect = areaRef.current?.getBoundingClientRect();
     if (!rect) return;
     Sfx.unlock();
+    draggingRef.current = true;
+    userPosRef.current = { x: pos.x, y: pos.y };
     setDragging(true);
     grabRef.current = {
       dx: e.clientX - rect.left - pos.x,
@@ -170,7 +174,7 @@ export default function TutorialScreen({
   };
 
   const onPointerMove = (e) => {
-    if (!dragging || !areaRef.current) return;
+    if (!draggingRef.current || !areaRef.current) return;
     const rect = areaRef.current.getBoundingClientRect();
     const next = padSinirla(
       e.clientX - rect.left - grabRef.current.dx,
@@ -179,14 +183,16 @@ export default function TutorialScreen({
       rect.width,
       rect.height,
     );
+    userPosRef.current = next;
     setUserPos(next);
   };
 
   const onPointerUp = () => {
-    if (!dragging) return;
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
     setDragging(false);
-    const here = userPos ?? pos;
-    if (yeterinceSuruklendi(here.x - grabRef.current.ox, here.y - grabRef.current.oy)) {
+    const here = userPosRef.current;
+    if (here && yeterinceSuruklendi(here.x - grabRef.current.ox, here.y - grabRef.current.oy)) {
       gitIki();
     }
   };
@@ -209,7 +215,7 @@ export default function TutorialScreen({
           <MuteButton muted={muted} onToggle={onToggleMute} />
           <button
             type="button"
-            className="min-h-10 px-3 py-2 text-[8px] text-white/55 underline-offset-2 hover:text-white hover:underline"
+            className="retro-button-ghost min-h-10 px-3 py-2 text-[8px]"
             onClick={() => finish(true)}
           >
             {t('tut.skip')}
