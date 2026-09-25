@@ -21,6 +21,7 @@ export default function SettingsScreen({
   controls,
   onControls,
   onReset,
+  onTutorial,
 }) {
   return (
     <div className="relative mx-auto flex min-h-full w-full max-w-2xl flex-col gap-5 px-4 py-8 sm:py-10">
@@ -63,6 +64,27 @@ export default function SettingsScreen({
         </p>
         <ControlSettings controls={controls} onControls={onControls} />
       </section>
+
+      {onTutorial && (
+        <section className="retro-panel px-5 py-4">
+          <h2 className="mb-3 text-[8px] tracking-widest text-retro-accent">{t('tut.kicker')}</h2>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[7px] leading-relaxed text-white/45">
+              {t('tut.replayHint')}
+            </p>
+            <button
+              type="button"
+              className="retro-button-ghost shrink-0 px-4 py-2 text-[8px]"
+              onClick={() => {
+                Sfx.select();
+                onTutorial();
+              }}
+            >
+              {t('tut.replay')}
+            </button>
+          </div>
+        </section>
+      )}
 
       <section className="retro-panel px-5 py-4">
         <h2 className="mb-3 text-[8px] tracking-widest text-retro-accent">{t('settings.reset')}</h2>
