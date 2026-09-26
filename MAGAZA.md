@@ -60,12 +60,13 @@ yazı tipi (`docs/yazitipi.md`, OFL lisanslı).
 - **Yayın imzası yapılandırması.** `android/keystore.properties` varsa
   `bundleRelease` imzalı üretiyor, yoksa imzasız. Anahtar ve parolalar
   `.gitignore`'da.
-- **`targetSdk 35`.** Şablon 34 ile geliyordu; Play Store 2025'ten beri
-  34'ü reddediyor.
+- **`targetSdk 36`.** 35 ile üretilen paket 11 Eylül 2026'da
+  "hedeflemesi gereken en düşük API düzeyi 36" diye reddedildi.
+  `android/variables.gradle` içinde 36.
 - **Gizlilik politikası** — `public/gizlilik.html`, ayarlar ekranından
   bağlantılı. Aşağıda ayrıntısı var.
 - **Mağaza ekran görüntüsü betiği** — `npm run magaza-gorsel`.
-- **`.aab` üreten CI işi** — `.github/workflows/aab.yml`. Aşağıda.
+- **`.aab` üreten CI işi** — `.github/workflows/android-aab.yml`. Aşağıda.
 
 ---
 
@@ -157,6 +158,11 @@ duygusu verirdi.
 #### Kullanım
 
 GitHub → **Actions** → **android aab** → **Run workflow**.
+
+**Yarın üretim paketi:** dal seçicisinde `main` kullanma. `main` hâlâ
+**0.1.1** — R8, İngilizce, görsel eğitim ve ONLINE/SINGLEPLAYER onda
+yok. `Use workflow from` olarak **`cursor/tutorial-gorsel-89c3`**
+(sürüm **0.1.7 / 107**) seç; bu dal `main`'e girdiyse o zaman `main`.
 
 Bittiğinde koşumun altındaki **Artifacts** bölümünden `.aab` iniyor;
 doğrudan Play Console'a yükleniyor.
@@ -306,15 +312,24 @@ görünüyor. Bunu belirtmemek sonradan sorun çıkarır.
 ## Sırada ne var
 
 1. ~~Google Play Console hesabı~~ ✅
-2. ~~Gizlilik politikası~~ ✅ `public/gizlilik.html`
-3. ~~Ekran görüntüsü üretimi~~ ✅ `npm run magaza-gorsel`
-4. **İmza anahtarını üret ve GitHub secret'larını gir** (yukarıda,
-   bölüm 1). Bundan sonrası tek tık.
+2. ~~Gizlilik politikası~~ ✅ `https://retrovoleybol.online/gizlilik.html`
+   (308 ile `www.` altına düşüyor; sayfa 200)
+3. ~~Ekran görüntüsü üretimi~~ ✅ `npm run magaza-gorsel` — **ama**
+   mod adları değişti. Eski karelerde HIZLI MAÇ / HEMEN OYNA varsa
+   yarın yüklemeden önce `npm run magaza-gorsel` ile yenile.
+4. ~~İmza anahtarı + GitHub secret'ları~~ ✅ 18 Eylül 2026 AAB koşumu
+   `KEYSTORE_BASE64` ile **imzalı** paket üretti. Anahtarın yedeği
+   hâlâ sende; kaybedersen güncelleme imzalanamaz.
 5. ~~Öne çıkan görsel (1024×500)~~ ✅ `npm run magaza-gorsel`
-6. **İlk imzalı `.aab`** → Play Console **kapalı test** kanalı. Yayın
-   değil: kendi telefonunda gerçek mağaza kurulumuyla denemek için.
-   Kapalı test telif cevabından bağımsız yapılabilir — uygulama
-   herkese açık listelenmiyor.
-7. **Telif cevabı** — herkese açık yayının önünde duran tek şey.
-   (TVF'den bekleniyor.)
-8. iOS: Mac erişimi çözülünce.
+6. **0.1.7 imzalı `.aab`** — henüz bu daldan üretilmedi. Actions →
+   android aab → dal: `cursor/tutorial-gorsel-89c3`. Artifact'taki
+   `mapping.txt` de Play'e gider (R8 açık).
+7. **Kapalı test 12 kullanıcı / 14 gün** — kişisel hesapta üretime
+   çıkmanın şartı. Pano → "Üretim erişimi" ne diyor, oradan bak.
+8. **Telif / TVF cevabı** — herkese açık yayında hâlâ duruyorsa
+   inceleme takılır. Konsolda o görevin durumunu sen görürsün.
+9. iOS: Mac erişimi çözülünce.
+
+Kod tarafı (lint, 525 test, üretim `vite` yapısı, `targetSdk 36`,
+R8, yalnız `INTERNET`, röle `paketSurum` 2) 26 Eylül 2026 kontrolünde
+yeşil. Play Console'un kendisine bu ortamdan bakılamıyor.
