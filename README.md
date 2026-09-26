@@ -493,7 +493,7 @@ npm run magaza-gorsel  # mağaza ekran görüntüleri (önce `npm run dev`)
 ```
 
 İmzalı `.aab` GitHub Actions'ta üretiliyor
-(`.github/workflows/aab.yml`, elle tetikleniyor) — yerel Android SDK
+(`.github/workflows/android-aab.yml`, elle tetikleniyor) — yerel Android SDK
 kurulumu gerekmiyor. Ayrıntı: [`MAGAZA.md`](MAGAZA.md).
 
 `npm run e2e` kendi geliştirme sunucusunu açar ve gerçek tarayıcıda,

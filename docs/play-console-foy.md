@@ -14,11 +14,14 @@ başlık, sağda yazacağın/işaretleyeceğin şey.
 | `tablet-1-menu / 3-mac .png` | sohbette gönderildi |
 
 Paket adı: **`app.retrovoleybol.oyun`** (`.aab`'den otomatik okunur,
-elle girmen gerekmez). Sürüm: **0.1.1 (101)**.
+elle girmen gerekmez). Sürüm: **0.1.7 (107)**.
 
 > 0.1.0 (100) Play tarafından reddedildi: hedef API düzeyi 35'ti, artık
-> en az 36 isteniyor. Düzeltildi ve sürüm artırıldı — aynı sürüm kodunu
-> ikinci kez yüklemek zaten reddedilir.
+> en az 36 isteniyor. Düzeltildi. **`main` hâlâ 0.1.1 (101)** — R8,
+> İngilizce, görsel eğitim ve ONLINE/SINGLEPLAYER onda yok. Yarın
+> yüklenecek `.aab` Actions → android aab → **Use workflow from:
+> `cursor/tutorial-gorsel-89c3`** ile üretilmeli. Aynı sürüm kodunu
+> ikinci kez yüklemek reddedilir; 107 Play'de yoksa sorun yok.
 
 ---
 
@@ -51,13 +54,14 @@ elle girmen gerekmez). Sürüm: **0.1.1 (101)**.
 
 1. **Test and release → Testing → Internal testing → Create new release**
 2. Play App Signing çıkarsa → **Kabul et** (Continue).
-3. `app-release.aab` dosyasını sürükle. Yükleme bitince **0.1.1 (101)**
+3. `app-release.aab` dosyasını sürükle. Yükleme bitince **0.1.7 (107)**
    yazmalı.
-4. **Release name:** `0.1.1 (101)` (kendiliğinden gelir, dokunma)
+4. **Release name:** `0.1.7 (107)` (kendiliğinden gelir, dokunma)
 5. **Release notes** — `<tr-TR>` bloğunun içine:
 
    ```
-   İlk kapalı test sürümü.
+   ONLINE ve SINGLEPLAYER, İngilizce dil, görsel tuş eğitimi,
+   tam ekran dolgu ve R8 ile yayın paketi.
    ```
 
 6. **Testers** sekmesi → **Create email list** → listeye kendi Google
@@ -159,7 +163,7 @@ Hepsi **Hayır**.
 | Contact email | kendi e-postan |
 | Website (isteğe bağlı) | `https://retrovoleybol.online` |
 
-**Full description** (4000 sınır · 693 karakter — olduğu gibi yapıştır):
+**Full description** (4000 sınır · 742 karakter — olduğu gibi yapıştır):
 
 > Metinde "sultanlar" kelimesi GEÇMEZ. Kurgusallaştırmada tam da o ad
 > kaldırılmıştı; mağaza metninde durması, koddan temizlenen çağrışımı
@@ -169,9 +173,10 @@ Hepsi **Hayır**.
 Kırmızı-beyaz bir saha, bayraklarla dolu bir tribün ve gerçek voleybol
 kuralları üzerine kurulu 8 bit bir arcade.
 
-· HIZLI MAÇ — rakibi, formatı ve zorluğu sen seç
+· SINGLEPLAYER — rakibi, formatı ve zorluğu sen seç
 · TURNUVA — 5 tur, tek yenilgi eler, finali geçen kupayı kaldırır
-· ÇEVRİMİÇİ — tek dokunuşta gerçek rakip, rövanş desteğiyle
+· ONLINE — tek dokunuşta gerçek rakip, rövanş desteğiyle
+· ARKADAŞLA OYNA — oda koduyla tanıdığın biriyle
 · CO-OP ve KARŞILIKLI — aynı klavyede iki kişi
 · HAYATTA KALMA — dalgalar sertleşir, canın biterse biter
 
@@ -211,12 +216,35 @@ tamamlayınca **Retro Voleybol** olur.
 2. Play Store'dan kur (bağlantının altındaki "Download it on Google Play").
 3. **Çevrimiçi modu dene** — röle 60 Hz'de çalışıyor, akıcılık farkı
    orada görünür.
-4. Sorun yoksa Production kanalına aynı `.aab` ile çıkılır.
+4. Sorun yoksa **bölüm 7** ile Production kanalına **aynı 0.1.7 `.aab`**
+   ile çıkılır — `main`'deki eski 0.1.1 değil.
+
+---
+
+## 7. Üretim (Production)
+
+1. Actions → **android aab** → **Run workflow** → Use workflow from:
+   **`cursor/tutorial-gorsel-89c3`**. Bittiğinde Artifacts'tan
+   `app-release.aab` **ve** `mapping.txt` indir.
+2. Play Console → Test and release → **Production** → Create new release.
+3. AAB'yi sürükle. **0.1.7 (107)** yazmalı. 101 veya 102 görürsen
+   yanlış daldan paket üretilmiş demektir; yükleme.
+4. `mapping.txt` → App integrity / deobfuscation file. R8 açık; bu
+   dosya olmadan kilitlenme izleri okunmaz.
+5. Mağaza listesi (bölüm 4) güncel mod adlarıyla: **ONLINE**,
+   **SINGLEPLAYER**. Eski ekran görüntülerinde HIZLI MAÇ varsa
+   `npm run magaza-gorsel` ile yenile.
+6. Gizlilik: `https://retrovoleybol.online/gizlilik.html` (308 →
+   `https://www.retrovoleybol.online/gizlilik.html`, ikisi de açılıyor).
+7. **Kişisel hesap:** kapalı testte 12 kullanıcı / 14 gün dolmadan
+   üretim başvurusu reddedilir. Pano → "Üretim erişimi".
+8. Telefonda test kurulumundan **ONLINE** maçı aç — röle ayakta,
+   `paketSurum` 2, istemciyle uyumlu.
 
 ---
 
 ## Sonraki sürümler
 
-`package.json` içindeki `version` artırılır (`0.1.1` → `0.1.2`),
+`package.json` içindeki `version` artırılır (`0.1.7` → `0.1.8`),
 `main`'e girer, Actions → android aab → Run workflow. `versionCode`
-sürümden türetiliyor (`0.1.2` → `102`), elle artırmak gerekmiyor.
+sürümden türetiliyor (`0.1.8` → `108`), elle artırmak gerekmiyor.
