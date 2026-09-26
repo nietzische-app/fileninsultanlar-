@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   arrivalHeight,
+  chaseError,
+  chaseReaction,
+  chaseSpeed,
   interceptPoint,
   netCrossing,
   predictLanding,
@@ -13,7 +16,7 @@ import {
   mayTouch,
   speedPenalty,
 } from './reach.js';
-import { GROUND_Y, NET, PHYSICS, PLAYER } from './constants.js';
+import { DIFFICULTY, GROUND_Y, NET, PHYSICS, PLAYER } from './constants.js';
 
 /**
  * Bu testler üç somut hatayı bekçiliyor. Üçü de ölçümle bulundu ve üçü
@@ -272,5 +275,49 @@ describe('blok — file geçişi', () => {
     const bize = ball({ x: NET.x - 120, y: NET.topY - 40, vx: 400, vy: 60 });
     expect(netCrossing(bize, 'away')).not.toBeNull();
     expect(netCrossing(bize, 'home')).toBeNull();
+  });
+});
+
+describe('servis karşılama kolları', () => {
+  const servis = () => ball({ vx: 720, vy: 180, serveUntouched: true });
+  const ralli = () => ball({ vx: 420, vy: 80, serveUntouched: false });
+
+  it('serviste receiveError, rallide error kullanılır', () => {
+    expect(chaseError(DIFFICULTY.zor, servis())).toBe(DIFFICULTY.zor.receiveError);
+    expect(chaseError(DIFFICULTY.zor, ralli())).toBe(DIFFICULTY.zor.error);
+    expect(chaseError(DIFFICULTY.zor, servis())).toBeLessThan(
+      chaseError(DIFFICULTY.zor, ralli()),
+    );
+  });
+
+  it('zor servis sapması temas eşiğinin altında, kolay üstünde', () => {
+    const s = servis();
+    const reach = contactDistance(player(), s, { acting: true });
+    expect(chaseError(DIFFICULTY.zor, s)).toBeLessThan(reach);
+    expect(chaseError(DIFFICULTY.kolay, s)).toBeGreaterThan(reach);
+    expect(chaseError(DIFFICULTY.zor, s)).toBeLessThan(chaseError(DIFFICULTY.kolay, s));
+  });
+
+  it('kolay rakip rallide yavaşlar ama servise receiveSpeed ile yetişir', () => {
+    expect(chaseSpeed(DIFFICULTY.kolay, ralli())).toBe(DIFFICULTY.kolay.speed);
+    expect(chaseSpeed(DIFFICULTY.kolay, servis())).toBe(DIFFICULTY.kolay.receiveSpeed);
+    expect(chaseSpeed(DIFFICULTY.kolay, servis())).toBeGreaterThan(
+      chaseSpeed(DIFFICULTY.kolay, ralli()),
+    );
+  });
+
+  it('serviste tepki ralliden hızlıdır', () => {
+    expect(chaseReaction(DIFFICULTY.kolay, servis())).toBe(
+      DIFFICULTY.kolay.receiveReaction,
+    );
+    expect(chaseReaction(DIFFICULTY.kolay, servis())).toBeLessThan(
+      chaseReaction(DIFFICULTY.kolay, ralli()),
+    );
+  });
+
+  it('receive alanı yoksa servis sapması temas eşiğine yakın tavanda kalır', () => {
+    const eski = { error: 130, speed: 0.5, reaction: 0.4 };
+    expect(chaseError(eski, servis())).toBeLessThanOrEqual(52);
+    expect(chaseSpeed(eski, servis())).toBe(0.5);
   });
 });

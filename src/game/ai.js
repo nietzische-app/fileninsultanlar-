@@ -3,7 +3,9 @@
  *
  * Yaklaşım: topun düşeceği noktayı ileri simülasyonla tahmin et, oraya
  * yürü, temas mesafesine girince vuruş tuşunu bas. Zorluk kademesi
- * tepki gecikmesi, hata payı ve hız çarpanıyla ayarlanır.
+ * tepki gecikmesi, hata payı ve hız çarpanıyla ayarlanır — servis
+ * karşılamada ayrı `receive*` kolları kullanılır, yoksa hücumu
+ * yumuşatmak rakibi as'a mahkûm eder.
  *
  * Yapay zekâ oyuncunun kullandığı `input` nesnesinin aynısını doldurur —
  * yani motor açısından AI ile insan oyuncu arasında fark yoktur.
@@ -169,6 +171,46 @@ export function diveDistance(t) {
 }
 
 /**
+ * Servis karşılama, ralli savunusundan ayrı bir kol.
+ *
+ * `error`/`speed`/`reaction` hücumu ve ralliyi yumuşatmak için
+ * düşürülebilir. Aynı değerler serviste de kullanılırsa rakip topa
+ * yetişemez — servis oyundaki en hızlı toptur ve nişan kayması doğrudan
+ * as olur. `serveUntouched` iken receive* değerlerine geçilir.
+ *
+ * Receive alanı yoksa (eski kayıt, kısmi nesne) temas eşiğine yakın
+ * bir tavan / mevcut hıza taban uygulanır; sessizce eski davranışa
+ * dönülmez.
+ *
+ * @param {object} difficulty
+ * @param {object} [ball]
+ */
+export function chaseError(difficulty, ball) {
+  if (ball?.serveUntouched) {
+    return difficulty.receiveError ?? Math.min(difficulty.error ?? 100, 52);
+  }
+  return difficulty.error ?? 100;
+}
+
+/** @param {object} difficulty @param {object} [ball] */
+export function chaseSpeed(difficulty, ball) {
+  const speed = difficulty.speed ?? 1;
+  if (ball?.serveUntouched) {
+    return Math.max(speed, difficulty.receiveSpeed ?? speed);
+  }
+  return speed;
+}
+
+/** @param {object} difficulty @param {object} [ball] */
+export function chaseReaction(difficulty, ball) {
+  const reaction = difficulty.reaction ?? 0.3;
+  if (ball?.serveUntouched) {
+    return Math.min(reaction, difficulty.receiveReaction ?? reaction);
+  }
+  return reaction;
+}
+
+/**
  * Bir AI oyuncusunun girdilerini günceller.
  *
  * @param {object} player  Motor içindeki oyuncu nesnesi
@@ -201,11 +243,11 @@ export function updateAI(player, ball, opts, dt) {
   // --- Tepki gecikmesi: hedefi belirli aralıklarla yenile ---
   player.aiTimer -= dt;
   if (player.aiTimer <= 0) {
-    player.aiTimer = difficulty.reaction / slowFactor;
+    player.aiTimer = chaseReaction(difficulty, ball) / slowFactor;
 
     if (chasing) {
       const landing = interceptPoint(player, ball);
-      const error = (Math.random() * 2 - 1) * difficulty.error;
+      const error = (Math.random() * 2 - 1) * chaseError(difficulty, ball);
       player.aiTargetX = landing.x + error;
     } else {
       player.aiTargetX = coverSpot(player, ball, homeX, yieldTo);
@@ -230,7 +272,7 @@ export function updateAI(player, ball, opts, dt) {
   }
 
   // Zorluk hızı: motor bu çarpanı okuyup hareketi ölçekler
-  player.aiSpeedScale = difficulty.speed * slowFactor;
+  player.aiSpeedScale = chaseSpeed(difficulty, ball) * slowFactor;
 
   /*
    * --- Topa temas kararı ---
@@ -399,10 +441,11 @@ export function updateAI(player, ball, opts, dt) {
       const landing = predictLanding(ball);
       const gap = Math.abs(landing.x - player.x);
       const runReach =
-        player.hitRadius + PHYSICS.playerSpeed * difficulty.speed * landing.t;
+        player.hitRadius +
+        PHYSICS.playerSpeed * chaseSpeed(difficulty, ball) * landing.t;
 
       // Yapay zekâ da insan gibi mesafeyi yanlış ölçebilir
-      const misjudge = (Math.random() * 2 - 1) * difficulty.error * 0.4;
+      const misjudge = (Math.random() * 2 - 1) * chaseError(difficulty, ball) * 0.4;
 
       // Dalış yalnızca son çaredir. Belirgin bir fark yoksa koşmak
       // her zaman daha iyidir: ıskalanan dalış oyuncuyu yarım saniye
