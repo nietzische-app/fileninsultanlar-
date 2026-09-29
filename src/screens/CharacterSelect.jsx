@@ -12,7 +12,7 @@ import {
 } from '../game/players.js';
 import { DIFFICULTY, FORMATS, SURVIVAL } from '../game/constants.js';
 import {
-  kullanilabilir, bedel, sonrakiHedef, FP_ACIK,
+  kullanilabilir, bedel, sonrakiHedef,
 } from '../game/ilerleme.js';
 import { OPPONENT_TEAMS } from '../game/opponents.js';
 import { getGameMode } from '../game/modes.js';
@@ -51,11 +51,12 @@ function Fact({ label, value }) {
  * @param {string[]} ids
  * @param {string} mode
  * @param {string[]} acilanlar
+ * @param {boolean} [fpAcik]
  */
-function sanitizeHomeIds(ids, mode, acilanlar = []) {
+function sanitizeHomeIds(ids, mode, acilanlar = [], fpAcik = false) {
   const required = mode === '2v2' ? 2 : 1;
   const valid = (Array.isArray(ids) ? ids : [])
-    .filter((id) => Boolean(getPlayerById(id)) && kullanilabilir(id, acilanlar))
+    .filter((id) => Boolean(getPlayerById(id)) && kullanilabilir(id, acilanlar, fpAcik))
     .slice(0, required);
   if (valid.length === 0) return [DEFAULT_PLAYER_ID];
   return valid;
@@ -79,6 +80,7 @@ export default function CharacterSelect({
   initialHomeIds,
   ilerleme = { puan: 0, acilanlar: [] },
   onUnlock,
+  fpAcik = false,
 }) {
   const gameMode = getGameMode(modeId);
   const modYazi = modeYazi(gameMode, {
@@ -107,6 +109,7 @@ export default function CharacterSelect({
       initialHomeIds,
       playMode === 'coop' || initialMode === '2v2' ? '2v2' : '1v1',
       ilerleme.acilanlar,
+      fpAcik,
     )
   );
   const [focused, setFocused] = useState(() => selected[0] ?? DEFAULT_PLAYER_ID);
@@ -138,10 +141,10 @@ export default function CharacterSelect({
   const acilanlar = useMemo(() => ilerleme?.acilanlar ?? [], [ilerleme]);
   const puan = ilerleme?.puan ?? 0;
   const hedef = useMemo(
-    () => (FP_ACIK ? sonrakiHedef(puan, acilanlar) : null),
-    [puan, acilanlar],
+    () => (fpAcik ? sonrakiHedef(puan, acilanlar) : null),
+    [puan, acilanlar, fpAcik],
   );
-  const odakAcik = kullanilabilir(focused, acilanlar);
+  const odakAcik = kullanilabilir(focused, acilanlar, fpAcik);
   const odakBedel = bedel(focused);
 
   const togglePlayer = (id) => {
@@ -151,7 +154,7 @@ export default function CharacterSelect({
      * düğmesi. Basışı tamamen yok saymak, oyuncuya neyi kaçırdığını
      * göstermeden "hayır" demek olurdu.
      */
-    if (!kullanilabilir(id, acilanlar)) {
+    if (!kullanilabilir(id, acilanlar, fpAcik)) {
       Sfx.select();
       setFocused(id);
       return;
@@ -411,7 +414,7 @@ export default function CharacterSelect({
         onlar `kullanilabilir`den besleniyor ve kapalıyken herkes
         açık olduğu için kendiliğinden yok oluyorlar.
       */}
-      {FP_ACIK && (
+      {fpAcik && (
         <div className="retro-panel flex flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div>
             <p className="text-[7px] tracking-widest text-white/40">{t('start.fp')}</p>
@@ -457,6 +460,7 @@ export default function CharacterSelect({
         acilanlar={acilanlar}
         puan={puan}
         kutlama={kutlama}
+        fpAcik={fpAcik}
       />
 
       {bonusRoster.length > 0 && (
@@ -476,6 +480,7 @@ export default function CharacterSelect({
             acilanlar={acilanlar}
             puan={puan}
             kutlama={kutlama}
+            fpAcik={fpAcik}
             guest
           />
         </div>
@@ -631,7 +636,7 @@ function Chip({ active, onClick, children, title }) {
 
 function RosterGrid({
   title, players, selected, focused, onSelect, onFocus, guest = false,
-  acilanlar = [], puan = 0, kutlama = null,
+  acilanlar = [], puan = 0, kutlama = null, fpAcik = false,
 }) {
   return (
     <div className="flex flex-col gap-2 sm:gap-3">
@@ -640,7 +645,7 @@ function RosterGrid({
         {players.map((player) => {
           const isSelected = selected.includes(player.id);
           const order = selected.indexOf(player.id) + 1;
-          const kilitli = !kullanilabilir(player.id, acilanlar);
+          const kilitli = !kullanilabilir(player.id, acilanlar, fpAcik);
           const yeniAlindi = kutlama === player.id;
           const fiyat = bedel(player.id);
           // Parası yeten kilit, yetmeyenden farklı görünüyor: biri davet

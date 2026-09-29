@@ -3,7 +3,7 @@ import ArenaBackdrop from '../components/ArenaBackdrop.jsx';
 import PixelAvatar from '../components/PixelAvatar.jsx';
 import MuteButton from '../components/MuteButton.jsx';
 import MusicVolume from '../components/MusicVolume.jsx';
-import { vitrinKadro, sonrakiHedef, FP_ACIK } from '../game/ilerleme.js';
+import { vitrinKadro, sonrakiHedef } from '../game/ilerleme.js';
 import { getPlayerById } from '../game/players.js';
 import { GAME_MODES } from '../game/modes.js';
 import { SURVIVAL } from '../game/constants.js';
@@ -47,6 +47,7 @@ export default function StartScreen({
   onMusicVolume,
   onSettings,
   onCollection,
+  fpAcik = false,
 }) {
   const [messageIndex, setMessageIndex] = useState(0);
   /*
@@ -75,8 +76,8 @@ export default function StartScreen({
    * bağlı olduğu için tek satırla birlikte kayboluyor.
    */
   const hedef = useMemo(
-    () => (FP_ACIK ? sonrakiHedef(ilerleme?.puan ?? 0, ilerleme?.acilanlar ?? []) : null),
-    [ilerleme]
+    () => (fpAcik ? sonrakiHedef(ilerleme?.puan ?? 0, ilerleme?.acilanlar ?? []) : null),
+    [ilerleme, fpAcik]
   );
 
   useEffect(() => {

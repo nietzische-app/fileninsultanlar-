@@ -8,8 +8,9 @@ import {
   waveLabel,
   waveOpponent,
 } from './survival.js';
-import { DIFFICULTY, SURVIVAL } from './constants.js';
+import { DIFFICULTY, PHASE, SURVIVAL } from './constants.js';
 import { OPPONENT_TEAMS } from './opponents.js';
+import Game from './Game.js';
 
 describe('dalga hesabı', () => {
   it('ilk puanlar 1. dalgada', () => {
@@ -112,5 +113,52 @@ describe('rütbe', () => {
     expect(seen[0]).toBe('ÇAYLAK');
     expect(seen[80]).toBe('EFSANE');
     expect(new Set(seen).size).toBe(6);
+  });
+});
+
+describe('hayatta kalma reklam devamı', () => {
+  function oyun(ek = {}) {
+    return new Game(null, {
+      bassiz: true,
+      campaign: 'survival',
+      reklamTeklif: true,
+      onState: () => {},
+      onFinish: () => {},
+      ...ek,
+    });
+  }
+
+  it('web teklifsiz bitirir', () => {
+    let bitti = 0;
+    const g = oyun({ reklamTeklif: false, onFinish: () => { bitti += 1; } });
+    g.lives = 0;
+    g.afterSurvivalPoint();
+    expect(g.phase).toBe(PHASE.MATCH_END);
+    expect(bitti).toBe(1);
+  });
+
+  it('mağazada teklif eder, reklamla bir can verir, ikinci hak yok', () => {
+    let bitti = 0;
+    const g = oyun({ onFinish: () => { bitti += 1; } });
+    g.lives = 0;
+    g.afterSurvivalPoint();
+    expect(g.phase).toBe(PHASE.SURVIVAL_CONTINUE);
+    expect(bitti).toBe(0);
+    expect(g.grantSurvivalContinue()).toBe(true);
+    expect(g.lives).toBe(1);
+    expect(g.phase).toBe(PHASE.READY);
+    g.lives = 0;
+    g.afterSurvivalPoint();
+    expect(g.phase).toBe(PHASE.MATCH_END);
+    expect(bitti).toBe(1);
+  });
+
+  it('reddetmek koşuyu bitirir', () => {
+    let bitti = 0;
+    const g = oyun({ onFinish: () => { bitti += 1; } });
+    g.lives = 0;
+    g.afterSurvivalPoint();
+    g.declineSurvivalContinue();
+    expect(bitti).toBe(1);
   });
 });

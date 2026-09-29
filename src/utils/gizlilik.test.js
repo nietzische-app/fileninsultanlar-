@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { GIZLILIK_YOLU, yerelKabukMu, gizlilikBaglantisi } from './gizlilik';
+import { GIZLILIK_YOLU, yerelKabukMu, magazaPaketiMi, gizlilikBaglantisi } from './gizlilik';
 
 describe('gizlilik bağlantısı', () => {
   it('yol göreli — alt klasörde servis edilirse de çalışsın', () => {
@@ -33,6 +33,7 @@ describe('yerelKabukMu', () => {
 
   it('yerel platformda true', () => {
     expect(yerelKabukMu({ Capacitor: { isNativePlatform: () => true } })).toBe(true);
+    expect(magazaPaketiMi({ Capacitor: { isNativePlatform: () => true } })).toBe(true);
   });
 
   it('eski/eksik köprüde çökmez', () => {

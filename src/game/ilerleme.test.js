@@ -19,6 +19,10 @@ import {
   BASLANGIC_KADRO,
   KAZANC,
   PERFORMANS,
+  reklamHakki,
+  reklamIsle,
+  gununIlkMaciMi,
+  cevrimiciMi,
 } from './ilerleme.js';
 import { ROSTER, DEFAULT_PLAYER_ID } from './players.js';
 import { DIFFICULTY } from './constants.js';
@@ -198,6 +202,55 @@ describe('maç kazancı', () => {
       macSonucu({ winner: 'away', sets: { home: 0, away: 2 } })
     ).toplam;
     expect(kayip).toBe(yerelKayip);
+  });
+
+  it('çevrimiçi bonus playMode=vs + agRol ile de işler', () => {
+    /*
+     * Motor playMode'u online kabul etmiyor; gerçek maç vs + agRol.
+     * Yalnızca 'online' string'ine bakmak bonusun ölmesi demekti.
+     */
+    const gercek = macKazanci(macSonucu({ playMode: 'vs', agRol: 'ev' })).toplam;
+    const etiket = macKazanci(macSonucu({ playMode: 'online' })).toplam;
+    expect(gercek).toBe(etiket);
+    expect(gercek).toBeGreaterThan(macKazanci(macSonucu({ playMode: 'vs' })).toplam);
+  });
+
+  it('ilk galibiyet / günlük / seri çarpanın DIŞINDA eklenir', () => {
+    const sade = macKazanci(macSonucu({ difficulty: 'ZOR' })).toplam;
+    const bonuslu = macKazanci(macSonucu({
+      difficulty: 'ZOR',
+      ilkGalibiyet: true,
+      gununIlki: true,
+      seri: 5,
+    })).toplam;
+    expect(bonuslu - sade).toBe(
+      KAZANC.ilkGalibiyet + KAZANC.gunluk + Math.min(KAZANC.seriTavan, 3 * KAZANC.seri)
+    );
+  });
+
+  it('bonus satırları da toplanınca tam toplamı verir', () => {
+    const k = macKazanci(macSonucu({
+      difficulty: 'ZOR',
+      ilkGalibiyet: true,
+      gununIlki: true,
+      seri: 5,
+    }));
+    expect(k.satirlar.reduce((a, x) => a + x.puan, 0)).toBe(k.toplam);
+  });
+
+  it('cevrimiciMi agRol / bayrak / eski etiketi tanır', () => {
+    expect(cevrimiciMi({ playMode: 'vs', agRol: 'ev' })).toBe(true);
+    expect(cevrimiciMi({ cevrimici: true, playMode: 'vs' })).toBe(true);
+    expect(cevrimiciMi({ playMode: 'online' })).toBe(true);
+    expect(cevrimiciMi({ playMode: 'vs' })).toBe(false);
+    expect(cevrimiciMi(null)).toBe(false);
+  });
+
+  it('hayatta kalmada zorluk çarpanı uygulanır', () => {
+    const govde = { campaign: 'survival', winner: null, survival: { points: 10 }, stats: {} };
+    const normal = macKazanci({ ...govde, difficulty: 'NORMAL' }).toplam;
+    const zor = macKazanci({ ...govde, difficulty: 'ZOR' }).toplam;
+    expect(zor).toBeGreaterThan(normal);
   });
 
   it('performans TAVANLI', () => {
@@ -580,6 +633,26 @@ describe('FP anahtarı — geçici kapatma', () => {
     const kilitli = ROSTER.find((p) => !BASLANGIC_KADRO.includes(p.id));
     expect(acikMi(kilitli.id, [])).toBe(false);
     expect(acikMi(kilitli.id, [kilitli.id])).toBe(true);
+  });
+
+  it('günün ilk maçı takvim gününe bakıyor', () => {
+    const now = Date.parse('2026-09-29T18:00:00Z');
+    expect(gununIlkMaciMi({ sonMacGun: '' }, now)).toBe(true);
+    expect(gununIlkMaciMi({ sonMacGun: '2026-09-29' }, now)).toBe(false);
+    expect(gununIlkMaciMi({ sonMacGun: '2026-09-28' }, now)).toBe(true);
+  });
+
+  it('günlük reklam tavanı dolunca reddeder', () => {
+    const now = Date.parse('2026-09-29T12:00:00Z');
+    expect(reklamHakki({ puan: 0, acilanlar: [] }, now).kalan).toBe(KAZANC.reklamGunlukTavan);
+    let durum = { puan: 10, acilanlar: [] };
+    for (let i = 0; i < KAZANC.reklamGunlukTavan; i += 1) {
+      const s = reklamIsle(durum, now);
+      expect(s.ok).toBe(true);
+      durum = s.durum;
+    }
+    expect(reklamIsle(durum, now).ok).toBe(false);
+    expect(reklamIsle(durum, Date.parse('2026-09-30T01:00:00Z')).ok).toBe(true);
   });
 
   it('kademe adları FP kapalıyken fiyat GÖSTERMİYOR', () => {

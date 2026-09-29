@@ -39,6 +39,14 @@ export function yerelKabukMu(kap = globalThis) {
 }
 
 /**
+ * Play Store paketi mi — Forma Puanı ve reklam bununla açılır.
+ * Web (Vercel) aynı JS'i çalıştırır ama Capacitor köprüsü yoktur.
+ */
+export function magazaPaketiMi(kap = globalThis) {
+  return yerelKabukMu(kap);
+}
+
+/**
  * Bağlantı elemanına verilecek nitelikler.
  *
  * @param {boolean} yerel `yerelKabukMu()` sonucu
