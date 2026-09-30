@@ -22,6 +22,10 @@
             "bu uygulama yatay" demek yeterli. `sensorLandscape`,
             `landscape` yerine seçildi çünkü telefonu ters çeviren
             (sol/sağ) oyuncuyu da doğru gösteriyor.
+
+            Play Analyzer bu kilidi kaldırmayı önerir. Kaldırma: dikey
+            tablette saha ve tuşlar kırılır, çevrimiçi çevirirken sayı
+            kaçar. Öneri Dismiss.
         -->
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
