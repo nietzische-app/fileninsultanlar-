@@ -166,12 +166,22 @@ jobs:
       - name: İmzayı doğrula
         if: ${{ inputs.imzala }}
         run: |
-          AAB=$(find android -name '*.aab' | head -1)
+          # Çıktı klasörü: AGP ara dosyayı da .aab diye yazıyor
+          # (`intermediates/.../intermediary-bundle.aab`) ve o İMZASIZ.
+          # `find android` onu önce bulunca Play'e gidecek paket imzalı
+          # olsa bile koşum "imzasız" deyip duruyordu.
+          AAB=$(find android/app/build/outputs/bundle/release -name '*.aab' | head -1)
           echo "paket: $AAB"
+          if [ -z "$AAB" ] || [ ! -f "$AAB" ]; then
+            echo "::error::Yayın .aab bulunamadı (outputs/bundle/release)."
+            find android -name '*.aab' -print || true
+            exit 1
+          fi
           if unzip -l "$AAB" | grep -q "META-INF/.*\.RSA\|META-INF/.*\.EC"; then
             echo "✓ imzalı"
           else
             echo "::error::Paket İMZASIZ — Play Store kabul etmez."
+            unzip -l "$AAB" | grep META-INF || true
             exit 1
           fi
 
