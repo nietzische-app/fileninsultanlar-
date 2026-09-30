@@ -40,8 +40,14 @@ import {
   turnuvaKazanci,
   yeniAcilabilirler,
   ac,
-  FP_ACIK,
+  gununIlkMaciMi,
+  reklamIsle,
+  reklamHakki,
+  bugunISO,
+  KAZANC,
 } from './game/ilerleme.js';
+import { magazaPaketiMi } from './utils/gizlilik.js';
+import { odulluGoster, reklamKur } from './ads/reklam.js';
 import { getGameMode } from './game/modes.js';
 import { useDil } from './i18n/DilBaglami.jsx';
 
@@ -94,6 +100,11 @@ export default function App() {
   /** Bu maçın FP kazancı — sonuç ekranındaki kalem dökümü. */
   const [kazanc, setKazanc] = useState(null);
   /**
+   * Play Store paketi: FP kilitleri + ödüllü reklam.
+   * Web'de false — kadronun tamamı açık, reklam yok.
+   */
+  const fpAcik = magazaPaketiMi();
+  /**
    * Rövanş oyları — {ben, rakip, bekleniyor}.
    *
    * Sunucu iki tarafın da istemesini bekliyor; ekran "sen istedin,
@@ -117,6 +128,10 @@ export default function App() {
     Sfx.setSfxVolume(initialPrefs.sfxVolume);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- yalnızca mount
   }, []);
+
+  useEffect(() => {
+    if (fpAcik) reklamKur();
+  }, [fpAcik]);
 
   const toggleMute = useCallback(() => {
     setMuted((prev) => {
@@ -399,7 +414,7 @@ export default function App() {
      * Kayıtlı bakiyeye DOKUNULMUYOR: geri açıldığında oyuncu kaldığı
      * yerden devam etsin (bkz. ilerleme.js `FP_ACIK`).
      */
-    if (!FP_ACIK) return;
+    if (!fpAcik) return;
 
     const mac = macKazanci(matchResult);
     const rozet = rozetKazanci(tazeRozetler);
@@ -415,7 +430,11 @@ export default function App() {
     const satirlar = [...mac.satirlar, ...rozet.satirlar, ...kupa.satirlar];
 
     setIlerleme((prev) => {
-      const sonraki = saveIlerleme({ ...prev, puan: prev.puan + toplam });
+      const sonraki = saveIlerleme({
+        ...prev,
+        puan: prev.puan + toplam,
+        sonMacGun: bugunISO(),
+      });
       /*
        * Kazanç özeti, kazançtan SONRAKİ bakiyeyle birlikte saklanıyor:
        * sonuç ekranı "+68 FP · 412 FP" diyebilsin. Bakiyeyi ayrıca
@@ -431,10 +450,11 @@ export default function App() {
         satirlar,
         bakiye: sonraki.puan,
         yeni: yeniAcilabilirler(prev.puan, sonraki.puan, sonraki.acilanlar),
+        katlandi: false,
       });
       return sonraki;
     });
-  }, []);
+  }, [fpAcik]);
 
   /** Oyuncu satın alma — doğrulama saf modülde (bkz. ilerleme.js `ac`). */
   const oyuncuAc = useCallback((id) => {
@@ -466,12 +486,28 @@ export default function App() {
       }
       setRovans({ ben: false, rakip: false, bekleniyor: false });
 
+      const fpGirdi = (sonuc, records, broken) => {
+        /*
+         * Antrenman galibiyet/seri tablosuna yazılmaz; günlük ve seri
+         * bonusunu da oraya bağlamamak gerekir. Aksi halde 3 gerçek
+         * galibiyetten sonra pratikle farm edilirdi — bonuslar çarpanın
+         * DIŞINDA eklendiği için 0.2 antrenman kesintisi onları kesmez.
+         */
+        const antrenman = sonuc.format === 'practice';
+        return {
+          ...sonuc,
+          ilkGalibiyet: !antrenman && Boolean(broken?.firstWin),
+          gununIlki: !antrenman && gununIlkMaciMi(ilerleme),
+          seri: antrenman ? 0 : (records?.winStreak ?? 0),
+        };
+      };
+
       // --- Hayatta kalma: koşu bitti ---
       if (matchResult.campaign === 'survival') {
         const { records: nextRecords, broken } = recordSurvivalResult(matchResult);
         setRecords(nextRecords);
         setBrokenRecords(broken);
-        puanIsle(matchResult, syncAchievements(nextRecords, matchResult));
+        puanIsle(fpGirdi(matchResult, nextRecords, broken), syncAchievements(nextRecords, matchResult));
         setResult(matchResult);
         setFinishedTournament(null);
         setScreen('result');
@@ -492,7 +528,7 @@ export default function App() {
           setRecords(matchRecords);
           setBrokenRecords(matchBroken);
           // Ara tur: maç kazancı var, kupa YOK — turnuva daha bitmedi
-          puanIsle(matchResult, syncAchievements(matchRecords, matchResult));
+          puanIsle(fpGirdi(matchResult, matchRecords, matchBroken), syncAchievements(matchRecords, matchResult));
           setResult(matchResult);
           setScreen('bracket');
           return;
@@ -505,7 +541,7 @@ export default function App() {
         setSavedTournament(null);
         setRecords(nextRecords);
         setBrokenRecords({ ...matchBroken, ...tourBroken });
-        puanIsle(matchResult, syncAchievements(nextRecords, matchResult), nextState);
+        puanIsle(fpGirdi(matchResult, nextRecords, { ...matchBroken, ...tourBroken }), syncAchievements(nextRecords, matchResult), nextState);
         setResult(matchResult);
         setFinishedTournament(nextState);
         setScreen('result');
@@ -523,13 +559,56 @@ export default function App() {
       const { records: nextRecords, broken } = recordMatchResult(matchResult);
       setRecords(nextRecords);
       setBrokenRecords(broken);
-      puanIsle(matchResult, syncAchievements(nextRecords, matchResult));
+      puanIsle(fpGirdi(matchResult, nextRecords, broken), syncAchievements(nextRecords, matchResult));
       setResult(matchResult);
       setFinishedTournament(null);
       setScreen('result');
     },
-    [tournament, syncAchievements, puanIsle]
+    [tournament, syncAchievements, puanIsle, ilerleme]
   );
+
+  const odulluIzle = useCallback(async () => {
+    if (!fpAcik) return false;
+    if (reklamHakki(ilerleme).kalan <= 0) return false;
+    const izlendi = await odulluGoster();
+    if (!izlendi) return false;
+    /*
+     * Kota, reklam BİTTİKTEN sonra işlenir: yarıda kesilen izleme
+     * hakkı yakmasın. `loadIlerleme` güncel kaydı okur — reklam
+     * sırasında başka bir yazma olmuşsa üzerine basılmaz.
+     */
+    const hak = reklamIsle(loadIlerleme());
+    if (!hak.ok) return false;
+    setIlerleme(saveIlerleme(hak.durum));
+    return true;
+  }, [fpAcik, ilerleme]);
+
+  const fpKatlaReklam = useCallback(async () => {
+    if (!fpAcik || !kazanc || kazanc.katlandi || kazanc.toplam <= 0) return false;
+    const izlendi = await odulluIzle();
+    if (!izlendi) return false;
+    const ek = kazanc.toplam * (KAZANC.reklamCarpan - 1);
+    setIlerleme((prev) => {
+      const sonraki = saveIlerleme({ ...prev, puan: prev.puan + ek });
+      setKazanc((onceki) => {
+        if (!onceki) return onceki;
+        const oncekiBakiye = typeof onceki.bakiye === 'number' ? onceki.bakiye : sonraki.puan - ek;
+        return {
+          ...onceki,
+          toplam: onceki.toplam + ek,
+          bakiye: sonraki.puan,
+          katlandi: true,
+          satirlar: [
+            ...onceki.satirlar,
+            { id: 'fp.adBonus', ad: 'REKLAM BONUSU', puan: ek },
+          ],
+          yeni: yeniAcilabilirler(oncekiBakiye - onceki.toplam, sonraki.puan, sonraki.acilanlar),
+        };
+      });
+      return sonraki;
+    });
+    return true;
+  }, [fpAcik, kazanc, odulluIzle]);
 
   const handleRematch = useCallback(() => {
     if (!matchConfig) {
@@ -680,6 +759,7 @@ export default function App() {
           onResumeTournament={resumeSavedTournament}
           achievements={achievements}
           ilerleme={ilerleme}
+          fpAcik={fpAcik}
           onCollection={openCollection}
         />
       )}
@@ -690,6 +770,7 @@ export default function App() {
           muted={muted}
           onToggleMute={toggleMute}
           ilerleme={ilerleme}
+          fpAcik={fpAcik}
           onUnlock={oyuncuAc}
         />
       )}
@@ -736,6 +817,7 @@ export default function App() {
           initialOpponentId={prefs.opponentId}
           initialHomeIds={prefs.homeIds}
           ilerleme={ilerleme}
+          fpAcik={fpAcik}
           onUnlock={oyuncuAc}
         />
       )}
@@ -783,6 +865,9 @@ export default function App() {
           sfxVolume={sfxVolume}
           onSfxVolume={changeSfxVolume}
           config={matchConfig}
+          reklamTeklif={fpAcik}
+          reklamKalan={reklamHakki(ilerleme).kalan}
+          onRewardedAd={odulluIzle}
           onFinish={handleFinish}
           onQuit={handleQuitMatch}
           muted={muted}
@@ -797,6 +882,9 @@ export default function App() {
           tournamentState={finishedTournament}
           freshAchievements={freshAchievements}
           kazanc={kazanc}
+          fpAcik={fpAcik}
+          reklamKalan={reklamHakki(ilerleme).kalan}
+          onFpKatla={fpKatlaReklam}
           rovans={baglantiRef.current ? rovans : null}
           onRovans={rovansIste}
           onRematch={handleRematch}

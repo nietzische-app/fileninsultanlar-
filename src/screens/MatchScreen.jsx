@@ -58,6 +58,9 @@ export default function MatchScreen({
   onQuit,
   muted,
   onToggleMute,
+  reklamTeklif = false,
+  onRewardedAd,
+  reklamKalan = 0,
   controls,
   onControls,
   musicVolume,
@@ -88,6 +91,7 @@ export default function MatchScreen({
   const [settingsOpen, setSettingsOpen] = useState(false);
   /** Çevrimiçi maçta karşı taraf gittiğinde gösterilen katman. */
   const [agKopuk, setAgKopuk] = useState(null);
+  const [adDurum, setAdDurum] = useState('idle');
 
   const fullscreen = useFullscreen(stageRef);
   const { portrait, coarse } = useViewport();
@@ -119,6 +123,7 @@ export default function MatchScreen({
        * normal yol burası.
        */
       onFinish: (result) => onFinishRef.current(result),
+      reklamTeklif,
       // Çevrimiçi maçta rol ve gönderim kapısı
       agRol: config.agRol ?? null,
       agYuvam: config.agYuvam ?? null,
@@ -198,7 +203,7 @@ export default function MatchScreen({
      * haklı, çünkü çıkarılırsa ileride değişken bir değere döndüğünde
      * hata sessizce oluşur.
      */
-  }, [config, taniAcik]);
+  }, [config, taniAcik, reklamTeklif]);
 
   // --- Maç sırasında sayfa kaydırmasını kilitle (mobil) ---
   useEffect(() => {
@@ -840,6 +845,56 @@ export default function MatchScreen({
             <button type="button" className="retro-button" onClick={onQuit}>
               {t('match.toMenu')}
             </button>
+          </div>
+        )}
+
+        {hud.phase === PHASE.SURVIVAL_CONTINUE && (
+          <div
+            className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-black/90 px-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('ad.continueTitle')}
+          >
+            <p className="text-center text-sm text-white sm:text-lg">{t('ad.continueTitle')}</p>
+            <p className="max-w-xs text-center text-[7px] leading-relaxed text-white/55 sm:text-[8px]">
+              {t('ad.continueBody')}
+            </p>
+            <div className="flex flex-wrap justify-center gap-3">
+              {reklamKalan > 0 && (
+                <button
+                  type="button"
+                  data-ad-continue
+                  className="retro-button px-6 py-3"
+                  disabled={adDurum === 'yukleniyor'}
+                  onClick={async () => {
+                    setAdDurum('yukleniyor');
+                    const ok = onRewardedAd ? await onRewardedAd() : false;
+                    if (ok) {
+                      gameRef.current?.grantSurvivalContinue();
+                      setAdDurum('idle');
+                    } else {
+                      setAdDurum('hata');
+                    }
+                  }}
+                >
+                  {adDurum === 'yukleniyor' ? t('ad.loading') : t('ad.watch')}
+                </button>
+              )}
+              <button
+                type="button"
+                className="retro-button-ghost px-6 py-3"
+                disabled={adDurum === 'yukleniyor'}
+                onClick={() => gameRef.current?.declineSurvivalContinue()}
+              >
+                {t('ad.skip')}
+              </button>
+            </div>
+            {reklamKalan > 0 && (
+              <p className="text-center text-[6px] text-white/35">{t('ad.remaining', { n: reklamKalan })}</p>
+            )}
+            {adDurum === 'hata' && (
+              <p className="text-center text-[7px] text-turkiye-red">{t('ad.fail')}</p>
+            )}
           </div>
         )}
 

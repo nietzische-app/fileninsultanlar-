@@ -45,4 +45,9 @@ ext {
     androidxJunitVersion = '1.1.5'
     androidxEspressoCoreVersion = '3.5.1'
     cordovaAndroidVersion = '10.1.1'
+    /*
+     * AdMob eklentisi Kotlin. Sürüm yoksa eklenti 1.9.10'a düşer;
+     * burada sabitlemek AGP 8.2 ile uyumu görünür kılar.
+     */
+    kotlin_version = '1.9.10'
 }

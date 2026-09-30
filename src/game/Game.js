@@ -827,6 +827,12 @@ export default class Game {
     // Hayatta kalma durumu — diğer modlarda kullanılmaz
     this.lives = SURVIVAL.lives;
     this.wave = 1;
+    this.survivalContinueUsed = 0;
+    /**
+     * Can bitince reklam teklifi — yalnız mağaza kabuğunda.
+     * Web'de false: koşu bitince direkt sonuç.
+     */
+    this.reklamTeklif = Boolean(options.reklamTeklif);
 
     /**
      * Servis durumu — yalnızca PHASE.SERVE sırasında dolu.
@@ -2605,6 +2611,7 @@ export default class Game {
         break;
 
       case PHASE.MATCH_END:
+      case PHASE.SURVIVAL_CONTINUE:
       default:
         this.updatePlayers(dt, false);
         break;
@@ -3682,6 +3689,8 @@ export default class Game {
       stats: { ...this.stats },
       mode: this.mode,
       playMode: this.playMode,
+      cevrimici: Boolean(this.agRol),
+      agRol: this.agRol,
       format: this.format.id,
       homeIds: [...this.homeIds],
       difficulty: this.difficulty.label,
@@ -3709,6 +3718,14 @@ export default class Game {
    */
   afterSurvivalPoint() {
     if (this.lives <= 0) {
+      if (
+        this.reklamTeklif
+        && this.survivalContinueUsed < SURVIVAL.continueLimit
+      ) {
+        this.phase = PHASE.SURVIVAL_CONTINUE;
+        this.emitState(true);
+        return;
+      }
       this.finishSurvival();
       return;
     }
@@ -3772,6 +3789,39 @@ export default class Game {
       player.data = data;
       player.hitRadius = PLAYER.hitRadius * getModifier(data, 'reach');
     });
+  }
+
+  /**
+   * Ödüllü reklam tamamlandı — bir can, koşu devam.
+   * Hak yoksa sessizce koşuyu bitirir (çift tıklama / yarış).
+   */
+  grantSurvivalContinue() {
+    if (this.phase !== PHASE.SURVIVAL_CONTINUE) return false;
+    if (this.survivalContinueUsed >= SURVIVAL.continueLimit) {
+      this.finishSurvival();
+      return false;
+    }
+    this.survivalContinueUsed += 1;
+    this.lives = 1;
+    this.finished = false;
+    this.servingSide = 'home';
+    this.streak = { side: null, count: 0 };
+    this.resetRally('home');
+    this.phase = PHASE.READY;
+    this.phaseTimer = this.rules.readyPause;
+    this.message = {
+      text: t('ad.lifeBack'),
+      timer: this.rules.readyPause,
+      color: PALETTE.gold,
+    };
+    this.emitState(true);
+    return true;
+  }
+
+  /** Teklifi reddet — koşu biter, puan kaydedilir. */
+  declineSurvivalContinue() {
+    if (this.phase !== PHASE.SURVIVAL_CONTINUE) return;
+    this.finishSurvival();
   }
 
   /** Canlar bitti — koşuyu kapat. */

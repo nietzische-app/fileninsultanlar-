@@ -29,6 +29,9 @@ export default function ResultScreen({
   freshAchievements = [],
   /** Bu maçın Forma Puanı kazancı — kalem dökümüyle (bkz. ilerleme.js). */
   kazanc = null,
+  fpAcik = false,
+  reklamKalan = 0,
+  onFpKatla,
   /**
    * Çevrimiçi rövanş durumu — {ben, rakip, bekleniyor, ayrildi}.
    * `null` ise maç çevrimiçi değil (ya da bağlantı kapandı).
@@ -307,7 +310,14 @@ export default function ResultScreen({
         )}
 
         {/* Bu maçta kazanılan Forma Puanı */}
-        {kazanc && kazanc.toplam > 0 && <FormaPuani kazanc={kazanc} />}
+        {kazanc && kazanc.toplam > 0 && (
+          <FormaPuani
+            kazanc={kazanc}
+            fpAcik={fpAcik}
+            reklamKalan={reklamKalan}
+            onFpKatla={onFpKatla}
+          />
+        )}
 
         {/* Bu maçta açılan rozetler */}
         {freshAchievements.length > 0 && (
@@ -474,8 +484,18 @@ function PixelTrophy() {
  * "PERFORMANS +14" satırını gören, blokların sayıldığını öğreniyor;
  * "ZOR ×1.35" satırını gören zorluğu bir tık yükseltmeyi düşünüyor.
  */
-function FormaPuani({ kazanc }) {
+function FormaPuani({ kazanc, fpAcik = false, reklamKalan = 0, onFpKatla }) {
   const sayac = useSayac(kazanc.toplam);
+  const [reklamDurum, setReklamDurum] = useState('idle');
+
+  const katla = async () => {
+    if (!onFpKatla || reklamDurum === 'yukleniyor') return;
+    setReklamDurum('yukleniyor');
+    const ok = await onFpKatla();
+    setReklamDurum(ok ? 'idle' : 'hata');
+  };
+
+  const reklamGoster = fpAcik && !kazanc.katlandi && reklamKalan > 0 && onFpKatla;
 
   return (
     <div className="w-full border-2 border-[#FFD24A]/70 bg-[#FFD24A]/10 px-4 py-3">
@@ -528,6 +548,24 @@ function FormaPuani({ kazanc }) {
             {kazanc.yeni.length > 3 && ` +${kazanc.yeni.length - 3}`}
           </p>
           <p className="mt-1 text-[7px] text-white/40">{t('result.buyHint')}</p>
+        </div>
+      )}
+
+      {reklamGoster && (
+        <div className="mt-3 flex flex-col items-stretch gap-1">
+          <button
+            type="button"
+            data-ad-double
+            className="retro-button px-3 py-2 text-[8px]"
+            disabled={reklamDurum === 'yukleniyor'}
+            onClick={katla}
+          >
+            {reklamDurum === 'yukleniyor' ? t('ad.loading') : t('ad.double')}
+          </button>
+          {reklamDurum === 'hata' && (
+            <p className="text-center text-[7px] text-turkiye-red">{t('ad.fail')}</p>
+          )}
+          <p className="text-center text-[6px] text-white/35">{t('ad.remaining', { n: reklamKalan })}</p>
         </div>
       )}
     </div>

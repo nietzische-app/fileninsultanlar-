@@ -46,9 +46,9 @@ import { ROSTER } from './players.js';
  */
 export const KAZANC = {
   /** Maçı bitirmenin tabanı — kaybedince de bir şey kalsın diye. */
-  taban: 12,
-  /** Galibiyet. Tabanın 2.5 katı: kazanmak açık ara daha değerli. */
-  galibiyet: 30,
+  taban: 15,
+  /** Galibiyet. Tabanın ~2.3 katı: kazanmak açık ara daha değerli. */
+  galibiyet: 35,
   /** Kazanılan set başına. Kaybedilen maçta da set almak sayılır. */
   setBasi: 8,
   /**
@@ -59,23 +59,35 @@ export const KAZANC = {
    * Burada anahtarla eşleştirmeye kalksaydık her maç sessizce
    * varsayılan çarpanı alırdı ve zorluk hiçbir şeye yaramazdı.
    */
-  zorluk: { KOLAY: 0.8, NORMAL: 1, ZOR: 1.35 },
+  zorluk: { KOLAY: 0.75, NORMAL: 1, ZOR: 1.4 },
   /**
    * Antrenman çarpanı.
    *
    * Antrenman formatında rakip yok denecek kadar zayıf ve maç kısa —
-   * en verimli FP kaynağı O olurdu. Dörtte bire indirmek onu
+   * en verimli FP kaynağı O olurdu. Beşte bire indirmek onu
    * "ısınmak için oyna" yerinde tutuyor.
    */
-  antrenman: 0.25,
+  antrenman: 0.2,
   /** Çevrimiçi galibiyet — maç kazancına EK. */
-  cevrimiciGalibiyet: 40,
+  cevrimiciGalibiyet: 50,
   /** Turnuva kupası. */
-  kupa: 250,
+  kupa: 200,
   /** Hayatta kalma: koşuda toplanan her puan. */
-  hayattaKalma: 5,
+  hayattaKalma: 3,
   /** Açılan her rozet. */
-  rozet: 60,
+  rozet: 25,
+  /** Kariyerdeki ilk gerçek galibiyet — bir kere. */
+  ilkGalibiyet: 40,
+  /** Takvim günündeki ilk biten maç. */
+  gunluk: 20,
+  /** 3+ galibiyet serisinde her ek maç. */
+  seri: 6,
+  seriEsik: 3,
+  seriTavan: 24,
+  /** Ödüllü reklamla FP katı. */
+  reklamCarpan: 2,
+  /** Günlük ödüllü reklam tavanı — farm olmasın. */
+  reklamGunlukTavan: 8,
 };
 
 /**
@@ -105,6 +117,46 @@ function sayi(v) {
 }
 
 /**
+ * Bu sonuç çevrimiçi bir maç mı?
+ *
+ * Motor `playMode`'u yalnız `solo|coop|vs` kabul ediyor; çevrimiçi
+ * maç `vs` + `agRol` ile gidiyor. Eski kod `playMode === 'online'`
+ * bakıyordu — o değer hiç gelmediği için çevrimiçi galibiyet bonusu
+ * ölü kalıyordu.
+ */
+export function cevrimiciMi(sonuc) {
+  if (!sonuc) return false;
+  if (sonuc.cevrimici === true) return true;
+  if (sonuc.playMode === 'online') return true;
+  return Boolean(sonuc.agRol);
+}
+
+function bonusKalemleri(sonuc) {
+  if (!sonuc) return [];
+  const extra = [];
+  if (sonuc.ilkGalibiyet) {
+    extra.push({ id: 'fp.firstWin', ad: 'İLK GALİBİYET', puan: KAZANC.ilkGalibiyet });
+  }
+  if (sonuc.gununIlki) {
+    extra.push({ id: 'fp.daily', ad: 'GÜNÜN İLK MAÇI', puan: KAZANC.gunluk });
+  }
+  const seri = sayi(sonuc.seri);
+  if (seri >= KAZANC.seriEsik) {
+    const puan = Math.min(
+      KAZANC.seriTavan,
+      (seri - KAZANC.seriEsik + 1) * KAZANC.seri,
+    );
+    extra.push({
+      id: 'fp.streak',
+      vars: { n: seri },
+      ad: `${seri} SERİ`,
+      puan,
+    });
+  }
+  return extra;
+}
+
+/**
  * Bir maçın (ya da koşunun) FP kazancı — KALEM KALEM.
  *
  * Toplamı tek sayı döndürmek yeterdi ama sonuç ekranında "+68 FP"
@@ -114,13 +166,28 @@ function sayi(v) {
  *
  * @param {object} sonuc `Game.emitFinish` gövdesi
  * @returns {{ toplam: number, kalemler: Array<{ad: string, puan: number}>,
- *   carpan: number, carpanAd: string|null }}
+ *   satirlar: Array<object>, carpan: number, carpanAd: string|null }}
  */
+function kazanciBitir(kalemler, carpan, carpanAd, sonuc) {
+  const ham = kalemler.reduce((a, k) => a + k.puan, 0);
+  const macToplam = Math.round(ham * carpan);
+  const bonus = bonusKalemleri(sonuc);
+  const toplam = macToplam + bonus.reduce((a, k) => a + k.puan, 0);
+  return {
+    toplam,
+    kalemler,
+    satirlar: [...satirlariKur(kalemler, macToplam, carpanAd, carpan), ...bonus],
+    carpan,
+    carpanAd,
+  };
+}
+
 export function macKazanci(sonuc) {
   if (!sonuc) return { toplam: 0, kalemler: [], satirlar: [], carpan: 1, carpanAd: null };
 
   const kalemler = [];
   const stats = sonuc.stats ?? {};
+  const zorluk = zorlukCarpani(sonuc.difficulty);
 
   // --- Hayatta kalma: set ve galibiyet yok, koşu puanı var ---
   if (sonuc.campaign === 'survival') {
@@ -136,8 +203,8 @@ export function macKazanci(sonuc) {
     kalemler.push({ id: 'fp.run', ad: 'KOŞU', puan: KAZANC.taban });
     const perf = performansKalemi(stats);
     if (perf) kalemler.push(perf);
-    const toplam = kalemler.reduce((a, k) => a + k.puan, 0);
-    return { toplam, kalemler, satirlar: [...kalemler], carpan: 1, carpanAd: null };
+    const carpanAd = zorluk === 1 ? null : String(sonuc.difficulty ?? '').toUpperCase();
+    return kazanciBitir(kalemler, zorluk, carpanAd, sonuc);
   }
 
   const kazandi = sonuc.winner === 'home';
@@ -165,11 +232,10 @@ export function macKazanci(sonuc) {
    * söylemeli — hem kazanç olarak hem de ekranda görünen bir satır
    * olarak.
    */
-  if (kazandi && sonuc.playMode === 'online') {
+  if (kazandi && cevrimiciMi(sonuc)) {
     kalemler.push({ id: 'fp.onlineWin', ad: 'ÇEVRİMİÇİ GALİBİYET', puan: KAZANC.cevrimiciGalibiyet });
   }
 
-  const zorluk = zorlukCarpani(sonuc.difficulty);
   const carpan = antrenman ? KAZANC.antrenman : zorluk;
   const carpanAd = antrenman
     ? 'ANTRENMAN'
@@ -177,9 +243,7 @@ export function macKazanci(sonuc) {
       ? null
       : String(sonuc.difficulty ?? '').toUpperCase();
 
-  const ham = kalemler.reduce((a, k) => a + k.puan, 0);
-  const toplam = Math.round(ham * carpan);
-  return { toplam, kalemler, satirlar: satirlariKur(kalemler, toplam, carpanAd, carpan), carpan, carpanAd };
+  return kazanciBitir(kalemler, carpan, carpanAd, sonuc);
 }
 
 /**
@@ -345,20 +409,15 @@ export function acikMi(id, acilanlar = []) {
 }
 
 /**
- * FORMA PUANI SİSTEMİ AÇIK MI — geçici kapatma anahtarı.
+ * FORMA PUANI SİSTEMİ — varsayılan KAPALI.
  *
- * `false` iken oyunda FP diye bir şey YOK: hiçbir ekranda görünmüyor,
- * maçtan kazanılmıyor ve kadro kilitleri kalkıyor.
+ * Web sitesinde kadronun tamamı açık kalsın diye bu sabit `false`.
+ * Mağaza paketi (`Capacitor.isNativePlatform`) App'ten `fpAcik={true}`
+ * geçirerek kilitleri ve kazancı açar. Aynı JS hem Vercel'e hem
+ * `.aab`'ye gidiyor; derleme bayrağı iki paketi ayıramazdı.
  *
- * KADRO NEDEN AÇILIYOR: FP kilitlerin tek anahtarı. Yalnız kazancı
- * kesip kilitleri bıraksaydık kadro sonsuza dek üç kişide donardı ve
- * Koleksiyon ekranı ulaşılamaz bir vitrine dönüşürdü — bu "özelliği
- * kapatmak" değil, oyunu bozmak olurdu.
- *
- * GERİ AÇMAK: bu satırı `true` yap, başka hiçbir şeye dokunma.
  * Kayıtlı FP ve açılan oyuncular SİLİNMİYOR — kapalıyken sadece
- * okunmuyor. Yani geri açıldığında herkes kaldığı yerden devam eder;
- * kapalı geçen sürede kazanılmamış FP ise geri gelmez.
+ * okunmuyor. Mağazaya geçince herkes kaldığı yerden devam eder.
  */
 export const FP_ACIK = false;
 
@@ -590,3 +649,37 @@ export function koleksiyonOzeti(acilanlar = []) {
 
 /** Tüm kadronun açılması için gereken toplam — ölçüm ve test için. */
 export const TOPLAM_BEDEL = Object.values(BEDELLER).reduce((a, b) => a + b, 0);
+
+/** @param {number} [now] */
+export function bugunISO(now = Date.now()) {
+  return new Date(now).toISOString().slice(0, 10);
+}
+
+/**
+ * Bugün kaç ödüllü reklam hakkı kaldı.
+ * @param {{reklamGun?: string, reklamSayi?: number}|null} durum
+ */
+export function reklamHakki(durum, now = Date.now()) {
+  const gun = bugunISO(now);
+  const sayiAdet = durum?.reklamGun === gun ? sayi(durum.reklamSayi) : 0;
+  return {
+    gun,
+    sayi: sayiAdet,
+    kalan: Math.max(0, KAZANC.reklamGunlukTavan - sayiAdet),
+  };
+}
+
+/** Bir ödüllü reklamı günlük tavanına işler. */
+export function reklamIsle(durum, now = Date.now()) {
+  const h = reklamHakki(durum, now);
+  const temiz = durum && typeof durum === 'object' ? durum : { puan: 0, acilanlar: [] };
+  if (h.kalan <= 0) return { ok: false, durum: temiz, sebep: 'tavan' };
+  return {
+    ok: true,
+    durum: { ...temiz, reklamGun: h.gun, reklamSayi: h.sayi + 1 },
+  };
+}
+
+export function gununIlkMaciMi(durum, now = Date.now()) {
+  return (durum?.sonMacGun ?? '') !== bugunISO(now);
+}
