@@ -17,8 +17,9 @@ Paket adı: **`app.retrovoleybol.oyun`** (`.aab`'den otomatik okunur,
 elle girmen gerekmez). Sürüm: **0.1.9 (109)**.
 
 > Kenardan kenara (Android 15) `EdgeToEdge.enable` ile güncellendi.
-> 108 yüklüyse bir sonraki paket **109** olmalı — aynı sürüm kodunu
-> ikinci kez yüklemek reddedilir.
+> Play otomatik koruma için **minSdk 24**. 108 yüklüyse bir sonraki
+> paket **109** olmalı — aynı sürüm kodunu ikinci kez yüklemek
+> reddedilir. 109 taslakta duruyorsa o AAB'yi silip yenisini yükle.
 
 ---
 
@@ -229,8 +230,9 @@ tamamlayınca **Retro Voleybol** olur.
 ## 7. Üretim (Production)
 
 1. Actions → **android aab** → **Run workflow** → Use workflow from:
-   **`cursor/fp-reklam-89c3`** (veya bu dal `main`'e girdiyse `main`).
-   Bittiğinde Artifacts'tan `app-release.aab` **ve** `mapping.txt` indir.
+   **`cursor/minsdk-24-89c3`** (veya bu dal `fp-reklam` / `main`'e
+   girdiyse o). Bittiğinde Artifacts'tan `app-release.aab` **ve**
+   `mapping.txt` indir.
 2. Play Console → Test and release → **Production** → Create new release.
 3. AAB'yi sürükle. **0.1.9 (109)** yazmalı. 108 veya daha düşük görürsen
    yanlış daldan paket üretilmiş demektir; yükleme.
