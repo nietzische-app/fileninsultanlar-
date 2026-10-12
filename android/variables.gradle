@@ -1,10 +1,14 @@
 ext {
     /*
-     * minSdk 22 = Android 5.1. Capacitor'ın varsayılanı; oyunun
-     * ihtiyacı olan tek şey WebView ve o çok daha eskisinde de var.
-     * Yükseltmenin bir kazancı yok, düşürmenin de.
+     * minSdk 24 = Android 7.0. Capacitor şablonu 22 (5.1) ile gelir
+     * ama Play'in otomatik koruması (App Bundle'a eklenen anti-tamper)
+     * 24 altını reddediyor. 12 Ekim 2026'da 22 ile yüklenen paket
+     * tam bu yüzden geri döndü.
+     *
+     * Kaybedilen cihazlar Android 5.1 ve 6.0 — 2026'da yok denecek
+     * kadar az. Oyunun ihtiyacı WebView; 24'te o zaten var.
      */
-    minSdkVersion = 22
+    minSdkVersion = 24
 
     /*
      * targetSdk: Google Play'in DAYATTIĞI sayı, bizim tercihimiz değil.

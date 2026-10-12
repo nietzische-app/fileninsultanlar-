@@ -63,6 +63,8 @@ yazı tipi (`docs/yazitipi.md`, OFL lisanslı).
 - **`targetSdk 36`.** 35 ile üretilen paket 11 Eylül 2026'da
   "hedeflemesi gereken en düşük API düzeyi 36" diye reddedildi.
   `android/variables.gradle` içinde 36.
+- **`minSdk 24`.** Play otomatik koruma 22'yi reddetti (12 Ekim 2026).
+  Android 5.1 / 6.0 düşer; Capacitor varsayılanı 22'ydi.
 - **Gizlilik politikası** — `public/gizlilik.html`, ayarlar ekranından
   bağlantılı. Aşağıda ayrıntısı var.
 - **Mağaza ekran görüntüsü betiği** — `npm run magaza-gorsel`.
@@ -167,8 +169,9 @@ duygusu verirdi.
 GitHub → **Actions** → **android aab** → **Run workflow**.
 
 **Yarın üretim paketi:** Actions → android aab → **Run workflow** from
-**`cursor/fp-reklam-89c3`** (veya bu dal `main`'e girdiyse `main`).
-Sürüm **0.1.8 / 108**. AdMob değişkenleri yoksa test reklamı gömülür.
+**`cursor/minsdk-24-89c3`** (veya bu dal `fp-reklam` / `main`'e
+girdiyse o). Sürüm **0.1.9 / 109**. AdMob değişkenleri yoksa test
+reklamı gömülür.
 
 Bittiğinde koşumun altındaki **Artifacts** bölümünden `.aab` iniyor;
 doğrudan Play Console'a yükleniyor.
