@@ -14,12 +14,10 @@ başlık, sağda yazacağın/işaretleyeceğin şey.
 | `tablet-1-menu / 3-mac .png` | sohbette gönderildi |
 
 Paket adı: **`app.retrovoleybol.oyun`** (`.aab`'den otomatik okunur,
-elle girmen gerekmez). Sürüm: **0.1.9 (109)**.
+elle girmen gerekmez). Sürüm: **0.1.10 (110)**.
 
-> Kenardan kenara (Android 15) `EdgeToEdge.enable` ile güncellendi.
-> Play otomatik koruma için **minSdk 24**. 108 yüklüyse bir sonraki
-> paket **109** olmalı — aynı sürüm kodunu ikinci kez yüklemek
-> reddedilir. 109 taslakta duruyorsa o AAB'yi silip yenisini yükle.
+> 109 yüklüyse bir sonraki paket **110**. Aynı sürüm kodunu ikinci kez
+> yüklemek reddedilir. Zorluk yumuşadı, düşük telefonda çizim sadeleşti.
 
 ---
 
@@ -52,9 +50,9 @@ elle girmen gerekmez). Sürüm: **0.1.9 (109)**.
 
 1. **Test and release → Testing → Internal testing → Create new release**
 2. Play App Signing çıkarsa → **Kabul et** (Continue).
-3. `app-release.aab` dosyasını sürükle. Yükleme bitince **0.1.9 (109)**
+3. `app-release.aab` dosyasını sürükle. Yükleme bitince **0.1.10 (110)**
    yazmalı.
-4. **Release name:** `0.1.9 (109)` (kendiliğinden gelir, dokunma)
+4. **Release name:** `0.1.10 (110)` (kendiliğinden gelir, dokunma)
 5. **Release notes** — `<tr-TR>` bloğunun içine:
 
    ```
@@ -230,11 +228,10 @@ tamamlayınca **Retro Voleybol** olur.
 ## 7. Üretim (Production)
 
 1. Actions → **android aab** → **Run workflow** → Use workflow from:
-   **`cursor/minsdk-24-89c3`** (veya bu dal `fp-reklam` / `main`'e
-   girdiyse o). Bittiğinde Artifacts'tan `app-release.aab` **ve**
-   `mapping.txt` indir.
+   **`cursor/zorluk-fps-89c3`**. Bittiğinde Artifacts'tan
+   `app-release.aab` **ve** `mapping.txt` indir.
 2. Play Console → Test and release → **Production** → Create new release.
-3. AAB'yi sürükle. **0.1.9 (109)** yazmalı. 108 veya daha düşük görürsen
+3. AAB'yi sürükle. **0.1.10 (110)** yazmalı. 109 veya daha düşük görürsen
    yanlış daldan paket üretilmiş demektir; yükleme.
 4. `mapping.txt` → App integrity / deobfuscation file. R8 açık; bu
    dosya olmadan kilitlenme izleri okunmaz.
@@ -252,7 +249,7 @@ tamamlayınca **Retro Voleybol** olur.
 
 ## Sonraki sürümler
 
-`package.json` içindeki `version` artırılır (`0.1.9` → `0.1.10`),
+`package.json` içindeki `version` artırılır (`0.1.10` → `0.1.11`),
 `main`'e girer, Actions → android aab → Run workflow. `versionCode`
 sürümden türetiliyor (`0.1.10` → `110`), elle artırmak gerekmiyor.
 

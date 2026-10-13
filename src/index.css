@@ -160,6 +160,19 @@
   }
 
   /*
+   * Telefonda multiply + repeating-gradient kare bütçesini yer.
+   * Masaüstünde dursun; dokunmatikte ve düşük kalitede kapalı.
+   */
+  @media (hover: none) {
+    .scanlines::after {
+      content: none;
+    }
+  }
+  html[data-kalite='dusuk'] .scanlines::after {
+    content: none;
+  }
+
+  /*
    * Dokunmatik tuş ölçüleri.
    *
    * Boyutlar hem ekran yüksekliğine (`min(rem, vh)` — kısa ekranda

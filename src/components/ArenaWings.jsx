@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { GAME_HEIGHT } from '../game/constants.js';
 import { drawWings, wingWidthUnits } from '../game/wings.js';
+import { kaliteDusukMu } from '../game/kalite.js';
 
 /**
  * Sahanın iki yanındaki siyah bantları dolduran salon katmanı.
@@ -11,9 +12,9 @@ import { drawWings, wingWidthUnits } from '../game/wings.js';
  * Birim ölçeği oyun canvas'ıyla eşitlenir (`wingWidthUnits`), yoksa
  * tribün sıraları dikişte kayardı.
  *
- * Kendi döngüsü var ama 60fps değil: kalabalık ~12fps'te kıpırdıyor.
- * Çevresel bir katman için yeterli, üstelik oyun döngüsüne hiç
- * dokunmadan çalışıyor — motorun tek işi saha kalsın.
+ * Kendi döngüsü var ama 60fps değil: kalabalık ~5fps'te kıpırdıyor.
+ * Düşük kalitede yalnız ölçü değişince çizilir — ikinci canvas oyun
+ * kareleriyle yarışmasın.
  */
 export default function ArenaWings({ canvasRef }) {
   const wingRef = useRef(null);
@@ -31,7 +32,8 @@ export default function ArenaWings({ canvasRef }) {
 
     const frame = (now) => {
       raf = requestAnimationFrame(frame);
-      if (now - lastDraw < 80) return;
+      const aralik = kaliteDusukMu() ? 400 : 200;
+      if (now - lastDraw < aralik) return;
       lastDraw = now;
 
       /*
