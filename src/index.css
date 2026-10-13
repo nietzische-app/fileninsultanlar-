@@ -758,8 +758,13 @@
   animation: tut-glow-ring 0.85s ease-out forwards;
 }
 
+.tut-glow-loop {
+  animation: tut-glow-ring 1.1s ease-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .tut-glow {
+  .tut-glow,
+  .tut-glow-loop {
     animation: none;
     box-shadow:
       0 0 0 4px rgba(61, 220, 151, 0.85),

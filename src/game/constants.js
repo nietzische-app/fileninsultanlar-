@@ -502,4 +502,6 @@ export const PHASE = {
   MATCH_END: 'matchEnd',
   /** Hayatta kalma: can bitti, reklamla 1 can teklifi (yalnız mağaza). */
   SURVIVAL_CONTINUE: 'survivalContinue',
+  /** İlk maç: top durur, tuş öğretilir, sayı sayılmaz. */
+  COACH: 'coach',
 };

@@ -15,7 +15,7 @@ export const URL = process.env.OYUN_URL ?? 'http://localhost:5173/';
 
 /** Varsayılan tercihler — testler maça hızlı girsin diye. */
 export const VARSAYILAN_TERCIH = {
-  tutorialSeen: true,
+  tutorialSeen: true, kocSeen: true,
   muted: true,
   mode: '1v1',
   difficulty: 'kolay',

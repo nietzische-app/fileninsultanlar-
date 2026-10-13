@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Game from '../game/Game.js';
 import { FORMATS, GAME_HEIGHT, GAME_WIDTH, PHASE } from '../game/constants.js';
+import { kocVurgu, kocYaziAnahtar } from '../game/koc.js';
 import { getPlayerById } from '../game/players.js';
 import Scoreboard from '../components/Scoreboard.jsx';
 import BaglantiGostergesi from '../components/BaglantiGostergesi.jsx';
@@ -41,6 +42,7 @@ const INITIAL_HUD = {
   survival: null,
   combo: 0,
   comboTier: null,
+  koc: null,
   homeName: 'TÜRKİYE',
   /** Çevrimiçi gidiş-dönüş (ms); çevrimdışında null kalır. */
   gidisDonus: null,
@@ -56,6 +58,7 @@ export default function MatchScreen({
   config,
   onFinish,
   onQuit,
+  onCoachDone,
   muted,
   onToggleMute,
   reklamTeklif = false,
@@ -82,6 +85,8 @@ export default function MatchScreen({
     && new URLSearchParams(window.location.search).get('tani') === '1';
   const onFinishRef = useRef(onFinish);
   onFinishRef.current = onFinish;
+  const onCoachDoneRef = useRef(onCoachDone);
+  onCoachDoneRef.current = onCoachDone;
   const confirmCancelRef = useRef(null);
   const stageRef = useRef(null);
 
@@ -116,6 +121,8 @@ export default function MatchScreen({
       roundNumber: config.roundNumber,
       roundCount: config.roundCount,
       onState: setHud,
+      koc: Boolean(config.koc),
+      onKocBitir: () => onCoachDoneRef.current?.(),
       /*
        * Çevrimiçide bu HİÇ tetiklenmez: maçı sunucu koşturuyor, iki
        * istemci de simüle etmiyor. Bitişi sunucunun `bitis` mesajı
@@ -643,6 +650,25 @@ export default function MatchScreen({
           </div>
         )}
 
+        {hud.koc && hud.phase === PHASE.COACH && (
+          <div
+            className="pointer-events-none absolute inset-x-0 top-[18%] z-20 flex flex-col items-center gap-3 px-3"
+            data-koc
+            role="status"
+          >
+            <p className="max-w-md border-4 border-retro-accent bg-black/85 px-4 py-3 text-center text-[10px] leading-relaxed text-white sm:text-xs">
+              {t(kocYaziAnahtar(hud.koc.adim, coarse))}
+            </p>
+            <button
+              type="button"
+              className="pointer-events-auto retro-button-ghost px-4 py-2 text-[8px]"
+              onClick={() => gameRef.current?.kocAtla()}
+            >
+              {t('koc.skip')}
+            </button>
+          </div>
+        )}
+
         {/*
           Mobil: kontroller sahanın altındaki şeritte.
           `absolute bottom-0` — şerit canvas'ın alt önlüğünün üstüne
@@ -657,6 +683,7 @@ export default function MatchScreen({
             settings={controls}
             strip
             dual={twoPlayer}
+            vurgu={kocVurgu(hud.koc?.adim)}
           />
         </div>
 

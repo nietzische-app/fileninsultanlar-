@@ -56,8 +56,9 @@ elle girmen gerekmez). Sürüm: **0.1.10 (110)**.
 5. **Release notes** — `<tr-TR>` bloğunun içine:
 
    ```
-   Android 15 kenardan kenara. Forma Puanı ve ödüllü reklam Play
-   paketinde; web sitesinde kilit ve reklam yok.
+   Android 15 kenardan kenara. Rakip yumuşadı, ilk maçta tuş koçu.
+   Forma Puanı ve ödüllü reklam Play paketinde; web sitesinde kilit
+   ve reklam yok.
    ```
 
 6. **Testers** sekmesi → **Create email list** → listeye kendi Google

@@ -27,7 +27,7 @@ page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
 await page.goto(URL, { waitUntil: 'load' });
 await page.waitForTimeout(900);
 await page.evaluate(() => localStorage.setItem('retro-voleybol-prefs', JSON.stringify({
-  tutorialSeen: true, muted: true, mode: '1v1', difficulty: 'kolay',
+  tutorialSeen: true, kocSeen: true, muted: true, mode: '1v1', difficulty: 'kolay',
   format: 'practice', opponentId: 'atlas', homeIds: ['gizel-orgen'] })));
 await page.reload({ waitUntil: 'load' });
 await page.waitForTimeout(1400);

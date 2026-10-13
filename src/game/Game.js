@@ -65,6 +65,7 @@ import {
 import { drawBall, drawSultan } from './sprites.js';
 import { drawArena, drawFloor, drawNet } from './arena.js';
 import { kaliteCizimdenOgren, kaliteDusukMu, kaliteSifirla } from './kalite.js';
+import { KOC_ADIM, kocAdimAt, kocBaslangic } from './koc.js';
 import {
   clearsNet as shotClearsNet,
   computeAttackVelocity,
@@ -515,6 +516,7 @@ export default class Game {
     this.roundCount = options.roundCount ?? null;
 
     this.onState = options.onState ?? (() => {});
+    this.onKocBitir = options.onKocBitir ?? (() => {});
     this.onFinish = options.onFinish ?? (() => {});
 
     this.homeIds = (options.homeIds ?? [DEFAULT_PLAYER_ID]).slice(0, this.perSide);
@@ -856,6 +858,7 @@ export default class Game {
     this.phase = PHASE.READY;
     this.phaseTimer = this.rules.readyPause;
     this.message = null;
+    this.koc = options.koc ? kocBaslangic() : null;
 
     this.particles = [];
     /** Vuruş anında genişleyen darbe halkaları. */
@@ -884,6 +887,11 @@ export default class Game {
     this.players = this.createPlayers();
     this.ball = this.createBall('home');
     this.resetPositions();
+    if (this.koc) {
+      this.phase = PHASE.COACH;
+      this.phaseTimer = 0;
+      this.message = null;
+    }
 
     this.lastSignature = '';
 
@@ -2582,6 +2590,13 @@ export default class Game {
     this.updateBallTrail();
 
     switch (this.phase) {
+      case PHASE.COACH:
+        this.ball.vx = 0;
+        this.ball.vy = 0;
+        this.updatePlayers(dt, true);
+        this.kocGuncelle(dt);
+        break;
+
       case PHASE.READY:
         this.updatePlayers(dt, false);
         this.phaseTimer -= dt;
@@ -2624,6 +2639,38 @@ export default class Game {
     this.updateAtmosphere();
   }
 
+  kocGuncelle(dt) {
+    if (!this.koc || this.koc.adim === KOC_ADIM.DONE) return;
+    const pad = this.inputs.p1;
+    const sonraki = kocAdimAt(
+      this.koc,
+      { ...pad, action: pad.action || this.actionEdge.p1 },
+      dt,
+    );
+    const adimDegisti = sonraki.adim !== this.koc.adim;
+    this.koc = sonraki;
+    if (sonraki.adim === KOC_ADIM.DONE) {
+      this.kocBitir();
+      return;
+    }
+    if (adimDegisti) this.emitState(true);
+  }
+
+  kocBitir() {
+    this.koc = null;
+    this.resetPositions();
+    this.phase = PHASE.READY;
+    this.phaseTimer = this.rules.readyPause;
+    this.message = { text: t('koc.ready'), timer: this.rules.readyPause, color: PALETTE.gold };
+    this.onKocBitir();
+    this.emitState(true);
+  }
+
+  kocAtla() {
+    if (!this.koc) return;
+    this.kocBitir();
+  }
+
   // ===================================================================
   // Oyuncu hareketi
   // ===================================================================
@@ -2658,7 +2705,7 @@ export default class Game {
         return;
       }
 
-      if (active) {
+      if (active && !this.koc) {
         const isAway = player.side === 'away';
         const chaserId = isAway ? awayChaser : homeChaser;
         updateAI(
@@ -3968,6 +4015,7 @@ export default class Game {
       this.lives,
       this.wave,
       this.combo,
+      this.koc?.adim ?? '',
     ].join('|');
 
     if (!force && signature === this.lastSignature) return;
@@ -4013,6 +4061,7 @@ export default class Game {
        */
       gidisDonus: this.agGidisDonus(),
       opponentAccent: this.opponent.colors.accent,
+      koc: this.koc ? { adim: this.koc.adim } : null,
     });
   }
 

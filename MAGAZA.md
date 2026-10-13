@@ -169,8 +169,9 @@ duygusu verirdi.
 GitHub → **Actions** → **android aab** → **Run workflow**.
 
 **Yarın üretim paketi:** Actions → android aab → **Run workflow** from
-**`cursor/zorluk-fps-89c3`**. Sürüm **0.1.10 / 110**. AdMob değişkenleri
-yoksa test reklamı gömülür.
+**`cursor/zorluk-fps-89c3`**. Sürüm **0.1.10 / 110**. Rakip yumuşadı,
+düşük telefonda çizim sadeleşti, ilk maçta tuş koçu var. AdMob
+değişkenleri yoksa test reklamı gömülür.
 
 Bittiğinde koşumun altındaki **Artifacts** bölümünden `.aab` iniyor;
 doğrudan Play Console'a yükleniyor.

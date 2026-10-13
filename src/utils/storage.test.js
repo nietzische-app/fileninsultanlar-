@@ -33,6 +33,7 @@ describe('storage prefs', () => {
       muted: false,
       mode: '1v1',
       tutorialSeen: false,
+      kocSeen: false,
       homeIds: DEFAULT_PREFS.homeIds,
     });
   });
@@ -41,6 +42,7 @@ describe('storage prefs', () => {
     savePrefs({
       muted: true,
       tutorialSeen: true,
+      kocSeen: true,
       mode: '2v2',
       difficulty: 'zor',
       format: 'practice',
@@ -48,6 +50,7 @@ describe('storage prefs', () => {
     const prefs = loadPrefs();
     expect(prefs.muted).toBe(true);
     expect(prefs.tutorialSeen).toBe(true);
+    expect(prefs.kocSeen).toBe(true);
     expect(prefs.mode).toBe('2v2');
     expect(prefs.difficulty).toBe('zor');
     expect(prefs.format).toBe('practice');

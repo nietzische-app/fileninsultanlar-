@@ -15,7 +15,7 @@ const check = (l, ok, d = '') => { if (!ok) fails += 1; console.log(`${ok ? '✓
 await page.goto(URL, { waitUntil: 'load' });
 await page.waitForTimeout(800);
 await page.evaluate(() => localStorage.setItem('retro-voleybol-prefs', JSON.stringify({
-  tutorialSeen: true, muted: true, mode: '1v1', difficulty: 'kolay',
+  tutorialSeen: true, kocSeen: true, muted: true, mode: '1v1', difficulty: 'kolay',
   format: 'practice', opponentId: 'atlas', homeIds: ['gizel-orgen'] })));
 await page.reload({ waitUntil: 'load' });
 await page.waitForTimeout(1300);
