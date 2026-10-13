@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Allow: /app-ads.txt
+Allow: /ads.txt

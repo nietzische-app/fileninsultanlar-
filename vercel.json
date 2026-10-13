@@ -3,5 +3,10 @@
   "framework": "vite",
   "buildCommand": "npm run vercel-build",
   "outputDirectory": "dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
+  "rewrites": [
+    {
+      "source": "/((?!app-ads\\.txt$|ads\\.txt$|robots\\.txt$|gizlilik\\.html$).*)",
+      "destination": "/"
+    }
+  ]
 }
