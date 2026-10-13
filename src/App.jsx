@@ -11,6 +11,7 @@ import ResultScreen from './screens/ResultScreen.jsx';
 import RotateGate from './components/RotateGate.jsx';
 import useViewport from './hooks/useViewport.js';
 import useGeriTusu, { geriKarari } from './hooks/useGeriTusu.js';
+import useArkaPlanSesi from './hooks/useArkaPlanSesi.js';
 import Sfx from './game/audio.js';
 import {
   advanceTournament,
@@ -121,6 +122,9 @@ export default function App() {
   // Dokunmatik cihazda dikey tutuş oyunu tamamen kapatır
   const { portrait, coarse } = useViewport();
   const blockedByOrientation = portrait && coarse;
+
+  // Home / sekme arka planı — müzik ve uğultu susar
+  useArkaPlanSesi();
 
   // İlk yüklemede ses motoruna kayıtlı tercihleri uygula
   useEffect(() => {
