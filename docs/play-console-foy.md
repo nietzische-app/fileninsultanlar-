@@ -256,14 +256,39 @@ sürümden türetiliyor (`0.1.10` → `110`), elle artırmak gerekmiyor.
 
 ---
 
-## Play Console önerileri (108 pre-launch)
+## Play Console önerileri (Analyzer)
 
-Bunlar **red değil**, Analyzer tavsiyesi. Beşinin kararı:
+Bunlar **red değil**, tavsiye. 109 üzerinde hâlâ görünmeleri normal:
+Analyzer o sürümü taradı. **110** yüklenince uçtan uca yenilenir;
+öteki üçü **Dismiss** — kodla “düzeltmek” oyunu bozar.
 
-| Öneri | Ne yapıyoruz |
+| Öneri | Karar |
 |---|---|
-| Uçtan uca ekran / insets | **Düzeltildi (109).** `EdgeToEdge.enable`. Arayüz zaten `env(safe-area-inset-*)` kullanıyor. |
-| Eski API: setStatusBarColor, setNavigationBarColor, SHORT_EDGES | **Düzeltildi (109).** MainActivity'den kalktı. `l1.e.g` AndroidX SplashScreen; o kütüphane içi, dokunulmuyor. |
-| Yatay kilidi kaldır (`SENSOR_LANDSCAPE`) | **Yok. Dismiss.** Oyun yatay; dikeyde dokunmatik tuşlar ve çevrimiçi maç bozulur. |
-| BitmapFactory inSampleSize | **Yok. Dismiss.** Oyun Canvas/JS; `z.c.c` splash veya AdMob. Glide eklemek kabuğu şişirir. |
-| AGP 9.0 | **Yok.** Capacitor 6 resmi olarak AGP 8.2. R8 minify zaten açık. AGP 9 şablonu kırar. |
+| Uçtan uca ekran | **Kodda var (109+).** `EdgeToEdge.enable` + şeffaf çubuklar + CSS `safe-area`. 110 AAB ile yeniden tarat. |
+| Yatay kilit (`SENSOR_LANDSCAPE`) | **Dismiss.** Oyun yatay; dikeyde tuşlar ve çevrimiçi maç bozulur. |
+| BitmapFactory `y.c.c` | **Dismiss.** Oyun Canvas/JS; çağrı splash veya AdMob içinde. Glide eklemek kabuğu şişirir. |
+| AGP 9.0 / R8 | **Dismiss.** Capacitor 6 → AGP 8.2. R8 minify + shrinkResources zaten açık. AGP 9 şablonu kırar. |
+
+### Play’de Dismiss metinleri (kopyala-yapıştır)
+
+**Yatay kilit**
+```
+Landscape-only volleyball game. Court and on-screen controls are
+designed for landscape; portrait would break touch layout and pause
+online matches mid-point. Keeping sensorLandscape intentionally.
+```
+
+**BitmapFactory**
+```
+No app BitmapFactory usage. Game renders on Canvas/WebView. The
+flagged symbol is inside AndroidX SplashScreen or AdMob SDK after
+R8 rename. Adding Glide would not touch game assets.
+```
+
+**AGP 9**
+```
+App uses Capacitor 6, which targets Android Gradle Plugin 8.2.
+Release already has R8 minifyEnabled + shrinkResources. Upgrading to
+AGP 9 requires a Capacitor major upgrade and is out of scope for this
+release.
+```

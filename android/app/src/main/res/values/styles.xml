@@ -2,19 +2,19 @@
 <resources>
 
     <!--
-      Capacitor şablonu Theme.AppCompat.Light + beyaz splash kullanıyordu.
-      Çentikli ve uzun ekranda sistem çubuğu / kesik / kenar o beyazı
-      gösteriyordu. Pencere, durum ve gezinme çubuğu oyun zemini.
+      Kenardan kenara: çubuk renkleri şeffaf; zemin WebView + EdgeToEdge
+      scrim. Eski şablon Light + opak statusBarColor kullanıyordu —
+      Play Analyzer setStatusBarColor / setNavigationBarColor diye
+      işaretliyordu. API 35+ için ayrıca values-v35/ (kesik ALWAYS).
     -->
     <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/retro_bg</item>
         <item name="colorAccent">@color/colorAccent</item>
         <item name="android:windowBackground">@color/retro_bg</item>
-        <item name="android:statusBarColor">@color/retro_bg</item>
-        <item name="android:navigationBarColor">@color/retro_bg</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-        <item name="android:navigationBarDividerColor">@color/retro_bg</item>
     </style>
 
     <style name="AppTheme.NoActionBar" parent="AppTheme">
@@ -22,8 +22,8 @@
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
         <item name="android:windowBackground">@color/retro_bg</item>
-        <item name="android:statusBarColor">@color/retro_bg</item>
-        <item name="android:navigationBarColor">@color/retro_bg</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
@@ -31,8 +31,8 @@
         <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
         <item name="android:windowBackground">@color/retro_bg</item>
-        <item name="android:statusBarColor">@color/retro_bg</item>
-        <item name="android:navigationBarColor">@color/retro_bg</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:background">@color/retro_bg</item>
     </style>
 </resources>

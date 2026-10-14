@@ -25,12 +25,18 @@ public class MainActivity extends BridgeActivity {
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
+    /*
+     * Play Analyzer: "EdgeToEdge.enable() çağırın". super'dan önce —
+     * Capacitor setContentView'i orada yapıyor.
+     */
     EdgeToEdge.enable(
         this,
         SystemBarStyle.dark(ZEMIN),
         SystemBarStyle.dark(ZEMIN)
     );
     super.onCreate(savedInstanceState);
+    // Capacitor WebView'in çubukların altına uzandığından emin ol
+    WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
     WindowInsetsControllerCompat insets =
         WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
     if (insets != null) {
