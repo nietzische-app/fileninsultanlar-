@@ -21,7 +21,7 @@ async function olc(gap) {
   await page.goto(URL, { waitUntil: 'load' });
   await page.waitForTimeout(600);
   await page.evaluate((g) => localStorage.setItem('retro-voleybol-prefs', JSON.stringify({
-    tutorialSeen: true, muted: true, mode: '1v1', difficulty: 'kolay', format: 'practice',
+    tutorialSeen: true, kocSeen: true, muted: true, mode: '1v1', difficulty: 'kolay', format: 'practice',
     opponentId: 'atlas', homeIds: ['gizel-orgen'], controls: { scale: 1, opacity: 1, gap: g, swap: false } })), gap);
   await page.reload({ waitUntil: 'load' });
   await page.waitForTimeout(1200);

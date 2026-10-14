@@ -9,7 +9,7 @@ for (const [name, w, h, scale] of [['SE', 667, 375, 1], ['SE %70', 667, 375, 0.7
   await page.goto(URL, { waitUntil: 'load' });
   await page.waitForTimeout(700);
   await page.evaluate((sc) => localStorage.setItem('retro-voleybol-prefs', JSON.stringify({
-    tutorialSeen: true, muted: true, mode: '1v1', difficulty: 'kolay', format: 'practice',
+    tutorialSeen: true, kocSeen: true, muted: true, mode: '1v1', difficulty: 'kolay', format: 'practice',
     opponentId: 'atlas', homeIds: ['gizel-orgen'], controls: { scale: sc, opacity: 1, swap: false } })), scale);
   await page.reload({ waitUntil: 'load' });
   await page.waitForTimeout(1200);

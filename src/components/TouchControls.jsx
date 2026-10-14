@@ -33,6 +33,8 @@ export default function TouchControls({
   settings = { scale: 1, opacity: 0.85, swap: false },
   preview = false,
   dimWhenDisabled = true,
+  /** İlk maç koçu: 'move' | 'jump' | 'hit' */
+  vurgu = null,
 }) {
   const unlock = () => {
     if (!disabled) Sfx.unlock();
@@ -80,7 +82,7 @@ export default function TouchControls({
       disabled={disabled}
       dragDive
       dataSlot="p1"
-      className={`tb-dir ${buttonTone}`}
+      className={`tb-dir ${buttonTone} ${vurgu === 'move' ? 'tut-glow-loop' : ''}`}
     />
   );
   const right = (
@@ -93,7 +95,7 @@ export default function TouchControls({
       disabled={disabled}
       dragDive
       dataSlot="p1"
-      className={`tb-dir ${buttonTone}`}
+      className={`tb-dir ${buttonTone} ${vurgu === 'move' ? 'tut-glow-loop' : ''}`}
     />
   );
   const hit = (
@@ -105,7 +107,7 @@ export default function TouchControls({
       srLabel={t('touch.hit')}
       disabled={disabled}
       dataSlot="p1"
-      className={`tb-act ${buttonTone}`}
+      className={`tb-act ${buttonTone} ${vurgu === 'hit' ? 'tut-glow-loop' : ''}`}
     />
   );
   const jump = (
@@ -116,7 +118,7 @@ export default function TouchControls({
       srLabel={t('touch.jump')}
       disabled={disabled}
       dataSlot="p1"
-      className={`tb-jump ${buttonTone}`}
+      className={`tb-jump ${buttonTone} ${vurgu === 'jump' ? 'tut-glow-loop' : ''}`}
     />
   );
 

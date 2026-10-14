@@ -7,7 +7,7 @@ const URL = process.env.OYUN_URL ?? 'http://localhost:5173/';
 const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined });
 const errors = [];
 const PREFS = {
-  tutorialSeen: true, mode: '1v1', difficulty: 'kolay', format: 'classic',
+  tutorialSeen: true, kocSeen: true, mode: '1v1', difficulty: 'kolay', format: 'classic',
   opponentId: 'atlas', homeIds: ['gizel-orgen'], muted: true,
 };
 

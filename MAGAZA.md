@@ -169,9 +169,13 @@ duygusu verirdi.
 GitHub → **Actions** → **android aab** → **Run workflow**.
 
 **Yarın üretim paketi:** Actions → android aab → **Run workflow** from
-**`cursor/minsdk-24-89c3`** (veya bu dal `fp-reklam` / `main`'e
-girdiyse o). Sürüm **0.1.9 / 109**. AdMob değişkenleri yoksa test
-reklamı gömülür.
+**`cursor/zorluk-fps-89c3`**. Sürüm **0.1.10 / 110**. Rakip yumuşadı,
+düşük telefonda çizim sadeleşti, ilk maçta tuş koçu, arka planda müzik
+susar, EdgeToEdge güçlendirildi. AdMob değişkenleri yoksa test reklamı
+gömülür.
+
+Play Analyzer’ın yatay kilit / BitmapFactory / AGP 9 satırları **Dismiss**
+— gerekçe `docs/play-console-foy.md`.
 
 Bittiğinde koşumun altındaki **Artifacts** bölümünden `.aab` iniyor;
 doğrudan Play Console'a yükleniyor.

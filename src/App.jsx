@@ -11,6 +11,7 @@ import ResultScreen from './screens/ResultScreen.jsx';
 import RotateGate from './components/RotateGate.jsx';
 import useViewport from './hooks/useViewport.js';
 import useGeriTusu, { geriKarari } from './hooks/useGeriTusu.js';
+import useArkaPlanSesi from './hooks/useArkaPlanSesi.js';
 import Sfx from './game/audio.js';
 import {
   advanceTournament,
@@ -49,6 +50,7 @@ import {
 import { magazaPaketiMi } from './utils/gizlilik.js';
 import { odulluGoster, reklamKur } from './ads/reklam.js';
 import { getGameMode } from './game/modes.js';
+import { kocMacinaAl } from './game/koc.js';
 import { useDil } from './i18n/DilBaglami.jsx';
 
 /**
@@ -120,6 +122,9 @@ export default function App() {
   // Dokunmatik cihazda dikey tutuş oyunu tamamen kapatır
   const { portrait, coarse } = useViewport();
   const blockedByOrientation = portrait && coarse;
+
+  // Home / sekme arka planı — müzik ve uğultu susar
+  useArkaPlanSesi();
 
   // İlk yüklemede ses motoruna kayıtlı tercihleri uygula
   useEffect(() => {
@@ -302,11 +307,15 @@ export default function App() {
     const config = roundMatchConfig(state);
     if (!config) return;
 
-    setMatchConfig({ ...config, startedAt: Date.now() });
+    setMatchConfig({
+      ...config,
+      koc: kocMacinaAl({ kocSeen: prefs.kocSeen, playMode: config.playMode ?? 'solo' }),
+      startedAt: Date.now(),
+    });
     setResult(null);
     setBrokenRecords(null);
     setScreen('match');
-  }, []);
+  }, [prefs.kocSeen]);
 
   const abandonTournament = useCallback(() => {
     clearTournament();
@@ -357,10 +366,16 @@ export default function App() {
       }
 
       // Yeni nesne referansı → MatchScreen motoru sıfırdan kurar
+      const playMode = config.playMode ?? 'solo';
       setMatchConfig({
         ...config,
         campaign: mode,
-        playMode: config.playMode ?? 'solo',
+        playMode,
+        koc: kocMacinaAl({
+          kocSeen: nextPrefs.kocSeen,
+          online,
+          playMode,
+        }),
         startedAt: Date.now(),
       });
       /*
@@ -870,6 +885,7 @@ export default function App() {
           onRewardedAd={odulluIzle}
           onFinish={handleFinish}
           onQuit={handleQuitMatch}
+          onCoachDone={() => setPrefs(savePrefs({ kocSeen: true }))}
           muted={muted}
           onToggleMute={toggleMute}
         />

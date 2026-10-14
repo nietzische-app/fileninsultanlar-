@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import Sfx from './audio.js';
 
 describe('SfxEngine', () => {
@@ -26,7 +26,32 @@ describe('SfxEngine', () => {
       Sfx.pause();
       Sfx.setAtmosphere(0.5);
       Sfx.hushAtmosphere();
+      Sfx.suspend();
+      Sfx.resumeContext();
     }).not.toThrow();
+  });
+
+  it('arka planda running bağlamı askıya alır, dönüşte açar', () => {
+    const onceki = Sfx.ctx;
+    const suspend = vi.fn();
+    const resume = vi.fn();
+    Sfx.ctx = { state: 'running', suspend, resume };
+
+    Sfx.suspend();
+    expect(suspend).toHaveBeenCalledTimes(1);
+
+    Sfx.ctx.state = 'suspended';
+    Sfx.suspend();
+    expect(suspend).toHaveBeenCalledTimes(1);
+
+    Sfx.resumeContext();
+    expect(resume).toHaveBeenCalledTimes(1);
+
+    Sfx.ctx.state = 'running';
+    Sfx.resumeContext();
+    expect(resume).toHaveBeenCalledTimes(1);
+
+    Sfx.ctx = onceki;
   });
 
   it('jitter 1 civarında sapma üretir', () => {
