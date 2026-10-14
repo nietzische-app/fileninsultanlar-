@@ -384,6 +384,10 @@ export const PALETTE = {
  * `error`, yapay zekânın tahmini düşüş noktasına eklediği sapmadır ve
  * asıl zorluk kolu budur: temas dairesinin yarıçapı ~53px olduğu için
  * bu değerin altındaki sapmalar ıskaya dönüşmez, rakip hiç sayı vermez.
+ *
+ * 0.1.10: varsayılan NORMAL hâlâ "herkes kaybediyor" şikayetini
+ * üretiyordu. KOLAY yeni başlayan, NORMAL eski KOLAY civarı, ZOR eski
+ * NORMAL. ZOR kasıtlı olarak sert kalır.
  */
 export const DIFFICULTY = {
   // placement: vuruşu rakibin boş bıraktığı alana yerleştirme becerisi
@@ -391,9 +395,9 @@ export const DIFFICULTY = {
   // blockSkill: file dibinde gelen hücuma blok için sıçrama olasılığı
   // diveSkill: yetişemeyeceği topa dalma olasılığı
   // serveSkill: servis gücü ve nişan tutarlılığı
-  kolay: { label: 'KOLAY', speed: 0.68, reaction: 0.4, error: 130, power: 0.85, placement: 0.12, diveSkill: 0.12, serveSkill: 0.25, blockSkill: 0.25 },
-  normal: { label: 'NORMAL', speed: 0.82, reaction: 0.29, error: 98, power: 0.97, placement: 0.4, diveSkill: 0.48, serveSkill: 0.55, blockSkill: 0.5 },
-  zor: { label: 'ZOR', speed: 0.94, reaction: 0.2, error: 82, power: 1.06, placement: 0.62, diveSkill: 0.6, serveSkill: 0.88, blockSkill: 0.72 },
+  kolay: { label: 'KOLAY', speed: 0.55, reaction: 0.55, error: 175, power: 0.78, placement: 0.05, diveSkill: 0.05, serveSkill: 0.15, blockSkill: 0.10 },
+  normal: { label: 'NORMAL', speed: 0.70, reaction: 0.38, error: 125, power: 0.88, placement: 0.20, diveSkill: 0.22, serveSkill: 0.32, blockSkill: 0.28 },
+  zor: { label: 'ZOR', speed: 0.86, reaction: 0.24, error: 95, power: 1.00, placement: 0.48, diveSkill: 0.48, serveSkill: 0.70, blockSkill: 0.55 },
 };
 
 /**
@@ -443,6 +447,8 @@ function clampRange(value, min, max) {
 export const SURVIVAL = {
   lives: 5,
   waveLength: 3,
+  /** Koşu başına reklamla can hakkı. İkincisi sonsuz koşuya döner. */
+  continueLimit: 1,
   /**
    * 1. dalgada seçilen kademeden bu kadar yumuşak başlanır.
    *
@@ -494,4 +500,8 @@ export const PHASE = {
   POINT: 'point', // sayı oldu, kısa donma
   SET_END: 'setEnd',
   MATCH_END: 'matchEnd',
+  /** Hayatta kalma: can bitti, reklamla 1 can teklifi (yalnız mağaza). */
+  SURVIVAL_CONTINUE: 'survivalContinue',
+  /** İlk maç: top durur, tuş öğretilir, sayı sayılmaz. */
+  COACH: 'coach',
 };

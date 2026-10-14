@@ -19,3 +19,7 @@
 -keepclassmembers class * {
     @android.webkit.JavascriptInterface <methods>;
 }
+
+# AdMob — ödüllü video geri çağrıları yansıma ile gelir
+-keep class com.google.android.gms.ads.** { *; }
+-keep class com.google.ads.** { *; }

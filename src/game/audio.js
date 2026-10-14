@@ -47,6 +47,39 @@ class SfxEngine {
     this.bedLevel = 0;
   }
 
+  /**
+   * Arka plana geçince ses donanımını bırakır.
+   *
+   * `stopMusic` değil: kaynaklar yerinde kalır, `resumeContext` ile
+   * kaldığı yerden devam eder. Home tuşu / sekme değişiminde müzik
+   * ve tribün uğultusu kilit ekranının arkasından çalmaya devam
+   * etmesin diye.
+   */
+  suspend() {
+    if (!this.ctx || this.ctx.state !== 'running') return;
+    try {
+      this.ctx.suspend();
+    } catch {
+      // Bazı WebView'ler suspend'i reddeder; sessiz geç
+    }
+  }
+
+  /**
+   * Arka plandan dönüşte sesi yeniden açar.
+   *
+   * Kullanıcı hareketi gerektirmez: bağlam daha önce `unlock` ile
+   * açılmışsa tarayıcı `resume`'a izin verir. Henüz hiç açılmamışsa
+   * no-op — ilk tıklamada `unlock` yine çalışır.
+   */
+  resumeContext() {
+    if (!this.ctx || this.ctx.state !== 'suspended') return;
+    try {
+      this.ctx.resume();
+    } catch {
+      // Autoplay politikası; sonraki unlock dener
+    }
+  }
+
   /** İlk kullanıcı hareketinde çağrılır. */
   unlock() {
     if (this.ctx) {

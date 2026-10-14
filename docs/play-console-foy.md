@@ -14,14 +14,10 @@ başlık, sağda yazacağın/işaretleyeceğin şey.
 | `tablet-1-menu / 3-mac .png` | sohbette gönderildi |
 
 Paket adı: **`app.retrovoleybol.oyun`** (`.aab`'den otomatik okunur,
-elle girmen gerekmez). Sürüm: **0.1.7 (107)**.
+elle girmen gerekmez). Sürüm: **0.1.10 (110)**.
 
-> 0.1.0 (100) Play tarafından reddedildi: hedef API düzeyi 35'ti, artık
-> en az 36 isteniyor. Düzeltildi. **`main` hâlâ 0.1.1 (101)** — R8,
-> İngilizce, görsel eğitim ve ONLINE/SINGLEPLAYER onda yok. Yarın
-> yüklenecek `.aab` Actions → android aab → **Use workflow from:
-> `cursor/tutorial-gorsel-89c3`** ile üretilmeli. Aynı sürüm kodunu
-> ikinci kez yüklemek reddedilir; 107 Play'de yoksa sorun yok.
+> 109 yüklüyse bir sonraki paket **110**. Aynı sürüm kodunu ikinci kez
+> yüklemek reddedilir. Zorluk yumuşadı, düşük telefonda çizim sadeleşti.
 
 ---
 
@@ -54,14 +50,15 @@ elle girmen gerekmez). Sürüm: **0.1.7 (107)**.
 
 1. **Test and release → Testing → Internal testing → Create new release**
 2. Play App Signing çıkarsa → **Kabul et** (Continue).
-3. `app-release.aab` dosyasını sürükle. Yükleme bitince **0.1.7 (107)**
+3. `app-release.aab` dosyasını sürükle. Yükleme bitince **0.1.10 (110)**
    yazmalı.
-4. **Release name:** `0.1.7 (107)` (kendiliğinden gelir, dokunma)
+4. **Release name:** `0.1.10 (110)` (kendiliğinden gelir, dokunma)
 5. **Release notes** — `<tr-TR>` bloğunun içine:
 
    ```
-   ONLINE ve SINGLEPLAYER, İngilizce dil, görsel tuş eğitimi,
-   tam ekran dolgu ve R8 ile yayın paketi.
+   Android 15 kenardan kenara. Rakip yumuşadı, ilk maçta tuş koçu.
+   Forma Puanı ve ödüllü reklam Play paketinde; web sitesinde kilit
+   ve reklam yok.
    ```
 
 6. **Testers** sekmesi → **Create email list** → listeye kendi Google
@@ -86,9 +83,15 @@ Oyunun tamamı giriş yapmadan oynanıyor; çevrimiçi mod da hesap istemiyor
 ### Ads
 | Soru | Cevap |
 |---|---|
-| Does your app contain ads? | **No** |
+| Does your app contain ads? | **Yes** |
 
-Kodda reklam SDK'sı yok.
+Ödüllü video (AdMob): hayatta kalmada "reklam izle, devam et" ve maç
+sonunda 2× Forma Puanı. Web sitesinde reklam yok. İzlemeden oyun
+oynanır; günde en fazla 8 ödüllü reklam.
+
+Konsolda Ads=Yes deyince reklam kimliği (AD_ID) bildirimi de açılır.
+`AndroidManifest.xml` içinde `com.google.android.gms.permission.AD_ID`
+var.
 
 ### Content rating
 E-posta adresini girip anketi doldur. Kategori: **Game**.
@@ -121,11 +124,13 @@ Toplanan veri türleri:
 |---|---|---|---|---|---|
 | Personal info | **User IDs** (takma ad + kimlik no) | Evet | Hayır | Zorunlu | App functionality |
 | App activity | **In-app actions** (maç sonuçları, puan) | Evet | Hayır | Zorunlu | App functionality |
+| Device or other IDs | **Advertising ID** | Evet (AdMob) | Evet — Google | İsteğe bağlı | Advertising or marketing |
 
-Diğer her kategori: **Hayır**. Konum, kişiler, fotoğraf, dosya, sağlık,
-finans, mesaj, kişiselleştirme, analitik, reklam — hiçbiri yok.
-(`src/` içinde tek bir `fetch` çağrısı bile yok; tek dış bağlantı
-çevrimiçi maçta açılan WebSocket.)
+Reklam kimliği bizim sunucuya yazılmaz; Google AdMob ödüllü videoyu
+ölçmek için kullanır. Kullanıcı reklam izlemeden de oynar.
+
+Konum, kişiler, fotoğraf, dosya, sağlık, finans, mesaj,
+kişiselleştirme, analitik — yok. Web sitesinde reklam SDK'sı yok.
 
 ### Privacy policy
 ```
@@ -216,18 +221,18 @@ tamamlayınca **Retro Voleybol** olur.
 2. Play Store'dan kur (bağlantının altındaki "Download it on Google Play").
 3. **Çevrimiçi modu dene** — röle 60 Hz'de çalışıyor, akıcılık farkı
    orada görünür.
-4. Sorun yoksa **bölüm 7** ile Production kanalına **aynı 0.1.7 `.aab`**
-   ile çıkılır — `main`'deki eski 0.1.1 değil.
+4. Sorun yoksa **bölüm 7** ile Production kanalına **aynı 0.1.8 `.aab`**
+   ile çıkılır.
 
 ---
 
 ## 7. Üretim (Production)
 
 1. Actions → **android aab** → **Run workflow** → Use workflow from:
-   **`cursor/tutorial-gorsel-89c3`**. Bittiğinde Artifacts'tan
+   **`cursor/zorluk-fps-89c3`**. Bittiğinde Artifacts'tan
    `app-release.aab` **ve** `mapping.txt` indir.
 2. Play Console → Test and release → **Production** → Create new release.
-3. AAB'yi sürükle. **0.1.7 (107)** yazmalı. 101 veya 102 görürsen
+3. AAB'yi sürükle. **0.1.10 (110)** yazmalı. 109 veya daha düşük görürsen
    yanlış daldan paket üretilmiş demektir; yükleme.
 4. `mapping.txt` → App integrity / deobfuscation file. R8 açık; bu
    dosya olmadan kilitlenme izleri okunmaz.
@@ -245,6 +250,45 @@ tamamlayınca **Retro Voleybol** olur.
 
 ## Sonraki sürümler
 
-`package.json` içindeki `version` artırılır (`0.1.7` → `0.1.8`),
+`package.json` içindeki `version` artırılır (`0.1.10` → `0.1.11`),
 `main`'e girer, Actions → android aab → Run workflow. `versionCode`
-sürümden türetiliyor (`0.1.8` → `108`), elle artırmak gerekmiyor.
+sürümden türetiliyor (`0.1.10` → `110`), elle artırmak gerekmiyor.
+
+---
+
+## Play Console önerileri (Analyzer)
+
+Bunlar **red değil**, tavsiye. 109 üzerinde hâlâ görünmeleri normal:
+Analyzer o sürümü taradı. **110** yüklenince uçtan uca yenilenir;
+öteki üçü **Dismiss** — kodla “düzeltmek” oyunu bozar.
+
+| Öneri | Karar |
+|---|---|
+| Uçtan uca ekran | **Kodda var (109+).** `EdgeToEdge.enable` + şeffaf çubuklar + CSS `safe-area`. 110 AAB ile yeniden tarat. |
+| Yatay kilit (`SENSOR_LANDSCAPE`) | **Dismiss.** Oyun yatay; dikeyde tuşlar ve çevrimiçi maç bozulur. |
+| BitmapFactory `y.c.c` | **Dismiss.** Oyun Canvas/JS; çağrı splash veya AdMob içinde. Glide eklemek kabuğu şişirir. |
+| AGP 9.0 / R8 | **Dismiss.** Capacitor 6 → AGP 8.2. R8 minify + shrinkResources zaten açık. AGP 9 şablonu kırar. |
+
+### Play’de Dismiss metinleri (kopyala-yapıştır)
+
+**Yatay kilit**
+```
+Landscape-only volleyball game. Court and on-screen controls are
+designed for landscape; portrait would break touch layout and pause
+online matches mid-point. Keeping sensorLandscape intentionally.
+```
+
+**BitmapFactory**
+```
+No app BitmapFactory usage. Game renders on Canvas/WebView. The
+flagged symbol is inside AndroidX SplashScreen or AdMob SDK after
+R8 rename. Adding Glide would not touch game assets.
+```
+
+**AGP 9**
+```
+App uses Capacitor 6, which targets Android Gradle Plugin 8.2.
+Release already has R8 minifyEnabled + shrinkResources. Upgrading to
+AGP 9 requires a Capacitor major upgrade and is out of scope for this
+release.
+```

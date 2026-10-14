@@ -56,7 +56,7 @@ const BOYUTLAR = [
 
 /** Oyun tercihleri — her görüntüde aynı kadro ve rakip çıksın. */
 const TERCIH = {
-  tutorialSeen: true,
+  tutorialSeen: true, kocSeen: true,
   muted: true,
   mode: '1v1',
   difficulty: 'normal',

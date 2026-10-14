@@ -64,6 +64,8 @@ import {
 } from './combo.js';
 import { drawBall, drawSultan } from './sprites.js';
 import { drawArena, drawFloor, drawNet } from './arena.js';
+import { kaliteCizimdenOgren, kaliteDusukMu, kaliteSifirla } from './kalite.js';
+import { KOC_ADIM, kocAdimAt, kocBaslangic } from './koc.js';
 import {
   clearsNet as shotClearsNet,
   computeAttackVelocity,
@@ -107,10 +109,11 @@ import { t } from '../i18n/index.js';
 /**
  * Arka planın tazelenme aralığı (saniye).
  *
- * 1/14 sn: tribün ve ışıklar bu hızda kıpırdıyor. Daha yükseği gözle
- * fark edilmiyor, daha düşüğünde kalabalık kesikli görünmeye başlıyor.
+ * Tam kalitede tribün bu aralıkta kıpırdar. Düşük kalitede aralık
+ * uzar (`BG_REFRESH_DUSUK`) — kalabalık donar, kare bütçesi fizikte kalır.
  */
-const BG_REFRESH = 1 / 10;
+const BG_REFRESH = 1 / 8;
+const BG_REFRESH_DUSUK = 0.55;
 
 /**
  * Ağ ayarları.
@@ -470,6 +473,7 @@ export default class Game {
      * gecikme avantajı tamamen ev sahibinde.
      */
     this.bassiz = Boolean(options.bassiz);
+    if (!this.bassiz) kaliteSifirla();
 
     this.canvas = canvas ?? null;
     this.ctx = this.bassiz ? null : canvas.getContext('2d');
@@ -512,6 +516,7 @@ export default class Game {
     this.roundCount = options.roundCount ?? null;
 
     this.onState = options.onState ?? (() => {});
+    this.onKocBitir = options.onKocBitir ?? (() => {});
     this.onFinish = options.onFinish ?? (() => {});
 
     this.homeIds = (options.homeIds ?? [DEFAULT_PLAYER_ID]).slice(0, this.perSide);
@@ -827,6 +832,12 @@ export default class Game {
     // Hayatta kalma durumu — diğer modlarda kullanılmaz
     this.lives = SURVIVAL.lives;
     this.wave = 1;
+    this.survivalContinueUsed = 0;
+    /**
+     * Can bitince reklam teklifi — yalnız mağaza kabuğunda.
+     * Web'de false: koşu bitince direkt sonuç.
+     */
+    this.reklamTeklif = Boolean(options.reklamTeklif);
 
     /**
      * Servis durumu — yalnızca PHASE.SERVE sırasında dolu.
@@ -847,6 +858,7 @@ export default class Game {
     this.phase = PHASE.READY;
     this.phaseTimer = this.rules.readyPause;
     this.message = null;
+    this.koc = options.koc ? kocBaslangic() : null;
 
     this.particles = [];
     /** Vuruş anında genişleyen darbe halkaları. */
@@ -875,6 +887,11 @@ export default class Game {
     this.players = this.createPlayers();
     this.ball = this.createBall('home');
     this.resetPositions();
+    if (this.koc) {
+      this.phase = PHASE.COACH;
+      this.phaseTimer = 0;
+      this.message = null;
+    }
 
     this.lastSignature = '';
 
@@ -1799,6 +1816,7 @@ export default class Game {
     this.cizimSuresi = this.cizimSuresi === null
       ? cizim
       : this.cizimSuresi * 0.9 + cizim * 0.1;
+    kaliteCizimdenOgren(this.cizimSuresi);
 
     this.emitState();
     this.agAkis();
@@ -2572,6 +2590,13 @@ export default class Game {
     this.updateBallTrail();
 
     switch (this.phase) {
+      case PHASE.COACH:
+        this.ball.vx = 0;
+        this.ball.vy = 0;
+        this.updatePlayers(dt, true);
+        this.kocGuncelle(dt);
+        break;
+
       case PHASE.READY:
         this.updatePlayers(dt, false);
         this.phaseTimer -= dt;
@@ -2605,12 +2630,45 @@ export default class Game {
         break;
 
       case PHASE.MATCH_END:
+      case PHASE.SURVIVAL_CONTINUE:
       default:
         this.updatePlayers(dt, false);
         break;
     }
 
     this.updateAtmosphere();
+  }
+
+  kocGuncelle(dt) {
+    if (!this.koc || this.koc.adim === KOC_ADIM.DONE) return;
+    const pad = this.inputs.p1;
+    const sonraki = kocAdimAt(
+      this.koc,
+      { ...pad, action: pad.action || this.actionEdge.p1 },
+      dt,
+    );
+    const adimDegisti = sonraki.adim !== this.koc.adim;
+    this.koc = sonraki;
+    if (sonraki.adim === KOC_ADIM.DONE) {
+      this.kocBitir();
+      return;
+    }
+    if (adimDegisti) this.emitState(true);
+  }
+
+  kocBitir() {
+    this.koc = null;
+    this.resetPositions();
+    this.phase = PHASE.READY;
+    this.phaseTimer = this.rules.readyPause;
+    this.message = { text: t('koc.ready'), timer: this.rules.readyPause, color: PALETTE.gold };
+    this.onKocBitir();
+    this.emitState(true);
+  }
+
+  kocAtla() {
+    if (!this.koc) return;
+    this.kocBitir();
   }
 
   // ===================================================================
@@ -2647,7 +2705,7 @@ export default class Game {
         return;
       }
 
-      if (active) {
+      if (active && !this.koc) {
         const isAway = player.side === 'away';
         const chaserId = isAway ? awayChaser : homeChaser;
         updateAI(
@@ -3682,6 +3740,8 @@ export default class Game {
       stats: { ...this.stats },
       mode: this.mode,
       playMode: this.playMode,
+      cevrimici: Boolean(this.agRol),
+      agRol: this.agRol,
       format: this.format.id,
       homeIds: [...this.homeIds],
       difficulty: this.difficulty.label,
@@ -3709,6 +3769,14 @@ export default class Game {
    */
   afterSurvivalPoint() {
     if (this.lives <= 0) {
+      if (
+        this.reklamTeklif
+        && this.survivalContinueUsed < SURVIVAL.continueLimit
+      ) {
+        this.phase = PHASE.SURVIVAL_CONTINUE;
+        this.emitState(true);
+        return;
+      }
       this.finishSurvival();
       return;
     }
@@ -3774,6 +3842,39 @@ export default class Game {
     });
   }
 
+  /**
+   * Ödüllü reklam tamamlandı — bir can, koşu devam.
+   * Hak yoksa sessizce koşuyu bitirir (çift tıklama / yarış).
+   */
+  grantSurvivalContinue() {
+    if (this.phase !== PHASE.SURVIVAL_CONTINUE) return false;
+    if (this.survivalContinueUsed >= SURVIVAL.continueLimit) {
+      this.finishSurvival();
+      return false;
+    }
+    this.survivalContinueUsed += 1;
+    this.lives = 1;
+    this.finished = false;
+    this.servingSide = 'home';
+    this.streak = { side: null, count: 0 };
+    this.resetRally('home');
+    this.phase = PHASE.READY;
+    this.phaseTimer = this.rules.readyPause;
+    this.message = {
+      text: t('ad.lifeBack'),
+      timer: this.rules.readyPause,
+      color: PALETTE.gold,
+    };
+    this.emitState(true);
+    return true;
+  }
+
+  /** Teklifi reddet — koşu biter, puan kaydedilir. */
+  declineSurvivalContinue() {
+    if (this.phase !== PHASE.SURVIVAL_CONTINUE) return;
+    this.finishSurvival();
+  }
+
   /** Canlar bitti — koşuyu kapat. */
   finishSurvival() {
     this.phase = PHASE.MATCH_END;
@@ -3813,8 +3914,9 @@ export default class Game {
   }
 
   spawnBurst(x, y, count, color) {
-    this.agOlay('burst', Math.round(x), Math.round(y), count, color);
-    fxSpawnBurst(this.particles, x, y, count, color);
+    const n = kaliteDusukMu() ? Math.min(count, 4) : count;
+    this.agOlay('burst', Math.round(x), Math.round(y), n, color);
+    fxSpawnBurst(this.particles, x, y, n, color);
   }
 
   spawnFlame(x, y) {
@@ -3913,6 +4015,7 @@ export default class Game {
       this.lives,
       this.wave,
       this.combo,
+      this.koc?.adim ?? '',
     ].join('|');
 
     if (!force && signature === this.lastSignature) return;
@@ -3958,6 +4061,7 @@ export default class Game {
        */
       gidisDonus: this.agGidisDonus(),
       opponentAccent: this.opponent.colors.accent,
+      koc: this.koc ? { adim: this.koc.adim } : null,
     });
   }
 
@@ -4007,7 +4111,7 @@ export default class Game {
     this.players.forEach((player) => this.drawPlayer(player));
 
     drawNet(ctx, GROUND_Y);
-    this.drawBallTrail();
+    if (!kaliteDusukMu()) this.drawBallTrail();
     drawBall(ctx, this.ball);
     this.drawRings();
     this.drawParticles();
@@ -4033,14 +4137,17 @@ export default class Game {
    * görünmesin diye imza da kontrol ediliyor.
    */
   paintBackground() {
-    const imza = `${this.score.home}-${this.score.away}-${this.touch.side}-${this.touch.count}`;
-    const eskidi = this.time - this.bgTime >= BG_REFRESH;
+    const dusuk = kaliteDusukMu();
+    const imza = `${this.score.home}-${this.score.away}-${this.touch.side}-${this.touch.count}-${dusuk ? 'd' : 't'}`;
+    const eskidi = this.time - this.bgTime >= (dusuk ? BG_REFRESH_DUSUK : BG_REFRESH);
 
     if (!eskidi && imza === this.bgKey) return;
 
     this.bgTime = this.time;
     this.bgKey = imza;
-    drawArena(this.bgCtx, this.time, this.hype, this.score, this.touch);
+    const zaman = dusuk ? Math.floor(this.time) : this.time;
+    const hype = dusuk ? 0 : this.hype;
+    drawArena(this.bgCtx, zaman, hype, this.score, this.touch);
     drawFloor(this.bgCtx);
   }
 

@@ -19,7 +19,7 @@ async function ac(w, h, mobil = true) {
   await page.goto(URL, { waitUntil: 'load' });
   await page.waitForTimeout(600);
   await page.evaluate(() => localStorage.setItem('retro-voleybol-prefs', JSON.stringify({
-    tutorialSeen: true, muted: true, mode: '1v1', difficulty: 'kolay',
+    tutorialSeen: true, kocSeen: true, muted: true, mode: '1v1', difficulty: 'kolay',
     format: 'practice', opponentId: 'atlas', homeIds: ['gizel-orgen'] })));
   await page.reload({ waitUntil: 'load' });
   await page.waitForTimeout(1200);

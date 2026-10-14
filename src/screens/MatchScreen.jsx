@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Game from '../game/Game.js';
 import { FORMATS, GAME_HEIGHT, GAME_WIDTH, PHASE } from '../game/constants.js';
+import { kocVurgu, kocYaziAnahtar } from '../game/koc.js';
 import { getPlayerById } from '../game/players.js';
 import Scoreboard from '../components/Scoreboard.jsx';
 import BaglantiGostergesi from '../components/BaglantiGostergesi.jsx';
@@ -41,6 +42,7 @@ const INITIAL_HUD = {
   survival: null,
   combo: 0,
   comboTier: null,
+  koc: null,
   homeName: 'TÜRKİYE',
   /** Çevrimiçi gidiş-dönüş (ms); çevrimdışında null kalır. */
   gidisDonus: null,
@@ -56,8 +58,12 @@ export default function MatchScreen({
   config,
   onFinish,
   onQuit,
+  onCoachDone,
   muted,
   onToggleMute,
+  reklamTeklif = false,
+  onRewardedAd,
+  reklamKalan = 0,
   controls,
   onControls,
   musicVolume,
@@ -79,6 +85,8 @@ export default function MatchScreen({
     && new URLSearchParams(window.location.search).get('tani') === '1';
   const onFinishRef = useRef(onFinish);
   onFinishRef.current = onFinish;
+  const onCoachDoneRef = useRef(onCoachDone);
+  onCoachDoneRef.current = onCoachDone;
   const confirmCancelRef = useRef(null);
   const stageRef = useRef(null);
 
@@ -88,6 +96,7 @@ export default function MatchScreen({
   const [settingsOpen, setSettingsOpen] = useState(false);
   /** Çevrimiçi maçta karşı taraf gittiğinde gösterilen katman. */
   const [agKopuk, setAgKopuk] = useState(null);
+  const [adDurum, setAdDurum] = useState('idle');
 
   const fullscreen = useFullscreen(stageRef);
   const { portrait, coarse } = useViewport();
@@ -112,6 +121,8 @@ export default function MatchScreen({
       roundNumber: config.roundNumber,
       roundCount: config.roundCount,
       onState: setHud,
+      koc: Boolean(config.koc),
+      onKocBitir: () => onCoachDoneRef.current?.(),
       /*
        * Çevrimiçide bu HİÇ tetiklenmez: maçı sunucu koşturuyor, iki
        * istemci de simüle etmiyor. Bitişi sunucunun `bitis` mesajı
@@ -119,6 +130,7 @@ export default function MatchScreen({
        * normal yol burası.
        */
       onFinish: (result) => onFinishRef.current(result),
+      reklamTeklif,
       // Çevrimiçi maçta rol ve gönderim kapısı
       agRol: config.agRol ?? null,
       agYuvam: config.agYuvam ?? null,
@@ -198,7 +210,7 @@ export default function MatchScreen({
      * haklı, çünkü çıkarılırsa ileride değişken bir değere döndüğünde
      * hata sessizce oluşur.
      */
-  }, [config, taniAcik]);
+  }, [config, taniAcik, reklamTeklif]);
 
   // --- Maç sırasında sayfa kaydırmasını kilitle (mobil) ---
   useEffect(() => {
@@ -638,6 +650,25 @@ export default function MatchScreen({
           </div>
         )}
 
+        {hud.koc && hud.phase === PHASE.COACH && (
+          <div
+            className="pointer-events-none absolute inset-x-0 top-[18%] z-20 flex flex-col items-center gap-3 px-3"
+            data-koc
+            role="status"
+          >
+            <p className="max-w-md border-4 border-retro-accent bg-black/85 px-4 py-3 text-center text-[10px] leading-relaxed text-white sm:text-xs">
+              {t(kocYaziAnahtar(hud.koc.adim, coarse))}
+            </p>
+            <button
+              type="button"
+              className="pointer-events-auto retro-button-ghost px-4 py-2 text-[8px]"
+              onClick={() => gameRef.current?.kocAtla()}
+            >
+              {t('koc.skip')}
+            </button>
+          </div>
+        )}
+
         {/*
           Mobil: kontroller sahanın altındaki şeritte.
           `absolute bottom-0` — şerit canvas'ın alt önlüğünün üstüne
@@ -652,6 +683,7 @@ export default function MatchScreen({
             settings={controls}
             strip
             dual={twoPlayer}
+            vurgu={kocVurgu(hud.koc?.adim)}
           />
         </div>
 
@@ -840,6 +872,56 @@ export default function MatchScreen({
             <button type="button" className="retro-button" onClick={onQuit}>
               {t('match.toMenu')}
             </button>
+          </div>
+        )}
+
+        {hud.phase === PHASE.SURVIVAL_CONTINUE && (
+          <div
+            className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-black/90 px-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('ad.continueTitle')}
+          >
+            <p className="text-center text-sm text-white sm:text-lg">{t('ad.continueTitle')}</p>
+            <p className="max-w-xs text-center text-[7px] leading-relaxed text-white/55 sm:text-[8px]">
+              {t('ad.continueBody')}
+            </p>
+            <div className="flex flex-wrap justify-center gap-3">
+              {reklamKalan > 0 && (
+                <button
+                  type="button"
+                  data-ad-continue
+                  className="retro-button px-6 py-3"
+                  disabled={adDurum === 'yukleniyor'}
+                  onClick={async () => {
+                    setAdDurum('yukleniyor');
+                    const ok = onRewardedAd ? await onRewardedAd() : false;
+                    if (ok) {
+                      gameRef.current?.grantSurvivalContinue();
+                      setAdDurum('idle');
+                    } else {
+                      setAdDurum('hata');
+                    }
+                  }}
+                >
+                  {adDurum === 'yukleniyor' ? t('ad.loading') : t('ad.watch')}
+                </button>
+              )}
+              <button
+                type="button"
+                className="retro-button-ghost px-6 py-3"
+                disabled={adDurum === 'yukleniyor'}
+                onClick={() => gameRef.current?.declineSurvivalContinue()}
+              >
+                {t('ad.skip')}
+              </button>
+            </div>
+            {reklamKalan > 0 && (
+              <p className="text-center text-[6px] text-white/35">{t('ad.remaining', { n: reklamKalan })}</p>
+            )}
+            {adDurum === 'hata' && (
+              <p className="text-center text-[7px] text-turkiye-red">{t('ad.fail')}</p>
+            )}
           </div>
         )}
 

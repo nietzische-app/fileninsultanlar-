@@ -49,7 +49,7 @@ eskiVeriyiTasi();
  * @typedef {{ muted: boolean, musicVolume: number, sfxVolume: number,
  *   controls: ControlPrefs, mode: string, difficulty: string, format: string,
  *   opponentId: string, homeIds: string[], tutorialSeen: boolean,
- *   lang: 'tr'|'en'|null }} Prefs
+ *   kocSeen: boolean, lang: 'tr'|'en'|null }} Prefs
  */
 
 /**
@@ -92,6 +92,8 @@ export const DEFAULT_PREFS = {
   opponentId: 'random',
   homeIds: ['gizel-orgen'],
   tutorialSeen: false,
+  /** İlk maçtaki saha koçu (hareket / zıpla / vur) görüldü mü. */
+  kocSeen: false,
   /**
    * Arayüz dili. `null` = henüz seçilmedi; ilk açılışta tarayıcı
    * dilinden tahmin edilir. Eski kayıtlarda alan yoksa Türkçe.
@@ -166,6 +168,7 @@ export function loadPrefs() {
       opponentId: typeof parsed.opponentId === 'string' ? parsed.opponentId : DEFAULT_PREFS.opponentId,
       homeIds,
       tutorialSeen: Boolean(parsed.tutorialSeen),
+      kocSeen: Boolean(parsed.kocSeen),
       lang:
         parsed.lang === 'en' || parsed.lang === 'tr'
           ? parsed.lang
@@ -562,6 +565,9 @@ export function loadIlerleme() {
         acilanlar: Array.isArray(parsed?.acilanlar)
           ? parsed.acilanlar.filter((id) => typeof id === 'string')
           : [],
+        reklamGun: typeof parsed?.reklamGun === 'string' ? parsed.reklamGun : '',
+        reklamSayi: num(parsed?.reklamSayi),
+        sonMacGun: typeof parsed?.sonMacGun === 'string' ? parsed.sonMacGun : '',
       };
     }
   } catch {
@@ -596,6 +602,9 @@ export function saveIlerleme(durum) {
           .filter((id) => !BASLANGIC_KADRO.includes(id))
       )
     ),
+    reklamGun: typeof durum?.reklamGun === 'string' ? durum.reklamGun : '',
+    reklamSayi: num(durum?.reklamSayi),
+    sonMacGun: typeof durum?.sonMacGun === 'string' ? durum.sonMacGun : '',
   };
   try {
     localStorage.setItem(ILERLEME_KEY, JSON.stringify(temiz));
