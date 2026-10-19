@@ -35,7 +35,8 @@
     "paket:android": "npm run paket && npx cap open android",
     "e2e:paket": "node tests/e2e/paket.mjs",
     "ikon": "node scripts/ikon-uret.mjs",
-    "magaza-gorsel": "node scripts/magaza-gorsel.mjs"
+    "magaza-gorsel": "node scripts/magaza-gorsel.mjs",
+    "generate-video": "node scripts/generate-video.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.2",

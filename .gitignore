@@ -43,6 +43,11 @@ pnpm-debug.log*
 /portal/
 *.zip
 
+# Otomatik Reels çıktısı (`npm run generate-video`)
+/output_reels.mp4
+/output_reels.*.mp4
+tests/ciktilar/
+
 # Röle veri dizini — oyuncu kayıtları. Depoya GİRMEZ: kişisel takma
 # adlar ve gizli anahtar özetleri içeriyor, üstelik her sunucunun
 # kendi verisi. Yedeği `cp veri/oyuncular.jsonl` ile alınır.
