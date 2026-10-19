@@ -9,43 +9,64 @@ import {
   useVideoConfig,
 } from 'remotion';
 import {SyncedBeep} from '../audio/SyncedBeep';
+import {beatFrames} from '../variants';
 
 type Props = {
-  ctaLabel: string;
-  ctaSub: string;
+  ctaTitle: string;
+  ctaButton: string;
+  ctaSub?: string;
+  ctaFooter?: string;
+  bpm: number;
+  accent: string;
+  accentDark: string;
+  highlight: string;
 };
 
-export const CtaScene: React.FC<Props> = ({ctaLabel, ctaSub}) => {
+export const CtaScene: React.FC<Props> = ({
+  ctaTitle,
+  ctaButton,
+  ctaSub,
+  ctaFooter,
+  bpm,
+  accent,
+  accentDark,
+  highlight,
+}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
 
-  const iconPop = spring({
-    frame,
+  const iconPop = spring({frame, fps, config: {damping: 10, stiffness: 140, mass: 0.55}});
+  const text = spring({
+    frame: Math.max(0, frame - 10),
     fps,
-    config: {damping: 10, stiffness: 140, mass: 0.55},
+    config: {damping: 14, stiffness: 120},
   });
   const btn = spring({
-    frame: Math.max(0, frame - 18),
+    frame: Math.max(0, frame - 22),
     fps,
     config: {damping: 14, stiffness: 110},
   });
-  const pulse = 1 + Math.sin(frame / 8) * 0.03;
+
+  // Tempoya senkron buton nabzı
+  const beat = beatFrames(bpm);
+  const beatPhase = (frame % beat) / beat;
+  const pulse = 1 + interpolate(beatPhase, [0, 0.2, 1], [0.06, 0.01, 0]);
 
   return (
     <AbsoluteFill
       style={{
-        background:
-          'radial-gradient(ellipse at 50% 35%, #5a121c 0%, #0B0B12 68%)',
+        background: `radial-gradient(ellipse at 50% 35%, ${accent}66 0%, #0B0B12 68%)`,
         justifyContent: 'center',
         alignItems: 'center',
         fontFamily: '"DejaVu Sans", system-ui, sans-serif',
       }}
     >
       <SyncedBeep file="remotion/whoosh.wav" atFrame={2} volume={0.7} />
+      <SyncedBeep file="remotion/beep.wav" atFrame={22} volume={0.6} />
 
       <div
         style={{
-          transform: `scale(${interpolate(iconPop, [0, 1], [0.2, 1]) * pulse})`,
+          transform: `scale(${interpolate(iconPop, [0, 1], [0.2, 1])})`,
           opacity: interpolate(iconPop, [0, 0.15, 1], [0, 1, 1]),
           marginBottom: 48,
         }}
@@ -56,7 +77,7 @@ export const CtaScene: React.FC<Props> = ({ctaLabel, ctaSub}) => {
             width: 320,
             height: 320,
             borderRadius: 64,
-            boxShadow: '0 20px 50px rgba(227,10,23,0.45)',
+            boxShadow: `0 20px 50px ${accent}73`,
             imageRendering: 'pixelated',
           }}
         />
@@ -65,56 +86,65 @@ export const CtaScene: React.FC<Props> = ({ctaLabel, ctaSub}) => {
       <div
         style={{
           color: '#fff',
-          fontSize: 48,
+          fontSize: 54,
           fontWeight: 800,
-          letterSpacing: 1,
-          textShadow: '0 4px 0 #E30A17',
-          marginBottom: 16,
-          opacity: interpolate(iconPop, [0, 0.4, 1], [0, 0, 1]),
+          lineHeight: 1.2,
+          textAlign: 'center',
+          padding: '0 60px',
+          textShadow: `0 4px 0 ${accent}`,
+          marginBottom: 20,
+          opacity: interpolate(text, [0, 1], [0, 1]),
+          transform: `translateY(${interpolate(text, [0, 1], [30, 0])}px)`,
         }}
       >
-        RETRO VOLEYBOL
+        {ctaTitle}
       </div>
+
+      {ctaSub ? (
+        <div
+          style={{
+            color: '#A0A0B8',
+            fontSize: 26,
+            marginBottom: 52,
+            opacity: interpolate(text, [0, 1], [0, 1]),
+          }}
+        >
+          {ctaSub}
+        </div>
+      ) : (
+        <div style={{height: 52}} />
+      )}
 
       <div
         style={{
-          color: '#A0A0B8',
-          fontSize: 26,
-          marginBottom: 56,
+          transform: `translateY(${interpolate(btn, [0, 1], [40, 0])}px) scale(${interpolate(btn, [0, 1], [0.9, 1]) * pulse})`,
           opacity: interpolate(btn, [0, 1], [0, 1]),
-        }}
-      >
-        {ctaSub}
-      </div>
-
-      <div
-        style={{
-          transform: `translateY(${interpolate(btn, [0, 1], [40, 0])}px) scale(${interpolate(btn, [0, 1], [0.9, 1])})`,
-          opacity: interpolate(btn, [0, 1], [0, 1]),
-          backgroundColor: '#E30A17',
+          backgroundColor: accent,
           color: '#fff',
-          fontSize: 32,
+          fontSize: 34,
           fontWeight: 800,
-          padding: '28px 56px',
+          padding: '28px 60px',
           borderRadius: 16,
-          border: '4px solid #FFD24A',
-          boxShadow: '0 10px 0 #8a0610',
+          border: `4px solid ${highlight}`,
+          boxShadow: `0 10px 0 ${accentDark}`,
         }}
       >
-        {ctaLabel}
+        {ctaButton}
       </div>
 
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 120,
-          color: '#FFD24A',
-          fontSize: 24,
-          opacity: interpolate(btn, [0, 1], [0, 0.9]),
-        }}
-      >
-        Google Play · Ücretsiz
-      </div>
+      {ctaFooter ? (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 120,
+            color: highlight,
+            fontSize: 24,
+            opacity: interpolate(btn, [0, 1], [0, 0.9]),
+          }}
+        >
+          {ctaFooter}
+        </div>
+      ) : null}
     </AbsoluteFill>
   );
 };

@@ -1,28 +1,29 @@
 import React from 'react';
 import {Composition} from 'remotion';
-import {RetroVoleybolShorts} from './Composition';
-import {FPS, HEIGHT, WIDTH, TOTAL_FRAMES} from './constants';
+import {ReelsVariant} from './Composition';
+import {FPS, HEIGHT, TOTAL_FRAMES, WIDTH} from './constants';
+import {ReelsOption1, ReelsOption2, ReelsOption3} from './variants';
 
+const common = {
+  component: ReelsVariant,
+  durationInFrames: TOTAL_FRAMES,
+  fps: FPS,
+  width: WIDTH,
+  height: HEIGHT,
+} as const;
+
+/**
+ * A/B/C test varyasyonları — aynı iskelet, farklı metin/müzik/oynanış düzeni.
+ *   ReelsOption1  Soru / Rekabet
+ *   ReelsOption2  Aksiyon / Smaç (zoom)
+ *   ReelsOption3  Nostalji / Atari
+ */
 export const RemotionRoot: React.FC = () => {
   return (
     <>
-      <Composition
-        id="RetroVoleybolShorts"
-        component={RetroVoleybolShorts}
-        durationInFrames={TOTAL_FRAMES}
-        fps={FPS}
-        width={WIDTH}
-        height={HEIGHT}
-        defaultProps={{
-          hookText: 'BU SETİ KİM ALIR?',
-          hookSub: 'SULTANLAR MI, BALKAN MI?',
-          victoryText: 'ZAFER!',
-          scoreText: 'Sayı!',
-          ctaLabel: "Hemen Ücretsiz Oyna",
-          ctaSub: "Yakında Google Play'de",
-          layoutMode: 'mockup' as const,
-        }}
-      />
+      <Composition id="ReelsOption1" {...common} defaultProps={ReelsOption1} />
+      <Composition id="ReelsOption2" {...common} defaultProps={ReelsOption2} />
+      <Composition id="ReelsOption3" {...common} defaultProps={ReelsOption3} />
     </>
   );
 };
