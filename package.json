@@ -36,14 +36,20 @@
     "e2e:paket": "node tests/e2e/paket.mjs",
     "ikon": "node scripts/ikon-uret.mjs",
     "magaza-gorsel": "node scripts/magaza-gorsel.mjs",
-    "generate-video": "node scripts/generate-video.mjs"
+    "generate-video": "node scripts/generate-video.mjs",
+    "prepare-remotion": "node scripts/prepare-remotion-assets.mjs",
+    "remotion:studio": "remotion studio remotion/index.ts",
+    "build-video": "node scripts/prepare-remotion-assets.mjs && remotion render remotion/index.ts RetroVoleybolShorts out/shorts.mp4"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.2",
     "@capacitor/app": "^6.0.3",
     "@capacitor/core": "^6.2.2",
+    "@remotion/cli": "4.0.536",
+    "@remotion/media-utils": "4.0.536",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "remotion": "4.0.536"
   },
   "devDependencies": {
     "@capacitor/cli": "^6.2.2",

@@ -48,6 +48,11 @@ pnpm-debug.log*
 /output_reels.*.mp4
 tests/ciktilar/
 
+# Remotion render çıktısı + yerel oynanış klibi
+/out/
+/public/remotion/gameplay.mp4
+
+
 # Röle veri dizini — oyuncu kayıtları. Depoya GİRMEZ: kişisel takma
 # adlar ve gizli anahtar özetleri içeriyor, üstelik her sunucunun
 # kendi verisi. Yedeği `cp veri/oyuncular.jsonl` ile alınır.
