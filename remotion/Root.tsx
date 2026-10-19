@@ -5,6 +5,7 @@ import {FPS, HEIGHT, TOTAL_FRAMES, WIDTH} from './constants';
 import {ReelsOption1, ReelsOption2, ReelsOption3} from './variants';
 import {STORE_SHOTS} from './store/captions';
 import {StoreScreenshot} from './store/StoreScreenshots';
+import {AppIcon, ICON_SIZE} from './icons/AppIcons';
 import {STORE_HEIGHT, STORE_WIDTH} from './store/styles';
 
 const common = {
@@ -35,6 +36,16 @@ export const RemotionRoot: React.FC = () => {
           width={STORE_WIDTH}
           height={STORE_HEIGHT}
           defaultProps={shot}
+        />
+      ))}
+      {(['flaming', 'hero', 'court', 'shield'] as const).map((variant, i) => (
+        <Still
+          key={variant}
+          id={`AppIcon${i + 1}`}
+          component={AppIcon}
+          width={ICON_SIZE}
+          height={ICON_SIZE}
+          defaultProps={{variant}}
         />
       ))}
     </>
