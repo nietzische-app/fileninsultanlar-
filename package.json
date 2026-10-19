@@ -48,7 +48,10 @@
     "build:v2": "npm run prepare-remotion && npm run render:v2",
     "build:v3": "npm run prepare-remotion && npm run render:v3",
     "build:all": "npm run prepare-remotion && npm run render:v1 && npm run render:v2 && npm run render:v3",
-    "build-video": "npm run build:v1"
+    "build-video": "npm run build:v1",
+    "store-shots:capture": "node scripts/store-shots-capture.mjs",
+    "store-shots:render": "remotion still remotion/index.ts StoreScreenshot1 out/store_screenshot_1.png --image-format=png && remotion still remotion/index.ts StoreScreenshot2 out/store_screenshot_2.png --image-format=png && remotion still remotion/index.ts StoreScreenshot3 out/store_screenshot_3.png --image-format=png && remotion still remotion/index.ts StoreScreenshot4 out/store_screenshot_4.png --image-format=png && remotion still remotion/index.ts StoreScreenshot5 out/store_screenshot_5.png --image-format=png",
+    "build:store-shots": "npm run store-shots:capture && npm run store-shots:render"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.2",

@@ -57,3 +57,4 @@ tests/ciktilar/
 # adlar ve gizli anahtar özetleri içeriyor, üstelik her sunucunun
 # kendi verisi. Yedeği `cp veri/oyuncular.jsonl` ile alınır.
 veri/
+/public/remotion/store/
