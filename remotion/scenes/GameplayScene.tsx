@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   AbsoluteFill,
+  Easing,
   Img,
   OffthreadVideo,
   interpolate,
@@ -10,18 +11,29 @@ import {
   useVideoConfig,
 } from 'remotion';
 import {SyncedBeep} from '../audio/SyncedBeep';
-import {HEIGHT, PLAY_FRAMES, VICTORY_AT, WIDTH} from '../constants';
+import {
+  HEIGHT,
+  PLAY_FRAMES,
+  SHAKE_OFFSETS,
+  VICTORY_AT,
+  VICTORY_ZOOM_AMOUNT,
+  VICTORY_ZOOM_FRAMES,
+  VICTORY_ZOOM_RELAX_FRAMES,
+  WIDTH,
+} from '../constants';
 import {beatFrames, type GameplayLayout} from '../variants';
 
 type Props = {
   victoryText: string;
   scoreText: string;
   /**
-   * mockup — 16:9 çerçeve + bulanık arka plan (kırpma yok)
-   * zoom   — dikey pencere, net ve blok anına yakın çekim + smaçta punch-in
+   * mockup — 16:9 çerçeve + bulanık arka plan
+   * zoom   — dikey pencere, net ve blok anına yakın çekim
    * follow — full-bleed scale(1.5) + yumuşak kamera kaydırma
    */
   layoutMode: GameplayLayout;
+  /** Çerçeve içindeki oyun görüntüsünün temel ölçeği (mockup: 1.35) */
+  gameplayScale: number;
   clipStartSec: number;
   bpm: number;
   accent: string;
@@ -54,6 +66,7 @@ export const GameplayScene: React.FC<Props> = ({
   victoryText,
   scoreText,
   layoutMode,
+  gameplayScale,
   clipStartSec,
   bpm,
   accent,
@@ -87,17 +100,38 @@ export const GameplayScene: React.FC<Props> = ({
   const ballTrack = Math.sin((frame / PLAY_FRAMES) * Math.PI * 2.2);
   const followX = interpolate(ballTrack, [-1, 1], [18, -18]);
 
-  // Zoom: yavaş yaklaşma + smaç anında punch-in
-  const zoomBase = interpolate(frame, [0, PLAY_FRAMES], [1.1, 1.24], {
-    extrapolateRight: 'clamp',
-  });
-  const punch = showVictory ? interpolate(pop, [0, 1], [0.12, 0]) : 0;
-  const zoomScale = zoomBase + punch;
-  // Kaydırma kenarı açmasın: scale s iken en fazla (s-1)/2 * 100 % güvenli
-  const zoomPan = Math.max(
-    -(zoomScale - 1) * 50,
-    Math.min((zoomScale - 1) * 50, followX * 0.2),
+  // Sayı anı: 0.3 sn'de yumuşak zoom-in (ease-out), sonra yavaşça gevşer
+  const victoryZoom = interpolate(
+    victoryLocal,
+    [0, VICTORY_ZOOM_FRAMES, VICTORY_ZOOM_FRAMES + VICTORY_ZOOM_RELAX_FRAMES],
+    [0, 1, 0],
+    {
+      easing: Easing.out(Easing.cubic),
+      extrapolateLeft: 'clamp',
+      extrapolateRight: 'clamp',
+    },
   );
+
+  // Zoom varyasyonunda ek olarak zamana bağlı yavaş yaklaşma
+  const timeZoom =
+    layoutMode === 'zoom'
+      ? interpolate(frame, [0, PLAY_FRAMES], [1, 1.12], {extrapolateRight: 'clamp'})
+      : 1;
+  const contentScale =
+    gameplayScale * timeZoom * (1 + VICTORY_ZOOM_AMOUNT * victoryZoom);
+
+  // Kaydırma kenarı açmasın: scale s iken en fazla (s-1)/2 * 100 % güvenli
+  const maxPan = (contentScale - 1) * 50;
+  const panX = Math.max(
+    -maxPan,
+    Math.min(maxPan, followX * (layoutMode === 'zoom' ? 0.2 : 0.35)),
+  );
+
+  // Sayı karesinden itibaren 4 kare ekran sarsıntısı
+  const shake =
+    victoryLocal >= 0 && victoryLocal < SHAKE_OFFSETS.length
+      ? SHAKE_OFFSETS[victoryLocal]
+      : ([0, 0] as const);
 
   return (
     <AbsoluteFill style={{backgroundColor: '#0B0B12', overflow: 'hidden'}}>
@@ -116,15 +150,22 @@ export const GameplayScene: React.FC<Props> = ({
       </AbsoluteFill>
 
       {layoutMode === 'follow' ? (
-        <FollowLayout src={src} trimBefore={trimBefore} panX={followX} />
+        <FollowLayout
+          src={src}
+          trimBefore={trimBefore}
+          panX={followX}
+          shake={shake}
+          extraScale={1 + VICTORY_ZOOM_AMOUNT * victoryZoom}
+        />
       ) : (
         <FramedLayout
           src={src}
           trimBefore={trimBefore}
           stage={stage}
           zoom={layoutMode === 'zoom'}
-          scale={zoomScale}
-          panX={layoutMode === 'zoom' ? zoomPan : followX * 0.35}
+          scale={contentScale}
+          panX={panX}
+          shake={shake}
           glow={glow}
           accent={accent}
         />
@@ -236,6 +277,7 @@ type FramedProps = {
   zoom: boolean;
   scale: number;
   panX: number;
+  shake: readonly [number, number];
   glow: number;
   accent: string;
 };
@@ -248,6 +290,7 @@ const FramedLayout: React.FC<FramedProps> = ({
   zoom,
   scale,
   panX,
+  shake,
   glow,
   accent,
 }) => (
@@ -282,6 +325,7 @@ const FramedLayout: React.FC<FramedProps> = ({
         width: stage.w,
         height: stage.h,
         zIndex: 2,
+        transform: `translate(${shake[0]}px, ${shake[1]}px)`,
         borderRadius: 28,
         padding: 10,
         boxSizing: 'border-box',
@@ -306,10 +350,8 @@ const FramedLayout: React.FC<FramedProps> = ({
           style={{
             width: '100%',
             height: '100%',
-            transform: zoom
-              ? `scale(${scale}) translateX(${panX}%)`
-              : undefined,
-            transformOrigin: '50% 58%',
+            transform: `scale(${scale}) translateX(${panX}%)`,
+            transformOrigin: '50% 60%',
           }}
         >
           <OffthreadVideo
@@ -331,17 +373,19 @@ const FramedLayout: React.FC<FramedProps> = ({
 );
 
 /** Dikey full-bleed: scale(1.5) + translateX kamera takibi */
-const FollowLayout: React.FC<{src: string; trimBefore: number; panX: number}> = ({
-  src,
-  trimBefore,
-  panX,
-}) => (
+const FollowLayout: React.FC<{
+  src: string;
+  trimBefore: number;
+  panX: number;
+  shake: readonly [number, number];
+  extraScale: number;
+}> = ({src, trimBefore, panX, shake, extraScale}) => (
   <AbsoluteFill style={{overflow: 'hidden', zIndex: 1}}>
     <div
       style={{
         position: 'absolute',
         inset: 0,
-        transform: `scale(1.5) translateX(${panX}%)`,
+        transform: `translate(${shake[0]}px, ${shake[1]}px) scale(${1.5 * extraScale}) translateX(${panX}%)`,
         transformOrigin: '50% 50%',
       }}
     >

@@ -12,6 +12,12 @@ export type VariantProps = {
   victoryText: string;
   scoreText: string;
   layoutMode: GameplayLayout;
+  /**
+   * Çerçeve içindeki oyun görüntüsünün temel ölçeği.
+   * mockup: 1.35 (karakterler büyür). zoom: dikey pencere zaten ~1.6x
+   * kırpılmış olduğundan 1.1 ile birleşip ~1.8x etkili yakınlaşma verir.
+   */
+  gameplayScale: number;
   /** Kaynak klipte başlangıç saniyesi (varyasyonlar farklı kesit gösterir) */
   clipStartSec: number;
 
@@ -38,6 +44,7 @@ export const ReelsOption1: VariantProps = {
   victoryText: 'ZAFER!',
   scoreText: 'Sayı!',
   layoutMode: 'mockup',
+  gameplayScale: 1.35,
   clipStartSec: 0,
   ctaTitle: 'Hemen İndir ve Tarafını Seç!',
   ctaButton: 'Ücretsiz İndir',
@@ -57,6 +64,7 @@ export const ReelsOption2: VariantProps = {
   victoryText: 'SMAÇ!',
   scoreText: 'Blok · Sayı!',
   layoutMode: 'zoom',
+  gameplayScale: 1.1,
   clipStartSec: 2,
   ctaTitle: 'Filenin Kralı Ol!',
   ctaButton: 'Ücretsiz Oyna',
@@ -76,6 +84,7 @@ export const ReelsOption3: VariantProps = {
   victoryText: 'YOU WIN!',
   scoreText: 'Sayı!',
   layoutMode: 'mockup',
+  gameplayScale: 1.35,
   clipStartSec: 1,
   ctaTitle: "Google Play'de Ücretsiz!",
   ctaButton: 'Hemen Oyna',

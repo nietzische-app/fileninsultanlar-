@@ -51,6 +51,7 @@ export const ReelsVariant: React.FC<VariantProps> = (p) => {
           victoryText={p.victoryText}
           scoreText={p.scoreText}
           layoutMode={p.layoutMode}
+          gameplayScale={p.gameplayScale}
           clipStartSec={p.clipStartSec}
           bpm={p.bpm}
           accent={p.accent}

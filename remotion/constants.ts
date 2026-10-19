@@ -15,3 +15,16 @@ export const CTA_FRAMES = FPS * 5; // 10–15 sn
 
 /** Oynanış içinde “ZAFER!” patlaması (sahne-içi kare) */
 export const VICTORY_AT = FPS * 4; // oynanışın ~4. sn’si ≈ global 7. sn
+
+/** Sayı anı: 0.3 sn’lik yumuşak zoom-in, ardından yavaş gevşeme */
+export const VICTORY_ZOOM_FRAMES = Math.round(FPS * 0.3);
+export const VICTORY_ZOOM_RELAX_FRAMES = Math.round(FPS * 0.8);
+export const VICTORY_ZOOM_AMOUNT = 0.08;
+
+/** Sayı anı: 4 kare süren ekran sarsıntısı (px, kare başına azalan) */
+export const SHAKE_OFFSETS: ReadonlyArray<readonly [number, number]> = [
+  [-14, 8],
+  [11, -9],
+  [-7, 5],
+  [4, -3],
+];

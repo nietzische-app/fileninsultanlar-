@@ -11,6 +11,9 @@ import {
 import {SyncedBeep} from '../audio/SyncedBeep';
 import {beatFrames} from '../variants';
 
+const BTN_ENTER_FRAME = 22;
+const PULSE_AMOUNT = 0.08;
+
 type Props = {
   ctaTitle: string;
   ctaButton: string;
@@ -42,15 +45,16 @@ export const CtaScene: React.FC<Props> = ({
     config: {damping: 14, stiffness: 120},
   });
   const btn = spring({
-    frame: Math.max(0, frame - 22),
+    frame: Math.max(0, frame - BTN_ENTER_FRAME),
     fps,
     config: {damping: 14, stiffness: 110},
   });
 
-  // Tempoya senkron buton nabzı
-  const beat = beatFrames(bpm);
-  const beatPhase = (frame % beat) / beat;
-  const pulse = 1 + interpolate(beatPhase, [0, 0.2, 1], [0.06, 0.01, 0]);
+  // Sürekli nabız: scale 1 → 1.08 → 1, döngü her 2 vuruşta bir (tempoya senkron).
+  // CSS @keyframes render sırasında kare kare çalışmaz; aynı eğriyi kareden hesaplıyoruz.
+  const pulsePeriod = beatFrames(bpm) * 2;
+  const pulsePhase = Math.max(0, frame - BTN_ENTER_FRAME) / pulsePeriod;
+  const pulse = 1 + PULSE_AMOUNT * (0.5 - 0.5 * Math.cos(2 * Math.PI * pulsePhase));
 
   return (
     <AbsoluteFill
@@ -62,7 +66,7 @@ export const CtaScene: React.FC<Props> = ({
       }}
     >
       <SyncedBeep file="remotion/whoosh.wav" atFrame={2} volume={0.7} />
-      <SyncedBeep file="remotion/beep.wav" atFrame={22} volume={0.6} />
+      <SyncedBeep file="remotion/beep.wav" atFrame={BTN_ENTER_FRAME} volume={0.6} />
 
       <div
         style={{
