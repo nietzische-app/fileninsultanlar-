@@ -19,6 +19,8 @@ export type ShortsProps = {
   scoreText: string;
   ctaLabel: string;
   ctaSub: string;
+  /** Oynanış düzeni: mockup (16:9 çerçeve) | follow (dikey zoom + kamera) */
+  layoutMode?: 'mockup' | 'follow';
 };
 
 /**
@@ -34,6 +36,7 @@ export const RetroVoleybolShorts: React.FC<ShortsProps> = ({
   scoreText,
   ctaLabel,
   ctaSub,
+  layoutMode = 'mockup',
 }) => {
   const pixelFont = staticFile('fonts/press-start-2p.woff2');
 
@@ -52,7 +55,11 @@ export const RetroVoleybolShorts: React.FC<ShortsProps> = ({
       </Sequence>
 
       <Sequence from={PLAY_FROM} durationInFrames={PLAY_FRAMES} name="Oynanış">
-        <GameplayScene victoryText={victoryText} scoreText={scoreText} />
+        <GameplayScene
+          victoryText={victoryText}
+          scoreText={scoreText}
+          layoutMode={layoutMode}
+        />
       </Sequence>
 
       <Sequence from={CTA_FROM} durationInFrames={CTA_FRAMES} name="CTA">

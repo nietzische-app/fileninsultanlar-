@@ -20,6 +20,7 @@ export const RemotionRoot: React.FC = () => {
           scoreText: 'Sayı!',
           ctaLabel: "Hemen Ücretsiz Oyna",
           ctaSub: "Yakında Google Play'de",
+          layoutMode: 'mockup' as const,
         }}
       />
     </>
