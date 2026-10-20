@@ -78,10 +78,17 @@ if (!(await sunucuyuBekle())) {
 const sonuc = [];
 for (const ad of testler) {
   console.log(`\n═══ ${ad}`);
-  const kod = await calistir('node', [join(KOK, 'e2e', `${ad}.mjs`)], {
-    cwd: join(KOK, '..'),
-    env: { ...process.env, OYUN_URL: URL },
-  });
+  let kod = 1;
+  try {
+    kod = await calistir('node', [join(KOK, 'e2e', `${ad}.mjs`)], {
+      cwd: join(KOK, '..'),
+      env: { ...process.env, OYUN_URL: URL },
+    });
+  } catch (hata) {
+    // Tarayıcı süreci hiç doğmazsa (Chromium yok, sandbox) diğer
+    // testler yine koşsun. Çıkış kodu 1 kalır; yeşil sayılmaz.
+    console.error(`${ad} başlatılamadı:`, hata?.message ?? hata);
+  }
   sonuc.push({ ad, kod });
 }
 

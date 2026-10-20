@@ -4,7 +4,11 @@ const CIKTI = process.env.CIKTI ?? 'tests/ciktilar';
 
 const URL = process.env.OYUN_URL ?? 'http://localhost:5173/';
 /** Masaüstü regresyonu: dokunmatik tuşlar ÇIKMAMALI, düzen akışta kalmalı. */
-const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined });
+const browser = await chromium.launch({
+  headless: true,
+  executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined,
+  args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+});
 const page = await browser.newPage({ viewport: { width: 1280, height: 860 } });
 const errs = [];
 page.on('pageerror', (e) => errs.push(String(e)));
@@ -12,12 +16,12 @@ page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
 let fails = 0;
 const check = (l, ok, d = '') => { if (!ok) fails += 1; console.log(`${ok ? '✓' : '✗'} ${l}${d ? ` — ${d}` : ''}`); };
 
-await page.goto(URL, { waitUntil: 'load' });
+await page.goto(URL, { waitUntil: 'load', timeout: 30000 });
 await page.waitForTimeout(800);
 await page.evaluate(() => localStorage.setItem('retro-voleybol-prefs', JSON.stringify({
   tutorialSeen: true, muted: true, mode: '1v1', difficulty: 'kolay',
   format: 'practice', opponentId: 'atlas', homeIds: ['gizel-orgen'] })));
-await page.reload({ waitUntil: 'load' });
+await page.reload({ waitUntil: 'load', timeout: 30000 });
 await page.waitForTimeout(1300);
 await page.getByRole('button', { name: /SINGLEPLAYER/ }).first().click();
 await page.waitForTimeout(500);

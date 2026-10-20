@@ -87,7 +87,7 @@ if (!FP_ACIK) {
    * localStorage'a erişimi olmayan bir belgeye düşüyordu; sayfayı
    * yenilemek hem daha sağlam hem de gerçek bir açılışı taklit ediyor.
    */
-  await page.reload({ waitUntil: 'load' });
+  await page.reload({ waitUntil: 'load', timeout: 30000 });
   await page.waitForTimeout(900);
   const koleksiyon = page.getByRole('button', { name: /KOLEKSİYON/ }).first();
   kontrol('koleksiyon düğmesi duruyor', (await koleksiyon.count()) > 0);
@@ -198,7 +198,7 @@ kontrol(
  * KALICILIK: kazanç yalnızca React durumunda kalsaydı bu satıra kadar
  * her şey yeşil görünür, oyuncu sekmeyi kapatınca puanı uçardı.
  */
-await page.reload({ waitUntil: 'load' });
+await page.reload({ waitUntil: 'load', timeout: 30000 });
 await page.waitForTimeout(1200);
 const yenilemeSonrasi = await depo(page);
 kontrol(
@@ -220,7 +220,7 @@ await page.evaluate((alt) => {
   const k = JSON.parse(localStorage.getItem('retro-voleybol-ilerleme'));
   localStorage.setItem('retro-voleybol-ilerleme', JSON.stringify({ ...k, puan: alt }));
 }, enUcuz - 30);
-await page.reload({ waitUntil: 'load' });
+await page.reload({ waitUntil: 'load', timeout: 30000 });
 await page.waitForTimeout(1000);
 
 await page.getByRole('button', { name: /SINGLEPLAYER/ }).first().click();
@@ -278,7 +278,7 @@ await page.evaluate(() => {
   const k = JSON.parse(localStorage.getItem('retro-voleybol-ilerleme'));
   localStorage.setItem('retro-voleybol-ilerleme', JSON.stringify({ ...k, puan: 5000 }));
 });
-await page.reload({ waitUntil: 'load' });
+await page.reload({ waitUntil: 'load', timeout: 30000 });
 await page.waitForTimeout(1000);
 
 await page.getByRole('button', { name: /SINGLEPLAYER/ }).first().click();

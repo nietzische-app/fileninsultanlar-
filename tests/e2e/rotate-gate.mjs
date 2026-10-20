@@ -4,7 +4,11 @@ const CIKTI = process.env.CIKTI ?? 'tests/ciktilar';
 
 const URL = process.env.OYUN_URL ?? 'http://localhost:5173/';
 
-const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined });
+const browser = await chromium.launch({
+  headless: true,
+  executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined,
+  args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+});
 const errors = [];
 const PREFS = {
   tutorialSeen: true, mode: '1v1', difficulty: 'kolay', format: 'classic',
@@ -37,7 +41,7 @@ const gateState = (page) =>
   const ctx = await browser.newContext({ ...devices['iPhone 12'], hasTouch: true, isMobile: true });
   const page = await ctx.newPage();
   watch(page, '[dikey]');
-  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.waitForTimeout(900);
 
   const g = await gateState(page);
@@ -67,9 +71,9 @@ const gateState = (page) =>
   });
   const page = await ctx.newPage();
   watch(page, '[çevirme]');
-  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.evaluate((p) => localStorage.setItem('retro-voleybol-prefs', JSON.stringify(p)), PREFS);
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.waitForTimeout(800);
 
   console.log('\n[yatay] kapı:', (await gateState(page)).visible ? 'VAR ✗' : 'yok ✓');
@@ -110,7 +114,7 @@ const gateState = (page) =>
   const ctx = await browser.newContext({ viewport: { width: 500, height: 900 } });
   const page = await ctx.newPage();
   watch(page, '[masaüstü dar]');
-  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.waitForTimeout(900);
   const g = await gateState(page);
   console.log('\n[masaüstü 500x900 (dikey ama dokunmatik değil)] kapı:',

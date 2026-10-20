@@ -27,10 +27,31 @@ export const VARSAYILAN_TERCIH = {
   lang: 'tr',
 };
 
+/**
+ * Koşucuda sandbox ve küçük /dev/shm Chromium'u sessizce düşürebiliyor.
+ * `headless: true` koşucu ekranı olmadığı için şart.
+ */
+export const TARAYICI_ARG = [
+  '--no-sandbox',
+  '--disable-setuid-sandbox',
+  '--disable-dev-shm-usage',
+];
+
+/** Sayfa açılışı. `networkidle` kullanılmıyor: açık WebSocket varken hiç dolmaz. */
+export const SAYFA_YUKLE = { waitUntil: 'load', timeout: 30000 };
+
 export async function tarayiciAc() {
-  return chromium.launch({
+  const secenek = {
+    headless: true,
     executablePath: process.env.PLAYWRIGHT_CHROMIUM ?? undefined,
-  });
+    args: TARAYICI_ARG,
+  };
+  try {
+    return await chromium.launch(secenek);
+  } catch (ilk) {
+    console.error('Tarayıcı açılamadı, bir kez daha deneniyor:', ilk?.message ?? ilk);
+    return chromium.launch(secenek);
+  }
 }
 
 /** Yatay telefon bağlamı (dokunmatik, coarse pointer). */
@@ -62,13 +83,13 @@ export async function sayfaAc(ctx, tercih = {}) {
     if (m.type() === 'error') hatalar.push(`CONSOLE ${m.text().slice(0, 200)}`);
   });
 
-  await page.goto(URL, { waitUntil: 'load' });
+  await page.goto(URL, SAYFA_YUKLE);
   await page.waitForTimeout(600);
   await page.evaluate(
     (t) => localStorage.setItem('retro-voleybol-prefs', JSON.stringify(t)),
     { ...VARSAYILAN_TERCIH, ...tercih }
   );
-  await page.reload({ waitUntil: 'load' });
+  await page.reload({ waitUntil: 'load', timeout: 30000 });
   await page.waitForTimeout(1200);
 
   page.hatalar = hatalar;

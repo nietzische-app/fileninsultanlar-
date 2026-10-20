@@ -15,7 +15,11 @@ const PROFILES = [
   ['Pixel 7 yatay',        915, 412],
 ];
 
-const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined });
+const browser = await chromium.launch({
+  headless: true,
+  executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined,
+  args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+});
 console.log('cihaz                 gen  tuş  sahne-tam-ekran  saha-ortalı  boşluk(sol/sağ)');
 console.log('─'.repeat(84));
 
@@ -25,12 +29,12 @@ for (const [name, w, h] of PROFILES) {
     userAgent: devices['Pixel 5'].userAgent,
   });
   const page = await ctx.newPage();
-  await page.goto(URL, { waitUntil: 'load' });
+  await page.goto(URL, { waitUntil: 'load', timeout: 30000 });
   await page.waitForTimeout(700);
   await page.evaluate(() => localStorage.setItem('retro-voleybol-prefs', JSON.stringify({
     tutorialSeen: true, muted: true, mode: '1v1', difficulty: 'kolay',
     format: 'practice', opponentId: 'atlas', homeIds: ['gizel-orgen'] })));
-  await page.reload({ waitUntil: 'load' });
+  await page.reload({ waitUntil: 'load', timeout: 30000 });
   await page.waitForTimeout(1200);
   await page.getByRole('button', { name: /SINGLEPLAYER/ }).first().click();
   await page.waitForTimeout(500);

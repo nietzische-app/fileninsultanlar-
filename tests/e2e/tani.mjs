@@ -41,12 +41,12 @@ async function oyuncuAc(tani) {
   const ctx = await masaustuBaglam(browser, { width: 1280, height: 800 });
   const page = await ctx.newPage();
   const adres = `${URL}?rele=${encodeURIComponent(vekil.adres)}${tani ? '&tani=1' : ''}`;
-  await page.goto(adres, { waitUntil: 'load' });
+  await page.goto(adres, { waitUntil: 'load', timeout: 30000 });
   await page.evaluate(
     (t) => localStorage.setItem('retro-voleybol-prefs', JSON.stringify(t)),
     { ...VARSAYILAN_TERCIH, format: 'practice' },
   );
-  await page.reload({ waitUntil: 'load' });
+  await page.reload({ waitUntil: 'load', timeout: 30000 });
   await page.waitForTimeout(900);
   return page;
 }

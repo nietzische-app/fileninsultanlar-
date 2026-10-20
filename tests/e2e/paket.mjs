@@ -109,12 +109,12 @@ async function sayfaAc({ mobil = true } = {}) {
     if (r.status() >= 400) istekler.push(`${r.status()} ${r.url().slice(0, 90)}`);
   });
 
-  await page.goto(URL, { waitUntil: 'load' });
+  await page.goto(URL, { waitUntil: 'load', timeout: 30000 });
   await page.evaluate(
     (t) => localStorage.setItem('retro-voleybol-prefs', JSON.stringify(t)),
     { ...VARSAYILAN_TERCIH, format: 'practice' },
   );
-  await page.reload({ waitUntil: 'load' });
+  await page.reload({ waitUntil: 'load', timeout: 30000 });
   await page.waitForTimeout(1200);
 
   page.hatalar = hatalar;
@@ -178,12 +178,12 @@ await ctx.close();
  */
 const ctx2 = await mobilBaglam(browser);
 const sahtePage = await ctx2.newPage();
-await sahtePage.goto(`${URL}?rele=ws://127.0.0.1:1/yabanci`, { waitUntil: 'load' });
+await sahtePage.goto(`${URL}?rele=ws://127.0.0.1:1/yabanci`, { waitUntil: 'load', timeout: 30000 });
 await sahtePage.evaluate(
   (t) => localStorage.setItem('retro-voleybol-prefs', JSON.stringify(t)),
   { ...VARSAYILAN_TERCIH, format: 'practice' },
 );
-await sahtePage.reload({ waitUntil: 'load' });
+await sahtePage.reload({ waitUntil: 'load', timeout: 30000 });
 await sahtePage.waitForTimeout(1200);
 
 await sahtePage.getByRole('button', { name: /ARKADAŞLA OYNA/ }).first().click();
@@ -218,12 +218,12 @@ await ctx2.close();
  */
 const ctx3 = await mobilBaglam(browser);
 const gizPage = await ctx3.newPage();
-await gizPage.goto(URL, { waitUntil: 'load' });
+await gizPage.goto(URL, { waitUntil: 'load', timeout: 30000 });
 await gizPage.evaluate(
   (t) => localStorage.setItem('retro-voleybol-prefs', JSON.stringify(t)),
   VARSAYILAN_TERCIH,
 );
-await gizPage.reload({ waitUntil: 'load' });
+await gizPage.reload({ waitUntil: 'load', timeout: 30000 });
 await gizPage.waitForTimeout(1000);
 
 await gizPage.getByRole('button', { name: /AYARLAR/ }).click();
@@ -245,7 +245,7 @@ if ((await gizBag.count()) > 0) {
   const yanit = await gizPage.request.get(new global.URL(href, URL).href);
   kontrol('gizlilik.html pakette var', yanit.status() === 200, `HTTP ${yanit.status()}`);
 
-  await gizPage.goto(new global.URL(href, URL).href, { waitUntil: 'load' });
+  await gizPage.goto(new global.URL(href, URL).href, { waitUntil: 'load', timeout: 30000 });
   kontrol(
     'politika sayfası açılıyor',
     (await gizPage.getByRole('heading', { name: /Gizlilik Politikası/i }).count()) > 0,

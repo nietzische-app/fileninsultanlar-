@@ -23,7 +23,11 @@ export async function pinch(cdp, page, x, y, spread = 90, steps = 10) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined });
+  const browser = await chromium.launch({
+  headless: true,
+  executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined,
+  args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+});
   console.log('--- ARAÇ DOĞRULAMA (kontrol sayfası) ---');
   for (const [label, meta, ta] of [
     ['kural yok', 'width=device-width, initial-scale=1', 'auto'],

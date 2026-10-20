@@ -12,18 +12,22 @@ const URL = process.env.OYUN_URL ?? 'http://localhost:5173/';
 let fails = 0;
 const check = (l, ok, d = '') => { if (!ok) fails += 1; console.log(`${ok ? '✓' : '✗'} ${l}${d ? ` — ${d}` : ''}`); };
 
-const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined });
+const browser = await chromium.launch({
+  headless: true,
+  executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined,
+  args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+});
 
 async function olc(gap) {
   const ctx = await browser.newContext({ viewport: { width: 851, height: 393 }, isMobile: true,
     hasTouch: true, deviceScaleFactor: 2, userAgent: devices['Pixel 5'].userAgent });
   const page = await ctx.newPage();
-  await page.goto(URL, { waitUntil: 'load' });
+  await page.goto(URL, { waitUntil: 'load', timeout: 30000 });
   await page.waitForTimeout(600);
   await page.evaluate((g) => localStorage.setItem('retro-voleybol-prefs', JSON.stringify({
     tutorialSeen: true, muted: true, mode: '1v1', difficulty: 'kolay', format: 'practice',
     opponentId: 'atlas', homeIds: ['gizel-orgen'], controls: { scale: 1, opacity: 1, gap: g, swap: false } })), gap);
-  await page.reload({ waitUntil: 'load' });
+  await page.reload({ waitUntil: 'load', timeout: 30000 });
   await page.waitForTimeout(1200);
   await page.getByRole('button', { name: /SINGLEPLAYER/ }).first().click();
   await page.waitForTimeout(400);

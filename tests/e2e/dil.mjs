@@ -66,7 +66,7 @@ function dilTusu(page, kod) {
   );
   check('tercih en yazıldı', kayit === 'en', `lang=${kayit}`);
 
-  await page.reload({ waitUntil: 'load' });
+  await page.reload({ waitUntil: 'load', timeout: 30000 });
   await page.waitForTimeout(1000);
   check(
     'yenilemede EN kalır',
@@ -96,7 +96,7 @@ function dilTusu(page, kod) {
     viewport: { width: 1366, height: 768 },
   });
   const page = await ctx.newPage();
-  await page.goto(URL, { waitUntil: 'load' });
+  await page.goto(URL, { waitUntil: 'load', timeout: 30000 });
   await page.waitForTimeout(1200);
   check(
     'en tarayıcı · SETTINGS',
@@ -115,7 +115,7 @@ function dilTusu(page, kod) {
     viewport: { width: 1366, height: 768 },
   });
   const page = await ctx.newPage();
-  await page.goto(URL, { waitUntil: 'load' });
+  await page.goto(URL, { waitUntil: 'load', timeout: 30000 });
   await page.waitForTimeout(1200);
   check(
     'tr tarayıcı · AYARLAR',

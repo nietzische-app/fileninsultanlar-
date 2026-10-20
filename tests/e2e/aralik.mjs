@@ -5,7 +5,11 @@ const URL = process.env.OYUN_URL ?? 'http://localhost:5173/';
 let fails = 0;
 const check = (l, ok, d = '') => { if (!ok) fails += 1; console.log(`${ok ? '✓' : '✗'} ${l}${d ? ` — ${d}` : ''}`); };
 
-const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined });
+const browser = await chromium.launch({
+  headless: true,
+  executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined,
+  args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+});
 const ctx = await browser.newContext({ viewport: { width: 851, height: 393 }, isMobile: true,
   hasTouch: true, deviceScaleFactor: 2, userAgent: devices['Pixel 5'].userAgent });
 const page = await ctx.newPage();
@@ -25,12 +29,12 @@ const bosluk = () => page.evaluate(() => {
   return { bosluk: Math.round(r.left - l.right), tusW: Math.round(l.width) };
 });
 
-await page.goto(URL, { waitUntil: 'load' });
+await page.goto(URL, { waitUntil: 'load', timeout: 30000 });
 await page.waitForTimeout(700);
 await page.evaluate(() => localStorage.setItem('retro-voleybol-prefs', JSON.stringify({
   tutorialSeen: true, muted: true, mode: '1v1', difficulty: 'kolay',
   format: 'practice', opponentId: 'atlas', homeIds: ['gizel-orgen'] })));
-await page.reload({ waitUntil: 'load' });
+await page.reload({ waitUntil: 'load', timeout: 30000 });
 await page.waitForTimeout(1300);
 
 await page.getByRole('button', { name: /AYARLAR/ }).click();

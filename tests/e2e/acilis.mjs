@@ -78,7 +78,7 @@ for (const [ad, mobil, w, h] of PROFILLER) {
       JSON.stringify(['ilk-mac', 'ilk-galibiyet', 'seri-3']),
     );
   }, KAYITLI);
-  await page.reload({ waitUntil: 'load' });
+  await page.reload({ waitUntil: 'load', timeout: 30000 });
   await page.waitForTimeout(900);
 
   const olcu = await ekranOlcu(page);

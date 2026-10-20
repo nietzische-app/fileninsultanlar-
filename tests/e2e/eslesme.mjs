@@ -48,7 +48,7 @@ async function oyuncuAc(ad, { mobil = false, takmaAd = null } = {}) {
     if (m.type() === 'error') hatalar.push(`${ad} CONSOLE ${m.text().slice(0, 160)}`);
   });
 
-  await page.goto(`${URL}?rele=${encodeURIComponent(RELE_URL)}`, { waitUntil: 'load' });
+  await page.goto(`${URL}?rele=${encodeURIComponent(RELE_URL)}`, { waitUntil: 'load', timeout: 30000 });
   await page.evaluate(
     ([t, kimlikAd]) => {
       localStorage.setItem('retro-voleybol-prefs', JSON.stringify(t));
@@ -61,7 +61,7 @@ async function oyuncuAc(ad, { mobil = false, takmaAd = null } = {}) {
     },
     [{ ...VARSAYILAN_TERCIH, format: 'practice' }, takmaAd],
   );
-  await page.reload({ waitUntil: 'load' });
+  await page.reload({ waitUntil: 'load', timeout: 30000 });
   await page.waitForTimeout(1000);
 
   page.hatalar = hatalar;

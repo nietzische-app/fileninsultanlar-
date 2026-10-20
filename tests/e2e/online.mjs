@@ -43,12 +43,12 @@ async function oyuncuAc(ad, { mobil = false } = {}) {
   });
 
   const adres = `${URL}?rele=${encodeURIComponent(RELE_URL)}`;
-  await page.goto(adres, { waitUntil: 'load' });
+  await page.goto(adres, { waitUntil: 'load', timeout: 30000 });
   await page.evaluate(
     (t) => localStorage.setItem('retro-voleybol-prefs', JSON.stringify(t)),
     { ...VARSAYILAN_TERCIH, format: 'practice' },
   );
-  await page.reload({ waitUntil: 'load' });
+  await page.reload({ waitUntil: 'load', timeout: 30000 });
   await page.waitForTimeout(1000);
 
   page.hatalar = hatalar;

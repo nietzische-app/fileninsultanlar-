@@ -4,7 +4,11 @@ const CIKTI = process.env.CIKTI ?? 'tests/ciktilar';
 
 const URL = process.env.OYUN_URL ?? 'http://localhost:5173/';
 /** En kötü durum: en dar cihaz + en büyük tuş ayarı. */
-const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined });
+const browser = await chromium.launch({
+  headless: true,
+  executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined,
+  args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+});
 let fails = 0;
 const check = (l, ok, d = '') => { if (!ok) fails += 1; console.log(`${ok ? '✓' : '✗'} ${l}${d ? ` — ${d}` : ''}`); };
 
@@ -14,14 +18,14 @@ for (const [name, w, h] of [['iPhone SE', 667, 375], ['Galaxy S20', 800, 360]]) 
     deviceScaleFactor: 2, userAgent: devices['Pixel 5'].userAgent,
   });
   const page = await ctx.newPage();
-  await page.goto(URL, { waitUntil: 'load' });
+  await page.goto(URL, { waitUntil: 'load', timeout: 30000 });
   await page.waitForTimeout(700);
   // En büyük tuş ayarıyla başla
   await page.evaluate(() => localStorage.setItem('retro-voleybol-prefs', JSON.stringify({
     tutorialSeen: true, muted: true, mode: '1v1', difficulty: 'kolay',
     format: 'practice', opponentId: 'atlas', homeIds: ['gizel-orgen'],
     controls: { scale: 1.4, opacity: 1, swap: false } })));
-  await page.reload({ waitUntil: 'load' });
+  await page.reload({ waitUntil: 'load', timeout: 30000 });
   await page.waitForTimeout(1300);
   await page.getByRole('button', { name: /SINGLEPLAYER/ }).first().click();
   await page.waitForTimeout(500);
