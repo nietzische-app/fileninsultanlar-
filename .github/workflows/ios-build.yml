@@ -117,18 +117,28 @@ jobs:
       - name: Arşivle
         run: |
           VERSION=$(node -p "require('./package.json').version")
+          # pbxproj varsayılanı "iPhone Developer". O kimlik development
+          # profili üretir ve takımda kayıtlı cihaz yoksa
+          # "no devices from which to generate a provisioning profile"
+          # ile düşer. App Store dağıtımı cihaz istemez.
+          # "iPhone Distribution" eski ad; Xcode 15+ sertifika adı
+          # "Apple Distribution".
           xcodebuild \
             -workspace ios/App/App.xcworkspace \
             -scheme App \
             -configuration Release \
+            -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -archivePath "$RUNNER_TEMP/App.xcarchive" \
             -allowProvisioningUpdates \
             -authenticationKeyPath "$HOME/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8" \
             -authenticationKeyID "$APP_STORE_CONNECT_KEY_ID" \
             -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID" \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-            CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_STYLE="Automatic" \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            "CODE_SIGN_IDENTITY[sdk=iphoneos*]"="Apple Distribution" \
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
             PRODUCT_BUNDLE_IDENTIFIER="$APPLE_BUNDLE_ID" \
             MARKETING_VERSION="$VERSION" \
             CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
