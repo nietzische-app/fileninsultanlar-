@@ -116,11 +116,10 @@ jobs:
 
       - name: Arşivle
         run: |
-          # Otomatik imzada sertifika ve profil adı verilmez.
-          # CODE_SIGN_IDENTITY / PROVISIONING_PROFILE_SPECIFIER ile
-          # CODE_SIGN_STYLE=Automatic birlikte olunca xcodebuild 65 döner.
-          # Profili -allowProvisioningUpdates ve API anahtarı üretir.
-          # Anahtarın rolü Admin ya da App Manager olmalı.
+          # Proje dosyası da Apple Distribution. Komut satırı aynı kimliği
+          # bir kez daha geçirir; aksi halde xcodebuild iOS App Development
+          # profili arar ve koşucuda o sertifikanın anahtarı yoktur.
+          # API anahtarının rolü Admin ya da App Manager olmalı.
           mkdir -p ios/App/build
           xcodebuild -workspace ios/App/App.xcworkspace \
             -scheme App \
@@ -128,7 +127,11 @@ jobs:
             -configuration Release \
             -archivePath ios/App/build/App.xcarchive archive \
             -allowProvisioningUpdates \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            "CODE_SIGN_IDENTITY[sdk=iphoneos*]"="Apple Distribution" \
+            CODE_SIGN_STYLE="Automatic" \
             DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            PRODUCT_BUNDLE_IDENTIFIER="${{ secrets.APPLE_BUNDLE_ID }}" \
             -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8 \
             -authenticationKeyID ${{ secrets.APP_STORE_CONNECT_KEY_ID }} \
             -authenticationKeyIssuerID ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
@@ -140,6 +143,7 @@ jobs:
           /usr/libexec/PlistBuddy -c "Delete :teamID" "$PLIST" 2>/dev/null || true
           /usr/libexec/PlistBuddy -c "Add :teamID string ${{ secrets.APPLE_TEAM_ID }}" "$PLIST"
           /usr/libexec/PlistBuddy -c "Delete :signingCertificate" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :signingCertificate string Apple Distribution" "$PLIST"
           /usr/libexec/PlistBuddy -c "Set :method app-store" "$PLIST"
           /usr/libexec/PlistBuddy -c "Set :signingStyle automatic" "$PLIST"
           /usr/libexec/PlistBuddy -c "Set :manageAppVersionAndBuildNumber true" "$PLIST"
