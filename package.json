@@ -6,7 +6,9 @@
   "description": "Retro Voleybol'na adanmış retro piksel voleybol oyunu",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && npx cap copy ios",
+    "cap:copy:ios": "npx cap copy ios",
+    "cap:sync:ios": "npx cap sync ios",
     "preview": "vite preview",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "test": "vitest run",
@@ -41,6 +43,7 @@
     "@capacitor/android": "^6.2.2",
     "@capacitor/app": "^6.0.3",
     "@capacitor/core": "^6.2.2",
+    "@capacitor/ios": "^6.2.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
