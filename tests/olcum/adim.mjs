@@ -30,10 +30,14 @@ const HIZLAR = (process.env.HIZLAR ?? '20,30,59.94,60,61,90,120,144').split(',')
 /** rAF zaman damgası oynaması (ms) — gerçek cihazda kare süresi sabit değil. */
 const TITREME = Number(process.env.TITREME ?? 1);
 
-const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined });
+const browser = await chromium.launch({
+  headless: true,
+  executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined,
+  args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+});
 const page = await browser.newPage();
 page.on('pageerror', (e) => console.log('HATA', String(e).slice(0, 200)));
-await page.goto(URL, { waitUntil: 'load' });
+await page.goto(URL, { waitUntil: 'load', timeout: 30000 });
 await page.waitForTimeout(1500);
 
 const sonuc = await page.evaluate(async ({ saniye, hizlar, titreme }) => {

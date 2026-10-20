@@ -59,7 +59,7 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Install Chromium
+      - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
       - name: Browser tests

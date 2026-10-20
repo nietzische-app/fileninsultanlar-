@@ -36,7 +36,7 @@ async function oyuncuAc(ad, { takmaAd = null } = {}) {
     if (m.type() === 'error') hatalar.push(`${ad} CONSOLE ${m.text().slice(0, 160)}`);
   });
 
-  await page.goto(`${URL}?rele=${encodeURIComponent(RELE_URL)}`, { waitUntil: 'load' });
+  await page.goto(`${URL}?rele=${encodeURIComponent(RELE_URL)}`, { waitUntil: 'load', timeout: 30000 });
   await page.evaluate(
     ([t, kimlikAd]) => {
       localStorage.setItem('retro-voleybol-prefs', JSON.stringify(t));
@@ -46,7 +46,7 @@ async function oyuncuAc(ad, { takmaAd = null } = {}) {
     },
     [{ ...VARSAYILAN_TERCIH, format: 'practice' }, takmaAd],
   );
-  await page.reload({ waitUntil: 'load' });
+  await page.reload({ waitUntil: 'load', timeout: 30000 });
   await page.waitForTimeout(1000);
 
   page.hatalar = hatalar;
@@ -107,7 +107,7 @@ kontrol(
 );
 
 // Sayfa yenilenince aynı kimlikle dönmeli — yoksa puan hiç birikmez
-await a.page.reload({ waitUntil: 'load' });
+await a.page.reload({ waitUntil: 'load', timeout: 30000 });
 await a.page.waitForTimeout(900);
 kontrol(
   'sayfa yenilenince kimlik korunuyor',
@@ -180,7 +180,7 @@ kontrol(
 // ---------------------------------------------------------------
 // 4) Tablo ekranda doğru görünüyor
 // ---------------------------------------------------------------
-await kazananSayfa.page.goto(`${URL}?rele=${encodeURIComponent(RELE_URL)}`, { waitUntil: 'load' });
+await kazananSayfa.page.goto(`${URL}?rele=${encodeURIComponent(RELE_URL)}`, { waitUntil: 'load', timeout: 30000 });
 await kazananSayfa.page.waitForTimeout(900);
 await lobiyeGit(kazananSayfa.page);
 await kazananSayfa.page.getByRole('button', { name: /SKOR TABLOSU/ }).click();
@@ -214,6 +214,7 @@ kontrol(
  */
 await kaybedenSayfa.page.goto(`${URL}?rele=${encodeURIComponent(RELE_URL)}`, {
   waitUntil: 'load',
+  timeout: 30000,
 });
 await kaybedenSayfa.page.waitForTimeout(900);
 await lobiyeGit(kaybedenSayfa.page);
@@ -228,7 +229,7 @@ kontrol('kaybeden de tabloyu görüyor', kaybedenSatir.length === 2);
 await rele.kapat();
 const yeniRele = await baslat({ port: RELE_PORT, nabiz: 60_000, veriDizini });
 
-await kazananSayfa.page.goto(`${URL}?rele=${encodeURIComponent(RELE_URL)}`, { waitUntil: 'load' });
+await kazananSayfa.page.goto(`${URL}?rele=${encodeURIComponent(RELE_URL)}`, { waitUntil: 'load', timeout: 30000 });
 await kazananSayfa.page.waitForTimeout(900);
 await lobiyeGit(kazananSayfa.page);
 await kazananSayfa.page.getByRole('button', { name: /SKOR TABLOSU/ }).click();

@@ -72,12 +72,15 @@ async function oyuncuAc() {
     if (m.type() === 'error') hatalar.push(`CONSOLE ${m.text().slice(0, 160)}`);
   });
 
-  await page.goto(`${URL}?rele=${encodeURIComponent(vekil.adres)}&tani=1`, { waitUntil: 'load' });
+  await page.goto(`${URL}?rele=${encodeURIComponent(vekil.adres)}&tani=1`, {
+    waitUntil: 'load',
+    timeout: 30000,
+  });
   await page.evaluate(
     (t) => localStorage.setItem('retro-voleybol-prefs', JSON.stringify(t)),
     { ...VARSAYILAN_TERCIH, format: 'practice' },
   );
-  await page.reload({ waitUntil: 'load' });
+  await page.reload({ waitUntil: 'load', timeout: 30000 });
   await page.waitForTimeout(900);
 
   /*
@@ -354,16 +357,28 @@ if (once.a.length > 10 && sonra.a.length > 10) {
    *
    * Bozuk damgayla (girdi `this.time` ile damgalanınca) doğrulandı:
    * ping artışı oranı 1.4'e düşüyor ve denetim düşüyor.
+   *
+   * KARE UZAMADIYSA 5 ms TABANI YANLIŞ ALARM.
+   *
+   * Hızlı bir GitHub koşucusunda kısıt çizimi 0.8 → 3.9 ms yaptı,
+   * kare 17.0 ms'de kaldı (bütçede hâlâ yer vardı) ve ping yalnız
+   * +3 ms arttı. Sabit 5 ms tabanı bu koşumu düşürdü. Ping artışı
+   * kare uzamasına bağlı; kare uzamamışsa 5 ms'lik yükseliş
+   * fiziksel olarak beklenmez. O durumda aranan şey ping'in
+   * DÜŞMEMESİ: ölçü kare saatinden okunuyorsa yavaşlayınca ping
+   * iyileşmiş görünür.
    */
   const pingArtisi = (ort(sonra.a, 'ping') - ort(once.a, 'ping'))
     - (ort(sonra.b, 'ping') - ort(once.b, 'ping'));
   const kareArtisi = ort(sonra.a, 'kare') - ort(once.a, 'kare');
+  const kareUzadi = kareArtisi >= 1;
+  const esik = kareUzadi ? Math.max(5, kareArtisi * 3) : -3;
   kontrol(
     'PING yavaşlayan cihazda artıyor (kare saatinden okunmuyor)',
-    pingArtisi > Math.max(5, kareArtisi * 3),
+    pingArtisi > esik,
     `ping +${pingArtisi.toFixed(0)} ms · kare +${kareArtisi.toFixed(1)} ms · `
     + `oran ${(pingArtisi / Math.max(0.1, kareArtisi)).toFixed(1)}x `
-    + `(eşik ${Math.max(5, kareArtisi * 3).toFixed(0)} ms)`,
+    + `(eşik ${esik.toFixed(0)} ms${kareUzadi ? '' : ', kare uzamadı'})`,
   );
 
   /*

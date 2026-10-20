@@ -12,17 +12,21 @@ const URL = process.env.OYUN_URL ?? 'http://localhost:5173/';
 const KISIT = Number(process.env.CPU ?? 6);
 const SURE = Number(process.env.SURE ?? 9000);
 
-const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined });
+const browser = await chromium.launch({
+  headless: true,
+  executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined,
+  args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+});
 const ctx = await browser.newContext({ viewport: { width: 851, height: 393 }, isMobile: true,
   hasTouch: true, deviceScaleFactor: 2, userAgent: devices['Pixel 5'].userAgent });
 const page = await ctx.newPage();
 const cdp = await ctx.newCDPSession(page);
-await page.goto(URL, { waitUntil: 'load' });
+await page.goto(URL, { waitUntil: 'load', timeout: 30000 });
 await page.waitForTimeout(600);
 await page.evaluate(() => localStorage.setItem('retro-voleybol-prefs', JSON.stringify({
   tutorialSeen: true, muted: true, mode: '1v1', difficulty: 'kolay',
   format: 'practice', opponentId: 'atlas', homeIds: ['gizel-orgen'] })));
-await page.reload({ waitUntil: 'load' });
+await page.reload({ waitUntil: 'load', timeout: 30000 });
 await page.waitForTimeout(1200);
 await page.getByRole('button', { name: /SINGLEPLAYER/ }).first().click();
 await page.waitForTimeout(400);

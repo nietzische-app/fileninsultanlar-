@@ -24,10 +24,14 @@ const N = Number(process.env.N ?? 10);
  */
 const BASIS_YARICAP = Number(process.env.BASIS_YARICAP ?? 78);
 const LEVELS = (process.env.LEVELS ?? 'kolay,normal,zor').split(',');
-const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined });
+const browser = await chromium.launch({
+  headless: true,
+  executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined,
+  args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+});
 const page = await browser.newPage();
 page.on('pageerror', (e) => console.log('HATA', String(e).slice(0, 200)));
-await page.goto(URL, { waitUntil: 'load' });
+await page.goto(URL, { waitUntil: 'load', timeout: 30000 });
 await page.waitForTimeout(1500);
 const rows = await page.evaluate(async ({ n, levels, basisYaricap }) => {
   const { default: Game } = await import('/src/game/Game.js');

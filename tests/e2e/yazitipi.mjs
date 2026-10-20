@@ -34,10 +34,12 @@ const kontrol = (ad, gecti, detay = '') => {
 };
 
 const browser = await chromium.launch({
+  headless: true,
   executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined,
+  args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
 });
 const page = await browser.newPage();
-await page.goto(URL, { waitUntil: 'load' });
+await page.goto(URL, { waitUntil: 'load', timeout: 30000 });
 
 const olcum = await page.evaluate(async ({ aile, boy }) => {
   await document.fonts.load(`${boy}px "Press Start 2P"`);

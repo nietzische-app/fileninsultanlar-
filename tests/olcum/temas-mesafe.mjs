@@ -6,10 +6,14 @@ const URL = process.env.OYUN_URL ?? 'http://localhost:5173/';
  * Gerçekleşen her temasta, topun kenarı ile sprite'ın kutusu arasındaki
  * boşluk. 0 ve altı = top gövdeye değmiş/binmiş demektir.
  */
-const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined });
+const browser = await chromium.launch({
+  headless: true,
+  executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined,
+  args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+});
 const page = await browser.newPage();
 page.on('pageerror', (e) => console.log('HATA', String(e).slice(0, 200)));
-await page.goto(URL, { waitUntil: 'load' });
+await page.goto(URL, { waitUntil: 'load', timeout: 30000 });
 await page.waitForTimeout(1500);
 const out = await page.evaluate(async () => {
   const { default: Game } = await import('/src/game/Game.js');
