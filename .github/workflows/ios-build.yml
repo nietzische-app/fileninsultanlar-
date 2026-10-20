@@ -1,0 +1,175 @@
+# iOS .ipa — Mac olmadan, GitHub'ın macOS koşucusunda.
+#
+# Her `main` push'unda ve elle tetiklenince: web yapısını alır, Capacitor
+# iOS projesine kopyalar, imzalar, .ipa üretir ve App Store Connect'e
+# (TestFlight) yükler.
+#
+# macOS dakikası ücretlidir. Secret'lar tanımlı değilken bu iş başarısız
+# olur; ilk yüklemeden önce aşağıdaki secret'ları gir.
+#
+# ── BİR KEZ YAPILACAKLAR ───────────────────────────────────────────
+#
+# 1) App Store Connect → Users and Access → Integrations → App Store
+#    Connect API → Team Keys. Anahtar rolü Admin ya da App Manager
+#    olmalı; yoksa otomatik imza profili oluşturamaz.
+#
+# 2) İndirilen `AuthKey_XXXXXXXX.p8` dosyasını GitHub secret'ına koy.
+#    Dosyanın kendisi ya da base64'ü kabul edilir.
+#
+# 3) GitHub → Settings → Secrets and variables → Actions:
+#
+#    Secrets:
+#      APP_STORE_CONNECT_PRIVATE_KEY  → .p8 içeriği (veya base64)
+#      APP_STORE_CONNECT_KEY_ID       → AuthKey_SONRASI, 10 karakter
+#      APP_STORE_CONNECT_ISSUER_ID    → issuer UUID
+#      APPLE_BUNDLE_ID                → com.nodify.retrovoleybol
+#      APPLE_TEAM_ID                  → developer.apple.com → Membership
+#                                       10 karakterlik Team ID
+#
+#    APPLE_TEAM_ID listede ayrıca duruyor çünkü otomatik imza
+#    (`signingStyle: automatic`) takım numarası olmadan profil
+#    üretemiyor. Anahtarın kendisi takımı söylemiyor.
+#
+#    Variables (gizli değil, Android işiyle aynı):
+#      VITE_RELE_URL → wss://rele.retrovoleybol.online
+#
+#    Röle adresi paketin İÇİNE gömülür. Boşsa `paket-onkontrol` durur:
+#    mağazaya çevrimiçi menüsü olmayan bir sürüm gitmesin.
+#
+# 4) App Store Connect'te bu bundle id ile bir uygulama kaydı aç.
+#    İlk yükleme, kayıt yoksa reddedilir. Otomatik imza, portalda
+#    App ID yoksa ve anahtar yetkiliyse onu oluşturabilir; uygulama
+#    kaydını oluşturamaz.
+#
+# Bundle id neden Android paketinden (`app.retrovoleybol.oyun`) farklı:
+# Play'deki paket adı yayınlandıktan sonra değişmez. iOS kimliği
+# `com.nodify.retrovoleybol` olarak Xcode projesinde durur; CI yine de
+# `APPLE_BUNDLE_ID` secret'ını esas alır.
+
+name: ios ipa
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-ipa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ipa:
+    runs-on: macos-14
+    timeout-minutes: 45
+    env:
+      APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+      APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APPLE_BUNDLE_ID: ${{ secrets.APPLE_BUNDLE_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Secret'ları denetle
+        run: |
+          eksik=0
+          for ad in APP_STORE_CONNECT_PRIVATE_KEY APP_STORE_CONNECT_KEY_ID APP_STORE_CONNECT_ISSUER_ID APPLE_BUNDLE_ID APPLE_TEAM_ID; do
+            if [ -z "${!ad}" ]; then
+              echo "::error::$ad secret'ı tanımlı değil."
+              eksik=1
+            fi
+          done
+          exit "$eksik"
+
+      - name: Install
+        run: npm ci
+
+      - name: Web yapısı + iOS kopyası
+        env:
+          VITE_RELE_URL: ${{ vars.VITE_RELE_URL }}
+        run: |
+          node scripts/paket-onkontrol.mjs
+          npm run build
+          npx cap sync ios
+
+      - name: API anahtarını yaz
+        run: |
+          umask 077
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
+          if printf '%s' "$APP_STORE_CONNECT_PRIVATE_KEY" | grep -q "BEGIN PRIVATE KEY"; then
+            printf '%s\n' "$APP_STORE_CONNECT_PRIVATE_KEY" > "$KEY_PATH"
+          else
+            printf '%s' "$APP_STORE_CONNECT_PRIVATE_KEY" | tr -d '[:space:]' | base64 -d > "$KEY_PATH"
+            printf '\n' >> "$KEY_PATH"
+          fi
+          test -s "$KEY_PATH"
+          echo "Anahtar yazıldı (${APP_STORE_CONNECT_KEY_ID})."
+
+      - name: Arşivle
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$HOME/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8" \
+            -authenticationKeyID "$APP_STORE_CONNECT_KEY_ID" \
+            -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            PRODUCT_BUNDLE_IDENTIFIER="$APPLE_BUNDLE_ID" \
+            MARKETING_VERSION="$VERSION" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            archive
+
+      - name: IPA dışa aktar
+        run: |
+          PLIST="$RUNNER_TEMP/ExportOptions.plist"
+          cp ios/App/App/ExportOptions.plist "$PLIST"
+          /usr/libexec/PlistBuddy -c "Delete :teamID" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :teamID string $APPLE_TEAM_ID" "$PLIST"
+          xcodebuild \
+            -exportArchive \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -exportPath "$RUNNER_TEMP/ipa" \
+            -exportOptionsPlist "$PLIST" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$HOME/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8" \
+            -authenticationKeyID "$APP_STORE_CONNECT_KEY_ID" \
+            -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID"
+          find "$RUNNER_TEMP/ipa" -name '*.ipa' -exec ls -lh {} \;
+
+      - name: IPA'yı sakla
+        uses: actions/upload-artifact@v5
+        with:
+          name: retro-voleybol-ipa
+          path: ${{ runner.temp }}/ipa/*.ipa
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: App Store Connect'e yükle
+        run: |
+          IPA=$(find "$RUNNER_TEMP/ipa" -name '*.ipa' | head -1)
+          if xcrun --find altool >/dev/null 2>&1; then
+            xcrun altool --upload-app --type ios \
+              --file "$IPA" \
+              --apiKey "$APP_STORE_CONNECT_KEY_ID" \
+              --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
+          else
+            xcrun iTMSTransporter -m upload \
+              -assetFile "$IPA" \
+              -apiKey "$APP_STORE_CONNECT_KEY_ID" \
+              -apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
+          fi
