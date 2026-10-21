@@ -184,9 +184,9 @@ jobs:
 
       - name: Arşivle
         run: |
-          # Elle imza: development sertifikası aranmaz. Profil adı,
-          # yüklenen .mobileprovision dosyasından okunur; manuel imza
-          # boş profil adıyla ilerlemez.
+          # Elle imza: development sertifikası aranmaz. Profil adı yalnızca
+          # App hedefine gider. Komut satırındaki PROVISIONING_PROFILE_SPECIFIER
+          # CocoaPods framework'lerine de yazılır; exportArchive bunu reddeder.
           mkdir -p ios/App/build
           xcodebuild -workspace ios/App/App.xcworkspace \
             -scheme App \
@@ -196,25 +196,25 @@ jobs:
             CODE_SIGN_STYLE="Manual" \
             DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
             PRODUCT_BUNDLE_IDENTIFIER="${{ secrets.APPLE_BUNDLE_ID }}" \
-            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME"
+            APP_PROVISIONING_PROFILE="$PROFILE_NAME"
 
       - name: IPA dışa aktar
         run: |
           PLIST="$RUNNER_TEMP/ExportOptions.plist"
-          cp ios/App/App/ExportOptions.plist "$PLIST"
-          # Bundle id nokta içeriyor. PlistBuddy noktayı iç içe anahtar
-          # sanır; profil eşlemesi bu yüzden plistlib ile yazılıyor.
+          # provisioningProfiles yalnızca uygulama bundle id'sini içerir.
+          # Capacitor.framework ve Cordova.framework bu sözlüğe girerse
+          # exportArchive çıkış kodu 70 verir.
           python3 - "$PLIST" "$APPLE_BUNDLE_ID" "$APPLE_TEAM_ID" "$PROFILE_NAME" << 'PY'
           import plistlib, sys
           path, bundle, team, profile = sys.argv[1:]
-          with open(path, "rb") as f:
-              data = plistlib.load(f)
-          data["method"] = "app-store"
-          data["signingStyle"] = "manual"
-          data["signingCertificate"] = "Apple Distribution"
-          data["teamID"] = team
-          data["manageAppVersionAndBuildNumber"] = True
-          data["provisioningProfiles"] = {bundle: profile}
+          data = {
+              "method": "app-store",
+              "signingStyle": "manual",
+              "teamID": team,
+              "provisioningProfiles": {bundle: profile},
+              "signingCertificate": "Apple Distribution",
+              "manageAppVersionAndBuildNumber": True,
+          }
           with open(path, "wb") as f:
               plistlib.dump(data, f)
           PY
