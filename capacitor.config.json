@@ -8,7 +8,6 @@
   "ios": {
     "backgroundColor": "#0b0b12",
     "contentInset": "never",
-    "scrollEnabled": false,
     "allowsLinkPreview": false
   },
   "server": {
