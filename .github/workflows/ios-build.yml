@@ -211,9 +211,17 @@ jobs:
           # Xcode bunu koşul sanıp profil adını "App]=…" diye arar.
           # Profil yalnızca App hedefindeki APP_PROVISIONING_PROFILE
           # genişlemesine yazılır. Pod'larda imza kapalıdır.
-          python3 - "$APPLE_TEAM_ID" "$APPLE_BUNDLE_ID" "$PROFILE_NAME" << 'PY'
-          import pathlib, sys
-          team, bundle, profile = sys.argv[1:]
+          # App Store Connect aynı CFBundleVersion'ı ikinci kez kabul etmez
+          # (ENTITY_ERROR.ATTRIBUTE.INVALID.DUPLICATE, önceki numara 2).
+          # Her yeni koşu ve aynı koşunun yeniden denemesi daha büyük bir
+          # tam sayı üretir. Repoya yazılmaz; push döngüsü açmasın.
+          BUILD_NUMBER=$(( GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT ))
+          echo "App Store derleme numarası: $BUILD_NUMBER (önceki yükleme 2)"
+          python3 - "$APPLE_TEAM_ID" "$APPLE_BUNDLE_ID" "$PROFILE_NAME" "$BUILD_NUMBER" << 'PY'
+          import pathlib, plistlib, re, sys
+          team, bundle, profile, build = sys.argv[1:]
+          if not build.isdigit() or int(build) <= 2:
+              raise SystemExit(f"derleme numarası 2'den büyük olmalı: {build}")
 
           def quoted(value):
               escaped = value.replace("\\", "\\\\").replace('"', '\\"')
@@ -236,7 +244,21 @@ jobs:
           )
           if "$(APP_PROVISIONING_PROFILE)" in text:
               raise SystemExit("App hedefine profil adı yazılamadı")
+          text, n = re.subn(
+              r"CURRENT_PROJECT_VERSION = \d+;",
+              f"CURRENT_PROJECT_VERSION = {build};",
+              text,
+          )
+          if n < 1:
+              raise SystemExit("CURRENT_PROJECT_VERSION bulunamadı")
           app.write_text(text)
+
+          plist_path = pathlib.Path("ios/App/App/Info.plist")
+          with plist_path.open("rb") as fh:
+              plist = plistlib.load(fh)
+          plist["CFBundleVersion"] = build
+          with plist_path.open("wb") as fh:
+              plistlib.dump(plist, fh)
 
           pods = pathlib.Path("ios/App/Pods/Pods.xcodeproj/project.pbxproj")
           kept = []
@@ -264,7 +286,8 @@ jobs:
             -sdk iphoneos \
             -configuration Release \
             -archivePath ios/App/build/App.xcarchive archive \
-            APP_PROVISIONING_PROFILE="$PROFILE_NAME"
+            APP_PROVISIONING_PROFILE="$PROFILE_NAME" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
 
       - name: IPA dışa aktar
         run: |
@@ -281,7 +304,9 @@ jobs:
               "teamID": team,
               "provisioningProfiles": {bundle: profile},
               "signingCertificate": "Apple Distribution",
-              "manageAppVersionAndBuildNumber": True,
+              # true olursa dışa aktarma arşivdeki numarayı App Store'daki
+              # mevcut numarayla değiştirebiliyor ve yükleme yine 2'ye düşüyor.
+              "manageAppVersionAndBuildNumber": False,
           }
           with open(path, "wb") as f:
               plistlib.dump(data, f)
