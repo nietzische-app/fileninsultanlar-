@@ -292,6 +292,35 @@ jobs:
             -exportOptionsPlist "$PLIST"
           find "$RUNNER_TEMP/ipa" -name '*.ipa' -exec ls -lh {} \;
 
+      - name: Upload IPA to App Store Connect
+        run: |
+          IPA=$(find "$RUNNER_TEMP/ipa" -name '*.ipa' | head -1)
+          test -n "$IPA"
+          test -s "$IPA"
+          # .p8 daha önce ~/.appstoreconnect/private_keys/AuthKey_<id>.p8
+          # olarak yazıldı. altool anahtarı oradan okur.
+          log="$RUNNER_TEMP/altool-upload.log"
+          set +e
+          if xcrun --find altool >/dev/null 2>&1; then
+            xcrun altool --upload-app \
+              -f "$IPA" \
+              -t ios \
+              --apiKey "$APP_STORE_CONNECT_KEY_ID" \
+              --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" 2>&1 | tee "$log"
+            durum=${PIPESTATUS[0]}
+          else
+            xcrun iTMSTransporter -m upload \
+              -assetFile "$IPA" \
+              -apiKey "$APP_STORE_CONNECT_KEY_ID" \
+              -apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" 2>&1 | tee "$log"
+            durum=${PIPESTATUS[0]}
+          fi
+          set -e
+          if [ "$durum" -ne 0 ] || grep -q "UPLOAD FAILED" "$log"; then
+            echo "::error::App Store Connect yüklemesi başarısız."
+            exit 1
+          fi
+
       - name: IPA'yı sakla
         uses: actions/upload-artifact@v5
         with:
@@ -299,18 +328,3 @@ jobs:
           path: ${{ runner.temp }}/ipa/*.ipa
           if-no-files-found: error
           retention-days: 30
-
-      - name: App Store Connect'e yükle
-        run: |
-          IPA=$(find "$RUNNER_TEMP/ipa" -name '*.ipa' | head -1)
-          if xcrun --find altool >/dev/null 2>&1; then
-            xcrun altool --upload-app --type ios \
-              --file "$IPA" \
-              --apiKey "$APP_STORE_CONNECT_KEY_ID" \
-              --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
-          else
-            xcrun iTMSTransporter -m upload \
-              -assetFile "$IPA" \
-              -apiKey "$APP_STORE_CONNECT_KEY_ID" \
-              -apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
-          fi
