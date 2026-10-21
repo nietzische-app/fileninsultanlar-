@@ -4,7 +4,8 @@
  * Oyundaki her şey (sultanlar, top, file, bayrak, kupa, rakamlar)
  * burada Canvas 2D API'siyle blok blok çizilir: `ctx.fillRect`,
  * `ctx.arc`, `ctx.fillText` yerine kendi piksel rakam fontumuz.
- * PNG/JPG yüklenmez, `drawImage` kullanılmaz.
+ * PNG/JPG yüklenmez. Tekrarlanan figür ve top bir kez offscreen
+ * yüzeye çizilir, sonraki kareler `drawImage` ile yapıştırılır.
  *
  * Hem oyun motoru hem de React karakter seçim ekranı bu fonksiyonları
  * kullanır — sahadaki figürle avatardaki figür birebir aynıdır.
@@ -480,7 +481,7 @@ function drawExtras(px, look, facing, skin) {
  * @param {number} [opts.frame]  Koşu animasyon fazı (0..1)
  * @param {boolean} [opts.showNumber]
  */
-export function drawSultan(ctx, data, opts) {
+function drawSultanDirect(ctx, data, opts) {
   const {
     x,
     y,
@@ -682,6 +683,79 @@ export function drawSultan(ctx, data, opts) {
   ctx.restore();
 }
 
+const sultanOnbellek = new Map();
+const SULTAN_ONBELLEK_TAVAN = 48;
+const KOSU_ADIM = 8;
+
+function kosuKaresi(frame, pose) {
+  if (pose !== 'run') return 0;
+  const f = ((Number(frame) % 1) + 1) % 1;
+  return Math.min(KOSU_ADIM - 1, Math.floor(f * KOSU_ADIM));
+}
+
+function onbellegeYaz(map, key, value, tavan) {
+  if (map.has(key)) map.delete(key);
+  map.set(key, value);
+  while (map.size > tavan) {
+    const ilk = map.keys().next().value;
+    map.delete(ilk);
+  }
+}
+
+/**
+ * Ayakta duran figürü bir kez çizer. Koşu fazı 8 kareye yuvarlanır;
+ * her ara değer ayrı tuval açarsa önbellek hiç isabet etmez.
+ * Dalış her karede farklı uzandığı için doğrudan çizilir.
+ */
+export function drawSultan(ctx, data, opts = {}) {
+  const pose = opts.pose ?? 'idle';
+  if (pose === 'dive' || typeof document === 'undefined') {
+    drawSultanDirect(ctx, data, opts);
+    return;
+  }
+
+  const u = opts.scale ?? 3;
+  const facing = opts.facing ?? 1;
+  const showNumber = opts.showNumber !== false;
+  const kare = kosuKaresi(opts.frame ?? 0, pose);
+  const id = data?.id ?? `${data?.number ?? ''}:${data?.name ?? ''}`;
+  const key = `${id}|${pose}|${facing}|${kare}|${u}|${showNumber ? 1 : 0}`;
+
+  let kayit = sultanOnbellek.get(key);
+  if (!kayit) {
+    const pad = Math.ceil(u * 4);
+    const w = Math.ceil(SPRITE_UNITS_W * u) + pad * 2;
+    const h = Math.ceil(SPRITE_UNITS_H * u) + pad * 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, w);
+    canvas.height = Math.max(1, h);
+    const octx = canvas.getContext('2d');
+    if (!octx) {
+      drawSultanDirect(ctx, data, opts);
+      return;
+    }
+    octx.imageSmoothingEnabled = false;
+    const feetX = pad + (SPRITE_UNITS_W * u) / 2;
+    const feetY = pad + SPRITE_UNITS_H * u;
+    drawSultanDirect(octx, data, {
+      ...opts,
+      x: feetX,
+      y: feetY,
+      scale: u,
+      pose,
+      facing,
+      frame: pose === 'run' ? (kare + 0.5) / KOSU_ADIM : 0,
+      showNumber,
+    });
+    kayit = { canvas, feetX, feetY };
+    onbellegeYaz(sultanOnbellek, key, kayit, SULTAN_ONBELLEK_TAVAN);
+  } else {
+    onbellegeYaz(sultanOnbellek, key, kayit, SULTAN_ONBELLEK_TAVAN);
+  }
+
+  ctx.drawImage(kayit.canvas, opts.x - kayit.feetX, opts.y - kayit.feetY);
+}
+
 /**
  * Dalan sultan — yere paralel uzanmış figür.
  *
@@ -804,19 +878,12 @@ function drawDivingSultan(ctx, data, look, { x, y, u, facing }) {
  * @param {CanvasRenderingContext2D} ctx
  * @param {{x:number, y:number, radius:number, rotation:number}} ball
  */
-export function drawBall(ctx, ball) {
-  const { x, y, radius: r, rotation } = ball;
-
+function drawBallDisk(ctx, x, y, r) {
   const cell = Math.max(2, r / 5.5);
   const steps = Math.ceil(r / cell) + 1;
-
   const base = PALETTE.ballWhite;
   const stripeA = PALETTE.ballRed;
   const stripeB = PALETTE.ballBlue;
-
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(rotation);
 
   for (let i = -steps; i <= steps; i += 1) {
     for (let j = -steps; j <= steps; j += 1) {
@@ -828,11 +895,9 @@ export function drawBall(ctx, ball) {
       const ratio = dist / r;
       let color = base;
 
-      // Dış hat halkası
       if (ratio > 0.82) {
         color = PALETTE.outline;
       } else if (ratio > 0.34 && ratio < 0.74) {
-        // Panel şeritleri — üst yarı ve alt yarı farklı renk
         const angle = Math.atan2(cy, cx);
         if (angle > 0.25 && angle < 2.85) color = stripeA;
         else if (angle < -0.25 && angle > -2.85) color = stripeB;
@@ -840,14 +905,53 @@ export function drawBall(ctx, ball) {
 
       ctx.fillStyle = color;
       ctx.fillRect(
-        Math.round(cx - cell / 2),
-        Math.round(cy - cell / 2),
+        Math.round(x + cx - cell / 2),
+        Math.round(y + cy - cell / 2),
         Math.ceil(cell),
         Math.ceil(cell)
       );
     }
   }
+}
 
+const topOnbellek = new Map();
+
+/** Dönmeyen top. Vurgu rotasyonun dışında kaldığı için buraya girmez. */
+function topSprite(r) {
+  if (typeof document === 'undefined') return null;
+  const key = Math.round(r * 2);
+  const hazir = topOnbellek.get(key);
+  if (hazir) return hazir;
+
+  const cell = Math.max(2, r / 5.5);
+  const pad = Math.ceil(cell) + 2;
+  const size = Math.ceil(r * 2 + pad * 2);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, size);
+  canvas.height = Math.max(1, size);
+  const octx = canvas.getContext('2d');
+  if (!octx) return null;
+  octx.imageSmoothingEnabled = false;
+  const half = size / 2;
+  drawBallDisk(octx, half, half, r);
+  const kayit = { canvas, half };
+  onbellegeYaz(topOnbellek, key, kayit, 8);
+  return kayit;
+}
+
+export function drawBall(ctx, ball) {
+  const { x, y, radius: r, rotation } = ball;
+  const cell = Math.max(2, r / 5.5);
+  const sprite = topSprite(r);
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rotation || 0);
+  if (sprite) {
+    ctx.drawImage(sprite.canvas, -sprite.half, -sprite.half);
+  } else {
+    drawBallDisk(ctx, 0, 0, r);
+  }
   ctx.restore();
 
   // Işık vurgusu — dönmeyle birlikte kaymasın diye rotasyon dışında

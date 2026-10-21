@@ -430,14 +430,13 @@
   }
 
   /*
-   * Sahnenin üstüne binen saydam varyant. Bulanıklık 1px — 2px'te tuşun
-   * arkasındaki oyuncu seçilmiyordu.
+   * Sahnenin üstüne binen varyant. `backdrop-filter` iOS'ta tuvalin
+   * üstünde her karede bulanıklık hesabı açıyor; opak dolgu aynı
+   * okunurluğu GPU'ya yük bindirmeden veriyor.
    */
   .touch-button-overlay {
-    --tb-top: rgba(64, 70, 96, 0.72);
-    --tb-fill: rgba(12, 14, 26, 0.66);
-    backdrop-filter: blur(1px);
-    -webkit-backdrop-filter: blur(1px);
+    --tb-top: rgba(64, 70, 96, 0.9);
+    --tb-fill: rgba(12, 14, 26, 0.88);
   }
 
   /*
@@ -462,6 +461,18 @@
     -webkit-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
+  }
+
+  /*
+   * Yalnızca oyun tuvali kendi GPU katmanında. `will-change` her
+   * hareketli düğüme yazılırsa katman sayısı artar ve iOS tersine
+   * kasma yapar.
+   */
+  .match-stage canvas {
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
   }
 
   /*
@@ -678,6 +689,8 @@
     aspect-ratio: 9 / 5;
     background-color: #0b0b12;
     object-fit: contain;
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
   }
 
   /*
@@ -686,9 +699,7 @@
    */
   .retro-panel-overlay {
     border: 2px solid rgba(255, 255, 255, 0.28);
-    background: rgba(8, 8, 16, 0.55);
-    backdrop-filter: blur(3px);
-    -webkit-backdrop-filter: blur(3px);
+    background: rgba(8, 8, 16, 0.88);
     box-shadow: none;
   }
 

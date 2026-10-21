@@ -596,7 +596,7 @@ function drawConvergingLine(ctx, x, topY, bottomY) {
  * @param {CanvasRenderingContext2D} ctx
  * @param {number} netFloorY Filenin tabanının değdiği y (topun düzlemi)
  */
-export function drawNet(ctx, netFloorY) {
+function drawNetDirect(ctx, netFloorY) {
   const left = NET.x - NET.width / 2;
   const topY = netFloorY - NET.height;
   const meshTop = topY + 8;
@@ -668,4 +668,36 @@ export function drawNet(ctx, netFloorY) {
       ctx.fillRect(Math.round(x), topY - 21 + i * 7, 3, 7);
     }
   });
+}
+
+/** File kımıldamaz. Bir kez çizilip her karede tek `drawImage` olur. */
+let netOnbellek = null;
+let netOnbellekY = null;
+
+export function drawNet(ctx, netFloorY) {
+  if (typeof document === 'undefined') {
+    drawNetDirect(ctx, netFloorY);
+    return;
+  }
+  if (!netOnbellek || netOnbellekY !== netFloorY) {
+    const left = NET.x - NET.width / 2;
+    const topY = netFloorY - NET.height;
+    const x0 = Math.floor(left - 40);
+    const y0 = Math.floor(topY - 28);
+    const w = Math.ceil(NET.width + 80);
+    const h = Math.ceil(netFloorY + 12 - y0);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, w);
+    canvas.height = Math.max(1, h);
+    const octx = canvas.getContext('2d');
+    if (!octx) {
+      drawNetDirect(ctx, netFloorY);
+      return;
+    }
+    octx.translate(-x0, -y0);
+    drawNetDirect(octx, netFloorY);
+    netOnbellek = { canvas, x0, y0 };
+    netOnbellekY = netFloorY;
+  }
+  ctx.drawImage(netOnbellek.canvas, netOnbellek.x0, netOnbellek.y0);
 }

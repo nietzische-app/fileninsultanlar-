@@ -442,6 +442,61 @@ export function agAyarOzeti() {
   };
 }
 
+/**
+ * Opak 2B bağlam. Görünen tuvalde `desynchronized` ana kareyi sunumdan
+ * ayırır; önbellek tuvalinde kullanılmaz — o bitmap hemen `drawImage`
+ * kaynağıdır ve senkron olmak zorundadır.
+ */
+function oyunBaglami(canvas, { desynchronized = false } = {}) {
+  if (!canvas?.getContext) return null;
+  const secenek = desynchronized
+    ? { alpha: false, desynchronized: true }
+    : { alpha: false };
+  try {
+    const ctx = canvas.getContext('2d', secenek);
+    if (ctx) return ctx;
+  } catch {
+    /* eski webview bağlam seçeneklerini reddedebilir */
+  }
+  try {
+    return canvas.getContext('2d');
+  } catch {
+    return null;
+  }
+}
+
+function pikselBaglam(ctx) {
+  ctx.imageSmoothingEnabled = false;
+}
+
+const golgeOnbellek = new Map();
+
+/** Elips gölge her karede yeniden kurulmasın; yarıçap tam sayıya yuvarlanır. */
+function golgeAl(radius) {
+  const r = Math.max(2, Math.round(radius));
+  const hazir = golgeOnbellek.get(r);
+  if (hazir) return hazir;
+  if (typeof document === 'undefined') return null;
+
+  const rh = Math.max(1, Math.round(r * 0.28));
+  const canvas = document.createElement('canvas');
+  canvas.width = r * 2 + 2;
+  canvas.height = rh * 2 + 2;
+  const octx = canvas.getContext('2d');
+  if (!octx) return null;
+  octx.fillStyle = PALETTE.shadow;
+  octx.beginPath();
+  octx.ellipse(r + 1, rh + 1, r, rh, 0, 0, Math.PI * 2);
+  octx.fill();
+  const kayit = { canvas, r, rh };
+  if (golgeOnbellek.size >= 24) {
+    const ilk = golgeOnbellek.keys().next().value;
+    golgeOnbellek.delete(ilk);
+  }
+  golgeOnbellek.set(r, kayit);
+  return kayit;
+}
+
 export default class Game {
   /**
    * @param {HTMLCanvasElement} canvas
@@ -472,7 +527,8 @@ export default class Game {
     this.bassiz = Boolean(options.bassiz);
 
     this.canvas = canvas ?? null;
-    this.ctx = this.bassiz ? null : canvas.getContext('2d');
+    this.ctx = this.bassiz ? null : oyunBaglami(canvas, { desynchronized: true });
+    if (this.ctx) pikselBaglam(this.ctx);
 
     this.playMode = ['solo', 'coop', 'vs'].includes(options.playMode)
       ? options.playMode
@@ -888,7 +944,8 @@ export default class Game {
       this.bgCanvas.width = GAME_WIDTH;
       this.bgCanvas.height = GAME_HEIGHT;
     }
-    this.bgCtx = this.bgCanvas ? this.bgCanvas.getContext('2d') : null;
+    this.bgCtx = this.bgCanvas ? oyunBaglami(this.bgCanvas) : null;
+    if (this.bgCtx) pikselBaglam(this.bgCtx);
     this.bgTime = -Infinity;
     this.bgKey = '';
   }
@@ -4125,10 +4182,15 @@ export default class Game {
 
   drawShadow(x, y, radius) {
     const { ctx } = this;
-    ctx.fillStyle = PALETTE.shadow;
-    ctx.beginPath();
-    ctx.ellipse(x, y + 2, radius, radius * 0.28, 0, 0, Math.PI * 2);
-    ctx.fill();
+    const kayit = golgeAl(radius);
+    if (!kayit) {
+      ctx.fillStyle = PALETTE.shadow;
+      ctx.beginPath();
+      ctx.ellipse(x, y + 2, radius, radius * 0.28, 0, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
+    ctx.drawImage(kayit.canvas, x - kayit.r - 1, y + 2 - kayit.rh - 1);
   }
 
   drawPlayer(player) {

@@ -3,7 +3,9 @@ package app.retrovoleybol.oyun;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
 import android.view.WindowManager;
+import android.webkit.WebView;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
@@ -36,6 +38,10 @@ public class MainActivity extends BridgeActivity {
     if (insets != null) {
       insets.setAppearanceLightStatusBars(false);
       insets.setAppearanceLightNavigationBars(false);
+    }
+    WebView webView = getBridge() != null ? getBridge().getWebView() : null;
+    if (webView != null) {
+      webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
     }
   }
 }
