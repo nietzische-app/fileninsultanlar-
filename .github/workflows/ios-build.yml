@@ -65,7 +65,7 @@ concurrency:
 
 jobs:
   ipa:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 45
     env:
       APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
@@ -77,6 +77,27 @@ jobs:
       P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
       BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
     steps:
+      - name: Select Xcode Version
+        run: |
+          # App Store, 28 Nisan 2026'dan beri iOS 26 SDK / Xcode 26 istiyor.
+          # macos-15 varsayılanı Xcode 16.4 (iOS 18.5); bu da reddedilir.
+          # Xcode_16.app yolu duruyor ama içinde iOS 18 SDK var.
+          secilen=""
+          for ad in Xcode_26.3 Xcode_26.2 Xcode_26.1.1 Xcode_26.1 Xcode_26.0.1 Xcode_26.0; do
+            if [ -d "/Applications/${ad}.app/Contents/Developer" ]; then
+              secilen="/Applications/${ad}.app/Contents/Developer"
+              break
+            fi
+          done
+          if [ -z "$secilen" ]; then
+            echo "::error::iOS 26 SDK için Xcode 26 bulunamadı."
+            ls -d /Applications/Xcode*.app || true
+            exit 1
+          fi
+          sudo xcode-select -s "$secilen"
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+
       - uses: actions/checkout@v5
 
       - uses: actions/setup-node@v5
@@ -255,7 +276,7 @@ jobs:
           import plistlib, sys
           path, bundle, team, profile = sys.argv[1:]
           data = {
-              "method": "app-store",
+              "method": "app-store-connect",
               "signingStyle": "manual",
               "teamID": team,
               "provisioningProfiles": {bundle: profile},
