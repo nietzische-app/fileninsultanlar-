@@ -200,15 +200,19 @@ export default function MatchScreen({
      */
   }, [config, taniAcik]);
 
-  // --- Maç sırasında sayfa kaydırmasını kilitle (mobil) ---
+  // --- Maç sırasında menü kaydırmasını kilitle ---
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
     const prevOverscroll = document.body.style.overscrollBehavior;
+    const shell = document.querySelector('[data-app-shell]');
+    const prevShellOverflow = shell?.style.overflow ?? '';
     document.body.style.overflow = 'hidden';
     document.body.style.overscrollBehavior = 'none';
+    if (shell) shell.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = prevOverflow;
       document.body.style.overscrollBehavior = prevOverscroll;
+      if (shell) shell.style.overflow = prevShellOverflow;
     };
   }, []);
 
