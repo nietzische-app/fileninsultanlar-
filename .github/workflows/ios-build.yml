@@ -184,12 +184,12 @@ jobs:
 
       - name: Arşivle
         run: |
-          # Komut satırındaki CODE_SIGN_STYLE, DEVELOPMENT_TEAM,
-          # PRODUCT_BUNDLE_IDENTIFIER ve PROVISIONING_PROFILE_SPECIFIER
-          # Pod hedeflerine de gider. Son arşivde profil adı global
-          # değildi; yine de Manual stil ve takım kimliği framework'lere
-          # RetroVoleybol_AppStore profilini yazdı. Bu yüzden o ayarlar
-          # yalnızca App projesine işlenir. Pod'larda imza kapalıdır.
+          # PROVISIONING_PROFILE_SPECIFIER ve PROVISIONING_PROFILE komut
+          # satırında verilmez; Pod hedeflerine miras kalır.
+          # PROVISIONING_PROFILE_SPECIFIER[target=App] de kullanılamaz:
+          # Xcode bunu koşul sanıp profil adını "App]=…" diye arar.
+          # Profil yalnızca App hedefindeki APP_PROVISIONING_PROFILE
+          # genişlemesine yazılır. Pod'larda imza kapalıdır.
           python3 - "$APPLE_TEAM_ID" "$APPLE_BUNDLE_ID" "$PROFILE_NAME" << 'PY'
           import pathlib, sys
           team, bundle, profile = sys.argv[1:]
@@ -243,9 +243,7 @@ jobs:
             -sdk iphoneos \
             -configuration Release \
             -archivePath ios/App/build/App.xcarchive archive \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            APP_PROVISIONING_PROFILE="$PROFILE_NAME" \
-            "PROVISIONING_PROFILE_SPECIFIER[target=App]=$PROFILE_NAME"
+            APP_PROVISIONING_PROFILE="$PROFILE_NAME"
 
       - name: IPA dışa aktar
         run: |
