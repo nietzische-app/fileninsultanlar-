@@ -184,19 +184,68 @@ jobs:
 
       - name: Arşivle
         run: |
-          # Elle imza: development sertifikası aranmaz. Profil adı yalnızca
-          # App hedefine gider. Komut satırındaki PROVISIONING_PROFILE_SPECIFIER
-          # CocoaPods framework'lerine de yazılır; exportArchive bunu reddeder.
+          # Komut satırındaki CODE_SIGN_STYLE, DEVELOPMENT_TEAM,
+          # PRODUCT_BUNDLE_IDENTIFIER ve PROVISIONING_PROFILE_SPECIFIER
+          # Pod hedeflerine de gider. Son arşivde profil adı global
+          # değildi; yine de Manual stil ve takım kimliği framework'lere
+          # RetroVoleybol_AppStore profilini yazdı. Bu yüzden o ayarlar
+          # yalnızca App projesine işlenir. Pod'larda imza kapalıdır.
+          python3 - "$APPLE_TEAM_ID" "$APPLE_BUNDLE_ID" "$PROFILE_NAME" << 'PY'
+          import pathlib, sys
+          team, bundle, profile = sys.argv[1:]
+
+          def quoted(value):
+              escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+              return f'"{escaped}"'
+
+          app = pathlib.Path("ios/App/App.xcodeproj/project.pbxproj")
+          text = app.read_text()
+          text = text.replace("CODE_SIGN_STYLE = Automatic;", "CODE_SIGN_STYLE = Manual;")
+          text = text.replace(
+              'DEVELOPMENT_TEAM = "$(APPLE_TEAM_ID)";',
+              f"DEVELOPMENT_TEAM = {quoted(team)};",
+          )
+          text = text.replace(
+              'PROVISIONING_PROFILE_SPECIFIER = "$(APP_PROVISIONING_PROFILE)";',
+              f"PROVISIONING_PROFILE_SPECIFIER = {quoted(profile)};",
+          )
+          text = text.replace(
+              "PRODUCT_BUNDLE_IDENTIFIER = com.nodify.retrovoleybol;",
+              f"PRODUCT_BUNDLE_IDENTIFIER = {quoted(bundle)};",
+          )
+          if "$(APP_PROVISIONING_PROFILE)" in text:
+              raise SystemExit("App hedefine profil adı yazılamadı")
+          app.write_text(text)
+
+          pods = pathlib.Path("ios/App/Pods/Pods.xcodeproj/project.pbxproj")
+          kept = []
+          for line in pods.read_text().splitlines(keepends=True):
+              stripped = line.lstrip()
+              if stripped.startswith((
+                  "CODE_SIGNING_ALLOWED =",
+                  "CODE_SIGNING_REQUIRED =",
+                  "PROVISIONING_PROFILE_SPECIFIER =",
+                  "PROVISIONING_PROFILE =",
+              )):
+                  continue
+              kept.append(line)
+              if stripped.startswith("buildSettings = {"):
+                  indent = line[: len(line) - len(stripped)] + "\t"
+                  kept.append(f"{indent}CODE_SIGNING_ALLOWED = NO;\n")
+                  kept.append(f"{indent}CODE_SIGNING_REQUIRED = NO;\n")
+                  kept.append(f'{indent}PROVISIONING_PROFILE_SPECIFIER = "";\n')
+                  kept.append(f'{indent}PROVISIONING_PROFILE = "";\n')
+          pods.write_text("".join(kept))
+          PY
           mkdir -p ios/App/build
           xcodebuild -workspace ios/App/App.xcworkspace \
             -scheme App \
             -sdk iphoneos \
             -configuration Release \
             -archivePath ios/App/build/App.xcarchive archive \
-            CODE_SIGN_STYLE="Manual" \
-            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
-            PRODUCT_BUNDLE_IDENTIFIER="${{ secrets.APPLE_BUNDLE_ID }}" \
-            APP_PROVISIONING_PROFILE="$PROFILE_NAME"
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            APP_PROVISIONING_PROFILE="$PROFILE_NAME" \
+            "PROVISIONING_PROFILE_SPECIFIER[target=App]=$PROFILE_NAME"
 
       - name: IPA dışa aktar
         run: |
