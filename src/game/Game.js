@@ -885,10 +885,19 @@ export default class Game {
     this.wave = 1;
     this.survivalContinueUsed = 0;
     /**
+     * Bu maçta kaybedilen set reklamla kaç kez baştan oynandı.
+     * Bir hak: ikincisi yenilgiyi silip maçı uzatırdı.
+     */
+    this.lossContinueUsed = 0;
+    /** 'next' | 'replay' | 'loss' — reklam teklifi açıkken dolu. */
+    this.adContinue = null;
+    /**
      * Can bitince reklam teklifi — yalnız mağaza kabuğunda.
      * Web'de false: koşu bitince direkt sonuç.
      */
     this.reklamTeklif = Boolean(options.reklamTeklif);
+    /** Bugün kalan ödüllü hak. Ekran kota düşünce bunu günceller. */
+    this.reklamKalan = Number(options.reklamKalan) || 0;
 
     /**
      * Servis durumu — yalnızca PHASE.SERVE sırasında dolu.
@@ -2669,6 +2678,7 @@ export default class Game {
 
       case PHASE.MATCH_END:
       case PHASE.SURVIVAL_CONTINUE:
+      case PHASE.AD_CONTINUE:
       default:
         this.updatePlayers(dt, false);
         break;
@@ -3699,23 +3709,132 @@ export default class Game {
     this.beginServe();
   }
 
-  /** Set bitti — maç bitti mi, yoksa yeni set mi? */
+  /** Set bitti — maç bitti mi, reklam mı, yoksa yeni set mi? */
   afterSet() {
     if (isMatchOver(this.sets, this.rules)) {
-      this.phase = PHASE.MATCH_END;
-      this.message = null;
-      this.finished = true;
-
       const winner = matchWinner(this.sets);
-      if (winner === 'home') this.ses.victory();
-      else this.ses.defeat();
-
-      this.emitState(true);
-      this.emitFinish(winner);
+      // Galibiyet sonuç ekranına gider. Yenilgide bir kez set baştan.
+      if (winner === 'away' && this.yenilgiTeklifi()) {
+        this.teklifAc('loss');
+        return;
+      }
+      this.finishMatch(winner);
       return;
     }
 
-    // Yeni set
+    const last = this.setHistory[this.setHistory.length - 1];
+    if (last?.winner === 'away' && this.yenilgiTeklifi()) {
+      this.teklifAc('replay');
+      return;
+    }
+    if (this.devamTeklifi()) {
+      this.teklifAc('next');
+      return;
+    }
+    this.startNextSet();
+  }
+
+  /**
+   * Mağaza kabuğunda, çevrimdışı, tek takım.
+   *
+   * Karşılıklı iki insan ve çevrimiçi maç yok: bir tarafın reklamı
+   * diğerinin kazandığı seti silerdi. Ağda maçı sunucu bitiriyor.
+   */
+  devamTeklifi() {
+    return (
+      this.reklamTeklif
+      && this.reklamKalan > 0
+      && !this.survivalMode
+      && !this.agRol
+      && this.playMode !== 'vs'
+    );
+  }
+
+  /** Kaybedilen seti baştan oynama hakkı bu maçta duruyor mu. */
+  yenilgiTeklifi() {
+    return this.devamTeklifi() && this.lossContinueUsed < 1;
+  }
+
+  /** @param {'next'|'replay'|'loss'} kind */
+  teklifAc(kind) {
+    this.phase = PHASE.AD_CONTINUE;
+    this.adContinue = kind;
+    this.message = null;
+    this.emitState(true);
+  }
+
+  /** Ödüllü reklam bitti — sete geç ya da kaybedilen seti sil. */
+  grantAdContinue() {
+    if (this.phase !== PHASE.AD_CONTINUE) return false;
+    if (this.adContinue === 'next') {
+      this.startNextSet();
+      return true;
+    }
+    if (this.adContinue === 'replay' || this.adContinue === 'loss') {
+      return this.replayLostSet();
+    }
+    return false;
+  }
+
+  /**
+   * Teklifi reddet.
+   * Sonraki set teklifinde maç sürer. Yenilgide sonuç ekranına düşülür.
+   * Kaybedilen sette geçmek, seti rakipte bırakıp sonrakine geçer.
+   */
+  declineAdContinue() {
+    if (this.phase !== PHASE.AD_CONTINUE) return;
+    if (this.adContinue === 'loss') {
+      this.finishMatch(matchWinner(this.sets));
+      return;
+    }
+    this.startNextSet();
+  }
+
+  /** Kaybedilen son seti skordan sil, aynı set numarasıyla baştan başla. */
+  replayLostSet() {
+    if (this.lossContinueUsed >= 1) {
+      if (isMatchOver(this.sets, this.rules)) this.finishMatch(matchWinner(this.sets));
+      return false;
+    }
+    const last = this.setHistory[this.setHistory.length - 1];
+    if (!last || last.winner !== 'away') return false;
+    this.setHistory.pop();
+    this.sets.away = Math.max(0, this.sets.away - 1);
+    this.lossContinueUsed += 1;
+    this.finished = false;
+    this.adContinue = null;
+    this.score = { home: 0, away: 0 };
+    this.streak = { side: null, count: 0 };
+    this.servingSide = 'home';
+    this.resetRally('home');
+    this.phase = PHASE.READY;
+    this.phaseTimer = this.rules.readyPause;
+    this.message = {
+      text: t('ad.setBack'),
+      timer: this.rules.readyPause,
+      color: PALETTE.gold,
+    };
+    this.emitState(true);
+    return true;
+  }
+
+  /** Maçı kapat ve sonucu dışarı ver. */
+  finishMatch(winner) {
+    this.phase = PHASE.MATCH_END;
+    this.adContinue = null;
+    this.message = null;
+    this.finished = true;
+
+    if (winner === 'home') this.ses.victory();
+    else this.ses.defeat();
+
+    this.emitState(true);
+    this.emitFinish(winner);
+  }
+
+  /** Set skorunu sıfırla, bir sonraki sete geç. */
+  startNextSet() {
+    this.adContinue = null;
     this.setNumber += 1;
     this.score = { home: 0, away: 0 };
     this.streak = { side: null, count: 0 };
@@ -4031,6 +4150,7 @@ export default class Game {
       setNumber: this.setNumber,
       setHistory: [...this.setHistory],
       phase: this.phase,
+      adContinue: this.adContinue,
       running: this.running,
       streak: { ...this.streak },
       pointsPerSet: this.rules.pointsPerSet,
