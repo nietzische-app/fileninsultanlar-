@@ -124,8 +124,29 @@ jobs:
           VITE_RELE_URL: ${{ vars.VITE_RELE_URL }}
         run: |
           node scripts/paket-onkontrol.mjs
+          # Taze pod çözümü. Eski bir UMP 3 önbelleği arşivi yine 65 ile düşürür.
+          rm -rf ios/App/Pods ios/App/build "$HOME/Library/Developer/Xcode/DerivedData" "$HOME/Library/Caches/CocoaPods"
           npm run build
           npx cap sync ios
+          python3 - << 'PY'
+          import pathlib, re, sys
+          lock = pathlib.Path("ios/App/Podfile.lock").read_text()
+          def surum(ad):
+              match = re.search(rf"^  - {re.escape(ad)} \(([^)]+)\)", lock, re.M)
+              if not match:
+                  return ""
+              return match.group(1).lstrip("= ").strip()
+          ump = surum("GoogleUserMessagingPlatform")
+          gma = surum("Google-Mobile-Ads-SDK")
+          print(f"Google-Mobile-Ads-SDK {gma}")
+          print(f"GoogleUserMessagingPlatform {ump}")
+          if not ump.startswith("2."):
+              print(f"::error::GoogleUserMessagingPlatform {ump or 'yok'}; eklenti UMP 2.x ister.")
+              sys.exit(1)
+          if gma != "11.3.0":
+              print(f"::error::Google-Mobile-Ads-SDK {gma or 'yok'}; eklenti 11.3.0 ister.")
+              sys.exit(1)
+          PY
 
       - name: API anahtarını yaz
         run: |
@@ -215,6 +236,7 @@ jobs:
           # (ENTITY_ERROR.ATTRIBUTE.INVALID.DUPLICATE, önceki numara 2).
           # Her yeni koşu ve aynı koşunun yeniden denemesi daha büyük bir
           # tam sayı üretir. Repoya yazılmaz; push döngüsü açmasın.
+          rm -rf "$HOME/Library/Developer/Xcode/DerivedData" ios/App/build
           BUILD_NUMBER=$(( GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT ))
           echo "App Store derleme numarası: $BUILD_NUMBER (önceki yükleme 2)"
           python3 - "$APPLE_TEAM_ID" "$APPLE_BUNDLE_ID" "$PROFILE_NAME" "$BUILD_NUMBER" << 'PY'

@@ -18,9 +18,26 @@ def capacitor_pods
   pod 'CapacitorApp', :path => '../../node_modules/@capacitor/app'
 end
 
+# Çıktısı olmayan [CP] betiklerinde "Based on dependency analysis" kapalı kalsın.
+# Xcode aksi halde her derlemede çalışacakları uyarısını basar.
+def cp_betiklerini_her_derlemede_calistir(project)
+  project.targets.each do |target|
+    target.build_phases.each do |phase|
+      next unless phase.respond_to?(:name) && phase.respond_to?(:always_out_of_date=)
+      next unless phase.name.to_s.start_with?('[CP]')
+      outputs = Array(phase.output_paths) + Array(phase.output_file_list_paths)
+      next unless outputs.empty?
+      phase.always_out_of_date = '1'
+    end
+  end
+end
+
 target 'App' do
   capacitor_pods
-  # Add your Pods here
+  # Google-Mobile-Ads-SDK 11.3.0, User Messaging Platform'u ">= 1.1" diye çeker.
+  # UMP 3, eklentinin UMPConsentStatus API'sini kaldırdığı için arşiv
+  # çıkış kodu 65 ile düşer. 2.7.0 son sürümdür ve eski adları korur.
+  pod 'GoogleUserMessagingPlatform', '2.7.0'
 end
 
 post_install do |installer|
@@ -38,5 +55,13 @@ post_install do |installer|
       config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ''
       config.build_settings['PROVISIONING_PROFILE'] = ''
     end
+  end
+  cp_betiklerini_her_derlemede_calistir(installer.pods_project)
+end
+
+post_integrate do |installer|
+  installer.aggregate_targets.map(&:user_project).uniq.each do |project|
+    cp_betiklerini_her_derlemede_calistir(project)
+    project.save
   end
 end
