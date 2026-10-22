@@ -8,7 +8,6 @@ import {
   sonrakiHedef,
   kademeGruplari,
   koleksiyonOzeti,
-  FP_ACIK,
 } from '../game/ilerleme.js';
 import { getPlayerById } from '../game/players.js';
 import Sfx from '../game/audio.js';
@@ -46,15 +45,16 @@ export default function CollectionScreen({
   onToggleMute,
   ilerleme = { puan: 0, acilanlar: [] },
   onUnlock,
+  fpAcik = false,
 }) {
   const acilanlar = useMemo(() => ilerleme?.acilanlar ?? [], [ilerleme]);
   const puan = ilerleme?.puan ?? 0;
 
   const ozet = useMemo(() => koleksiyonOzeti(acilanlar), [acilanlar]);
-  const gruplar = useMemo(() => kademeGruplari(acilanlar), [acilanlar]);
+  const gruplar = useMemo(() => kademeGruplari(acilanlar, fpAcik), [acilanlar, fpAcik]);
   const hedef = useMemo(
-    () => (FP_ACIK ? sonrakiHedef(puan, acilanlar) : null),
-    [puan, acilanlar],
+    () => (fpAcik ? sonrakiHedef(puan, acilanlar) : null),
+    [puan, acilanlar, fpAcik],
   );
 
   const satinAl = (id) => {
@@ -71,7 +71,7 @@ export default function CollectionScreen({
 {t('col.title')}
           </h2>
           <p className="mt-1 text-[7px] text-white/50 sm:mt-2 sm:text-[8px]">
-            {FP_ACIK ? t('col.subFp') : t('col.sub')}
+            {fpAcik ? t('col.subFp') : t('col.sub')}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -90,7 +90,7 @@ export default function CollectionScreen({
         İlerleme paneli — FP KAPALIYKEN çizilmiyor. Kapalıyken
         "3 / 24 OYUNCU AÇIK" yazmak yalan olurdu: hepsi açık.
       */}
-      {FP_ACIK && (
+      {fpAcik && (
         <div className="retro-panel flex flex-col gap-3 px-4 py-4">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <span className="text-sm text-white">
@@ -148,7 +148,7 @@ export default function CollectionScreen({
                   : t('fp.amount', { n: grup.bedel })}
             </h3>
             {/* Sayaç yalnız FP açıkken anlamlı: kapalıyken hepsi açık */}
-            {FP_ACIK && (
+            {fpAcik && (
               <span className="text-[7px] text-white/40">
 {t('col.tierOpen', { acik: grup.acik, toplam: grup.toplam })}
               </span>
@@ -160,7 +160,7 @@ export default function CollectionScreen({
               <OyuncuKarti
                 key={oyuncu.id}
                 oyuncu={oyuncu}
-                acik={kullanilabilir(oyuncu.id, acilanlar)}
+                acik={kullanilabilir(oyuncu.id, acilanlar, fpAcik)}
                 fiyat={bedel(oyuncu.id)}
                 puan={puan}
                 onAl={satinAl}

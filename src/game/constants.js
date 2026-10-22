@@ -443,6 +443,8 @@ function clampRange(value, min, max) {
 export const SURVIVAL = {
   lives: 5,
   waveLength: 3,
+  /** Koşu başına reklamla can hakkı. İkincisi sonsuz koşuya döner. */
+  continueLimit: 1,
   /**
    * 1. dalgada seçilen kademeden bu kadar yumuşak başlanır.
    *
@@ -494,4 +496,6 @@ export const PHASE = {
   POINT: 'point', // sayı oldu, kısa donma
   SET_END: 'setEnd',
   MATCH_END: 'matchEnd',
+  /** Hayatta kalma: can bitti, reklamla 1 can teklifi (yalnız mağaza). */
+  SURVIVAL_CONTINUE: 'survivalContinue',
 };

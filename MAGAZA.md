@@ -142,10 +142,17 @@ Sakla: parola yöneticisi + şifreli ayrı bir yedek.
 | Secret | `KEY_ALIAS` | `sultanlar` |
 | Secret | `KEY_PASSWORD` | aynı parola (Enter'la aynısını seçtiysen) |
 | Variable | `VITE_RELE_URL` | `wss://rele.retrovoleybol.online` |
+| Variable | `VITE_ADMOB_APP_ID` | AdMob uygulama kimliği (`ca-app-pub-…~…`) |
+| Variable | `VITE_ADMOB_REWARDED_ID` | Ödüllü birim (`ca-app-pub-…/…`) |
+| Variable | `ADMOB_APP_ID` | Aynı uygulama kimliği (AndroidManifest) |
 
 Secret'lar **Secrets** sekmesinde ("New repository secret"),
-`VITE_RELE_URL` ise **Variables** sekmesinde ("New repository
-variable") — ikisi ayrı sekme, karıştırılması kolay.
+değişkenler **Variables** sekmesinde ("New repository variable") —
+iki ayrı sekme, karıştırılması kolay.
+
+AdMob değişkenleri **boşsa** paket Google'ın test birimleriyle çıkar:
+reklam görünür ama para getirmez. Play'de kazanç için AdMob konsolundan
+uygulama + ödüllü birim oluşturup üç değişkeni yaz.
 
 Uzun metni panoya almak: `xclip -sel clip < ~/filenin-imza/sultanlar.b64`
 (Linux) ya da `pbcopy < ~/filenin-imza/sultanlar.b64` (macOS).
@@ -159,10 +166,9 @@ duygusu verirdi.
 
 GitHub → **Actions** → **android aab** → **Run workflow**.
 
-**Yarın üretim paketi:** dal seçicisinde `main` kullanma. `main` hâlâ
-**0.1.1** — R8, İngilizce, görsel eğitim ve ONLINE/SINGLEPLAYER onda
-yok. `Use workflow from` olarak **`cursor/tutorial-gorsel-89c3`**
-(sürüm **0.1.7 / 107**) seç; bu dal `main`'e girdiyse o zaman `main`.
+**Yarın üretim paketi:** Actions → android aab → **Run workflow** from
+**`cursor/fp-reklam-89c3`** (veya bu dal `main`'e girdiyse `main`).
+Sürüm **0.1.8 / 108**. AdMob değişkenleri yoksa test reklamı gömülür.
 
 Bittiğinde koşumun altındaki **Artifacts** bölümünden `.aab` iniyor;
 doğrudan Play Console'a yükleniyor.
@@ -242,14 +248,13 @@ politikanın erişilebilir kalması gerekiyor.
 | Takma ad, kimlik no, anahtar özeti, maç sonuçları | Sunucuda | `sunucu/depo.js` |
 | IP adresi | Yalnız bellekte, bağlantı kapanınca siliniyor | `sunucu/rele.js` |
 
-Üçüncü taraf analitik/reklam/takip **yok** — `src/` içinde tek bir
-`fetch` çağrısı bile geçmiyor. (Eskiden bir tane vardı: giriş müziğini
-indiren `src/game/audio.js`. Müzik kodla üretilir olunca o da kalktı,
-yani iddia artık daha güçlü.) Tek dış bağlantı, oyuncu çevrimiçi maça
-girerse açılan WebSocket.
+Üçüncü taraf analitik/takip **yok**. Play Store uygulamasında isteğe
+bağlı ödüllü reklam **var** (Google AdMob). Web sitesinde reklam yok.
+Tek kendi sunucu bağlantısı, oyuncu çevrimiçi maça girerse açılan
+WebSocket.
 
-Mağaza formunu doldururken **"Kullanıcılar arası etkileşim var"** ve
-**"Kullanıcı adı toplanıyor"** kutularını işaretle; ikisi de doğru.
+Mağaza formunu doldururken **"Kullanıcılar arası etkileşim var"**,
+**"Kullanıcı adı toplanıyor"** ve **Ads = Yes** kutularını işaretle.
 
 ### 4. Mağaza görselleri
 
@@ -288,7 +293,8 @@ sınırlıyor. Pencere/saha doldurma oranını ölçüp 1366×768'i seçtim (%71
 ### 5. İçerik derecelendirmesi
 
 İki mağazada da bir anket dolduruluyor. Bu oyun için cevaplar sade:
-şiddet yok, ürkütücü içerik yok, kumar yok, satın alma yok, reklam yok.
+şiddet yok, ürkütücü içerik yok, kumar yok, satın alma yok.
+Play uygulamasında **isteğe bağlı ödüllü reklam var** (Ads = Yes).
 **Kullanıcılar arası etkileşim VAR** — takma ad karşı tarafın ekranında
 görünüyor. Bunu belirtmemek sonradan sorun çıkarır.
 

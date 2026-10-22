@@ -38,7 +38,13 @@
 #    sessizce yutuluyor, sonuç anlaşılmaz bir "yanlış parola" hatası.
 #
 #    Variables (gizli değil):
-#      VITE_RELE_URL       → wss://rele.retrovoleybol.online
+#      VITE_RELE_URL            → wss://rele.retrovoleybol.online
+#      VITE_ADMOB_APP_ID        → AdMob uygulama kimliği (ca-app-pub-…~…)
+#      VITE_ADMOB_REWARDED_ID   → ödüllü birim (ca-app-pub-…/…)
+#      ADMOB_APP_ID             → aynı uygulama kimliği (AndroidManifest)
+#
+#    AdMob yoksa Google TEST kimlikleri gömülür — para getirmez.
+#    Play'e para kazandıran paket için üçünü de Variables'a yaz.
 #
 #    Röle adresi neden secret DEĞİL: zaten istemci paketinin içinde,
 #    yani herkes görebiliyor. Secret'a koymak gizlilik değil, yanlış
@@ -120,6 +126,8 @@ jobs:
       - name: Web yapısı + Capacitor eşitleme
         env:
           VITE_RELE_URL: ${{ vars.VITE_RELE_URL }}
+          VITE_ADMOB_APP_ID: ${{ vars.VITE_ADMOB_APP_ID }}
+          VITE_ADMOB_REWARDED_ID: ${{ vars.VITE_ADMOB_REWARDED_ID }}
         run: npm run paket
 
       # Anahtar secret'lardan geliyor ve DİSKE yalnız bu adımda
@@ -148,6 +156,8 @@ jobs:
 
       - name: Bundle üret
         working-directory: android
+        env:
+          ADMOB_APP_ID: ${{ vars.ADMOB_APP_ID }}
         run: ./gradlew --no-daemon bundleRelease
 
       # İmzalı mı gerçekten? Gradle imzasız bir paketi de sessizce
@@ -156,12 +166,22 @@ jobs:
       - name: İmzayı doğrula
         if: ${{ inputs.imzala }}
         run: |
-          AAB=$(find android -name '*.aab' | head -1)
+          # Çıktı klasörü: AGP ara dosyayı da .aab diye yazıyor
+          # (`intermediates/.../intermediary-bundle.aab`) ve o İMZASIZ.
+          # `find android` onu önce bulunca Play'e gidecek paket imzalı
+          # olsa bile koşum "imzasız" deyip duruyordu.
+          AAB=$(find android/app/build/outputs/bundle/release -name '*.aab' | head -1)
           echo "paket: $AAB"
+          if [ -z "$AAB" ] || [ ! -f "$AAB" ]; then
+            echo "::error::Yayın .aab bulunamadı (outputs/bundle/release)."
+            find android -name '*.aab' -print || true
+            exit 1
+          fi
           if unzip -l "$AAB" | grep -q "META-INF/.*\.RSA\|META-INF/.*\.EC"; then
             echo "✓ imzalı"
           else
             echo "::error::Paket İMZASIZ — Play Store kabul etmez."
+            unzip -l "$AAB" | grep META-INF || true
             exit 1
           fi
 
