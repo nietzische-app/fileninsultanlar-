@@ -60,7 +60,8 @@
 #
 #   GitHub → Actions → "android aab" → Run workflow
 #
-# Her çalıştırma Play sürüm kodunu bir artırır (110, 111, 112…).
+# Her çalıştırma Play sürüm kodunu bir artırır. 110 da kullanıldı;
+# sıradaki paket 111, sonrakiler 112, 113…
 # Koşumun özetinde kod yazılır; indirilen paketin adı da onu taşır.
 # Bittiğinde Artifacts bölümünden .aab indirilir ve Play Console'a yüklenir.
 
@@ -162,22 +163,24 @@ jobs:
           keyPassword=$KEY_PASSWORD
           EOF
 
-      # Play aynı versionCode'u ikinci kez kabul etmez (son kullanılan 109).
+      # Play aynı versionCode'u ikinci kez kabul etmez.
+      # 109 ve 110 kullanıldı. main hâlâ package.json'dan 110 basıyordu;
+      # bu adım yokken iki üretim de 110 oldu.
       # iOS ipa'daki CFBundleVersion ile aynı fikir: her yeni koşu ve
       # aynı koşunun yeniden denemesi daha büyük bir tam sayı üretir.
       # Repoya yazılmaz.
       #
-      # 2026-10-24 öncesi 14 workflow_dispatch tamamlanmıştı; onların
-      # kodu package.json'dan geliyordu. Onları da eklemek 124'e
-      # zıplatır. Taban, o 14'ün ÜSTÜNDEKİ yeni denemeler: ilk üretim
-      # 110, sonrakiler 111, 112… API eksik dönerse dur.
+      # ESKI: bu satır yazılırken tamamlanmış workflow_dispatch sayısı.
+      # SON: Play'in kabul ettiği son kod. İlk yeni üretim SON+1.
+      # API eksik dönerse dur; 110'u bir daha basma.
       - name: Sürüm kodu
         id: surum
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          ESKI=14
+          ESKI=16
+          SON=110
           ONCEKI=$(gh api --paginate \
             "/repos/${GITHUB_REPOSITORY}/actions/workflows/android-aab.yml/runs?event=workflow_dispatch&status=completed&per_page=100" \
             --jq ".workflow_runs[] | select(.id != ${GITHUB_RUN_ID}) | .run_attempt" \
@@ -186,9 +189,9 @@ jobs:
             echo "::error::Önceki üretimler sayılamadı ($ONCEKI < $ESKI). Sürüm kodu tahmin edilmedi."
             exit 1
           fi
-          KOD=$(( 109 + (ONCEKI - ESKI) + GITHUB_RUN_ATTEMPT ))
-          if [ "$KOD" -le 109 ]; then
-            echo "::error::Sürüm kodu 109'dan büyük olmalı: $KOD"
+          KOD=$(( SON + (ONCEKI - ESKI) + GITHUB_RUN_ATTEMPT ))
+          if [ "$KOD" -le "$SON" ]; then
+            echo "::error::Sürüm kodu $SON'dan büyük olmalı: $KOD"
             exit 1
           fi
           echo "Play sürüm kodu: $KOD (versionName package.json'da kalır)"
