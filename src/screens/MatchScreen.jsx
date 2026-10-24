@@ -6,6 +6,7 @@ import Scoreboard from '../components/Scoreboard.jsx';
 import BaglantiGostergesi from '../components/BaglantiGostergesi.jsx';
 import TaniKatmani from '../components/TaniKatmani.jsx';
 import TouchControls from '../components/TouchControls.jsx';
+import TouchDrag from '../components/TouchDrag.jsx';
 import ArenaWings from '../components/ArenaWings.jsx';
 import MuteButton from '../components/MuteButton.jsx';
 import GameIcon from '../components/GameIcon.jsx';
@@ -624,6 +625,14 @@ export default function MatchScreen({
           aria-label={t('match.courtAria')}
         />
 
+        {controls?.scheme === 'drag' && (
+          <TouchDrag
+            onInput={handleTouchInput}
+            disabled={controlsLocked}
+            dual={twoPlayer}
+          />
+        )}
+
         {/*
           Kombo göstergesi — sahanın sol üstünde, tuşlardan uzakta.
           Yalnızca kombo varken görünür; sıfırdayken yer kaplamaz.
@@ -653,7 +662,9 @@ export default function MatchScreen({
           oturur, canvas da `.stage-canvas` içindeki üst sınır sayesinde
           zemin çizgisini şeridin üstünde bırakacak kadar büyür.
         */}
-        <div className="absolute inset-x-0 bottom-0 z-10 fine:hidden">
+        <div className={`absolute inset-x-0 bottom-0 z-10 fine:hidden ${
+          controls?.scheme === 'drag' ? 'pointer-events-none' : ''
+        }`}>
           <TouchControls
             onInput={handleTouchInput}
             disabled={controlsLocked}

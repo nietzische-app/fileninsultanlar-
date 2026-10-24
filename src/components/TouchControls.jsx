@@ -54,6 +54,7 @@ export default function TouchControls({
    * ayarlamak kör ayar olurdu.
    */
   const dim = disabled && dimWhenDisabled;
+  const drag = settings.scheme === 'drag';
   const styleVars = {
     '--touch-scale': settings.scale ?? 1,
     '--tb-gap': settings.gap ?? 1,
@@ -124,7 +125,11 @@ export default function TouchControls({
    * DAL kalkınca yön grubu tek sıraya indi ve her düzende aynı: iki ok.
    * Dalış artık bu okların üstündeki kaydırma hareketiyle yapılıyor.
    */
-  const dpad = (
+  /*
+   * Serbest sürüklemede oklar yok: parmak sahada yürür. Vuruş ve zıplama
+   * durur. Okları saydam bırakmak yine de dokunuş yerdi; hiç çizilmezler.
+   */
+  const dpad = drag ? null : (
     <div className="tb-gap flex items-center">
       {left}
       {right}
@@ -163,10 +168,10 @@ export default function TouchControls({
         aria-hidden={disabled || undefined}
         onPointerDown={unlock}
       >
-        <div className="pointer-events-auto absolute bottom-2 left-2 pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]">
+        <div className={`${leftSide ? 'pointer-events-auto' : ''} absolute bottom-2 left-2 pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]`}>
           {leftSide}
         </div>
-        <div className="pointer-events-auto absolute bottom-2 right-2 pb-[env(safe-area-inset-bottom)] pr-[env(safe-area-inset-right)]">
+        <div className={`${rightSide ? 'pointer-events-auto' : ''} absolute bottom-2 right-2 pb-[env(safe-area-inset-bottom)] pr-[env(safe-area-inset-right)]`}>
           {rightSide}
         </div>
       </div>
@@ -176,7 +181,7 @@ export default function TouchControls({
   if (strip) {
     const stripClass = `control-strip flex select-none justify-between gap-3 ${
       preview ? '' : 'fine:hidden'
-    } ${disabled ? 'pointer-events-none' : ''} ${dim ? 'opacity-40' : ''}`;
+    } ${disabled || drag ? 'pointer-events-none' : ''} ${dim ? 'opacity-40' : ''}`;
 
     /*
      * Çift takım: her oyuncu kendi 2×2 kümesini kullanır. Sekiz tuşu
@@ -201,6 +206,7 @@ export default function TouchControls({
             badge="1"
             disabled={disabled}
             buttonTone={buttonTone}
+            drag={drag}
           />
           <PlayerPad
             onInput={onInput}
@@ -208,6 +214,7 @@ export default function TouchControls({
             badge="2"
             disabled={disabled}
             buttonTone={buttonTone}
+            drag={drag}
           />
         </div>
       );
@@ -224,8 +231,13 @@ export default function TouchControls({
         aria-disabled={disabled || undefined}
         onPointerDown={unlock}
       >
-        {stripLeft}
-        {stripRight}
+        {/*
+          Oklar gizlenince flex'te tek çocuk kalır ve `justify-between`
+          vuruş/zıplamayı sola yapıştırır. Boş taraf yer tutsun ki
+          tuşlar seçilen yanda kalsın.
+        */}
+        {stripLeft ?? <span aria-hidden="true" />}
+        {stripRight ?? <span aria-hidden="true" />}
       </div>
     );
   }
@@ -233,13 +245,13 @@ export default function TouchControls({
   return (
     <div
       className={`touch-controls flex w-full max-w-[900px] select-none items-end justify-between gap-3 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] fine:hidden ${
-        disabled ? 'pointer-events-none' : ''
+        disabled || drag ? 'pointer-events-none' : ''
       } ${dim ? 'opacity-40' : ''}`}
       style={styleVars}
       aria-disabled={disabled || undefined}
       onPointerDown={unlock}
     >
-      {dpad}
+      {dpad ?? <span aria-hidden="true" />}
       {actions}
     </div>
   );
@@ -248,7 +260,7 @@ export default function TouchControls({
 /**
  * Tek oyuncunun 2×2 tuş kümesi — yerel Co-Op/VS'te solda 1, sağda 2.
  */
-function PlayerPad({ onInput, slot, badge, disabled, buttonTone }) {
+function PlayerPad({ onInput, slot, badge, disabled, buttonTone, drag = false }) {
   const emit = useCallback(
     (action, pressed) => onInput(action, pressed, slot),
     [onInput, slot],
@@ -263,30 +275,32 @@ function PlayerPad({ onInput, slot, badge, disabled, buttonTone }) {
       >
         {badge}
       </span>
-      <div className="tb-gap flex items-center">
-        <HoldButton
-          onInput={emit}
-          action="left"
-          label={<GameIcon name="ArrowLeft" size="45%" />}
-          srLabel={sr(t('touch.left'))}
-          hint={t('touch.diveHint')}
-          disabled={disabled}
-          dragDive
-          dataSlot={slot}
-          className={`tb-dir ${buttonTone}`}
-        />
-        <HoldButton
-          onInput={emit}
-          action="right"
-          label={<GameIcon name="ArrowRight" size="45%" />}
-          srLabel={sr(t('touch.right'))}
-          hint={t('touch.diveHint')}
-          disabled={disabled}
-          dragDive
-          dataSlot={slot}
-          className={`tb-dir ${buttonTone}`}
-        />
-      </div>
+      {!drag && (
+        <div className="tb-gap flex items-center">
+          <HoldButton
+            onInput={emit}
+            action="left"
+            label={<GameIcon name="ArrowLeft" size="45%" />}
+            srLabel={sr(t('touch.left'))}
+            hint={t('touch.diveHint')}
+            disabled={disabled}
+            dragDive
+            dataSlot={slot}
+            className={`tb-dir ${buttonTone}`}
+          />
+          <HoldButton
+            onInput={emit}
+            action="right"
+            label={<GameIcon name="ArrowRight" size="45%" />}
+            srLabel={sr(t('touch.right'))}
+            hint={t('touch.diveHint')}
+            disabled={disabled}
+            dragDive
+            dataSlot={slot}
+            className={`tb-dir ${buttonTone}`}
+          />
+        </div>
+      )}
       <div className="tb-gap flex items-center">
         <HoldButton
           onInput={emit}
@@ -446,7 +460,7 @@ function HoldButton({
       title={hint}
       disabled={disabled}
       data-slot={dataSlot}
-      className={`touch-button ${className}`}
+      className={`touch-button pointer-events-auto ${className}`}
       onPointerDown={press}
       onPointerMove={dragDive ? move : undefined}
       onPointerUp={release}

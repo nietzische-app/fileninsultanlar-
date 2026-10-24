@@ -99,6 +99,43 @@ export function ControlSettings({ controls, onControls, showPreview = true }) {
 
   return (
     <>
+      <div className="border-b-2 border-white/10 pb-4">
+        <p className="text-[9px] text-white">{t('settings.controlType')}</p>
+        <p className="mt-1 text-[7px] text-white/45">
+          {controls.scheme === 'drag'
+            ? t('settings.controlDragHint')
+            : t('settings.controlButtonsHint')}
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            data-control-scheme="buttons"
+            className={`px-4 py-2 text-[8px] ${
+              controls.scheme === 'drag' ? 'retro-button-ghost' : 'retro-button'
+            }`}
+            onClick={() => {
+              Sfx.select();
+              setControl({ scheme: 'buttons' });
+            }}
+          >
+            {t('settings.controlButtons')}
+          </button>
+          <button
+            type="button"
+            data-control-scheme="drag"
+            className={`px-4 py-2 text-[8px] ${
+              controls.scheme === 'drag' ? 'retro-button' : 'retro-button-ghost'
+            }`}
+            onClick={() => {
+              Sfx.select();
+              setControl({ scheme: 'drag' });
+            }}
+          >
+            {t('settings.controlDrag')}
+          </button>
+        </div>
+      </div>
+
       <Slider
         label={t('settings.size')}
         hint={t('settings.sizeHint')}
