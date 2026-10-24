@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import Sfx from '../game/audio.js';
 import GameIcon from './GameIcon.jsx';
+import { DragTrack } from './SuruklemeGosterge.jsx';
 import { t } from '../i18n/index.js';
 
 /** Yön tuşundan bu kadar px aşağı kaydırınca dalış tetiklenir. */
@@ -169,10 +170,10 @@ export default function TouchControls({
         onPointerDown={unlock}
       >
         <div className={`${leftSide ? 'pointer-events-auto' : ''} absolute bottom-2 left-2 pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]`}>
-          {leftSide}
+          {leftSide ?? (drag ? <DragTrack /> : null)}
         </div>
         <div className={`${rightSide ? 'pointer-events-auto' : ''} absolute bottom-2 right-2 pb-[env(safe-area-inset-bottom)] pr-[env(safe-area-inset-right)]`}>
-          {rightSide}
+          {rightSide ?? (drag ? <DragTrack /> : null)}
         </div>
       </div>
     );
@@ -236,8 +237,8 @@ export default function TouchControls({
           vuruş/zıplamayı sola yapıştırır. Boş taraf yer tutsun ki
           tuşlar seçilen yanda kalsın.
         */}
-        {stripLeft ?? <span aria-hidden="true" />}
-        {stripRight ?? <span aria-hidden="true" />}
+        {stripLeft ?? <DragTrack />}
+        {stripRight ?? <DragTrack />}
       </div>
     );
   }
@@ -251,7 +252,7 @@ export default function TouchControls({
       aria-disabled={disabled || undefined}
       onPointerDown={unlock}
     >
-      {dpad ?? <span aria-hidden="true" />}
+      {dpad ?? <DragTrack />}
       {actions}
     </div>
   );
@@ -275,7 +276,7 @@ function PlayerPad({ onInput, slot, badge, disabled, buttonTone, drag = false })
       >
         {badge}
       </span>
-      {!drag && (
+      {drag ? <DragTrack compact /> : (
         <div className="tb-gap flex items-center">
           <HoldButton
             onInput={emit}
