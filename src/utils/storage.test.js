@@ -118,6 +118,17 @@ describe('storage prefs', () => {
     expect(loadPrefs().controls.gap).toBe(DEFAULT_PREFS.controls.gap);
   });
 
+  it('kontrol tipi butonlarda kalır, sürükleme kaydolur', () => {
+    expect(loadPrefs().controls.scheme).toBe('buttons');
+    savePrefs({ controls: { scheme: 'drag' } });
+    expect(loadPrefs().controls.scheme).toBe('drag');
+    savePrefs({ controls: { scale: 1.1 } });
+    expect(loadPrefs().controls.scheme).toBe('drag');
+    expect(loadPrefs().controls.scale).toBeCloseTo(1.1);
+    savePrefs({ controls: { scheme: 'swipe' } });
+    expect(loadPrefs().controls.scheme).toBe('buttons');
+  });
+
   it('tuş ayarı olmayan eski kayıtta varsayılana döner', () => {
     localStorage.setItem(
       'retro-voleybol-prefs',
