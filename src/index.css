@@ -650,6 +650,97 @@
   }
 
   /*
+   * Serbest sürükleme izi — okların boş bıraktığı şerit.
+   *
+   * %30 opaklık bilerek: yön tuşu kadar bağırırsa vuruşla yarışır,
+   * hiç görünmezse kaydırma keşfedilmez. Çizgi kesik, uçlar `<` ve `>`.
+   */
+  .drag-track {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: min(11rem, 46vw);
+    opacity: 0.3;
+    color: #fff;
+    pointer-events: none;
+    user-select: none;
+    /* Opaklık bileşende de yazılı: %30, şerit kırmızısının üstünde silik. */
+  }
+
+  .drag-track-compact {
+    width: min(7.2rem, 34vw);
+  }
+
+  .drag-track-line {
+    flex: 1;
+    height: 2px;
+    background: repeating-linear-gradient(
+      90deg,
+      currentColor 0 4px,
+      transparent 4px 8px
+    );
+  }
+
+  /*
+   * Parmak halkası. Kare, çünkü yuvarlak halka piksel sahada
+   * yumuşak bir leke gibi duruyor. Altın kenar vuruş tuşuyla
+   * aynı dil; orta nokta parmağın tam yerini söyler.
+   */
+  .drag-ring {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    margin-left: -11px;
+    margin-top: -11px;
+    pointer-events: none;
+    background:
+      linear-gradient(#fff, #fff) center / 4px 4px no-repeat;
+    box-shadow:
+      inset 0 0 0 2px #fff,
+      inset 0 0 0 4px #111,
+      0 0 0 2px #ffd24a,
+      3px 3px 0 #000;
+  }
+
+  /*
+   * Maçın ilk iki saniyesi. El şeridin üstünde, sol altta,
+   * basamak basamak sağa sola gider; süre dolunca solar.
+   */
+  .drag-hint {
+    position: absolute;
+    /*
+     * Sol bankonun üstüne binmesin: sahanın açık kırmızı zemininde,
+     * şeridin hemen üstünde dursun.
+     */
+    left: 18%;
+    bottom: calc(var(--strip-h, 5.5rem) + 1.15rem);
+    z-index: 1;
+    color: #fff;
+    opacity: 0.72;
+    pointer-events: none;
+  }
+
+  .drag-hint-motion {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    animation: drag-hint-slide 0.85s steps(5, end) infinite alternate;
+  }
+
+  .drag-hint-hand {
+    color: #ffd24a;
+    filter: drop-shadow(2px 2px 0 #000);
+  }
+
+  .drag-hint-mark {
+    opacity: 0.85;
+  }
+
+  .drag-hint.is-out {
+    animation: drag-hint-fade 0.4s linear forwards;
+  }
+
+  /*
    * Forma numarası — kadro kartındaki seçim rozetiyle aynı dil:
    * küçük piksel plaka, gölgeli. `tb-badge` ölçeği tuş ayarına bağlar.
    */
@@ -892,6 +983,15 @@
 }
 
 /* Yatay çevirme uyarısındaki telefon — dikeyden yataya yatıp döner */
+@keyframes drag-hint-slide {
+  from { transform: translateX(0); }
+  to { transform: translateX(28px); }
+}
+
+@keyframes drag-hint-fade {
+  to { opacity: 0; }
+}
+
 @keyframes rotate-hint {
   0%,
   22% {
@@ -925,5 +1025,13 @@
   .animate-rotate-hint {
     animation: none;
     transform: rotate(-90deg);
+  }
+
+  .drag-hint-motion {
+    animation: none;
+  }
+
+  .drag-hint.is-out {
+    animation: drag-hint-fade 0.01s linear forwards;
   }
 }

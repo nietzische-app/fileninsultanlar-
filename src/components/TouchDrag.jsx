@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { suruklemeGirdisi, yuvaSec } from '../game/surukleme.js';
 import { t } from '../i18n/index.js';
+import { SwipeHint } from './SuruklemeGosterge.jsx';
 
 /**
  * Sahada parmak sürükleyerek yürüme.
@@ -17,10 +18,29 @@ import { t } from '../i18n/index.js';
  */
 export default function TouchDrag({ onInput, disabled = false, dual = false }) {
   const rootRef = useRef(null);
-  /** @type {import('react').MutableRefObject<Map<number, {slot: 'p1'|'p2', x: number, y: number, left: boolean, right: boolean, dive: boolean}>>} */
+  /** @type {import('react').MutableRefObject<Map<number, {slot: 'p1'|'p2', x: number, y: number, cx: number, cy: number, left: boolean, right: boolean, dive: boolean}>>} */
   const parmaklar = useRef(new Map());
+  const [halkalar, setHalkalar] = useState([]);
 
-  const birak = useCallback(
+  const ciz = useCallback(() => {
+    const root = rootRef.current;
+    if (!root) {
+      setHalkalar([]);
+      return;
+    }
+    const rect = root.getBoundingClientRect();
+    setHalkalar([...parmaklar.current.entries()].map(([id, p]) => ({
+      id,
+      x: p.cx - rect.left,
+      y: p.cy - rect.top,
+    })));
+  }, []);
+
+  /*
+   * Girdiyi kapatır. Görseli ayrıca çizmek çağıranın işi: sökülürken
+   * halkayı güncellemek, kalkan bileşene durum yazmak olurdu.
+   */
+  const girdiyiKapat = useCallback(
     (id) => {
       const p = parmaklar.current.get(id);
       if (!p) return;
@@ -30,6 +50,14 @@ export default function TouchDrag({ onInput, disabled = false, dual = false }) {
       if (p.dive) onInput('dive', false, p.slot);
     },
     [onInput],
+  );
+
+  const birak = useCallback(
+    (id) => {
+      girdiyiKapat(id);
+      ciz();
+    },
+    [girdiyiKapat, ciz],
   );
 
   const hepsiniBirak = useCallback(() => {
@@ -53,8 +81,8 @@ export default function TouchDrag({ onInput, disabled = false, dual = false }) {
   }, [disabled, hepsiniBirak]);
 
   useEffect(() => () => {
-    [...parmaklar.current.keys()].forEach((id) => birak(id));
-  }, [birak]);
+    [...parmaklar.current.keys()].forEach((id) => girdiyiKapat(id));
+  }, [girdiyiKapat]);
 
   const bas = (event) => {
     if (disabled) return;
@@ -75,10 +103,13 @@ export default function TouchDrag({ onInput, disabled = false, dual = false }) {
       slot,
       x: event.clientX,
       y: event.clientY,
+      cx: event.clientX,
+      cy: event.clientY,
       left: false,
       right: false,
       dive: false,
     });
+    ciz();
   };
 
   const kaydir = (event) => {
@@ -92,6 +123,9 @@ export default function TouchDrag({ onInput, disabled = false, dual = false }) {
     p.left = sonraki.left;
     p.right = sonraki.right;
     p.dive = sonraki.dive;
+    p.cx = event.clientX;
+    p.cy = event.clientY;
+    ciz();
   };
 
   const kaldir = (event) => {
@@ -108,19 +142,36 @@ export default function TouchDrag({ onInput, disabled = false, dual = false }) {
   };
 
   return (
-    <div
-      ref={rootRef}
-      className={`touch-drag absolute inset-0 z-[8] touch-none fine:hidden ${
-        disabled ? 'pointer-events-none' : ''
-      }`}
-      style={{ touchAction: 'none' }}
-      aria-label={t('touch.dragAria')}
-      onPointerDown={bas}
-      onPointerMove={kaydir}
-      onPointerUp={kaldir}
-      onPointerCancel={kaldir}
-      onLostPointerCapture={kaldir}
-      onContextMenu={(e) => e.preventDefault()}
-    />
+    <>
+      <div
+        ref={rootRef}
+        className={`touch-drag absolute inset-0 z-[8] touch-none fine:hidden ${
+          disabled ? 'pointer-events-none' : ''
+        }`}
+        style={{ touchAction: 'none' }}
+        aria-label={t('touch.dragAria')}
+        onPointerDown={bas}
+        onPointerMove={kaydir}
+        onPointerUp={kaldir}
+        onPointerCancel={kaldir}
+        onLostPointerCapture={kaldir}
+        onContextMenu={(e) => e.preventDefault()}
+      />
+      {/*
+        Halka şeridin ÜSTÜNDE durmalı: şerit z-10 ve dolgusu opak.
+        Bu katman tıklama almaz; vuruş ve zıplama altta kalır.
+      */}
+      <div className="pointer-events-none absolute inset-0 z-[12] fine:hidden">
+        {halkalar.map((h) => (
+          <span
+            key={h.id}
+            className="drag-ring"
+            data-drag-ring=""
+            style={{ left: h.x, top: h.y }}
+          />
+        ))}
+        {!disabled && <SwipeHint />}
+      </div>
+    </>
   );
 }

@@ -1,6 +1,6 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import TouchControls from './TouchControls.jsx';
 import TouchDrag from './TouchDrag.jsx';
 
@@ -73,7 +73,9 @@ describe('kontrol tipi', () => {
     expect(host.querySelector('[aria-label="Vur"]').className).toContain('pointer-events-auto');
     const [sol, sag] = strip.children;
     expect(sol.querySelector('button')).toBeNull();
+    expect(sol.getAttribute('data-drag-track')).toBe('');
     expect(sag.querySelector('[aria-label="Vur"]')).toBeTruthy();
+    expect(sol.style.opacity).toBe('0.3');
   });
 
   it('solak düzende vuruş solda kalır', () => {
@@ -88,6 +90,7 @@ describe('kontrol tipi', () => {
     const [sol, sag] = host.querySelector('.control-strip').children;
     expect(sol.querySelector('[aria-label="Vur"]')).toBeTruthy();
     expect(sag.querySelector('button')).toBeNull();
+    expect(sag.getAttribute('data-drag-track')).toBe('');
   });
 });
 
@@ -109,7 +112,7 @@ describe('TouchDrag', () => {
       y: 0,
       toJSON() { return {}; },
     });
-    return { calls, el, root };
+    return { calls, el, root, host };
   }
 
   it('sağa kayınca sağ açılır, parmak kalkınca kapanır', () => {
@@ -153,5 +156,36 @@ describe('TouchDrag', () => {
     expect(calls).toContainEqual(['right', true, 'p1']);
     act(() => root.render(<TouchDrag onInput={onInput} disabled />));
     expect(calls).toContainEqual(['right', false, 'p1']);
+  });
+
+  it('kaydırma ipucu iki saniye durur, sonra solar', () => {
+    vi.useFakeTimers();
+    try {
+      const { host } = yerlestir(<TouchDrag onInput={() => {}} />);
+      expect(host.querySelector('.drag-hint')).toBeTruthy();
+      act(() => { vi.advanceTimersByTime(2000); });
+      expect(host.querySelector('.drag-hint').className).toContain('is-out');
+      act(() => { vi.advanceTimersByTime(400); });
+      expect(host.querySelector('.drag-hint')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('halka parmağı izler, kalkınca kaybolur', () => {
+    const { calls, el, host } = sahne();
+    expect(host.querySelector('.drag-hint')).toBeTruthy();
+    expect(host.querySelector('[data-drag-ring]')).toBeNull();
+    isaret(el, 'pointerdown', { clientX: 40, clientY: 30 });
+    const halka = host.querySelector('[data-drag-ring]');
+    expect(halka).toBeTruthy();
+    expect(halka.style.left).toBe('40px');
+    expect(halka.style.top).toBe('30px');
+    isaret(el, 'pointermove', { clientX: 70, clientY: 36 });
+    expect(host.querySelector('[data-drag-ring]').style.left).toBe('70px');
+    expect(host.querySelector('[data-drag-ring]').style.top).toBe('36px');
+    isaret(el, 'pointerup', { clientX: 70, clientY: 36 });
+    expect(host.querySelector('[data-drag-ring]')).toBeNull();
+    expect(calls.map((c) => c[0])).toContain('right');
   });
 });
