@@ -250,9 +250,11 @@ tamamlayınca **Retro Voleybol** olur.
 
 ## Sonraki sürümler
 
-`package.json` içindeki `version` artırılır (`0.1.9` → `0.1.10`),
-`main`'e girer, Actions → android aab → Run workflow. `versionCode`
-sürümden türetiliyor (`0.1.10` → `110`), elle artırmak gerekmiyor.
+Actions → **android aab** → **Run workflow** (`main`). Her üretim
+Play sürüm kodunu bir artırır (110, sonra 111, …). Kod repoya
+yazılmaz. Mağazada görünen ad `package.json` içindeki `version`
+olarak kalır; onu ancak kullanıcıya yeni bir ad göstermek için
+artır.
 
 ---
 
