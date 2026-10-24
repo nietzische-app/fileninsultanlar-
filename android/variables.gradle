@@ -1,10 +1,12 @@
 ext {
     /*
-     * minSdk 22 = Android 5.1. Capacitor'ın varsayılanı; oyunun
-     * ihtiyacı olan tek şey WebView ve o çok daha eskisinde de var.
-     * Yükseltmenin bir kazancı yok, düşürmenin de.
+     * minSdk 24 = Android 7.0.
+     *
+     * Play'in otomatik koruması 24'ten düşük paketleri reddediyor.
+     * 22 ile yüklenen AAB "minimum SDK sürümü 24 veya daha yüksek
+     * olmalı" diye döndü. 24 bu kuralın alt sınırı.
      */
-    minSdkVersion = 22
+    minSdkVersion = 24
 
     /*
      * targetSdk: Google Play'in DAYATTIĞI sayı, bizim tercihimiz değil.
