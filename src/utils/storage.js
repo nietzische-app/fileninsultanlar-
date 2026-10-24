@@ -85,7 +85,7 @@ export const DEFAULT_PREFS = {
    * saydamlığı (saha üstünde durdukları için kimi oyuncu daha silik
    * ister).
    */
-  controls: { scale: 1, opacity: 0.85, gap: 1, swap: false },
+  controls: { scale: 1, opacity: 0.85, gap: 1, swap: false, scheme: 'buttons' },
   mode: '1v1',
   difficulty: 'normal',
   format: 'classic',
@@ -249,6 +249,11 @@ function readControls(raw) {
      */
     gap: clampRange(raw.gap, 0.5, 3, d.gap),
     swap: Boolean(raw.swap),
+    /*
+     * `buttons` yön okları, `drag` sahada parmak sürükleme.
+     * Eski kayıtta alan yok; bilinmeyen bir değer de ok düzenine döner.
+     */
+    scheme: raw.scheme === 'drag' ? 'drag' : 'buttons',
   };
 }
 
