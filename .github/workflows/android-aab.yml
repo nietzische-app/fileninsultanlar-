@@ -7,8 +7,9 @@
 # denemek için iyi), ama yayın dosyası için şart değil.
 #
 # Bu iş ELLE tetikleniyor (workflow_dispatch): her push'ta paket
-# üretmek hem gereksiz hem de sürüm numarası aynı kaldığı için
-# üst üste aynı dosyayı yığardı.
+# üretmek gereksiz. Sürüm kodu ise her üretimde kendiliğinden bir
+# artar (aşağıdaki "Sürüm kodu" adımı). Repoya yazılmaz; main'e
+# push iOS derlemesini de ateşlerdi.
 #
 # ── ÖNCE YAPILACAKLAR (bir kez) ────────────────────────────────────
 #
@@ -59,8 +60,10 @@
 #
 #   GitHub → Actions → "android aab" → Run workflow
 #
-# Bittiğinde koşumun altındaki Artifacts bölümünden .aab indirilir ve
-# Play Console'a yüklenir.
+# Her çalıştırma Play sürüm kodunu bir artırır. 110 da kullanıldı;
+# sıradaki paket 111, sonrakiler 112, 113…
+# Koşumun özetinde kod yazılır; indirilen paketin adı da onu taşır.
+# Bittiğinde Artifacts bölümünden .aab indirilir ve Play Console'a yüklenir.
 
 name: android aab
 
@@ -89,10 +92,16 @@ on:
     paths:
       - '.github/workflows/android-aab.yml'
 
-# En az yetki: bu iş yalnızca kodu OKUYOR. Varsayılan jeton yazma
-# yetkisiyle geliyor ve bir adımın kaçak kullanması için sebep yok.
+# En az yetki: kodu okur, kendi geçmiş koşularını sayar. Yazmaz.
 permissions:
   contents: read
+  actions: read
+
+# İki üretim aynı anda aynı sürüm kodunu hesaplamasın. İkincisi
+# birincisi bitene kadar bekler; bekleyen fazlası iptal edilir.
+concurrency:
+  group: android-aab
+  cancel-in-progress: false
 
 jobs:
   aab:
@@ -154,10 +163,47 @@ jobs:
           keyPassword=$KEY_PASSWORD
           EOF
 
+      # Play aynı versionCode'u ikinci kez kabul etmez.
+      # 109 ve 110 kullanıldı. main hâlâ package.json'dan 110 basıyordu;
+      # bu adım yokken iki üretim de 110 oldu.
+      # iOS ipa'daki CFBundleVersion ile aynı fikir: her yeni koşu ve
+      # aynı koşunun yeniden denemesi daha büyük bir tam sayı üretir.
+      # Repoya yazılmaz.
+      #
+      # ESKI: bu satır yazılırken tamamlanmış workflow_dispatch sayısı.
+      # SON: Play'in kabul ettiği son kod. İlk yeni üretim SON+1.
+      # API eksik dönerse dur; 110'u bir daha basma.
+      - name: Sürüm kodu
+        id: surum
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ESKI=16
+          SON=110
+          ONCEKI=$(gh api --paginate \
+            "/repos/${GITHUB_REPOSITORY}/actions/workflows/android-aab.yml/runs?event=workflow_dispatch&status=completed&per_page=100" \
+            --jq ".workflow_runs[] | select(.id != ${GITHUB_RUN_ID}) | .run_attempt" \
+            | awk '{s+=$1} END {print s+0}')
+          if [ "$ONCEKI" -lt "$ESKI" ]; then
+            echo "::error::Önceki üretimler sayılamadı ($ONCEKI < $ESKI). Sürüm kodu tahmin edilmedi."
+            exit 1
+          fi
+          KOD=$(( SON + (ONCEKI - ESKI) + GITHUB_RUN_ATTEMPT ))
+          if [ "$KOD" -le "$SON" ]; then
+            echo "::error::Sürüm kodu $SON'dan büyük olmalı: $KOD"
+            exit 1
+          fi
+          echo "Play sürüm kodu: $KOD (versionName package.json'da kalır)"
+          echo "ANDROID_VERSION_CODE=$KOD" >> "$GITHUB_ENV"
+          echo "code=$KOD" >> "$GITHUB_OUTPUT"
+          echo "### Play sürüm kodu: \`$KOD\`" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Bundle üret
         working-directory: android
         env:
           ADMOB_APP_ID: ${{ vars.ADMOB_APP_ID }}
+          ANDROID_VERSION_CODE: ${{ steps.surum.outputs.code }}
         run: ./gradlew --no-daemon bundleRelease
 
       # İmzalı mı gerçekten? Gradle imzasız bir paketi de sessizce
@@ -200,7 +246,7 @@ jobs:
       - name: Paketi yükle
         uses: actions/upload-artifact@v5
         with:
-          name: retro-voleybol-aab
+          name: retro-voleybol-aab-${{ steps.surum.outputs.code }}
           path: |
             android/app/build/outputs/bundle/release/*.aab
             android/app/build/outputs/mapping/release/mapping.txt

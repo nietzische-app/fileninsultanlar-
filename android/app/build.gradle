@@ -21,24 +21,27 @@ apply plugin: 'com.android.application'
  *   keyPassword=...
  */
 /*
- * SÜRÜM NUMARASI — tek kaynaktan.
+ * SÜRÜM NUMARASI.
  *
  * Şablonda `versionCode 1` ve `versionName "1.0"` sabit yazılıydı.
- * İkinci yükleme "bu sürüm kodu zaten kullanıldı" diye REDDEDİLİRDİ ve
- * bunu ancak Play Console'a dosyayı yükledikten sonra görürdük.
+ * İkinci yükleme "bu sürüm kodu zaten kullanıldı" diye reddediliyordu.
  *
- * Kaynak `package.json`: web sürümü ile mağaza sürümü ayrışmasın.
- * `versionCode` sürüm dizesinden türetiliyor (1.2.3 → 10203), yani
- * elle artırmak gerekmiyor ve iki kişi aynı anda çalışsa bile aynı
- * sürümden aynı sayı çıkıyor.
+ * versionName `package.json`'dan gelir (mağazada görünen ad).
+ * versionCode yerelde aynı sürümden türetilir (0.1.10 → 110).
+ * Her parça 0-99 arası olmalı.
  *
- * Sınır: her parça 0-99 arası olmalı. 1.0.100 gibi bir sürüm
- * numaralandırmayı bozardı; bu oyunda öyle bir şeye ihtiyaç yok.
+ * Actions'taki android aab işi ANDROID_VERSION_CODE verir. Play aynı
+ * kodu ikinci kez kabul etmez; o iş her üretimde bir büyük tam sayı
+ * üretir ve repoya yazmaz. iOS ipa'daki CFBundleVersion ile aynı düzen.
  */
 def paket = new groovy.json.JsonSlurper().parseText(file('../../package.json').text)
 def surumAdi = paket.version
 def surumParcalari = surumAdi.tokenize('.').collect { it.toInteger() }
 def surumKodu = surumParcalari[0] * 10000 + surumParcalari[1] * 100 + (surumParcalari[2] ?: 0)
+def ortamKodu = System.getenv('ANDROID_VERSION_CODE')
+if (ortamKodu) {
+    surumKodu = ortamKodu.toInteger()
+}
 
 def imzaAyar = file('../keystore.properties')
 def imzaVar = imzaAyar.exists()

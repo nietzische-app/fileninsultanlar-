@@ -53,10 +53,10 @@ yazı tipi (`docs/yazitipi.md`, OFL lisanslı).
   - `?rele=` ezmesinin üretimde çalışmadığı.
 - **Paketleme ön denetimi.** `npm run paket`, röle adresi eksik, yerel
   ya da şifresizse yapıyı durduruyor.
-- **Sürüm numarası tek kaynaktan.** `android/app/build.gradle` sürümü
-  `package.json`'dan okuyor (1.2.3 → `versionCode 10203`). Şablondaki
-  sabit `versionCode 1` ikinci yüklemede reddedilirdi ve bunu ancak
-  dosyayı Play Console'a yükledikten sonra görürdük.
+- **Sürüm numarası.** Mağazada görünen ad `package.json`'dan gelir.
+  Play'in sürüm kodu, Actions'taki android aab işinde her üretimde
+  bir artar ve repoya yazılmaz. Yerel derleme kodu sürümden türetir
+  (1.2.3 → `versionCode 10203`).
 - **Yayın imzası yapılandırması.** `android/keystore.properties` varsa
   `bundleRelease` imzalı üretiyor, yoksa imzasız. Anahtar ve parolalar
   `.gitignore`'da.
