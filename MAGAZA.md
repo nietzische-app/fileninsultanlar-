@@ -268,7 +268,7 @@ Mağaza formunu doldururken **"Kullanıcılar arası etkileşim var"**,
 ```bash
 npm run dev            # bir uçbirimde açık kalsın
 npm run magaza-gorsel  # başka uçbirimde
-# → tests/ciktilar/magaza/
+# → magaza/
 ```
 
 Menü, kadro seçimi, maç ve (röle adresi tanımlıysa) çevrimiçi ekranı
