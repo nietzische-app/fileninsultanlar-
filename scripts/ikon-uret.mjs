@@ -29,7 +29,8 @@
  */
 
 import { chromium } from 'playwright';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -55,6 +56,55 @@ const BOYUTLAR = [
 
 /** Play Store listeleme ikonu — 512x512 zorunlu. */
 const MAGAZA_BOYUT = 512;
+
+/**
+ * iOS ikon seti. App Store 1024 ister; iPhone ve iPad yuvaları
+ * kendi nokta boyutlarında. Hepsi aynı 1024 tuvalden küçülür.
+ *
+ * Eski Capacitor taslağı `AppIcon-512@2x.png` adıyla duruyordu.
+ * O dosya her üretimde silinir; katalogda yalnız bu liste kalır.
+ */
+const IOS_DIZIN = join(KOK, 'ios/App/App/Assets.xcassets/AppIcon.appiconset');
+const IOS_ANA = 1024;
+const IOS_DOSYALAR = [
+  ['Icon-20.png', 20],
+  ['Icon-20@2x.png', 40],
+  ['Icon-20@3x.png', 60],
+  ['Icon-29.png', 29],
+  ['Icon-29@2x.png', 58],
+  ['Icon-29@3x.png', 87],
+  ['Icon-40.png', 40],
+  ['Icon-40@2x.png', 80],
+  ['Icon-40@3x.png', 120],
+  ['Icon-60@2x.png', 120],
+  ['Icon-60@3x.png', 180],
+  ['Icon-76.png', 76],
+  ['Icon-76@2x.png', 152],
+  ['Icon-83.5@2x.png', 167],
+  ['Icon-1024.png', 1024],
+];
+
+/** Katalog girdileri. Aynı piksel dosyası birden fazla yuvaya yazılmaz. */
+const IOS_GIRDILER = [
+  ['20x20', 'iphone', 'Icon-20@2x.png', '2x'],
+  ['20x20', 'iphone', 'Icon-20@3x.png', '3x'],
+  ['29x29', 'iphone', 'Icon-29@2x.png', '2x'],
+  ['29x29', 'iphone', 'Icon-29@3x.png', '3x'],
+  ['40x40', 'iphone', 'Icon-40@2x.png', '2x'],
+  ['40x40', 'iphone', 'Icon-40@3x.png', '3x'],
+  ['60x60', 'iphone', 'Icon-60@2x.png', '2x'],
+  ['60x60', 'iphone', 'Icon-60@3x.png', '3x'],
+  ['20x20', 'ipad', 'Icon-20.png', '1x'],
+  ['20x20', 'ipad', 'Icon-20@2x.png', '2x'],
+  ['29x29', 'ipad', 'Icon-29.png', '1x'],
+  ['29x29', 'ipad', 'Icon-29@2x.png', '2x'],
+  ['40x40', 'ipad', 'Icon-40.png', '1x'],
+  ['40x40', 'ipad', 'Icon-40@2x.png', '2x'],
+  ['76x76', 'ipad', 'Icon-76.png', '1x'],
+  ['76x76', 'ipad', 'Icon-76@2x.png', '2x'],
+  ['83.5x83.5', 'ipad', 'Icon-83.5@2x.png', '2x'],
+  ['1024x1024', 'ios-marketing', 'Icon-1024.png', '1x'],
+];
 
 const browser = await chromium.launch({
   executablePath: process.env.PLAYWRIGHT_CHROMIUM || undefined,
@@ -82,7 +132,7 @@ await page.goto('about:blank');
  */
 const ANA_BOYUT = 512;
 
-const ciz = async (boyut, { onKatman = false } = {}) => page.evaluate(
+const ciz = async (boyut, { onKatman = false, ana = ANA_BOYUT } = {}) => page.evaluate(
   async ({ boy, on, kokUrl, ana }) => {
     const { drawSultan } = await import(`${kokUrl}/src/game/sprites.js`);
     const { getPlayerById } = await import(`${kokUrl}/src/game/players.js`);
@@ -156,7 +206,7 @@ const ciz = async (boyut, { onKatman = false } = {}) => page.evaluate(
     kctx.drawImage(tuval, 0, 0, boy, boy);
     return kucuk.toDataURL('image/png');
   },
-  { boy: boyut, on: onKatman, kokUrl: 'http://ikon.yerel', ana: ANA_BOYUT },
+  { boy: boyut, on: onKatman, kokUrl: 'http://ikon.yerel', ana },
 );
 
 /*
@@ -183,6 +233,27 @@ function yaz(hedef, veriUrl) {
   writeFileSync(hedef, Buffer.from(veriUrl.split(',')[1], 'base64'));
 }
 
+/**
+ * App Store 1024 ikonunda alfa kanalı varsa yükleme reddedilir.
+ * Tuval zaten opak kırmızıyla dolu; kanalın kendisini de söküyoruz.
+ */
+function alfaSil(dizin, dosyalar) {
+  const kod = `
+import sys
+from pathlib import Path
+from PIL import Image
+kok = Path(sys.argv[1])
+for ad in sys.argv[2:]:
+    yol = kok / ad
+    im = Image.open(yol).convert("RGB")
+    im.save(yol, "PNG")
+`;
+  const sonuc = spawnSync('python3', ['-c', kod, dizin, ...dosyalar], { encoding: 'utf8' });
+  if (sonuc.status !== 0) {
+    throw new Error(sonuc.stderr || 'iOS ikonundan alfa kanalı silinemedi');
+  }
+}
+
 if (onizleme) {
   const cikti = join(KOK, 'tests', 'ciktilar', 'ikon-onizleme.png');
   yaz(cikti, await ciz(ANA_BOYUT));
@@ -201,6 +272,30 @@ if (onizleme) {
   const magaza = join(KOK, 'tests', 'ciktilar', 'play-store-ikon-512.png');
   yaz(magaza, await ciz(MAGAZA_BOYUT));
   console.log(`Play Store ikonu (512x512): ${magaza}`);
+
+  mkdirSync(IOS_DIZIN, { recursive: true });
+  for (const [ad, boy] of IOS_DOSYALAR) {
+    // eslint-disable-next-line no-await-in-loop
+    yaz(join(IOS_DIZIN, ad), await ciz(boy, { ana: IOS_ANA }));
+    console.log(`ios ${ad}: ${boy}x${boy}`);
+  }
+  alfaSil(IOS_DIZIN, IOS_DOSYALAR.map(([ad]) => ad));
+  rmSync(join(IOS_DIZIN, 'AppIcon-512@2x.png'), { force: true });
+  const images = IOS_GIRDILER.map(([size, idiom, filename, scale]) => ({
+    size, idiom, filename, scale,
+  }));
+  // Xcode 14+ App Store yuvası. Aynı 1024 dosya; ayrı bir çizim değil.
+  images.push({
+    filename: 'Icon-1024.png',
+    idiom: 'universal',
+    platform: 'ios',
+    size: '1024x1024',
+  });
+  writeFileSync(join(IOS_DIZIN, 'Contents.json'), `${JSON.stringify({
+    images,
+    info: { version: 1, author: 'xcode' },
+  }, null, 2)}\n`);
+  console.log('iOS ikon kataloğu yazıldı');
 }
 
 await browser.close();
