@@ -16,7 +16,9 @@
  *   npm run dev
  *   npm run magaza-gorsel
  *
- * Çıktı: tests/ciktilar/magaza/
+ * Çıktı: magaza/ — bu klasör depoda durur. Test kareleri
+ * tests/ciktilar/ altına yazılır ve yok sayılır; mağaza görselleri
+ * Play'e yüklenecek dosyalar olduğu için repoda kalır.
  */
 
 import { chromium } from 'playwright';
@@ -25,7 +27,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const KOK = join(dirname(fileURLToPath(import.meta.url)), '..');
-const CIKTI = join(KOK, 'tests', 'ciktilar', 'magaza');
+const CIKTI = join(KOK, 'magaza');
 const URL = process.env.OYUN_URL ?? 'http://localhost:5173/';
 
 /**
@@ -391,7 +393,7 @@ for (const [etiket, en, boy, olcek] of BOYUTLAR) {
    */
   await page.goto(URL, { waitUntil: 'load' });
   await page.waitForTimeout(1200);
-  const cevrimici = page.getByRole('button', { name: /ÇEVRİMİÇİ/ });
+  const cevrimici = page.getByRole('button', { name: /ARKADAŞLA OYNA/ });
   if ((await cevrimici.count()) > 0) {
     await cevrimici.first().click();
     await page.waitForTimeout(400);

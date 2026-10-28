@@ -238,7 +238,7 @@ tamamlayınca **Retro Voleybol** olur.
    dosya olmadan kilitlenme izleri okunmaz.
 5. Mağaza listesi (bölüm 4) güncel mod adlarıyla: **ONLINE**,
    **SINGLEPLAYER**. Eski ekran görüntülerinde HIZLI MAÇ varsa
-   `npm run magaza-gorsel` ile yenile.
+   `npm run magaza-gorsel` ile yenile. Dosyalar `magaza/` altında durur.
 6. Gizlilik: `https://retrovoleybol.online/gizlilik.html` (308 →
    `https://www.retrovoleybol.online/gizlilik.html`, ikisi de açılıyor).
 7. **Kişisel hesap:** kapalı testte 12 kullanıcı / 14 gün dolmadan
