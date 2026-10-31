@@ -1,25 +1,25 @@
 # Üç film
 
-Öneri: **22–20**. Yabancı bir izleyici skoru ve havadaki topu hatırlar; menü ve kadro bu maçın nereden geldiğini gösterir.
+Kurulan film **Sayı**. Önceki kurgu ekran görüntüsünü kaydırıyordu; bu üçü oyunun kendi çizim kodunda oynar.
 
-## 22–20
+## Sayı
 
-Cihaz: sonuç önce. Biçim: nesneden nesneye. Dünya: piksel salon, kırmızı saha, gece tribünü.
+Cihaz: sonuç bir rallinin içinden çıkar. Biçim: tek sahada sürekli çekim, top nesnesi kırmızı alana döner. Dünya: oyunun salonu, `src/game` çizicileri.
 
-İzleyici maçın içinde uyanır: Türkiye 22, Atlas 20, top fileyi geçmek üzere. Kırmızı “RETRO VOLEYBOL” bandı kadraja dolar, mağaza afişi olur. Afişteki oyuncu Gizel Örgen’in kartına iner; kart kadronun içine çekilir. İmleç SINGLEPLAYER’a basar, aynı ralli geri gelir. Son söz oyunun kendi cümlesidir.
+İzleyici maçın ortasında uyanır. Gizel manşetler, topu yukarı alır, smaçlar; top fileyi geçip Atlas’ın önünden köşeye düşer. Skor 22–20 olur. Top karanlıkta büyür, kırmızıya döner, söz o kırmızının üstündedir.
 
-İlk iki saniye: skor tabelası ve havadaki top, başka yazı yok.
+İlk iki saniye: havadaki top, 21–20, başka başlık yok.
 
-Vuruşlar: ralli → afiş → kadro → mod → ralli → iddia → kilit.
+Vuruşlar: servis gelişi → kurtarış → smaç → sayı → topun içine gir → iddia → kilit.
 
-Görünüş: zemin `#0b0b12` ve saha kırmızısı, mürekkep beyaz, vurgu `#E30A17` yalnızca bayrak, seçili kart ve markada. Yazı Press Start 2P. Ortam, oyunun kendi ekran görüntüsü.
+Görünüş: salon `#0b0b12`, saha kırmızısı, pano `#E30A17`, mürekkep `#f4f1ea`. Yazı Press Start 2P. Top pano yazısının altında uçar.
 
-Ses: yatak yok. HeyGen oturumu ve yerel müzik modeli yok; film sessiz kalır.
+Ses: oyunun kendi giriş döngüsü (`src/game/muzik.js`), 150 vuruş/dk, 12.8 saniye, filme iki kez yayılıp kapanışta solar.
 
-## Kadro
+## İkinci sayı
 
-Cihaz: karakter işi yapar. Biçim: tek sürekli çekim. İmleç yalnızca Gizel’in kartını seçer ve kart sahadaki oyuncuya dönüşür. Maç bir sonuçtur, menü hiç açılmaz.
+Cihaz: aynı ralli, kamera hiç genişlemez. Biçim: topun üstünde asılı tek yakın plan. Skor ancak top yere değince kadraja girer.
 
-## Mod kapısı
+## Üç isim
 
-Cihaz: yazı iddiayı taşır. Biçim: bölünmüş kareden teke. Altı mod kartı aynı anda durur, SINGLEPLAYER kartı büyüyüp saha olur. Kadro yok.
+Cihaz: sayıdan sonra kadro sahaya iner. Biçim: Gizel, Cansel ve Salise aynı zeminde birer vuruş yapar, menü açılmaz.

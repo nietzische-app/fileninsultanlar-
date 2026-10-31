@@ -8,6 +8,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=1920, height=1080" />
     <script src="assets/js/gsap.min.js"></script>
+    <script src="assets/js/sahne.js"></script>
     <style>
       @font-face {
         font-family: "Press Start 2P";
@@ -31,99 +32,61 @@
     </style>
   </head>
   <body>
-    <div data-hf-id="hf-55o3"
+    <div
+      data-hf-id="hf-root"
       id="root"
       data-composition-id="main"
       data-start="0"
-      data-duration="23.2"
+      data-duration="20"
       data-fps="30"
       data-width="1920"
       data-height="1080"
     >
-      <div data-hf-id="hf-ss0z"
-        id="rally"
-        data-composition-id="rally"
-        data-composition-src="compositions/rally.html"
+      <audio
+        id="yatak"
+        class="clip"
+        src="assets/muzik.wav"
         data-start="0"
-        data-duration="4"
+        data-duration="20"
+        data-volume="0.9"
+        data-track-index="0"
+      ></audio>
+      <div
+        data-hf-id="hf-mac-host"
+        id="mac"
+        data-composition-id="mac"
+        data-composition-src="compositions/mac.html"
+        data-start="0"
+        data-duration="20"
         data-track-index="1"
         data-track-kind="graphics"
         data-width="1920"
         data-height="1080"
-        data-beat="0.6"
       ></div>
-      <div data-hf-id="hf-qybv"
-        id="poster"
-        data-composition-id="poster"
-        data-composition-src="compositions/poster.html"
-        data-start="4"
-        data-duration="3.2"
-        data-track-index="1"
-        data-track-kind="graphics"
-        data-width="1920"
-        data-height="1080"
-        data-beat="4.4"
-      ></div>
-      <div data-hf-id="hf-4622"
-        id="kadro"
-        data-composition-id="kadro"
-        data-composition-src="compositions/kadro.html"
-        data-start="7.2"
-        data-duration="4.2"
-        data-track-index="1"
-        data-track-kind="graphics"
-        data-width="1920"
-        data-height="1080"
-        data-beat="7.8"
-      ></div>
-      <div data-hf-id="hf-05a1"
-        id="modlar"
-        data-composition-id="modlar"
-        data-composition-src="compositions/modlar.html"
-        data-start="11.4"
-        data-duration="4.2"
-        data-track-index="1"
-        data-track-kind="graphics"
-        data-width="1920"
-        data-height="1080"
-        data-beat="12"
-      ></div>
-      <div data-hf-id="hf-6llb"
-        id="payoff"
-        data-composition-id="payoff"
-        data-composition-src="compositions/payoff.html"
-        data-start="15.6"
-        data-duration="2.8"
-        data-track-index="1"
-        data-track-kind="graphics"
-        data-width="1920"
-        data-height="1080"
-        data-beat="16.2"
-      ></div>
-      <div data-hf-id="hf-bg5a"
+      <div
+        data-hf-id="hf-iddia-host"
         id="iddia"
         data-composition-id="iddia"
         data-composition-src="compositions/iddia.html"
-        data-start="18.4"
-        data-duration="2.2"
-        data-track-index="1"
+        data-start="11.55"
+        data-duration="4.25"
+        data-track-index="2"
         data-track-kind="graphics"
         data-width="1920"
         data-height="1080"
-        data-beat="18.8"
       ></div>
-      <div data-hf-id="hf-01xw"
+      <div
+        data-hf-id="hf-kilit-host"
         id="kilit"
         data-composition-id="kilit"
         data-composition-src="compositions/kilit.html"
-        data-start="20.6"
-        data-duration="2.6"
-        data-track-index="1"
+        data-start="15.7"
+        data-duration="4.3"
+        data-track-index="3"
         data-track-kind="graphics"
         data-width="1920"
         data-height="1080"
-        data-beat="21.2"
-        data-hold="2"
+        data-hold="2.6"
       ></div>
     </div>
     <script>

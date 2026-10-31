@@ -4,43 +4,57 @@
       position: absolute;
       inset: 0;
       overflow: hidden;
-      background: #8d1224;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      background: transparent;
+    }
+    #iris {
+      position: absolute;
+      inset: 0;
+      background: #e30a17;
+      clip-path: circle(0% at 50% 50%);
     }
     #iddia-line {
-      width: 1560px;
+      position: absolute;
+      left: 160px;
+      top: 450px;
+      width: 1600px;
+      height: 180px;
       display: flex;
       align-items: center;
       justify-content: center;
-    }
-    #iddia-ink {
-      color: #f4f1ea;
-      font-family: "Press Start 2P", monospace;
-      font-size: 36px;
-      line-height: 1.55;
       text-align: center;
     }
+    #iddia-ink {
+      font-family: "Press Start 2P", monospace;
+      font-size: 40px;
+      line-height: 1.45;
+      color: #f4f1ea;
+      display: block;
+    }
   </style>
-  <div data-hf-id="hf-x5pw" id="root" data-composition-id="iddia" data-width="1920" data-height="1080">
-    <h1 data-hf-id="hf-tgaq"
-      id="iddia-line"
-      class="clip"
-      data-start="0"
-      data-duration="2.2"
-      data-track-index="0"
-    >
-      <span data-hf-id="hf-b5jb" id="iddia-ink" data-var-text="claim">HER SMAÇTA BİR MİLLETİN ALKIŞI</span>
+  <div data-hf-id="hf-iddia" id="root" data-composition-id="iddia" data-width="1920" data-height="1080">
+    <div data-hf-id="hf-iris" id="iris"></div>
+    <h1 data-hf-id="hf-iddia-line" id="iddia-line" class="clip" data-start="0.15" data-duration="4.1" data-track-index="1">
+      <span data-hf-id="hf-iddia-ink" id="iddia-ink" data-var-text="claim">HER SMAÇTA BİR MİLLETİN ALKIŞI</span>
     </h1>
   </div>
   <script>
     const tl = gsap.timeline({ paused: true });
     tl.fromTo(
+      "#iris",
+      { clipPath: "circle(0% at 50% 50%)" },
+      { clipPath: "circle(78% at 50% 50%)", duration: 0.42, ease: "power3.in" },
+      0,
+    );
+    tl.fromTo(
       "#iddia-ink",
-      { filter: "blur(8px)", opacity: 0.35 },
-      { filter: "blur(0px)", opacity: 1, duration: 0.18, ease: "power4.out" },
-      0.05,
+      { opacity: 0, filter: "blur(8px)" },
+      { opacity: 1, filter: "blur(0px)", duration: 0.2, ease: "power2.out" },
+      0.36,
+    );
+    tl.to(
+      "#iddia-ink",
+      { opacity: 0, filter: "blur(6px)", duration: 0.16, ease: "power2.in" },
+      3.9,
     );
     window.__timelines = window.__timelines || {};
     window.__timelines.iddia = tl;

@@ -1,11 +1,9 @@
 # İnceleme
 
-Kurulan film **22–20**. Kurulmayanlar: **Kadro** (imleç yalnızca Gizel’i seçer) ve **Mod kapısı** (altı karttan biri sahaya döner).
+Kurulan film **Sayı**. Kurulmayanlar: **İkinci sayı** (kamera hiç genişlemez) ve **Üç isim** (Gizel, Cansel, Salise aynı sahada birer vuruş yapar).
 
-Ölçülen: `check` hatasız. `film_silent` bilerek duruyor; HeyGen oturumu ve yerel müzik modeli yok, ses üretilmedi. Kapanış sözcüğü tutuşu 2.6 saniyeye çıkarıldı. Kareler 0.6, 3.7, 4.5, 7.9, 10.4, 12.5, 14.2, 16.3, 19, 21.9 saniyede okundu. Ses duyulmadı; kaynak yok.
+`check` hatasız. Kareler 0.35, 1.65, 2.6, 4.9, 5.45, 6.5, 8.3, 11.25, 12.4, 18.5 saniyede okundu. Kurtarışta top elin önünde, smaçta top elde, sayıda skor 22–20, kapanış ortada.
 
-İmleç SINGLEPLAYER kartının alt kenarında duruyor; “Klasik dostluk” ve “maçı.” okunuyor. Kamera geri çekilirken imleç karta bağlı kalıyor.
+Ses ölçüldü, kulakla dinlenmedi. Yatak `src/game/muzik.js` döngüsü, 20 saniye, sonda 1.35 saniye solma. Vuruş sesi yok; müzik yatağı tek başına.
 
-En zayıf plan: 3.7 saniyedeki yakınlaşma bandı kadrajın altına yaslıyor, afişe geçiş sert. Daha çok zaman olsa bandın ortası afişteki kırmızı sözcükle üst üste binerdi.
-
-Uyarılar: `film_silent` ve `audio_none` duruyor, çünkü eklenecek parça yok.
+En zayıf an: 5.4’te Atlas file direğinin arkasında sıçrıyor, top ondan açıkça geçiyor ama blok kolu fileyle iç içe. Daha uzun bir geçişte o sıçrayış file çizgisinin sağına alınırdı.
