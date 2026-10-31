@@ -1,0 +1,44 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #101018;
+    }
+    #poster-shot {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #poster-cam {
+      width: 1760px;
+      height: 859px;
+    }
+    #poster-cam img {
+      width: 1760px;
+      height: 859px;
+      display: block;
+    }
+  </style>
+  <div data-hf-id="hf-dbla" id="root" data-composition-id="poster" data-width="1920" data-height="1080">
+    <div data-hf-id="hf-lbjl" id="poster-shot" class="clip" data-start="0" data-duration="3.2" data-track-index="0">
+      <div data-hf-id="hf-qvik" id="poster-cam">
+        <img data-hf-id="hf-iitb" src="assets/one.png" alt="" />
+      </div>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo(
+      "#poster-cam",
+      { scale: 1.06, filter: "blur(8px)", opacity: 0.4 },
+      { scale: 1, filter: "blur(0px)", opacity: 1, duration: 0.2, ease: "power4.out" },
+      0,
+    );
+    window.__timelines = window.__timelines || {};
+    window.__timelines.poster = tl;
+  </script>
+</template>

@@ -1,5 +1,6 @@
 # Bağımlılıklar
 node_modules
+tanitim/.hyperframes
 .pnp
 .pnp.js
 

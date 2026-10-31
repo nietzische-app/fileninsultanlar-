@@ -1,0 +1,48 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #8d1224;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #iddia-line {
+      width: 1560px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #iddia-ink {
+      color: #f4f1ea;
+      font-family: "Press Start 2P", monospace;
+      font-size: 36px;
+      line-height: 1.55;
+      text-align: center;
+    }
+  </style>
+  <div data-hf-id="hf-x5pw" id="root" data-composition-id="iddia" data-width="1920" data-height="1080">
+    <h1 data-hf-id="hf-tgaq"
+      id="iddia-line"
+      class="clip"
+      data-start="0"
+      data-duration="2.2"
+      data-track-index="0"
+    >
+      <span data-hf-id="hf-b5jb" id="iddia-ink" data-var-text="claim">HER SMAÇTA BİR MİLLETİN ALKIŞI</span>
+    </h1>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo(
+      "#iddia-ink",
+      { filter: "blur(8px)", opacity: 0.35 },
+      { filter: "blur(0px)", opacity: 1, duration: 0.18, ease: "power4.out" },
+      0.05,
+    );
+    window.__timelines = window.__timelines || {};
+    window.__timelines.iddia = tl;
+  </script>
+</template>

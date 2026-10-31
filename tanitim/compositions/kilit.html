@@ -1,0 +1,111 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #0b0b12;
+    }
+    #kilit-shot {
+      position: absolute;
+      inset: 0;
+    }
+    #kilit-row {
+      position: absolute;
+      left: 400px;
+      top: 240px;
+      display: flex;
+      align-items: center;
+      gap: 36px;
+      width: 1500px;
+    }
+    #kilit-mark {
+      width: 320px;
+      height: 320px;
+      flex: none;
+      transform-origin: 50% 50%;
+    }
+    #kilit-mark img {
+      width: 320px;
+      height: 320px;
+      display: block;
+    }
+    #kilit-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+    #kilit-word {
+      color: #E30A17;
+      font-family: "Press Start 2P", monospace;
+      font-size: 52px;
+      line-height: 1.25;
+      clip-path: inset(0 0 0 0);
+    }
+    #kilit-sub {
+      color: #f4f1ea;
+      font-family: "Press Start 2P", monospace;
+      font-size: 28px;
+      line-height: 1.4;
+    }
+    #kilit-cta {
+      position: absolute;
+      left: 360px;
+      top: 660px;
+      width: 1200px;
+      height: 300px;
+    }
+    #kilit-cta img {
+      width: 1200px;
+      height: 300px;
+      object-fit: contain;
+      object-position: center;
+      display: block;
+    }
+  </style>
+  <div data-hf-id="hf-2ycc" id="root" data-composition-id="kilit" data-width="1920" data-height="1080">
+    <div data-hf-id="hf-6b5a" id="kilit-shot" class="clip" data-start="0" data-duration="2.6" data-track-index="0">
+      <div data-hf-id="hf-vdg3" id="kilit-row">
+        <div data-hf-id="hf-gmxe" id="kilit-mark">
+          <img data-hf-id="hf-2rc0" src="assets/icon.png" alt="" />
+        </div>
+        <div data-hf-id="hf-37ae" id="kilit-copy">
+          <div data-hf-id="hf-kied" id="kilit-word" data-var-text="wordmark">RETRO VOLEYBOL</div>
+          <div data-hf-id="hf-ekdp" id="kilit-sub" data-var-text="sub">8 BİT PİKSEL VOLEYBOL</div>
+        </div>
+      </div>
+      <div data-hf-id="hf-5bfx" id="kilit-cta">
+        <img data-hf-id="hf-746f" src="assets/cta-singleplayer.png" alt="" />
+      </div>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo(
+      "#kilit-mark",
+      { scale: 0.55 },
+      { scale: 1, duration: 0.4, ease: "power4.out" },
+      0.05,
+    );
+    tl.fromTo(
+      "#kilit-word",
+      { clipPath: "inset(0 100% 0 0)" },
+      { clipPath: "inset(0 0% 0 0)", duration: 0.4, ease: "power3.out" },
+      0.12,
+    );
+    tl.fromTo(
+      "#kilit-sub",
+      { opacity: 0 },
+      { opacity: 1, duration: 0.2, ease: "power2.out" },
+      0.7,
+    );
+    tl.fromTo(
+      "#kilit-cta",
+      { y: 36 },
+      { y: 0, duration: 0.35, ease: "power4.out" },
+      0.85,
+    );
+    window.__timelines = window.__timelines || {};
+    window.__timelines.kilit = tl;
+  </script>
+</template>

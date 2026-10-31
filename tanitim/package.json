@@ -1,0 +1,12 @@
+{
+  "name": "tanitim",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes hyperframes@0.8.222 preview",
+    "check": "npx --yes hyperframes@0.8.222 check",
+    "render": "npx --yes hyperframes@0.8.222 render --quality looks --output ../assets/tanitim.mp4",
+    "render:draft": "npx --yes hyperframes@0.8.222 render --quality draft --output ../assets/tanitim.mp4",
+    "publish": "npx --yes hyperframes@0.8.222 publish"
+  }
+}

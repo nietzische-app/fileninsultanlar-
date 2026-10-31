@@ -37,7 +37,9 @@
     "paket:android": "npm run paket && npx cap open android",
     "e2e:paket": "node tests/e2e/paket.mjs",
     "ikon": "node scripts/ikon-uret.mjs",
-    "magaza-gorsel": "node scripts/magaza-gorsel.mjs"
+    "magaza-gorsel": "node scripts/magaza-gorsel.mjs",
+    "tanitim": "npm --prefix tanitim run render",
+    "tanitim:check": "npm --prefix tanitim run check"
   },
   "dependencies": {
     "@capacitor-community/admob": "^6.2.0",

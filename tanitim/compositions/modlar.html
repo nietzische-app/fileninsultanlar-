@@ -1,0 +1,66 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #0b0b12;
+    }
+    #mod-shot {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+    #mod-cam {
+      width: 1920px;
+      height: 1080px;
+      transform-origin: 30% 27%;
+    }
+    #mod-cam img {
+      width: 1920px;
+      height: 1080px;
+      object-fit: cover;
+      display: block;
+    }
+    #mod-cursor {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 78px;
+      height: 78px;
+      background: #f4f1ea;
+      clip-path: polygon(0 0, 0 100%, 28% 72%, 46% 100%, 60% 90%, 42% 64%, 80% 64%);
+      filter: drop-shadow(4px 4px 0 #111);
+      transform-origin: 0 0;
+      z-index: 2;
+    }
+  </style>
+  <div data-hf-id="hf-odh8" id="root" data-composition-id="modlar" data-width="1920" data-height="1080">
+    <div data-hf-id="hf-rrq0" id="mod-shot" class="clip" data-start="0" data-duration="4.2" data-track-index="0" data-layout-allow-overflow>
+      <div data-hf-id="hf-fzy5" id="mod-cam">
+        <img data-hf-id="hf-cbri" src="assets/menu.png" alt="" />
+      </div>
+      <div data-hf-id="hf-ucfy" id="mod-cursor"></div>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo(
+      "#mod-cam",
+      { scale: 2.45 },
+      { scale: 2.28, duration: 0.4, ease: "power4.out" },
+      0,
+    );
+    tl.fromTo(
+      "#mod-cursor",
+      { x: 1500, y: 820, scale: 1 },
+      { x: 620, y: 300, duration: 0.55, ease: "power3.out" },
+      0.35,
+    );
+    tl.to("#mod-cursor", { scale: 0.82, duration: 0.08, ease: "power2.in" }, 1.15);
+    tl.to("#mod-cursor", { scale: 1, duration: 0.1, ease: "power2.out" }, 1.23);
+    tl.to("#mod-cam", { scale: 1.14, duration: 0.7, ease: "power2.inOut" }, 1.45);
+    window.__timelines = window.__timelines || {};
+    window.__timelines.modlar = tl;
+  </script>
+</template>
