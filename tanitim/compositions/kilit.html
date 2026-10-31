@@ -1,0 +1,99 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: transparent;
+    }
+    #zemin {
+      position: absolute;
+      inset: 0;
+      background: #e30a17;
+    }
+    #kilit-row {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 280px;
+      height: 320px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 40px;
+    }
+    #kilit-mark {
+      width: 300px;
+      height: 300px;
+      display: block;
+      transform-origin: 50% 50%;
+    }
+    #kilit-yazi {
+      width: auto;
+    }
+    #kilit-word {
+      font-family: "Press Start 2P", monospace;
+      font-size: 52px;
+      line-height: 1.25;
+      color: #e30a17;
+      clip-path: inset(0 100% 0 0);
+    }
+    #kilit-sub {
+      margin-top: 22px;
+      font-family: "Press Start 2P", monospace;
+      font-size: 28px;
+      line-height: 1.4;
+      color: #f4f1ea;
+    }
+    #kilit-cta {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 680px;
+      text-align: center;
+      font-family: "Press Start 2P", monospace;
+      font-size: 28px;
+      color: #f4f1ea;
+    }
+    #kilit-cta b {
+      color: #ffd24a;
+      font-weight: 400;
+    }
+  </style>
+  <div data-hf-id="hf-kilit" id="root" data-composition-id="kilit" data-width="1920" data-height="1080">
+    <div data-hf-id="hf-zemin" id="zemin"></div>
+    <div data-hf-id="hf-kilit-row" id="kilit-row">
+      <img data-hf-id="hf-kilit-mark" id="kilit-mark" src="assets/icon.png" alt="" />
+      <div data-hf-id="hf-kilit-yazi" id="kilit-yazi">
+        <div data-hf-id="hf-kilit-word" id="kilit-word" data-var-text="wordmark">RETRO VOLEYBOL</div>
+        <div data-hf-id="hf-kilit-sub" id="kilit-sub" data-var-text="sub">8 BİT PİKSEL VOLEYBOL</div>
+      </div>
+    </div>
+    <div data-hf-id="hf-kilit-cta" id="kilit-cta">SINGLEPLAYER · <b>TEK MAÇ</b></div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo(
+      "#kilit-mark",
+      { scale: 0.45 },
+      { scale: 1, duration: 0.42, ease: "power4.out" },
+      0.08,
+    );
+    tl.fromTo(
+      "#zemin",
+      { backgroundColor: "#E30A17" },
+      { backgroundColor: "#0b0b12", duration: 0.45, ease: "power2.inOut" },
+      0.2,
+    );
+    tl.fromTo(
+      "#kilit-word",
+      { clipPath: "inset(0 100% 0 0)" },
+      { clipPath: "inset(0 0% 0 0)", duration: 0.42, ease: "power3.out" },
+      0.38,
+    );
+    tl.fromTo("#kilit-sub", { opacity: 0 }, { opacity: 1, duration: 0.2 }, 0.78);
+    tl.fromTo("#kilit-cta", { opacity: 0 }, { opacity: 1, duration: 0.22 }, 1.05);
+    window.__timelines = window.__timelines || {};
+    window.__timelines.kilit = tl;
+  </script>
+</template>
