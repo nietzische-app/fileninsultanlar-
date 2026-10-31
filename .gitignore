@@ -1,6 +1,7 @@
 # Bağımlılıklar
 node_modules
 tanitim/.hyperframes
+tanitim/.thumbnails
 .pnp
 .pnp.js
 
