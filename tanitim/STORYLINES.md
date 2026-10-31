@@ -1,20 +1,16 @@
 # Üç film
 
-Kurulan film **Sayı**. Önceki kurgu ekran görüntüsünü kaydırıyordu; bu üçü oyunun kendi çizim kodunda oynar.
+Kurulan film **Sayı**. Ralli oyunun kendi yerçekimi ve çizim koduyla oynar. Kamera vuruşta keser.
 
 ## Sayı
 
-Cihaz: sonuç bir rallinin içinden çıkar. Biçim: tek sahada sürekli çekim, top nesnesi kırmızı alana döner. Dünya: oyunun salonu, `src/game` çizicileri.
+Cihaz: sayı, rallinin içinden çıkar. Biçim: aynı sahada art arda açılar, top kırmızı alana döner. Dünya: oyunun salonu.
 
-İzleyici maçın ortasında uyanır. Gizel manşetler, topu yukarı alır, smaçlar; top fileyi geçip Atlas’ın önünden köşeye düşer. Skor 22–20 olur. Top karanlıkta büyür, kırmızıya döner, söz o kırmızının üstündedir.
+İzleyici top file bandının üstündeyken uyanır. Gizel manşetler, pas atar, smaçlar; top bandın üstünden geçer, Atlas karşılar, top geri gelir, Gizel köşeye yazar. Skor 22–20 olur. Kısa bir servis daha fileyi aşar, kamera topun içine girer, söz kırmızının üstündedir.
 
-İlk iki saniye: havadaki top, 21–20, başka başlık yok.
+Vuruşlar oyun hızındadır. Fileyi aşan her topta bantla topun arasında boşluk vardır.
 
-Vuruşlar: servis gelişi → kurtarış → smaç → sayı → topun içine gir → iddia → kilit.
-
-Görünüş: salon `#0b0b12`, saha kırmızısı, pano `#E30A17`, mürekkep `#f4f1ea`. Yazı Press Start 2P. Top pano yazısının altında uçar.
-
-Ses: oyunun kendi giriş döngüsü (`src/game/muzik.js`), 150 vuruş/dk, 12.8 saniye, filme iki kez yayılıp kapanışta solar.
+Ses: oyunun kendi giriş döngüsü (`src/game/muzik.js`), 150 vuruş/dk, 20 saniye, sonda solar.
 
 ## İkinci sayı
 

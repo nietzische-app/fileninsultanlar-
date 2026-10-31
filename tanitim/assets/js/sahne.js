@@ -20,7 +20,9 @@ var Sahne = (() => {
   // motor/sahne.js
   var sahne_exports = {};
   __export(sahne_exports, {
-    ciz: () => ciz
+    ciz: () => ciz,
+    denetle: () => denetle,
+    topKonum: () => topKonum
   });
 
   // ../src/game/constants.js
@@ -1896,9 +1898,38 @@ var Sahne = (() => {
     name: "Atlas",
     number: 7
   };
-  var KURTARIS = 1.6;
-  var SMA\u00C7 = 4.8;
-  var SAYI = 6.4;
+  var G = 1150;
+  var TOP_R = 13;
+  var BANT = 270;
+  var EL = 16;
+  var DALIS = 44;
+  var RAKIP_EL = 38;
+  var YAY = [
+    { ad: "ust", t0: 0, t1: 0.26, x0: 470, y0: 236, x1: 418, y1: 240, duz: true },
+    { ad: "gelis", t0: 0.26, t1: 0.62, x0: 418, y0: 240, x1: 308, y1: 388 },
+    { ad: "pas", t0: 0.62, t1: 1.16, x0: 308, y0: 388, x1: 360, y1: 240 },
+    { ad: "hucum", t0: 1.16, t1: 1.66, x0: 360, y0: 240, x1: 708, y1: 342 },
+    { ad: "donus", t0: 1.66, t1: 2.16, x0: 708, y0: 342, x1: 356, y1: 240 },
+    { ad: "smac", t0: 2.16, t1: 2.8, x0: 356, y0: 240, x1: 774, y1: 407 },
+    { ad: "atis", t0: 5.42, t1: 5.8, x0: 328, y0: 356, x1: 348, y1: 240 },
+    { ad: "servis", t0: 5.8, t1: 6.3, x0: 348, y0: 240, x1: 706, y1: 340 },
+    { ad: "donus2", t0: 6.3, t1: 6.8, x0: 706, y0: 340, x1: 352, y1: 242 },
+    { ad: "final", t0: 6.8, t1: 7.3, x0: 352, y0: 242, x1: 698, y1: 346 }
+  ];
+  var yay = (ad2) => YAY.find((s) => s.ad === ad2);
+  var UST = yay("ust");
+  var GELIS = yay("gelis");
+  var PAS = yay("pas");
+  var HUCUM = yay("hucum");
+  var DONUS = yay("donus");
+  var SMAC = yay("smac");
+  var ATIS = yay("atis");
+  var SERVIS = yay("servis");
+  var DONUS2 = yay("donus2");
+  var FINAL = yay("final");
+  var SAYI = SMAC.t1;
+  var ELDE = 4.95;
+  var ZOOM = FINAL.t0 + 0.16;
   function clamp(v, a, b) {
     return Math.max(a, Math.min(b, v));
   }
@@ -1910,72 +1941,98 @@ var Sahne = (() => {
     return x * x * (3 - 2 * x);
   }
   function parca(t, t0, t1) {
+    if (t1 <= t0) return t >= t1 ? 1 : 0;
     return clamp((t - t0) / (t1 - t0), 0, 1);
   }
-  function yay(t, t0, t1, x0, y0, x1, y1, lift) {
-    const u = parca(t, t0, t1);
+  function fizik(seg, t) {
+    const T = seg.t1 - seg.t0;
+    const tt = clamp(t, seg.t0, seg.t1) - seg.t0;
+    const vx = (seg.x1 - seg.x0) / T;
+    if (seg.duz) {
+      const vy = (seg.y1 - seg.y0) / T;
+      return { x: seg.x0 + vx * tt, y: seg.y0 + vy * tt, vx, vy };
+    }
+    const vy0 = (seg.y1 - seg.y0 - 0.5 * G * T * T) / T;
     return {
-      x: lerp(x0, x1, u),
-      y: lerp(y0, y1, u) - 4 * lift * u * (1 - u),
-      u
+      x: seg.x0 + vx * tt,
+      y: seg.y0 + vy0 * tt + 0.5 * G * tt * tt,
+      vx,
+      vy: vy0 + G * tt
+    };
+  }
+  function elde(t) {
+    const u = yumusak(parca(t, ELDE, ATIS.t0));
+    return {
+      x: lerp(250, ATIS.x0, u),
+      y: lerp(364, ATIS.y0, u),
+      vx: 0,
+      vy: 0
     };
   }
   function topKonum(t) {
-    if (t < KURTARIS) {
-      return yay(t, 0, KURTARIS, 660, 286, 304, 378, 16);
+    if (t >= SAYI && t < ELDE) return { x: SMAC.x1, y: SMAC.y1, vx: 0, vy: 0 };
+    if (t >= ELDE && t < ATIS.t0) return elde(t);
+    for (let i = YAY.length - 1; i >= 0; i -= 1) {
+      if (t >= YAY[i].t0) return fizik(YAY[i], t);
     }
-    if (t < 3.55) {
-      return yay(t, KURTARIS, 3.55, 304, 378, 352, 246, 62);
-    }
-    if (t < SMA\u00C7) {
-      return yay(t, 3.55, SMA\u00C7, 352, 246, 360, 244, 0);
-    }
-    if (t < 5.45) {
-      return yay(t, SMA\u00C7, 5.45, 360, 244, 640, 256, 6);
-    }
-    if (t < SAYI) {
-      return yay(t, 5.45, SAYI, 640, 256, 760, 407, 4);
-    }
-    if (t < 9.3) {
-      return { x: 742, y: 407, u: 1 };
-    }
-    if (t < 11.2) {
-      return yay(t, 9.3, 11.2, 250, 330, 640, 310, 30);
-    }
-    return { x: 640, y: 310, u: 1 };
+    return fizik(UST, UST.t0);
+  }
+  function zipla(t, t0, t1, h) {
+    const u = parca(t, t0, t1);
+    if (u <= 0 || u >= 1) return 0;
+    return Math.sin(u * Math.PI) * h;
   }
   function gizel(t) {
-    let x = 188;
-    let pose = "run";
+    const dig = topKonum(GELIS.t1);
+    const pas = topKonum(PAS.t1);
+    const bitir = topKonum(SMAC.t0);
+    const servis = topKonum(SERVIS.t0);
+    const son = topKonum(FINAL.t0);
+    const el = elde(t);
+    let x = 210;
     let y = GROUND_Y;
-    let facing = 1;
-    if (t < 1.25) {
-      x = lerp(176, 248, yumusak(t / 1.25));
+    let pose = "run";
+    if (t < GELIS.t1 - 0.05) {
+      x = lerp(210, dig.x - DALIS, yumusak(parca(t, 0, GELIS.t1 - 0.05)));
       pose = "run";
-    } else if (t < 2.2) {
-      x = 252;
+    } else if (t < GELIS.t1 + 0.1) {
+      x = dig.x - DALIS;
       pose = "dive";
-    } else if (t < 4.15) {
-      x = lerp(252, 348, yumusak((t - 2.2) / 1.95));
+    } else if (t < PAS.t1 - 0.2) {
+      x = lerp(dig.x - DALIS, pas.x - EL, yumusak(parca(t, GELIS.t1 + 0.14, PAS.t1 - 0.2)));
       pose = "run";
-    } else if (t < 5.4) {
-      x = 352;
-      const u = parca(t, 4.15, 5.35);
-      y = GROUND_Y - Math.sin(u * Math.PI) * 108;
-      pose = t < 5.1 ? "spike" : "jump";
-    } else if (t < 6.55) {
-      x = 340;
-      pose = "idle";
-    } else if (t < 9.15) {
-      x = lerp(340, 236, yumusak((t - 6.55) / 1.2));
+    } else if (t < PAS.t1 + 0.24) {
+      x = pas.x - EL;
+      y = GROUND_Y - zipla(t, PAS.t1 - 0.2, PAS.t1 + 0.24, 112);
+      pose = t < PAS.t1 + 0.08 ? "spike" : "jump";
+    } else if (t < SMAC.t0 - 0.2) {
+      x = lerp(pas.x - EL, bitir.x - EL, yumusak(parca(t, PAS.t1 + 0.24, SMAC.t0 - 0.2)));
+      pose = "run";
+    } else if (t < SAYI) {
+      x = bitir.x - EL;
+      const kalk = SMAC.t0 - 0.18;
+      const inis = SMAC.t0 + 0.28;
+      y = GROUND_Y - zipla(t, kalk, inis, 112);
+      pose = t < SMAC.t0 + 0.1 ? "spike" : t < inis ? "jump" : "idle";
+    } else if (t < ELDE) {
+      x = lerp(bitir.x - EL, 236, yumusak(parca(t, SAYI, SAYI + 0.7)));
       pose = "cheer";
-    } else if (t < 9.9) {
-      x = 236;
-      const u = parca(t, 9.25, 9.85);
-      y = GROUND_Y - Math.sin(u * Math.PI) * 42;
+    } else if (t < ATIS.t0) {
+      x = el.x - EL;
+      pose = "run";
+    } else if (t < SERVIS.t0 + 0.22) {
+      x = servis.x - EL;
+      y = GROUND_Y - zipla(t, SERVIS.t0 - 0.2, SERVIS.t0 + 0.22, 112);
+      pose = "spike";
+    } else if (t < FINAL.t0 - 0.18) {
+      x = lerp(servis.x - EL, son.x - EL, yumusak(parca(t, SERVIS.t0 + 0.22, FINAL.t0 - 0.18)));
+      pose = "run";
+    } else if (t < FINAL.t1) {
+      x = son.x - EL;
+      y = GROUND_Y - zipla(t, FINAL.t0 - 0.18, FINAL.t0 + 0.22, 112);
       pose = "spike";
     } else {
-      x = 236;
+      x = son.x - EL;
       pose = "idle";
     }
     return {
@@ -1983,30 +2040,39 @@ var Sahne = (() => {
       x,
       y,
       pose,
-      facing,
-      frame: t * 2.6 % 1
+      facing: 1,
+      frame: t * (pose === "run" ? 7.5 : 2.4) % 1
     };
   }
   function atlas(t) {
-    let x = 720;
+    const hucum = topKonum(HUCUM.t1);
+    const servis = topKonum(SERVIS.t1);
+    let x = 640;
     let y = GROUND_Y;
     let pose = "idle";
-    if (t < 0.45) {
-      x = 734;
+    if (t < 0.22) {
+      x = 628;
+      y = GROUND_Y - zipla(t, -0.12, 0.34, 96);
       pose = "spike";
-    } else if (t < 4.85) {
-      x = lerp(724, 690, yumusak(t / 4.85));
+    } else if (t < HUCUM.t1 - 0.28) {
+      x = lerp(620, hucum.x + RAKIP_EL, yumusak(parca(t, 0.22, HUCUM.t1 - 0.28)));
+      pose = t < 0.42 ? "jump" : "run";
+    } else if (t < HUCUM.t1 + 0.14) {
+      x = hucum.x + RAKIP_EL;
+      y = GROUND_Y - zipla(t, HUCUM.t1 - 0.16, HUCUM.t1 + 0.14, 44);
+      pose = "bump";
+    } else if (t < SERVIS.t0) {
+      x = lerp(hucum.x + RAKIP_EL, 690, yumusak(parca(t, HUCUM.t1 + 0.16, HUCUM.t1 + 0.55)));
       pose = "idle";
-    } else if (t < 6.5) {
-      x = lerp(700, 455, yumusak((t - 4.9) / 0.4));
-      const u = parca(t, 5.15, 6.25);
-      y = GROUND_Y - Math.sin(clamp(u, 0, 1) * Math.PI) * 100;
-      pose = u > 0.02 && u < 0.98 ? "jump" : "idle";
-    } else if (t < 7.15) {
-      x = lerp(455, 640, yumusak((t - 6.5) / 0.65));
+    } else if (t < SERVIS.t1 - 0.16) {
+      x = lerp(690, servis.x + RAKIP_EL, yumusak(parca(t, SERVIS.t0, SERVIS.t1 - 0.16)));
       pose = "run";
+    } else if (t < SERVIS.t1 + 0.14) {
+      x = servis.x + RAKIP_EL;
+      y = GROUND_Y - zipla(t, SERVIS.t1 - 0.16, SERVIS.t1 + 0.14, 44);
+      pose = "bump";
     } else {
-      x = 640;
+      x = servis.x + RAKIP_EL - 20;
       pose = "idle";
     }
     return {
@@ -2015,37 +2081,46 @@ var Sahne = (() => {
       y,
       pose,
       facing: -1,
-      frame: 0
+      frame: t * (pose === "run" ? 7.5 : 0) % 1
     };
   }
-  function kamera(t, top) {
-    let s = 1;
-    let cx = 450;
-    let cy = 268;
-    if (t < 4.5) {
-      s = 1.04;
-      cx = lerp(450, top.x, 0.12);
-      cy = 300;
-    } else if (t < 5.05) {
-      const u = yumusak((t - 4.5) / 0.28);
-      s = lerp(1.04, 1.48, u);
-      cx = lerp(420, 390, u);
-      cy = lerp(300, 280, u);
-    } else if (t < 5.7) {
-      const u = yumusak((t - 5.05) / 0.4);
-      s = lerp(1.48, 1, u);
-      cx = lerp(390, 460, u);
-      cy = lerp(280, 290, u);
-    } else if (t < 10.45) {
-      s = 1;
-      cx = 450;
-      cy = 268;
-    } else {
-      const u = clamp((t - 10.45) / 1.15, 0, 1);
+  function cekim(t) {
+    const plan = [
+      { t: 0, s: 1.88, cx: 448, cy: 258, whip: 0 },
+      { t: GELIS.t0 + 0.1, s: 1.6, cx: 320, cy: 342, whip: 0.1 },
+      { t: PAS.t1 - 0.12, s: 1.42, cx: 400, cy: 286, whip: 0.1 },
+      { t: HUCUM.t0 + 0.04, s: 1.72, cx: 470, cy: 256, whip: 0.09 },
+      { t: HUCUM.t1 - 0.12, s: 1.36, cx: 690, cy: 330, whip: 0.1 },
+      { t: SMAC.t0, s: 1.06, cx: 470, cy: 300, whip: 0.1 },
+      { t: SAYI + 0.62, s: 3.05, cx: 156, cy: 278, whip: 0.13 },
+      { t: SAYI + 1.45, s: 1.52, cx: 270, cy: 330, whip: 0.12 },
+      { t: ELDE, s: 1.24, cx: 390, cy: 296, whip: 0.12 },
+      { t: SERVIS.t0, s: 1.7, cx: 490, cy: 262, whip: 0.1 },
+      { t: FINAL.t0, s: 1.4, cx: 460, cy: 276, whip: 0.1 }
+    ];
+    let i = 0;
+    for (let k = 1; k < plan.length; k += 1) {
+      if (t >= plan[k].t) i = k;
+    }
+    const simdi = plan[i];
+    const once = plan[Math.max(0, i - 1)];
+    let s = simdi.s;
+    let cx = simdi.cx;
+    let cy = simdi.cy;
+    const whip = simdi.whip;
+    if (whip > 0 && t < simdi.t + whip) {
+      const k = 1 - (1 - (t - simdi.t) / whip) ** 3;
+      s = lerp(once.s, simdi.s, k);
+      cx = lerp(once.cx, simdi.cx, k);
+      cy = lerp(once.cy, simdi.cy, k);
+    }
+    if (t >= ZOOM) {
+      const u = clamp((t - ZOOM) / 0.36, 0, 1);
       const e = u * u;
-      s = lerp(1, 6.4, e);
-      cx = top.x;
-      cy = top.y;
+      const top = topKonum(t);
+      s = lerp(s, 12, e);
+      cx = lerp(cx, top.x, Math.min(1, e + 0.35));
+      cy = lerp(cy, top.y + 8, Math.min(1, e + 0.35));
     }
     const gorunenW = GAME_WIDTH / s;
     const gorunenH = GAME_HEIGHT / s;
@@ -2055,9 +2130,12 @@ var Sahne = (() => {
   }
   function sarsinti(t) {
     const vuruslar = [
-      [KURTARIS, 3.2, 0.16],
-      [SMA\u00C7, 4.6, 0.1],
-      [SAYI, 6.4, 0.26]
+      [GELIS.t1, 2.4, 0.08],
+      [PAS.t1, 3.2, 0.07],
+      [HUCUM.t1, 2.2, 0.07],
+      [SMAC.t1, 5.2, 0.1],
+      [SERVIS.t0, 2.6, 0.06],
+      [FINAL.t0, 3.4, 0.07]
     ];
     let x = 0;
     let y = 0;
@@ -2066,8 +2144,8 @@ var Sahne = (() => {
       const a = t - t0;
       if (a < 0 || a > sure) continue;
       const d = 1 - a / sure;
-      x += Math.sin(a * 92) * gen * d;
-      y += Math.sin(a * 71 + 1.3) * gen * 0.55 * d;
+      x += Math.sin(a * 120) * gen * d;
+      y += Math.sin(a * 90 + 1.3) * gen * 0.45 * d;
     }
     return { x, y };
   }
@@ -2084,8 +2162,8 @@ var Sahne = (() => {
     let sx = 1;
     let sy = 1;
     if (havada && oyuncu.pose !== "dive") {
-      sy = 1.08;
-      sx = 0.94;
+      sy = 1.06;
+      sx = 0.96;
     }
     ctx.save();
     ctx.translate(oyuncu.x, oyuncu.y);
@@ -2101,28 +2179,29 @@ var Sahne = (() => {
     });
     ctx.restore();
   }
-  function cizIz(ctx, t, top) {
-    if (t < SMA\u00C7 || t > SAYI) return;
-    for (let i = 5; i >= 1; i -= 1) {
-      const eski = topKonum(t - i * 0.028);
-      const oran = i / 6;
-      ctx.globalAlpha = (1 - oran) * 0.34;
+  function cizIz(ctx, top) {
+    if (Math.abs(top.vx) < 480) return;
+    for (let i = 4; i >= 1; i -= 1) {
+      const dt = i * 0.01;
+      const oran = i / 5;
+      ctx.globalAlpha = (1 - oran) * 0.4;
       ctx.fillStyle = "#FFC633";
-      const boy = 18 * (1 - oran);
-      ctx.fillRect(eski.x - boy / 2, eski.y - boy / 2, boy, boy);
+      const boy = 16 * (1 - oran);
+      const x = top.x - top.vx * dt;
+      const y = top.y - top.vy * dt;
+      ctx.fillRect(x - boy / 2, y - boy / 2, boy, boy);
     }
     ctx.globalAlpha = 1;
-    void top;
   }
   function parcacik(ctx, t, t0, x, y, renk, adet, sure) {
     const yas = t - t0;
     if (yas < 0 || yas > sure) return;
     const omur = 1 - yas / sure;
     for (let i = 0; i < adet; i += 1) {
-      const aci = i / adet * Math.PI * 2 + i * 0.4;
-      const hiz = 70 + i % 4 * 36;
+      const aci = i / adet * Math.PI * 2 + i * 0.37;
+      const hiz = 90 + i % 4 * 48;
       const px = x + Math.cos(aci) * hiz * yas;
-      const py = y + Math.sin(aci) * hiz * yas + 220 * yas * yas;
+      const py = y + Math.sin(aci) * hiz * yas + 260 * yas * yas;
       ctx.globalAlpha = omur;
       ctx.fillStyle = i % 2 === 0 ? renk : "#FFFFFF";
       const boy = 3 + omur * 4;
@@ -2151,13 +2230,13 @@ var Sahne = (() => {
   function mesajAlfa(t, bas, sure) {
     const a = t - bas;
     if (a < 0 || a > sure) return 0;
-    if (a < 0.06) return a / 0.06;
-    if (a > sure - 0.22) return (sure - a) / 0.22;
+    if (a < 0.05) return a / 0.05;
+    if (a > sure - 0.16) return (sure - a) / 0.16;
     return 1;
   }
   function ad(ctx, t, oyuncu) {
-    if (t < 6.7 || t > 9.15) return;
-    const giris = clamp((t - 6.7) / 0.16, 0, 1);
+    if (t < SAYI + 1.5 || t > ELDE - 0.05) return;
+    const giris = clamp((t - (SAYI + 1.5)) / 0.12, 0, 1);
     ctx.save();
     ctx.globalAlpha = giris;
     ctx.font = '15px "Press Start 2P"';
@@ -2173,16 +2252,54 @@ var Sahne = (() => {
     ctx.fillText(yazi, x, y);
     ctx.restore();
   }
+  function perde(ctx, t) {
+    const kesmeler = [SAYI + 0.62, SAYI + 1.45, ELDE];
+    const vuruslar = [
+      [GELIS.t1, "#9BE7FF", 0.05, 0.18],
+      [PAS.t1, "#FFD24A", 0.045, 0.2],
+      [SMAC.t1, "#E30A17", 0.05, 0.18],
+      [SERVIS.t0, "#FFD24A", 0.04, 0.16],
+      [FINAL.t0, "#FFD24A", 0.045, 0.2]
+    ];
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    for (let i = 0; i < kesmeler.length; i += 1) {
+      const a = t - kesmeler[i];
+      if (a < 0 || a > 0.08) continue;
+      ctx.globalAlpha = (1 - a / 0.08) * 0.5;
+      ctx.fillStyle = "#0b0b12";
+      ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    }
+    for (let i = 0; i < vuruslar.length; i += 1) {
+      const [t0, renk, sure, guc] = vuruslar[i];
+      const a = t - t0;
+      if (a < 0 || a > sure) continue;
+      ctx.globalAlpha = (1 - a / sure) * guc;
+      ctx.fillStyle = renk;
+      ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    }
+    ctx.restore();
+  }
+  function temas(t) {
+    if (t < GELIS.t1) return { side: "away", count: 1 };
+    if (t < PAS.t1) return { side: "home", count: 2 };
+    if (t < HUCUM.t1) return { side: "home", count: 3 };
+    if (t < DONUS.t1) return { side: "away", count: 1 };
+    if (t < SAYI) return { side: "home", count: 1 };
+    if (t < SERVIS.t0) return { side: "home", count: 0 };
+    if (t < SERVIS.t1) return { side: "home", count: 1 };
+    if (t < DONUS2.t1) return { side: "away", count: 1 };
+    return { side: "home", count: 1 };
+  }
   function ciz(ctx, t) {
     const zaman = Number.isFinite(t) ? t : 0;
     const top = topKonum(zaman);
     const ev = gizel(zaman);
     const rakip = atlas(zaman);
-    const cam = kamera(zaman, top);
+    const cam = cekim(zaman);
     const sar = sarsinti(zaman);
     const sayiOldu = zaman >= SAYI;
-    const hype = sayiOldu ? clamp((zaman - SAYI) / 0.4, 0, 1) : 0;
-    const temas = zaman < KURTARIS ? { side: "away", count: 1 } : zaman < SMA\u00C7 ? { side: "home", count: 1 } : zaman < SAYI ? { side: "home", count: 2 } : { side: "home", count: 0 };
+    const hype = sayiOldu ? clamp((zaman - SAYI) / 0.28, 0, 1) : 0;
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.setTransform(
@@ -2193,37 +2310,63 @@ var Sahne = (() => {
       GAME_WIDTH / 2 - cam.cx * cam.s + sar.x,
       GAME_HEIGHT / 2 - cam.cy * cam.s + sar.y
     );
-    drawArena(
-      ctx,
-      zaman,
-      hype,
-      { home: sayiOldu ? 22 : 21, away: 20 },
-      temas
-    );
+    drawArena(ctx, zaman, hype, { home: sayiOldu ? 22 : 21, away: 20 }, temas(zaman));
     drawFloor(ctx);
     const topYuksek = Math.max(0, GROUND_Y - top.y);
     golge(ctx, top.x, GROUND_Y, 16 * Math.max(0.35, 1 - topYuksek / 500));
     cizOyuncu(ctx, rakip);
     cizOyuncu(ctx, ev);
     drawNet(ctx, GROUND_Y);
-    cizIz(ctx, zaman, top);
+    cizIz(ctx, top);
     drawBall(ctx, {
       x: top.x,
       y: top.y,
-      radius: 13,
-      rotation: zaman * 7 + top.x * 0.02,
-      flaming: zaman >= SMA\u00C7 && zaman <= SAYI ? 1 : 0
+      radius: TOP_R,
+      rotation: zaman * 14 + top.x * 0.02,
+      flaming: Math.abs(top.vx) > 620 ? 1 : 0
     });
     const vur = (an) => topKonum(an);
-    parcacik(ctx, zaman, KURTARIS, vur(KURTARIS).x, vur(KURTARIS).y, "#9BE7FF", 10, 0.45);
-    parcacik(ctx, zaman, SMA\u00C7, vur(SMA\u00C7).x, vur(SMA\u00C7).y, "#FFD24A", 12, 0.4);
-    parcacik(ctx, zaman, SAYI, vur(SAYI).x, vur(SAYI).y, "#E30A17", 14, 0.55);
-    const kurtaris = mesajAlfa(zaman, KURTARIS, 0.85);
+    parcacik(ctx, zaman, GELIS.t1, vur(GELIS.t1).x, vur(GELIS.t1).y, "#9BE7FF", 8, 0.28);
+    parcacik(ctx, zaman, PAS.t1, vur(PAS.t1).x, vur(PAS.t1).y, "#FFD24A", 8, 0.22);
+    parcacik(ctx, zaman, SMAC.t1, vur(SMAC.t1).x, vur(SMAC.t1).y, "#E30A17", 10, 0.32);
+    parcacik(ctx, zaman, FINAL.t0, vur(FINAL.t0).x, vur(FINAL.t0).y, "#FFD24A", 8, 0.22);
+    const kurtaris = mesajAlfa(zaman, GELIS.t1, 0.42);
     if (kurtaris > 0) mesaj(ctx, "KURTARI\u015E!", "#9BE7FF", kurtaris);
-    const sayi = mesajAlfa(zaman, SAYI, 1.05);
+    const sayi = mesajAlfa(zaman, SAYI, 0.58);
     if (sayi > 0) mesaj(ctx, "SAYI!", PALETTE.gold, sayi);
     ad(ctx, zaman, ev);
     ctx.restore();
+    perde(ctx, zaman);
+  }
+  function denetle() {
+    const rapor = [];
+    let ok = true;
+    for (const seg of YAY) {
+      const T = seg.t1 - seg.t0;
+      let minY = 1e9;
+      let yOrta = null;
+      let yKenar = -1;
+      const gecer = seg.x0 < 450 !== seg.x1 < 450 || seg.x0 > 410 && seg.x0 < 490;
+      for (let i = 0; i <= 180; i += 1) {
+        const p = fizik(seg, seg.t0 + T * i / 180);
+        minY = Math.min(minY, p.y);
+        if (p.x > 408 && p.x < 492) yKenar = Math.max(yKenar, p.y);
+        if (Math.abs(p.x - 450) < 14) yOrta = p.y;
+      }
+      const pano = minY - TOP_R < 214;
+      const file = gecer && (yOrta != null && yOrta + TOP_R > BANT - 12 || yKenar > 0 && yKenar + TOP_R > BANT - 4);
+      if (pano || file) ok = false;
+      const hiz = Math.hypot((seg.x1 - seg.x0) / T, (seg.y1 - seg.y0) / T);
+      rapor.push({
+        ad: seg.ad,
+        hiz: Math.round(hiz),
+        minY: Math.round(minY),
+        pay: yOrta == null ? null : Math.round(BANT - (yOrta + TOP_R)),
+        pano,
+        file
+      });
+    }
+    return { ok, rapor };
   }
   return __toCommonJS(sahne_exports);
 })();
