@@ -15,6 +15,7 @@ import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
 import { t, modeYazi, sayiYazi } from '../i18n/index.js';
 import DilSecici from '../i18n/DilSecici.jsx';
+import { davetPaylasimi, paylasAc } from '../buyume/paylas.js';
 
 const PRIDE_KEYS = ['start.pride.0', 'start.pride.1', 'start.pride.2', 'start.pride.3'];
 
@@ -50,6 +51,7 @@ export default function StartScreen({
   fpAcik = false,
 }) {
   const [messageIndex, setMessageIndex] = useState(0);
+  const [davetDurum, setDavetDurum] = useState('idle');
   /*
    * Röle sunucusu tanımlı değilse çevrimiçi modu listede yok. Basınca
    * "sunucu yok" diyen bir düğme, oyuncuya kendi internetinde sorun
@@ -118,6 +120,19 @@ export default function StartScreen({
       Sfx.stopMusic();
     };
   }, []);
+
+  const davetEt = async () => {
+    if (davetDurum === 'busy') return;
+    Sfx.unlock();
+    Sfx.confirm();
+    setDavetDurum('busy');
+    try {
+      const durum = await paylasAc(davetPaylasimi());
+      setDavetDurum(durum === 'ok' || durum === 'iptal' ? 'idle' : durum);
+    } catch {
+      setDavetDurum('hata');
+    }
+  };
 
   const handleStart = (modeId) => {
     // Tarayıcı ses politikası: AudioContext ilk kullanıcı hareketinde açılır
@@ -212,7 +227,21 @@ export default function StartScreen({
           >
             ⚙ {t('nav.settings')}
           </button>
+          <button
+            type="button"
+            className="retro-button-ghost px-3 py-1.5 text-[7px] disabled:opacity-50 sm:px-5 sm:py-2 sm:text-[8px]"
+            disabled={davetDurum === 'busy'}
+            onClick={davetEt}
+          >
+            {t('share.invite')}
+          </button>
         </div>
+        {davetDurum === 'hata' && (
+          <p className="text-center text-[7px] text-turkiye-red">{t('share.fail')}</p>
+        )}
+        {(davetDurum === 'kopya' || davetDurum === 'yedek') && (
+          <p className="text-center text-[7px] text-white/45">{t('share.copied')}</p>
+        )}
       </div>
 
       {/* İkinci bakış — kaydırınca; ilk ekranı tıkamaz */}

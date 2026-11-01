@@ -9,6 +9,18 @@ import { getAchievement } from '../game/achievements.js';
 import { TOURNAMENT_ROUNDS, tournamentSummary } from '../game/tournament.js';
 import { upper } from '../utils/text.js';
 import { t, sayiYazi, achYazi, turYazi, kalemYazi } from '../i18n/index.js';
+import { loadRecords } from '../utils/storage.js';
+import { yerelKabukMu } from '../utils/gizlilik.js';
+import {
+  DEGERLENDIRME,
+  degerlendirmeIslendi,
+  degerlendirmeIste,
+  degerlendirmeKarari,
+  olumluAn,
+} from '../buyume/degerlendirme.js';
+import { paylasimKanvasi } from '../buyume/kart.js';
+import { paylasAc, sonucPaylasimi } from '../buyume/paylas.js';
+import Sfx from '../game/audio.js';
 
 const CONFETTI_COLORS = ['#E30A17', '#FFFFFF', '#FFD24A', '#FF7A18', '#9BE7FF'];
 
@@ -92,6 +104,54 @@ export default function ResultScreen({
       height: 10 + Math.random() * 9,
     }));
   }, [won]);
+
+  const [paylasDurum, setPaylasDurum] = useState('idle');
+  const incelemeDurdur = useRef(null);
+
+  /*
+   * Değerlendirme, kayıp ekranında ve üçüncü galibiyetten önce yok.
+   * Zamanlayıcı düğmeleri bekletmez; PAYLAŞ'a basılırsa iptal olur ki
+   * iki sistem penceresi üst üste binmesin.
+   */
+  useEffect(() => {
+    if (!yerelKabukMu()) return undefined;
+    const karar = degerlendirmeKarari({
+      olumlu: olumluAn(result, tournament),
+      galibiyet: loadRecords().wins,
+    });
+    if (!karar.iste) return undefined;
+    let iptal = false;
+    const zaman = setTimeout(() => {
+      if (iptal) return;
+      void degerlendirmeIste().then((ok) => {
+        if (ok) degerlendirmeIslendi();
+      });
+    }, DEGERLENDIRME.gecikmeMs);
+    const durdur = () => {
+      iptal = true;
+      clearTimeout(zaman);
+    };
+    incelemeDurdur.current = durdur;
+    return () => {
+      durdur();
+      if (incelemeDurdur.current === durdur) incelemeDurdur.current = null;
+    };
+  }, [result, tournament]);
+
+  const paylasSonuc = async () => {
+    if (paylasDurum === 'busy') return;
+    incelemeDurdur.current?.();
+    Sfx.confirm();
+    setPaylasDurum('busy');
+    try {
+      const istek = sonucPaylasimi(result, tournament);
+      const canvas = await paylasimKanvasi(istek.kart);
+      const durum = await paylasAc({ ...istek, canvas });
+      setPaylasDurum(durum === 'ok' || durum === 'iptal' ? 'idle' : durum);
+    } catch {
+      setPaylasDurum('hata');
+    }
+  };
 
   return (
     <div className="relative flex min-h-full flex-col items-center justify-center gap-7 overflow-hidden px-4 py-10">
@@ -429,7 +489,24 @@ export default function ResultScreen({
           <button type="button" className="retro-button-ghost px-8 py-4" onClick={onHome}>
 {t('nav.home')}
           </button>
+          <button
+            type="button"
+            className="retro-button-ghost px-8 py-4 disabled:opacity-50"
+            disabled={paylasDurum === 'busy'}
+            onClick={paylasSonuc}
+          >
+            {t('share.button')}
+          </button>
         </div>
+        {paylasDurum === 'hata' && (
+          <p className="w-full pb-4 text-center text-[7px] text-turkiye-red">{t('share.fail')}</p>
+        )}
+        {(paylasDurum === 'kopya' || paylasDurum === 'yedek') && (
+          <p className="w-full pb-4 text-center text-[7px] text-white/50">{t('share.copied')}</p>
+        )}
+        {(paylasDurum === 'gorsel' || paylasDurum === 'yedek') && (
+          <p className="w-full pb-4 text-center text-[7px] text-white/50">{t('share.saved')}</p>
+        )}
       </div>
     </div>
   );
