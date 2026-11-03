@@ -39,6 +39,7 @@ const INITIAL_HUD = {
   formatId: 'classic',
   campaign: 'match',
   roundLabel: null,
+  adContinue: null,
   survival: null,
   combo: 0,
   comboTier: null,
@@ -71,6 +72,8 @@ export default function MatchScreen({
 }) {
   const canvasRef = useRef(null);
   const gameRef = useRef(null);
+  const reklamKalanRef = useRef(reklamKalan);
+  reklamKalanRef.current = reklamKalan;
   /*
    * TEŞHİS KATMANI için motor referansı.
    *
@@ -125,6 +128,7 @@ export default function MatchScreen({
        */
       onFinish: (result) => onFinishRef.current(result),
       reklamTeklif,
+      reklamKalan: reklamKalanRef.current,
       // Çevrimiçi maçta rol ve gönderim kapısı
       agRol: config.agRol ?? null,
       agYuvam: config.agYuvam ?? null,
@@ -205,6 +209,11 @@ export default function MatchScreen({
      * hata sessizce oluşur.
      */
   }, [config, taniAcik, reklamTeklif]);
+
+  // Kota reklam bitince düşer. Maçı yeniden kurmak seti silerdi.
+  useEffect(() => {
+    if (gameRef.current) gameRef.current.reklamKalan = reklamKalan;
+  }, [reklamKalan]);
 
   // --- Maç sırasında menü kaydırmasını kilitle ---
   useEffect(() => {
@@ -863,6 +872,27 @@ export default function MatchScreen({
           </div>
         )}
 
+        {hud.phase === PHASE.AD_CONTINUE && (
+          <AdContinue
+            kind={hud.adContinue}
+            reklamKalan={reklamKalan}
+            adDurum={adDurum}
+            onWatch={async () => {
+              setAdDurum('yukleniyor');
+              const ok = onRewardedAd ? await onRewardedAd() : false;
+              if (ok && gameRef.current?.grantAdContinue()) {
+                setAdDurum('idle');
+              } else {
+                setAdDurum('hata');
+              }
+            }}
+            onSkip={() => {
+              gameRef.current?.declineAdContinue();
+              setAdDurum('idle');
+            }}
+          />
+        )}
+
         {hud.phase === PHASE.SURVIVAL_CONTINUE && (
           <div
             className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-black/90 px-4"
@@ -1018,6 +1048,56 @@ export default function MatchScreen({
           ? t('match.keysDual')
           : t('match.keysSolo')}
       </p>
+    </div>
+  );
+}
+
+const DEVAM_YAZI = {
+  next: { title: 'ad.setTitle', body: 'ad.setBody', skip: 'ad.setSkip' },
+  replay: { title: 'ad.replayTitle', body: 'ad.replayBody', skip: 'ad.replaySkip' },
+  loss: { title: 'ad.lossTitle', body: 'ad.lossBody', skip: 'ad.lossSkip' },
+};
+
+function AdContinue({ kind, reklamKalan, adDurum, onWatch, onSkip }) {
+  const yazi = DEVAM_YAZI[kind] ?? DEVAM_YAZI.next;
+  return (
+    <div
+      className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-black/90 px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={t(yazi.title)}
+    >
+      <p className="text-center text-sm text-white sm:text-lg">{t(yazi.title)}</p>
+      <p className="max-w-xs text-center text-[7px] leading-relaxed text-white/55 sm:text-[8px]">
+        {t(yazi.body)}
+      </p>
+      <div className="flex flex-wrap justify-center gap-3">
+        {reklamKalan > 0 && (
+          <button
+            type="button"
+            data-ad-continue
+            className="retro-button px-6 py-3"
+            disabled={adDurum === 'yukleniyor'}
+            onClick={onWatch}
+          >
+            {adDurum === 'yukleniyor' ? t('ad.loading') : t('ad.watch')}
+          </button>
+        )}
+        <button
+          type="button"
+          className="retro-button-ghost px-6 py-3"
+          disabled={adDurum === 'yukleniyor'}
+          onClick={onSkip}
+        >
+          {t(yazi.skip)}
+        </button>
+      </div>
+      {reklamKalan > 0 && (
+        <p className="text-center text-[6px] text-white/35">{t('ad.remaining', { n: reklamKalan })}</p>
+      )}
+      {adDurum === 'hata' && (
+        <p className="text-center text-[7px] text-turkiye-red">{t('ad.fail')}</p>
+      )}
     </div>
   );
 }

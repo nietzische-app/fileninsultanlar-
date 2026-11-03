@@ -498,4 +498,9 @@ export const PHASE = {
   MATCH_END: 'matchEnd',
   /** Hayatta kalma: can bitti, reklamla 1 can teklifi (yalnız mağaza). */
   SURVIVAL_CONTINUE: 'survivalContinue',
+  /**
+   * Tek maç, eşli oyun ve turnuva: set sonu ya da yenilgi.
+   * Reklamla sonraki sete geçilir ya da kaybedilen set baştan oynanır.
+   */
+  AD_CONTINUE: 'adContinue',
 };
