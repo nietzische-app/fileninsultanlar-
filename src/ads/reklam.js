@@ -86,6 +86,51 @@ function platformAdi(kap) {
   return ad === 'android' ? 'android' : 'ios';
 }
 
+/** İzin diyaloğu açıkken SDK'nın başlaması için üst süre. Oyun bu sırada kilitlenmez. */
+const IZLEME_BEKLE_MS = 90000;
+
+function bekle(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+/**
+ * iOS'ta reklam ölçümünden önce sistem izleme iznini ister.
+ * Android'de ve web'de no-op. Reddetmek reklamı kapatmaz.
+ * @returns {Promise<string>} authorized, denied, restricted, notDetermined, yok veya hata
+ */
+export async function izlemeIzniIste(AdMob, kap, bekleMs = IZLEME_BEKLE_MS) {
+  if (platformAdi(kap) !== 'ios') return 'yok';
+  if (typeof AdMob?.requestTrackingAuthorization !== 'function') return 'yok';
+  const baslangic = Date.now();
+  const kalan = () => Math.max(0, bekleMs - (Date.now() - baslangic));
+  const oku = async () => {
+    if (typeof AdMob.trackingAuthorizationStatus !== 'function') return null;
+    const durum = await AdMob.trackingAuthorizationStatus();
+    return typeof durum?.status === 'string' ? durum.status : null;
+  };
+  try {
+    let status = await oku();
+    if (status && status !== 'notDetermined') return status;
+    const istek = Promise.resolve()
+      .then(() => AdMob.requestTrackingAuthorization())
+      .catch((hata) => {
+        reklamHatasiYaz('izleme izni', hata);
+      });
+    await Promise.race([istek, bekle(kalan())]);
+    status = await oku();
+    while ((!status || status === 'notDetermined') && kalan() > 0) {
+      await bekle(Math.min(250, kalan()));
+      status = await oku();
+    }
+    return status || 'notDetermined';
+  } catch (hata) {
+    reklamHatasiYaz('izleme izni', hata);
+    return 'hata';
+  }
+}
+
 /**
  * Yükleme / gösterme hatasını konsola yazar. `code` ve `message`
  * AdMob'un döndürdüğü alanlar; promise reddi bazen code'u yazı verir.
@@ -154,6 +199,7 @@ export async function reklamKur(kap = globalThis, bag = {}) {
     try {
       const { AdMob } = await apiAl(bag);
       const kim = reklamKimlikleri(undefined, { platform: platformAdi(kap) });
+      await izlemeIzniIste(AdMob, kap, bag.izlemeBekleMs);
       await AdMob.initialize({
         initializeForTesting: kim.demo ? false : kim.test,
       });

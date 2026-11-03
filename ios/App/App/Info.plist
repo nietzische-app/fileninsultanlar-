@@ -48,6 +48,12 @@
 	-->
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<!--
+		Reklam ölçümü, izleme izni sorulmadan başlamasın.
+		AdMob.initialize bu anahtardan sonra çalışır.
+	-->
+	<key>GADDelayAppMeasurementInit</key>
+	<true/>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>This identifier is used to deliver personalized ads. You can play without allowing it.</string>
 	<key>SKAdNetworkItems</key>

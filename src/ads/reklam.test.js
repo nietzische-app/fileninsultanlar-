@@ -4,6 +4,7 @@ import {
   reklamAcikMi,
   reklamKur,
   reklamSifirla,
+  izlemeIzniIste,
   odulluGoster,
   gecisGoster,
   bannerGoster,
@@ -121,6 +122,78 @@ describe('reklam yalnız native', () => {
 
   it('isNativePlatform true iken açık', () => {
     expect(reklamAcikMi({ Capacitor: { isNativePlatform: () => true } })).toBe(true);
+  });
+});
+
+describe('izleme izni', () => {
+  function izinli(status) {
+    const sira = [];
+    let durum = status;
+    const AdMob = {
+      initialize: async () => { sira.push('initialize'); },
+      trackingAuthorizationStatus: async () => ({ status: durum }),
+      requestTrackingAuthorization: async () => {
+        sira.push('requestTracking');
+        durum = 'authorized';
+      },
+    };
+    return { sira, AdMob };
+  }
+
+  it('iOS’ta SDK kurulmadan önce sistem iznini ister', async () => {
+    const { sira, AdMob } = izinli('notDetermined');
+    const ok = await reklamKur(kabuk, { eklenti: { AdMob }, izlemeBekleMs: 0 });
+    expect(ok).toBe(true);
+    expect(sira.indexOf('requestTracking')).toBeGreaterThan(-1);
+    expect(sira.indexOf('requestTracking')).toBeLessThan(sira.indexOf('initialize'));
+  });
+
+  it('izin daha önce verildiyse diyaloğu yeniden açmaz', async () => {
+    const { sira, AdMob } = izinli('authorized');
+    const sonuc = await izlemeIzniIste(AdMob, kabuk, 0);
+    expect(sonuc).toBe('authorized');
+    expect(sira).not.toContain('requestTracking');
+  });
+
+  it('izin reddedilse de SDK kurulur', async () => {
+    const sira = [];
+    const AdMob = {
+      initialize: async () => { sira.push('initialize'); },
+      trackingAuthorizationStatus: async () => ({ status: 'denied' }),
+      requestTrackingAuthorization: async () => { sira.push('requestTracking'); },
+    };
+    const ok = await reklamKur(kabuk, { eklenti: { AdMob }, izlemeBekleMs: 0 });
+    expect(ok).toBe(true);
+    expect(sira).toEqual(['initialize']);
+  });
+
+  it('izin çağrısı düşerse kuruluma devam eder', async () => {
+    const hata = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const sira = [];
+    const AdMob = {
+      initialize: async () => { sira.push('initialize'); },
+      requestTrackingAuthorization: async () => {
+        throw { code: 1, message: 'att yok' };
+      },
+    };
+    const ok = await reklamKur(kabuk, { eklenti: { AdMob }, izlemeBekleMs: 0 });
+    expect(ok).toBe(true);
+    expect(sira).toEqual(['initialize']);
+    expect(hata.mock.calls.map((satir) => satir.join(' ')).join('\n')).toContain('message=att yok');
+  });
+
+  it('Android’de izleme diyaloğu açmaz', async () => {
+    const android = {
+      Capacitor: { isNativePlatform: () => true, getPlatform: () => 'android' },
+    };
+    const sira = [];
+    const AdMob = {
+      initialize: async () => { sira.push('initialize'); },
+      requestTrackingAuthorization: async () => { sira.push('requestTracking'); },
+    };
+    const ok = await reklamKur(android, { eklenti: { AdMob }, izlemeBekleMs: 0 });
+    expect(ok).toBe(true);
+    expect(sira).toEqual(['initialize']);
   });
 });
 
