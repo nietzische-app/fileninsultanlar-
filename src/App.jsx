@@ -47,6 +47,7 @@ import {
   KAZANC,
 } from './game/ilerleme.js';
 import { magazaPaketiMi } from './utils/gizlilik.js';
+import { oturumBaslat } from './buyume/degerlendirme.js';
 import { demoFormlariYukle, odulluGoster, reklamKur } from './ads/reklam.js';
 import { getGameMode } from './game/modes.js';
 import { useDil } from './i18n/DilBaglami.jsx';
@@ -123,6 +124,7 @@ export default function App() {
 
   // İlk yüklemede ses motoruna kayıtlı tercihleri uygula
   useEffect(() => {
+    oturumBaslat();
     Sfx.setMuted(initialPrefs.muted);
     Sfx.setMusicVolume(initialPrefs.musicVolume);
     Sfx.setSfxVolume(initialPrefs.sfxVolume);
