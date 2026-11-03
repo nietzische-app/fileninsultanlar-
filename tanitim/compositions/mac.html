@@ -1,0 +1,46 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #0b0b12;
+    }
+    #oyun-kat {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+    #oyun {
+      position: absolute;
+      left: -12px;
+      top: 0;
+      width: 1944px;
+      height: 1080px;
+      image-rendering: pixelated;
+    }
+  </style>
+  <div data-hf-id="hf-mac" id="root" data-composition-id="mac" data-width="1920" data-height="1080" data-motion-blur="on" data-motion-blur-events="on">
+    <div data-hf-id="hf-oyun" id="oyun-kat" class="clip" data-start="0" data-duration="20" data-track-index="0" data-layout-allow-overflow>
+      <canvas id="oyun" width="900" height="500"></canvas>
+    </div>
+  </div>
+  <script>
+    const tuval = document.getElementById("oyun");
+    const baglam = tuval.getContext("2d");
+    baglam.imageSmoothingEnabled = false;
+
+    function kare(t) {
+      if (window.Sahne && window.Sahne.ciz) window.Sahne.ciz(baglam, t);
+    }
+
+    window.addEventListener("hf-seek", (e) => {
+      kare(e.detail.time);
+    });
+    kare(0);
+
+    const tl = gsap.timeline({ paused: true });
+    window.__timelines = window.__timelines || {};
+    window.__timelines.mac = tl;
+  </script>
+</template>

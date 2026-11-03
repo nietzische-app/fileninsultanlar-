@@ -1,0 +1,13 @@
+{
+  "name": "tanitim",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "motor": "npx --yes esbuild motor/sahne.js --bundle --format=iife --global-name=Sahne --outfile=assets/js/sahne.js",
+    "dev": "npm run motor && npx --yes hyperframes@0.8.222 preview",
+    "check": "npm run motor && npx --yes hyperframes@0.8.222 check",
+    "render": "npm run motor && npx --yes hyperframes@0.8.222 render --quality looks --output ../assets/tanitim.mp4",
+    "render:draft": "npx --yes hyperframes@0.8.222 render --quality draft --output ../assets/tanitim.mp4",
+    "publish": "npx --yes hyperframes@0.8.222 publish"
+  }
+}
