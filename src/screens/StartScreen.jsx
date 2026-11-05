@@ -15,6 +15,7 @@ import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
 import { t, modeYazi, sayiYazi } from '../i18n/index.js';
 import DilSecici from '../i18n/DilSecici.jsx';
+import ProductHuntKarti from '../components/ProductHuntKarti.jsx';
 
 const PRIDE_KEYS = ['start.pride.0', 'start.pride.1', 'start.pride.2', 'start.pride.3'];
 
@@ -299,6 +300,12 @@ export default function StartScreen({
         <footer className="max-w-md text-center text-[7px] leading-relaxed text-white/30">
           {t('start.footer')}
         </footer>
+
+        {/*
+          Yalnız site ve localhost. Mağaza paketi ile portal iframe'i
+          `phKartiGoster` içinde eleniyor; burada ikinci bir koşul yok.
+        */}
+        <ProductHuntKarti />
       </div>
     </div>
   );

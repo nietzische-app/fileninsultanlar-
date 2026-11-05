@@ -49,6 +49,8 @@ export const SOZLUK = {
     'start.dive': '↓ / S · DALIŞ (HAVADA PLASE)',
     'start.footer':
       'Voleybola saygıyla yapılmış, ticari olmayan bağımsız bir oyundur. Takımlar ve oyuncular kurgusaldır.',
+    'ph.tagline': '8 bit piksel voleybol',
+    'ph.cta': "Product Hunt'ta gör →",
     'start.pride.0': 'FİLENİN İKİ YANINDA, TEK BİR YÜREK',
     'start.pride.1': 'SAHADA YÜREK, FİLEDE ZAFER',
     'start.pride.2': 'KIRMIZI BEYAZ, DÜNYANIN ZİRVESİNDE',
@@ -573,6 +575,8 @@ export const SOZLUK = {
     'start.dive': '↓ / S · DIVE (TIP IN AIR)',
     'start.footer':
       'An independent, non-commercial game made with respect for volleyball. Teams and players are fictional.',
+    'ph.tagline': '8-bit pixel volleyball',
+    'ph.cta': 'Check it out on Product Hunt →',
     'start.pride.0': 'ONE HEART ON BOTH SIDES OF THE NET',
     'start.pride.1': 'HEART ON THE COURT, GLORY AT THE NET',
     'start.pride.2': 'RED AND WHITE AT THE TOP OF THE WORLD',
