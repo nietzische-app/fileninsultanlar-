@@ -15,6 +15,7 @@ import Sfx from '../game/audio.js';
 import { upper } from '../utils/text.js';
 import { t, modeYazi, sayiYazi } from '../i18n/index.js';
 import DilSecici from '../i18n/DilSecici.jsx';
+import ProductHuntKarti from '../components/ProductHuntKarti.jsx';
 
 const PRIDE_KEYS = ['start.pride.0', 'start.pride.1', 'start.pride.2', 'start.pride.3'];
 
@@ -213,6 +214,13 @@ export default function StartScreen({
             ⚙ {t('nav.settings')}
           </button>
         </div>
+
+        {/*
+          Mod tuşlarıyla aynı bakışta. Altbilginin altında kalınca
+          kart ilk ekranda yarıda kesiliyor, düğmesi kaydırılmadan
+          görünmüyordu. Mağaza ve portal `phKartiGoster` ile elenir.
+        */}
+        <ProductHuntKarti />
       </div>
 
       {/* İkinci bakış — kaydırınca; ilk ekranı tıkamaz */}
