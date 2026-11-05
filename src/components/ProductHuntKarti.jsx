@@ -38,6 +38,7 @@ export default function ProductHuntKarti({
         padding: 20,
         maxWidth: 500,
         width: '100%',
+        margin: '0 auto',
         background: '#fff',
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
         color: '#1a1a1a',

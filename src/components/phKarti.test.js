@@ -6,10 +6,11 @@ import ProductHuntKarti from './ProductHuntKarti.jsx';
 import { PH_ADRES, phKartiGoster } from './phKarti.js';
 
 describe('phKartiGoster', () => {
-  it('kendi sitemizde ve geliştirmede açık', () => {
+  it('kendi sitemizde, geliştirmede ve Vercel önizlemesinde açık', () => {
     expect(phKartiGoster({ hostname: 'www.retrovoleybol.online' })).toBe(true);
     expect(phKartiGoster({ hostname: 'retrovoleybol.online' })).toBe(true);
     expect(phKartiGoster({ hostname: 'localhost' })).toBe(true);
+    expect(phKartiGoster({ hostname: 'fileninsultanlar-git-cursor-ebdd49-niyazionderr-3847s-projects.vercel.app' })).toBe(true);
   });
 
   it('mağaza paketi, iframe ve yabancı alan adında kapalı', () => {
@@ -17,6 +18,8 @@ describe('phKartiGoster', () => {
     expect(phKartiGoster({ hostname: 'www.retrovoleybol.online', cerceve: true })).toBe(false);
     expect(phKartiGoster({ hostname: 'www.y8.com' })).toBe(false);
     expect(phKartiGoster({ hostname: 'oyun.crazygames.com' })).toBe(false);
+    expect(phKartiGoster({ hostname: 'vercel.app.evil.com' })).toBe(false);
+    expect(phKartiGoster({ hostname: 'notvercel.app' })).toBe(false);
   });
 });
 

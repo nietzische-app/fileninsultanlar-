@@ -214,6 +214,13 @@ export default function StartScreen({
             ⚙ {t('nav.settings')}
           </button>
         </div>
+
+        {/*
+          Mod tuşlarıyla aynı bakışta. Altbilginin altında kalınca
+          kart ilk ekranda yarıda kesiliyor, düğmesi kaydırılmadan
+          görünmüyordu. Mağaza ve portal `phKartiGoster` ile elenir.
+        */}
+        <ProductHuntKarti />
       </div>
 
       {/* İkinci bakış — kaydırınca; ilk ekranı tıkamaz */}
@@ -300,12 +307,6 @@ export default function StartScreen({
         <footer className="max-w-md text-center text-[7px] leading-relaxed text-white/30">
           {t('start.footer')}
         </footer>
-
-        {/*
-          Yalnız site ve localhost. Mağaza paketi ile portal iframe'i
-          `phKartiGoster` içinde eleniyor; burada ikinci bir koşul yok.
-        */}
-        <ProductHuntKarti />
       </div>
     </div>
   );

@@ -5,8 +5,8 @@
  * portallarında (Y8, CrazyGames, iframe) aynı paket çalışır; orada
  * harici bir tanıtım kartı hem yersiz hem portal kurallarına aykırı.
  *
- * Geliştirme `localhost`'ta görünür ki kart yerinde doğrulanabilsin.
- * Capacitor da `localhost` kullanır ama o yol `yerel` ile kapanır.
+ * Geliştirme `localhost`'ta, dağıtım önizlemesi `*.vercel.app`'ta
+ * görünür. Capacitor da `localhost` kullanır ama o yol `yerel` ile kapanır.
  */
 
 export const PH_ADRES =
@@ -25,5 +25,7 @@ const GELISTIRME = new Set(['localhost', '127.0.0.1']);
 export function phKartiGoster({ yerel = false, hostname = '', cerceve = false } = {}) {
   if (yerel || cerceve) return false;
   const ad = String(hostname).toLowerCase();
-  return SITE.has(ad) || GELISTIRME.has(ad);
+  if (SITE.has(ad) || GELISTIRME.has(ad)) return true;
+  // Nokta sınırı: `notvercel.app` ve `vercel.app.evil.com` elenir.
+  return ad.endsWith('.vercel.app');
 }
