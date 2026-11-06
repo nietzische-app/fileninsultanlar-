@@ -280,16 +280,40 @@ export class WebTransportTasima extends Tasima {
  * @param {boolean} [secenek.wt] WebTransport denensin mi (varsayılan: evet)
  * @param {Function} [secenek.wtYapici] Test için
  * @param {Function} [secenek.wsYapici] Test için
+ * @param {number} [secenek.wtSure] WebTransport tavanı (ms)
  * @returns {Promise<Tasima>}
  */
+/**
+ * WebTransport denemesinin tavanı.
+ *
+ * Canlı röle QUIC konuşmuyor (WT kapalı) ama Caddy HTTP/3 ilan ediyor.
+ * Chrome bu adrese 4 saniye `QUIC_NETWORK_IDLE_TIMEOUT` ile bakıyor,
+ * ancak ondan sonra WebSocket'e düşüyor. İki telefon aynı anda
+ * ONLINE'a basınca biri hâlâ bu elde, diğeri sırada yalnız kalıyor
+ * ve ekranda "rakip yok" yazıyor. 1.5 saniye, çalışan bir QUIC
+ * el sıkışması için bol; aşarsa beklenen başarısızlık sayılır.
+ */
+const WT_BEKLEME_MS = 1500;
+
 export async function tasimaKur(url, secenek = {}) {
-  const { wt = true, wtYapici, wsYapici } = secenek;
+  const { wt = true, wtYapici, wsYapici, wtSure = WT_BEKLEME_MS } = secenek;
   const wtUrl = wtAdresi(url);
 
   if (wt && wtUrl && WebTransportTasima.destekli(wtYapici)) {
     const deneme = new WebTransportTasima(wtUrl, wtYapici);
+    const acilis = deneme.ac();
+    // Zaman aşımı kazanırsa `ac()` sonradan reddedilince yakalanmamış
+    // söz kalmasın. Beklemiyoruz: asılı kalan el sıkışması burada
+    // WebSocket'e dönüşü de asılı bırakırdı.
+    acilis.catch(() => {});
+    let zamanlayici;
     try {
-      await deneme.ac();
+      await Promise.race([
+        acilis,
+        new Promise((_, red) => {
+          zamanlayici = setTimeout(() => red(new Error('wt-zaman')), wtSure);
+        }),
+      ]);
       return deneme;
     } catch {
       /*
@@ -299,6 +323,8 @@ export async function tasimaKur(url, secenek = {}) {
        * kapatıyor ve o oyuncular WebSocket'le sorunsuz oynamalı.
        */
       deneme.kapat();
+    } finally {
+      clearTimeout(zamanlayici);
     }
   }
 

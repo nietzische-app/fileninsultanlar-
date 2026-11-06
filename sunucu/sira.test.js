@@ -86,6 +86,32 @@ describe('eşleşme sırası', () => {
     expect(sira.sayi).toBe(1);
   });
 
+  it('aynı kimliğin eski soketiyle eşleşmez, onu düşürür', () => {
+    const sira = new EslesmeSirasi();
+    const eski = istemci('eski');
+    const yeni = istemci('yeni');
+    sira.katil(eski, { id: 'oyuncu-1' });
+
+    const sonuc = sira.katil(yeni, { id: 'oyuncu-1' });
+
+    expect(sonuc.es).toBeUndefined();
+    expect(sonuc.dustu.istemci).toBe(eski);
+    expect(sira.varMi(eski)).toBe(false);
+    expect(sira.varMi(yeni)).toBe(true);
+    expect(sira.sayi).toBe(1);
+  });
+
+  it('farklı kimlikler hâlâ eşleşir', () => {
+    const sira = new EslesmeSirasi();
+    const a = istemci('a');
+    const b = istemci('b');
+    sira.katil(a, { id: 'bir' });
+    const sonuc = sira.katil(b, { id: 'iki' });
+    expect(sonuc.es.istemci).toBe(a);
+    expect(sonuc.dustu).toBeNull();
+    expect(sira.sayi).toBe(0);
+  });
+
   it('kendisiyle eşleşmez', () => {
     // Tek kişilik sunucuda ikinci `katil` çağrısı kendi kaydını
     // bulup eşleştirebilirdi; "önce eşleştir, sonra ekle" sırası
