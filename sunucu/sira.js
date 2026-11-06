@@ -72,6 +72,20 @@ export class EslesmeSirasi {
   katil(istemci, kimlik = {}, simdi = Date.now()) {
     if (this.varMi(istemci)) return { hata: HATA.zatenSirada };
 
+    /*
+     * Aynı kimliğin ESKİ soketi sıradaysa onu eş sanma.
+     *
+     * Telefon bağlantıyı yenileyince (ekran dönmesi, uygulama öne
+     * gelmesi) eski soket kapanmadan yeni soket sıraya giriyor.
+     * İkisi aynı kişi; eşleştirirsek oyuncu kendisiyle maça girer
+     * ve arkadaşı dışarıda, "kimse yok"ta kalır.
+     */
+    let dustu = null;
+    if (kimlik?.id) {
+      const yer = this.bekleyenler.findIndex((k) => k.kimlik?.id === kimlik.id);
+      if (yer >= 0) dustu = this.bekleyenler.splice(yer, 1)[0];
+    }
+
     const ben = { istemci, kimlik, giris: simdi, uyarildi: false };
 
     /*
@@ -80,7 +94,7 @@ export class EslesmeSirasi {
      * gerekirdi; sıra da bir an için tutarsız görünürdü.
      */
     const es = this.bekleyenler.shift();
-    if (es) return { es, ben };
+    if (es) return { es, ben, dustu };
 
     /*
      * Doluluk sınırı eşleşme denemesinden SONRA. Önce bakıyordu ve
@@ -88,10 +102,13 @@ export class EslesmeSirasi {
      * olan kişiydi ve "sunucu dolu" ile geri çevriliyordu. Sınır
      * yalnızca sıranın büyümesini engellemeli, küçülmesini değil.
      */
-    if (this.bekleyenler.length >= this.azamiSira) return { hata: HATA.sunucuDolu };
+    if (this.bekleyenler.length >= this.azamiSira) {
+      if (dustu) this.bekleyenler.unshift(dustu);
+      return { hata: HATA.sunucuDolu };
+    }
 
     this.bekleyenler.push(ben);
-    return { sira: this.bekleyenler.length };
+    return { sira: this.bekleyenler.length, dustu };
   }
 
   /**

@@ -150,6 +150,30 @@ describe('WebTransport taşıma', () => {
 });
 
 describe('geri düşüş', () => {
+  it('WebTransport askıda kalırsa süre dolunca WebSocket e döner', async () => {
+    let kapandi = false;
+    const yapici = () => ({
+      ready: new Promise(() => {}),
+      closed: new Promise(() => {}),
+      close() { kapandi = true; },
+      createBidirectionalStream: () => new Promise(() => {}),
+      datagrams: {
+        writable: { getWriter: () => ({ write: async () => {} }) },
+        readable: { getReader: () => ({ read: () => new Promise(() => {}) }) },
+      },
+    });
+    const bas = Date.now();
+    const t = await tasimaKur('wss://rele.example', {
+      wtYapici: yapici,
+      wsYapici: (u) => new SahteSoket(u),
+      wtSure: 30,
+    });
+    expect(t.ad).toBe('websocket');
+    expect(t.acikMi()).toBe(true);
+    expect(kapandi).toBe(true);
+    expect(Date.now() - bas).toBeLessThan(1000);
+  });
+
   it('WebTransport açılmazsa SESSİZCE WebSocket e döner', async () => {
     /*
      * Safari'de WebTransport yok; kurum ağlarının çoğu da UDP/443'ü

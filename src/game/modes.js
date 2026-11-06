@@ -136,6 +136,27 @@ export function getGameMode(id) {
 }
 
 /**
+ * İlk öğretici bitince hangi ekran.
+ *
+ * ONLINE'ın sözü tek dokunuşta rakip. Öğretici bitince herkesi kadro
+ * ekranına yollamak o sözü bozuyordu: iki telefon da ONLINE'a basıyor,
+ * öğreticiyi geçiyor ve ikisi de kadro seçiminde kalıyordu. Sıra hiç
+ * kurulmadığı için birbirlerini bulamıyorlardı.
+ *
+ * Menüden açılan öğretici (NASIL OYNANIR) yine ana menüye döner.
+ *
+ * @param {boolean} menuDen
+ * @param {string|null} modeId Öğreticiden önce basılan mod
+ * @returns {'start'|'online'|'select'}
+ */
+export function tutorialSonrasi(menuDen, modeId) {
+  if (menuDen) return 'start';
+  const mode = GAME_MODES.find((m) => m.id === modeId);
+  if (mode?.hizli) return 'online';
+  return 'select';
+}
+
+/**
  * Aynı cihazda iki insan mı oynuyor?
  *
  * Çevrimiçi maç motor açısından `vs` olsa da oyuncular ayrı cihazlarda

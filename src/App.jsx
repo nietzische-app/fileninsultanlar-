@@ -48,7 +48,7 @@ import {
 } from './game/ilerleme.js';
 import { magazaPaketiMi } from './utils/gizlilik.js';
 import { demoFormlariYukle, odulluGoster, reklamKur } from './ads/reklam.js';
-import { getGameMode } from './game/modes.js';
+import { getGameMode, tutorialSonrasi } from './game/modes.js';
 import { useDil } from './i18n/DilBaglami.jsx';
 
 /**
@@ -112,8 +112,13 @@ export default function App() {
    * gösterebilsin diye ikisi ayrı tutuluyor.
    */
   const [rovans, setRovans] = useState({ ben: false, rakip: false, bekleniyor: false });
-  /** Tutorial menüden mi açıldı (geri → start), yoksa ilk akış mı (→ select). */
+  /** Tutorial menüden mi açıldı (geri → start), yoksa ilk akış mı. */
   const [tutorialFromMenu, setTutorialFromMenu] = useState(false);
+  /**
+   * Öğreticiye girmeden basılan mod. ONLINE ise bitince kadroya
+   * değil sıraya gidilir; yoksa iki telefon birbirini hiç aramaz.
+   */
+  const [bekleyenMod, setBekleyenMod] = useState(null);
   /** Açık çevrimiçi bağlantı — sahibi burası, kapatan da burası. */
   const baglantiRef = useRef(null);
 
@@ -215,6 +220,25 @@ export default function App() {
     setScreen('select');
   }, []);
 
+  const hizliyeGir = useCallback((kayit) => {
+    setResult(null);
+    setBrokenRecords(null);
+    setFinishedTournament(null);
+    setMatchConfig({
+      campaign: 'match',
+      playMode: 'vs',
+      mode: kayit.mode,
+      difficulty: kayit.difficulty,
+      format: kayit.format,
+      opponentId: kayit.opponentId === 'random' ? undefined : kayit.opponentId,
+      opponentRandom: kayit.opponentId === 'random',
+      homeIds: kayit.homeIds,
+      hizli: true,
+      startedAt: Date.now(),
+    });
+    setScreen('online');
+  }, []);
+
   const handleStart = useCallback(
     (modeId = 'match') => {
       // Mod id'si kampanya ile oyuncu sayısını birlikte taşır
@@ -224,6 +248,7 @@ export default function App() {
       setModeId(mode.id);
       if (!prefs.tutorialSeen) {
         setTutorialFromMenu(false);
+        setBekleyenMod(mode.id);
         setScreen('tutorial');
         return;
       }
@@ -238,45 +263,37 @@ export default function App() {
        * yalnız varsayılanı hızlandırıyor.
        */
       if (mode.hizli) {
-        setResult(null);
-        setBrokenRecords(null);
-        setFinishedTournament(null);
-        setMatchConfig({
-          campaign: 'match',
-          playMode: 'vs',
-          mode: prefs.mode,
-          difficulty: prefs.difficulty,
-          format: prefs.format,
-          opponentId: prefs.opponentId === 'random' ? undefined : prefs.opponentId,
-          opponentRandom: prefs.opponentId === 'random',
-          homeIds: prefs.homeIds,
-          hizli: true,
-          startedAt: Date.now(),
-        });
-        setScreen('online');
+        hizliyeGir(prefs);
         return;
       }
 
       goSelect();
     },
-    [prefs, goSelect]
+    [prefs, goSelect, hizliyeGir]
   );
 
   const openTutorial = useCallback(() => {
     Sfx.select();
     setTutorialFromMenu(true);
+    setBekleyenMod(null);
     setScreen('tutorial');
   }, []);
 
   const finishTutorial = useCallback(() => {
     const next = savePrefs({ tutorialSeen: true });
     setPrefs(next);
-    if (tutorialFromMenu) {
+    const hedef = tutorialSonrasi(tutorialFromMenu, bekleyenMod);
+    setBekleyenMod(null);
+    if (hedef === 'start') {
       setScreen('start');
       return;
     }
+    if (hedef === 'online') {
+      hizliyeGir(next);
+      return;
+    }
     goSelect();
-  }, [tutorialFromMenu, goSelect]);
+  }, [tutorialFromMenu, bekleyenMod, goSelect, hizliyeGir]);
 
   const goHome = useCallback(() => {
     Sfx.select();

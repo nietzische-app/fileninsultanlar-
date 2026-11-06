@@ -629,6 +629,9 @@ export async function baslat({
            * iki tarafın da kimliğini arıyor.
            */
           const sonuc = sira.katil(soket, soket.kimlik ?? {});
+          if (sonuc.dustu?.istemci && sonuc.dustu.istemci !== soket) {
+            try { sonuc.dustu.istemci.close?.(1000, 'yerine-gecildi'); } catch { /* kapalı */ }
+          }
           if (sonuc.hata) {
             hataYolla(soket, sonuc.hata);
             break;

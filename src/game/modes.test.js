@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getGameMode, yerelCift, GAME_MODES } from './modes.js';
+import { getGameMode, tutorialSonrasi, yerelCift, GAME_MODES } from './modes.js';
 
 describe('yerelCift', () => {
   it('yerel Co-Op ve VS için true', () => {
@@ -22,6 +22,22 @@ describe('yerelCift', () => {
     expect(yerelCift('solo')).toBe(false);
     expect(yerelCift('online')).toBe(false);
     expect(yerelCift(undefined)).toBe(false);
+  });
+});
+
+describe('tutorialSonrasi', () => {
+  it('ONLINE öğreticiden sonra sıraya girer, kadroya değil', () => {
+    expect(tutorialSonrasi(false, 'hemen')).toBe('online');
+  });
+
+  it('diğer modlar kadro ekranına gider', () => {
+    expect(tutorialSonrasi(false, 'match')).toBe('select');
+    expect(tutorialSonrasi(false, 'tournament')).toBe('select');
+    expect(tutorialSonrasi(false, null)).toBe('select');
+  });
+
+  it('menüdeki NASIL OYNANIR ana menüye döner', () => {
+    expect(tutorialSonrasi(true, 'hemen')).toBe('start');
   });
 });
 
