@@ -121,25 +121,27 @@ jobs:
 
       # AdMob kimliği Info.plist'e YAPIM ANINDA yazılıyor.
       #
-      # Depoda Google'ın demo kimliği duruyor ki yerel arşiv de
-      # çalışsın; yayına giden pakette gerçek kimlik olmalı. Değişken
-      # boşsa iş BURADA duruyor: demo kimlikle mağazaya çıkmak tam
-      # olarak yaşanan arızaydı (reklamlar göründü ama gelir sıfırdı).
+      # DURDURMUYOR, UYARIYOR. Bir sürüm boyunca burada `exit 1` vardı
+      # ve değişken girilmeden çalışan iOS borusunu kırdı. Sahibinin
+      # kararı: yapı yeşil kalsın, eksik kimlik uyarı olarak görünsün.
+      #
+      # Değişken girildiği an bu adım gerçek kimliği yazar; başka bir
+      # kod değişikliği gerekmiyor. Girilmediği sürece pakette depodaki
+      # DEMO kimlik kalır ve iOS'ta reklamlar gelir getirmez.
       - name: AdMob iOS kimliğini yaz
         env:
           ADMOB_IOS_APP_ID: ${{ vars.VITE_ADMOB_IOS_APP_ID }}
         run: |
           if [ -z "$ADMOB_IOS_APP_ID" ]; then
-            echo "::error::VITE_ADMOB_IOS_APP_ID deposu değişkeni boş. AdMob > Uygulamalar > iOS uygulamasının 'ca-app-pub-…~…' kimliğini girin."
-            exit 1
+            echo "::warning::VITE_ADMOB_IOS_APP_ID boş — paket Google'ın DEMO kimliğiyle çıkıyor, iOS reklamları gelir getirmez. AdMob > Uygulamalar > iOS uygulamasının 'ca-app-pub-…~…' kimliğini Variables'a girin."
+          else
+            case "$ADMOB_IOS_APP_ID" in
+              ca-app-pub-3940256099942544*)
+                echo "::warning::Verilen kimlik Google'ın DEMO kimliği; gelir getirmez."
+                ;;
+            esac
+            /usr/libexec/PlistBuddy -c "Set :GADApplicationIdentifier $ADMOB_IOS_APP_ID" ios/App/App/Info.plist
           fi
-          case "$ADMOB_IOS_APP_ID" in
-            ca-app-pub-3940256099942544*)
-              echo "::error::Verilen kimlik Google'ın DEMO kimliği. Gerçek iOS uygulama kimliğini girin."
-              exit 1
-              ;;
-          esac
-          /usr/libexec/PlistBuddy -c "Set :GADApplicationIdentifier $ADMOB_IOS_APP_ID" ios/App/App/Info.plist
           echo "GADApplicationIdentifier = $(/usr/libexec/PlistBuddy -c 'Print :GADApplicationIdentifier' ios/App/App/Info.plist)"
 
       - name: Web yapısı + iOS kopyası

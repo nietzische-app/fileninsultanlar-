@@ -161,11 +161,18 @@ uygulama ve ayrı birim veriyor; iOS'ta Android biriminin istenmesi
 "no fill" demek. Bir yuvanın değişkeni boşsa o yuva O PLATFORMUN demo
 birimine düşer ve test reklamı gösterir (para getirmez).
 
-Uygulama kimliği boşsa yapı **durur**: `ADMOB_APP_ID` yoksa Android
-işi, `VITE_ADMOB_IOS_APP_ID` yoksa iOS işi hata verip biter. Sebebi
-yaşanmış: mağazadaki iki sürüm de Google'ın demo kimliğiyle çıktı ve
-reklamlar ya görünmedi ya test reklamı oldu — gelir sıfırdı ve bunu
-fark etmek haftalar aldı.
+Uygulama kimliği boşsa:
+
+- **Android** (`ADMOB_APP_ID`): yapı **durur**. İş elle tetikleniyor,
+  yani duran bir şeyi kimse beklemiyor.
+- **iOS** (`VITE_ADMOB_IOS_APP_ID`): yapı **devam eder, uyarı basar**
+  ve pakette depodaki demo kimlik kalır. Bu iş her `main` push'unda
+  koşup TestFlight'a yüklüyor; sert denetim çalışan boruyu kırdığı
+  için uyarıya çevrildi.
+
+Sebebi yaşanmış: mağazadaki iki sürüm de Google'ın demo kimliğiyle
+çıktı ve reklamlar ya görünmedi ya test reklamı oldu — gelir sıfırdı
+ve bunu fark etmek haftalar aldı.
 
 Uzun metni panoya almak: `xclip -sel clip < ~/filenin-imza/sultanlar.b64`
 (Linux) ya da `pbcopy < ~/filenin-imza/sultanlar.b64` (macOS).
