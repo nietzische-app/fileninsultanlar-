@@ -269,7 +269,7 @@ jobs:
           BUILD_NUMBER=$(( GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT ))
           echo "App Store derleme numarası: $BUILD_NUMBER (önceki yükleme 2)"
           python3 - "$APPLE_TEAM_ID" "$APPLE_BUNDLE_ID" "$PROFILE_NAME" "$BUILD_NUMBER" << 'PY'
-          import pathlib, plistlib, re, sys
+          import json, pathlib, plistlib, re, sys
           team, bundle, profile, build = sys.argv[1:]
           if not build.isdigit() or int(build) <= 2:
               raise SystemExit(f"derleme numarası 2'den büyük olmalı: {build}")
@@ -302,6 +302,23 @@ jobs:
           )
           if n < 1:
               raise SystemExit("CURRENT_PROJECT_VERSION bulunamadı")
+
+          # CFBundleShortVersionString — mağazada görünen sürüm.
+          #
+          # Xcode projesinde `MARKETING_VERSION = 1.0` SABİT yazılıydı ve
+          # Android `package.json`dan okuyordu: aynı ürün iki ayrı sürüm
+          # çizgisindeydi. 1.0 App Store'da onaylanınca o tren kapandı ve
+          # her yükleme "1.0'dan büyük olmalı" diye reddedilmeye başladı.
+          # Artık tek kaynak: package.json.
+          surum = json.loads(pathlib.Path("package.json").read_text())["version"]
+          text, m = re.subn(
+              r"MARKETING_VERSION = [^;]+;",
+              f"MARKETING_VERSION = {surum};",
+              text,
+          )
+          if m < 1:
+              raise SystemExit("MARKETING_VERSION bulunamadı")
+          print(f"CFBundleShortVersionString = {surum} ({m} yerde)")
           app.write_text(text)
 
           plist_path = pathlib.Path("ios/App/App/Info.plist")
