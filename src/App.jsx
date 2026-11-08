@@ -43,11 +43,12 @@ import {
   gununIlkMaciMi,
   reklamIsle,
   reklamHakki,
+  gecisIsle,
   bugunISO,
   KAZANC,
 } from './game/ilerleme.js';
 import { magazaPaketiMi } from './utils/gizlilik.js';
-import { demoFormlariYukle, odulluGoster, reklamKur } from './ads/reklam.js';
+import { gecisGoster, odulluGoster, reklamKur } from './ads/reklam.js';
 import { getGameMode } from './game/modes.js';
 import { useDil } from './i18n/DilBaglami.jsx';
 
@@ -129,12 +130,21 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- yalnızca mount
   }, []);
 
+  /*
+   * SDK'yı açılışta bir kez kur — reklam GÖSTERME.
+   *
+   * Burada eskiden `demoFormlariYukle` çağrılıyordu: banner, geçiş ve
+   * ödüllü reklamı YÜKLEYİP hiçbirini göstermeyen bir teşhis
+   * yardımcısıydı ve yayına sızmıştı. Oyuncunun gördüğü şey "reklam
+   * gelecek gibi oldu, gelmedi"ydi; Google tarafında da gösterilmeyen
+   * istek iyi karşılanmıyor. Kaldırıldı.
+   */
   useEffect(() => {
     if (!fpAcik) return undefined;
     let iptal = false;
     (async () => {
-      const ok = await reklamKur();
-      if (!iptal && ok) await demoFormlariYukle();
+      await reklamKur();
+      if (iptal) return;
     })();
     return () => {
       iptal = true;
@@ -591,6 +601,42 @@ export default function App() {
     return true;
   }, [fpAcik, ilerleme]);
 
+  /** Aynı anda iki geçiş isteği gitmesin — oyuncu düğmeye iki kez basabilir. */
+  const gecisSurerRef = useRef(false);
+
+  /**
+   * Sonuç ekranından çıkarken geçiş reklamı.
+   *
+   * NEDEN BURADA: maç bitişi doğal bir ara. Oyunun İÇİNDE reklam
+   * göstermek rallinin ortasına girer; açılışta göstermek de
+   * oyuncunun oyunu reklamla tanıması demek. `KAZANC.gecisHerMac`
+   * sıklığı belirliyor, sayaç kayıtta tutuluyor.
+   *
+   * ÖDÜLLÜ İZLENDİYSE ATLANIR (`kazanc.katlandi`): oyuncu az önce
+   * isteyerek bir reklam izledi, üstüne zorunlu bir tane daha koymak
+   * iki reklamı arka arkaya dayatmak olurdu. Sayaç da o turda
+   * ilerlemiyor.
+   *
+   * Reklam yüklenemezse `gecisGoster` false dönüyor ve ekran
+   * değişikliği gecikmiyor — reklam yüzünden oyunda kalınmaz.
+   *
+   * @param {() => void} devam Reklamdan sonra yapılacak geçiş
+   */
+  const sonuctanCik = useCallback(async (devam) => {
+    if (gecisSurerRef.current) return;
+    gecisSurerRef.current = true;
+    try {
+      if (fpAcik && !(kazanc && kazanc.katlandi)) {
+        const { goster, durum } = gecisIsle(loadIlerleme());
+        setIlerleme(saveIlerleme(durum));
+        if (goster) await gecisGoster();
+      }
+    } finally {
+      gecisSurerRef.current = false;
+    }
+    devam();
+  }, [fpAcik, kazanc]);
+
   const fpKatlaReklam = useCallback(async () => {
     if (!fpAcik || !kazanc || kazanc.katlandi || kazanc.toplam <= 0) return false;
     const izlendi = await odulluIzle();
@@ -895,8 +941,8 @@ export default function App() {
           onFpKatla={fpKatlaReklam}
           rovans={baglantiRef.current ? rovans : null}
           onRovans={rovansIste}
-          onRematch={handleRematch}
-          onHome={goHome}
+          onRematch={() => sonuctanCik(handleRematch)}
+          onHome={() => sonuctanCik(goHome)}
           muted={muted}
           onToggleMute={toggleMute}
         />

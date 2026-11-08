@@ -8,10 +8,12 @@ import {
   odulluGoster,
   gecisGoster,
   bannerGoster,
-  demoFormlariYukle,
   TEST_ADMOB_APP,
   TEST_ADMOB_REWARD,
+  TEST_ADMOB_BANNER,
+  TEST_ADMOB_INTERSTITIAL,
   IOS_TEST_ADMOB,
+  GECICI_DEMO_BIRIM,
 } from './reklam.js';
 
 const kabuk = {
@@ -82,11 +84,10 @@ afterEach(() => {
 });
 
 describe('reklam kimlikleri', () => {
-  it('geçici durumda iOS resmi demo birimlerini kullanır', () => {
+  it('geçici bayrak AÇIKKEN iOS resmi demo birimlerini kullanır', () => {
     const k = reklamKimlikleri({
-      VITE_ADMOB_APP_ID: 'ca-app-pub-1111111111111111~2222222222',
-      VITE_ADMOB_REWARDED_ID: 'ca-app-pub-1111111111111111/3333333333',
-    });
+      VITE_ADMOB_IOS_APP_ID: 'ca-app-pub-1111111111111111~2222222222',
+    }, { geciciDemo: true });
     expect(k.appId).toBe(IOS_TEST_ADMOB.app);
     expect(k.banner).toBe(IOS_TEST_ADMOB.banner);
     expect(k.interstitial).toBe(IOS_TEST_ADMOB.interstitial);
@@ -96,22 +97,71 @@ describe('reklam kimlikleri', () => {
   });
 
   it('Android geçici durumda Android demo birimine düşer', () => {
-    const k = reklamKimlikleri({}, { platform: 'android' });
+    const k = reklamKimlikleri({}, { platform: 'android', geciciDemo: true });
     expect(k.appId).toBe(TEST_ADMOB_APP);
     expect(k.rewarded).toBe(TEST_ADMOB_REWARD);
-    expect(k.banner).toBe('ca-app-pub-3940256099942544/6300978111');
-    expect(k.interstitial).toBe('ca-app-pub-3940256099942544/1033173712');
+    expect(k.banner).toBe(TEST_ADMOB_BANNER);
+    expect(k.interstitial).toBe(TEST_ADMOB_INTERSTITIAL);
   });
 
-  it('geçici bayrak kapanınca gerçek kimlik test bayrağını kapatır', () => {
+  it('YAYINDA geçici bayrak kapalı', () => {
+    /*
+     * Asıl arıza buydu: bayrak `true` commit edildi ve mağazadaki iki
+     * sürüm de demo reklam istedi. Bu satır onu bir daha kaçırmıyor.
+     */
+    expect(GECICI_DEMO_BIRIM).toBe(false);
+  });
+
+  it('Android gerçek kimlikleri verilince onları kullanır', () => {
     const k = reklamKimlikleri({
       VITE_ADMOB_APP_ID: 'ca-app-pub-1111111111111111~2222222222',
       VITE_ADMOB_REWARDED_ID: 'ca-app-pub-1111111111111111/3333333333',
-    }, { geciciDemo: false });
+      VITE_ADMOB_INTERSTITIAL_ID: 'ca-app-pub-1111111111111111/4444444444',
+      VITE_ADMOB_BANNER_ID: 'ca-app-pub-1111111111111111/5555555555',
+    }, { geciciDemo: false, platform: 'android' });
     expect(k.test).toBe(false);
     expect(k.demo).toBe(false);
-    expect(k.appId).toContain('1111111111111111');
+    expect(k.eksik).toEqual([]);
+    expect(k.appId).toContain('2222222222');
     expect(k.rewarded).toContain('3333333333');
+    expect(k.interstitial).toContain('4444444444');
+    expect(k.banner).toContain('5555555555');
+  });
+
+  it('ANDROID KİMLİĞİ iOS TARAFINA SIZMAZ', () => {
+    /*
+     * AdMob uygulama ve birim kimliklerini platform başına veriyor;
+     * iOS'ta Android birimini istemek "no fill" demek. Bayrak
+     * kapatıldığında eski kod iki platforma da aynı `VITE_ADMOB_*`
+     * değerini veriyordu, yani iOS sessizce boş dönecekti.
+     */
+    const env = {
+      VITE_ADMOB_APP_ID: 'ca-app-pub-1111111111111111~2222222222',
+      VITE_ADMOB_REWARDED_ID: 'ca-app-pub-1111111111111111/3333333333',
+    };
+    const k = reklamKimlikleri(env, { geciciDemo: false, platform: 'ios' });
+    expect(k.appId).not.toContain('1111111111111111');
+    expect(k.rewarded).not.toContain('3333333333');
+    // Android değeri yerine İOS demo birimine düşmeli
+    expect(k.appId).toBe(IOS_TEST_ADMOB.app);
+    expect(k.rewarded).toBe(IOS_TEST_ADMOB.rewarded);
+  });
+
+  it('eksik değişken demo birime düşer, test açılır ve adı bildirilir', () => {
+    const k = reklamKimlikleri({
+      VITE_ADMOB_IOS_APP_ID: 'ca-app-pub-1111111111111111~2222222222',
+      VITE_ADMOB_IOS_REWARDED_ID: 'ca-app-pub-1111111111111111/3333333333',
+    }, { geciciDemo: false, platform: 'ios' });
+    expect(k.appId).toContain('2222222222');
+    expect(k.rewarded).toContain('3333333333');
+    // Verilmeyen iki yuva demoya düştü
+    expect(k.interstitial).toBe(IOS_TEST_ADMOB.interstitial);
+    expect(k.banner).toBe(IOS_TEST_ADMOB.banner);
+    expect(k.test).toBe(true);
+    expect(k.eksik).toEqual([
+      'VITE_ADMOB_IOS_INTERSTITIAL_ID',
+      'VITE_ADMOB_IOS_BANNER_ID',
+    ]);
   });
 });
 
@@ -258,88 +308,5 @@ describe('yükle sonra göster', () => {
     expect(dinle).toBeGreaterThan(-1);
     expect(dinle).toBeLessThan(show);
     expect(sira[show]).toContain(IOS_TEST_ADMOB.banner);
-  });
-});
-
-describe('demo formları', () => {
-  function demoEklenti(olaylar, davranis = {}) {
-    const sira = [];
-    const dinleyiciler = {};
-    const AdMob = {
-      initialize: async () => { sira.push('initialize'); },
-      addListener: async (olay, fn) => {
-        sira.push(`listen:${olay}`);
-        dinleyiciler[olay] = fn;
-        return { remove: async () => {} };
-      },
-      prepareRewardVideoAd: async (secenek) => {
-        sira.push(`prepareReward:${secenek.adId}`);
-        if (davranis.odulHata) throw davranis.odulHata;
-      },
-      prepareInterstitial: async (secenek) => {
-        sira.push(`prepareInterstitial:${secenek.adId}`);
-        if (davranis.gecisHata) throw davranis.gecisHata;
-      },
-      showBanner: async (secenek) => {
-        sira.push(`showBanner:${secenek.adId}`);
-        if (davranis.bannerHata) throw davranis.bannerHata;
-        dinleyiciler[olaylar.BannerAdPluginEvents.Loaded]?.();
-      },
-      removeBanner: async () => { sira.push('removeBanner'); },
-    };
-    return { sira, eklenti: { AdMob, ...olaylar } };
-  }
-
-  it('iOS demo birimlerini yükler ve başarıyı yazar', async () => {
-    const bilgi = vi.spyOn(console, 'info').mockImplementation(() => {});
-    const hata = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const { sira, eklenti } = demoEklenti(OLAY);
-    const sonuc = await demoFormlariYukle(kabuk, { eklenti, zamanAsimiMs: 50 });
-    expect(sonuc).toEqual({ banner: true, interstitial: true, rewarded: true });
-    expect(sira.some((ad) => ad === `prepareReward:${IOS_TEST_ADMOB.rewarded}`)).toBe(true);
-    expect(sira.some((ad) => ad === `prepareInterstitial:${IOS_TEST_ADMOB.interstitial}`)).toBe(true);
-    expect(sira.some((ad) => ad === `showBanner:${IOS_TEST_ADMOB.banner}`)).toBe(true);
-    const reward = sira.indexOf(`prepareReward:${IOS_TEST_ADMOB.rewarded}`);
-    const show = sira.indexOf('showReward');
-    expect(show).toBe(-1);
-    expect(sira.indexOf('showInterstitial')).toBe(-1);
-    expect(sira.indexOf('removeBanner')).toBeGreaterThan(sira.indexOf(`showBanner:${IOS_TEST_ADMOB.banner}`));
-    expect(reward).toBeGreaterThan(-1);
-    const yazilan = bilgi.mock.calls.map((satir) => satir.join(' ')).join('\n');
-    expect(yazilan).toContain('ödüllü yüklendi');
-    expect(yazilan).toContain('geçiş yüklendi');
-    expect(yazilan).toContain('banner yüklendi');
-    expect(hata).not.toHaveBeenCalled();
-  });
-
-  it('Android demo birimlerini kullanır', async () => {
-    reklamSifirla();
-    const android = {
-      Capacitor: { isNativePlatform: () => true, getPlatform: () => 'android' },
-    };
-    const { sira, eklenti } = demoEklenti(OLAY);
-    vi.spyOn(console, 'info').mockImplementation(() => {});
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    await demoFormlariYukle(android, { eklenti, zamanAsimiMs: 50 });
-    expect(sira.some((ad) => ad.includes('5224354917'))).toBe(true);
-    expect(sira.some((ad) => ad.includes('1033173712'))).toBe(true);
-    expect(sira.some((ad) => ad.includes('6300978111'))).toBe(true);
-  });
-
-  it('yükleme hatasını code ve message ile yazar', async () => {
-    reklamSifirla();
-    const hata = vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.spyOn(console, 'info').mockImplementation(() => {});
-    const { eklenti } = demoEklenti(OLAY, {
-      odulHata: { code: 3, message: 'No fill' },
-    });
-    const sonuc = await demoFormlariYukle(kabuk, { eklenti, zamanAsimiMs: 50 });
-    expect(sonuc.rewarded).toBe(false);
-    expect(sonuc.interstitial).toBe(true);
-    expect(sonuc.banner).toBe(true);
-    const yazilan = hata.mock.calls.map((satir) => satir.join(' ')).join('\n');
-    expect(yazilan).toContain('code=3');
-    expect(yazilan).toContain('message=No fill');
-    expect(yazilan).toContain(IOS_TEST_ADMOB.rewarded);
   });
 });

@@ -142,17 +142,30 @@ Sakla: parola yöneticisi + şifreli ayrı bir yedek.
 | Secret | `KEY_ALIAS` | `sultanlar` |
 | Secret | `KEY_PASSWORD` | aynı parola (Enter'la aynısını seçtiysen) |
 | Variable | `VITE_RELE_URL` | `wss://rele.retrovoleybol.online` |
-| Variable | `VITE_ADMOB_APP_ID` | AdMob uygulama kimliği (`ca-app-pub-…~…`) |
-| Variable | `VITE_ADMOB_REWARDED_ID` | Ödüllü birim (`ca-app-pub-…/…`) |
-| Variable | `ADMOB_APP_ID` | Aynı uygulama kimliği (AndroidManifest) |
+| Variable | `VITE_ADMOB_APP_ID` | **Android** uygulama kimliği (`ca-app-pub-…~…`) |
+| Variable | `VITE_ADMOB_REWARDED_ID` | Android ödüllü birim (`ca-app-pub-…/…`) |
+| Variable | `VITE_ADMOB_INTERSTITIAL_ID` | Android geçiş birimi |
+| Variable | `VITE_ADMOB_BANNER_ID` | Android banner birimi |
+| Variable | `ADMOB_APP_ID` | Android uygulama kimliği (AndroidManifest; yukarıdakiyle aynı) |
+| Variable | `VITE_ADMOB_IOS_APP_ID` | **iOS** uygulama kimliği |
+| Variable | `VITE_ADMOB_IOS_REWARDED_ID` | iOS ödüllü birim |
+| Variable | `VITE_ADMOB_IOS_INTERSTITIAL_ID` | iOS geçiş birimi |
+| Variable | `VITE_ADMOB_IOS_BANNER_ID` | iOS banner birimi |
 
 Secret'lar **Secrets** sekmesinde ("New repository secret"),
 değişkenler **Variables** sekmesinde ("New repository variable") —
 iki ayrı sekme, karıştırılması kolay.
 
-AdMob değişkenleri **boşsa** paket Google'ın test birimleriyle çıkar:
-reklam görünür ama para getirmez. Play'de kazanç için AdMob konsolundan
-uygulama + ödüllü birim oluşturup üç değişkeni yaz.
+**KİMLİKLER PLATFORMA GÖRE AYRI.** AdMob her platform için ayrı
+uygulama ve ayrı birim veriyor; iOS'ta Android biriminin istenmesi
+"no fill" demek. Bir yuvanın değişkeni boşsa o yuva O PLATFORMUN demo
+birimine düşer ve test reklamı gösterir (para getirmez).
+
+Uygulama kimliği boşsa yapı **durur**: `ADMOB_APP_ID` yoksa Android
+işi, `VITE_ADMOB_IOS_APP_ID` yoksa iOS işi hata verip biter. Sebebi
+yaşanmış: mağazadaki iki sürüm de Google'ın demo kimliğiyle çıktı ve
+reklamlar ya görünmedi ya test reklamı oldu — gelir sıfırdı ve bunu
+fark etmek haftalar aldı.
 
 Uzun metni panoya almak: `xclip -sel clip < ~/filenin-imza/sultanlar.b64`
 (Linux) ya da `pbcopy < ~/filenin-imza/sultanlar.b64` (macOS).

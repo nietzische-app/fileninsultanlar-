@@ -23,6 +23,7 @@ import {
   reklamIsle,
   gununIlkMaciMi,
   cevrimiciMi,
+  gecisIsle,
 } from './ilerleme.js';
 import { ROSTER, DEFAULT_PLAYER_ID } from './players.js';
 import { DIFFICULTY } from './constants.js';
@@ -665,4 +666,44 @@ describe('FP anahtarı — geçici kapatma', () => {
   });
 
 
+});
+
+describe('geçiş reklamı sırası', () => {
+  it('ilk iki maçta göstermez, üçüncüde gösterir', () => {
+    let d = { puan: 0, acilanlar: [] };
+    const goster = [];
+    for (let i = 0; i < 6; i += 1) {
+      const s = gecisIsle(d);
+      goster.push(s.goster);
+      d = s.durum;
+    }
+    expect(goster).toEqual([false, false, true, false, false, true]);
+  });
+
+  it('sayacı DURUMA yazar — uygulama kapanınca sıfırlanmaz', () => {
+    const bir = gecisIsle({ puan: 10, acilanlar: ['a'] });
+    expect(bir.durum.gecisSayac).toBe(1);
+    // Kayıttan okunmuş gibi devam et
+    const iki = gecisIsle({ ...bir.durum });
+    expect(iki.durum.gecisSayac).toBe(2);
+    expect(iki.goster).toBe(false);
+    expect(gecisIsle({ ...iki.durum }).goster).toBe(true);
+  });
+
+  it('puan ve açılanlar bozulmaz', () => {
+    const s = gecisIsle({ puan: 120, acilanlar: ['x', 'y'] });
+    expect(s.durum.puan).toBe(120);
+    expect(s.durum.acilanlar).toEqual(['x', 'y']);
+  });
+
+  it('bozuk durumda da çalışır', () => {
+    expect(gecisIsle(null).durum.gecisSayac).toBe(1);
+    expect(gecisIsle({ gecisSayac: 'abc' }).durum.gecisSayac).toBe(1);
+  });
+
+  it('sıklık ayarlanabilir', () => {
+    expect(gecisIsle({ gecisSayac: 0 }, { her: 1 }).goster).toBe(true);
+    expect(gecisIsle({ gecisSayac: 3 }, { her: 4 }).goster).toBe(true);
+    expect(gecisIsle({ gecisSayac: 1 }, { her: 4 }).goster).toBe(false);
+  });
 });

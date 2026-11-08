@@ -119,9 +119,36 @@ jobs:
       - name: Install
         run: npm ci
 
+      # AdMob kimliği Info.plist'e YAPIM ANINDA yazılıyor.
+      #
+      # Depoda Google'ın demo kimliği duruyor ki yerel arşiv de
+      # çalışsın; yayına giden pakette gerçek kimlik olmalı. Değişken
+      # boşsa iş BURADA duruyor: demo kimlikle mağazaya çıkmak tam
+      # olarak yaşanan arızaydı (reklamlar göründü ama gelir sıfırdı).
+      - name: AdMob iOS kimliğini yaz
+        env:
+          ADMOB_IOS_APP_ID: ${{ vars.VITE_ADMOB_IOS_APP_ID }}
+        run: |
+          if [ -z "$ADMOB_IOS_APP_ID" ]; then
+            echo "::error::VITE_ADMOB_IOS_APP_ID deposu değişkeni boş. AdMob > Uygulamalar > iOS uygulamasının 'ca-app-pub-…~…' kimliğini girin."
+            exit 1
+          fi
+          case "$ADMOB_IOS_APP_ID" in
+            ca-app-pub-3940256099942544*)
+              echo "::error::Verilen kimlik Google'ın DEMO kimliği. Gerçek iOS uygulama kimliğini girin."
+              exit 1
+              ;;
+          esac
+          /usr/libexec/PlistBuddy -c "Set :GADApplicationIdentifier $ADMOB_IOS_APP_ID" ios/App/App/Info.plist
+          echo "GADApplicationIdentifier = $(/usr/libexec/PlistBuddy -c 'Print :GADApplicationIdentifier' ios/App/App/Info.plist)"
+
       - name: Web yapısı + iOS kopyası
         env:
           VITE_RELE_URL: ${{ vars.VITE_RELE_URL }}
+          VITE_ADMOB_IOS_APP_ID: ${{ vars.VITE_ADMOB_IOS_APP_ID }}
+          VITE_ADMOB_IOS_REWARDED_ID: ${{ vars.VITE_ADMOB_IOS_REWARDED_ID }}
+          VITE_ADMOB_IOS_INTERSTITIAL_ID: ${{ vars.VITE_ADMOB_IOS_INTERSTITIAL_ID }}
+          VITE_ADMOB_IOS_BANNER_ID: ${{ vars.VITE_ADMOB_IOS_BANNER_ID }}
         run: |
           node scripts/paket-onkontrol.mjs
           # Taze pod çözümü. Eski bir UMP 3 önbelleği arşivi yine 65 ile düşürür.

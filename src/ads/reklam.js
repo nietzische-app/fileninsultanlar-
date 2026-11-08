@@ -4,20 +4,29 @@
  * Web'de çağrılmaz. Eklenti yoksa ya da izleme yarıda kesilirse ödül
  * yok: sessizce "devam et" vermek reklamı atlatmanın yolu olurdu.
  *
- * Geçici olarak gerçek birimler kapalı. iOS Google'ın resmi demo
- * birimlerini kullanır; Android kendi demo birimlerini. `isTesting`
- * bilinçli olarak kapalı: eklenti bu bayrak açıkken iOS banner ve
- * interstitial kimliğini Android demo birimiyle değiştiriyor, istek
- * de "no fill" ile düşüyor.
+ * KİMLİKLER PLATFORMA GÖRE AYRI. AdMob her platform için ayrı
+ * uygulama ve ayrı reklam birimi veriyor; iOS'ta Android biriminin
+ * istenmesi "no fill" demek. Demo tarafında bu ayrım zaten vardı,
+ * gerçek tarafta YOKTU: bayrak kapatıldığında iki platform da aynı
+ * `VITE_ADMOB_*` değerini alıyordu ve iOS sessizce boş dönerdi.
  *
- * Yayın öncesi `GECICI_DEMO_BIRIM` false olmalı. O zaman kimlikler
- * yine `VITE_ADMOB_APP_ID` / `VITE_ADMOB_REWARDED_ID`.
+ * Kimlik verilmemişse o yuva Google'ın O PLATFORMA ait demo birimine
+ * düşüyor ve `test` açılıyor — yanlış platformun gerçek birimini
+ * istemektense test reklamı göstermek yeğdir; `eksik` listesi de
+ * hangi değişkenin verilmediğini söylüyor.
  */
 
 import { yerelKabukMu } from '../utils/gizlilik.js';
 
-/** Yayın öncesi kapat. Açıkken ortam değişkenindeki gerçek birim yok sayılır. */
-export const GECICI_DEMO_BIRIM = true;
+/**
+ * Gerçek birimleri yok sayıp demo birimlerle koşmak için acil kapak.
+ *
+ * YAYINDA FALSE. Bir süre `true` kaldı ve mağazadaki iki sürüm de
+ * Google'ın demo reklamlarını istedi: reklamlar ya hiç görünmedi ya
+ * test reklamı olarak göründü, gelir sıfır oldu. Cihazda hata
+ * ayıklarken elle açılabilir, ama commit edilmez.
+ */
+export const GECICI_DEMO_BIRIM = false;
 
 /** Google'ın Android demo birimleri. */
 export const TEST_ADMOB_APP = 'ca-app-pub-3940256099942544~3347511713';
@@ -37,43 +46,97 @@ export const IOS_TEST_ADMOB = {
   rewardedInterstitial: 'ca-app-pub-3940256099942544/6978759866',
 };
 
+/** Platform başına demo birimler — gerçek kimlik yoksa buraya düşülür. */
+const DEMO = {
+  ios: IOS_TEST_ADMOB,
+  android: {
+    app: TEST_ADMOB_APP,
+    banner: TEST_ADMOB_BANNER,
+    interstitial: TEST_ADMOB_INTERSTITIAL,
+    rewarded: TEST_ADMOB_REWARD,
+    rewardedInterstitial: 'ca-app-pub-3940256099942544/5354046379',
+  },
+};
+
+/**
+ * Hangi ortam değişkeni hangi yuvayı dolduruyor.
+ *
+ * Android adları eski hâlleriyle kaldı (`VITE_ADMOB_APP_ID`): iş
+ * akışları ve depo değişkenleri onlara bakıyor, yeniden adlandırmak
+ * sessizce boş kimlik demek olurdu.
+ */
+export const ADMOB_DEGISKENLERI = {
+  ios: {
+    app: 'VITE_ADMOB_IOS_APP_ID',
+    rewarded: 'VITE_ADMOB_IOS_REWARDED_ID',
+    interstitial: 'VITE_ADMOB_IOS_INTERSTITIAL_ID',
+    banner: 'VITE_ADMOB_IOS_BANNER_ID',
+  },
+  android: {
+    app: 'VITE_ADMOB_APP_ID',
+    rewarded: 'VITE_ADMOB_REWARDED_ID',
+    interstitial: 'VITE_ADMOB_INTERSTITIAL_ID',
+    banner: 'VITE_ADMOB_BANNER_ID',
+  },
+};
+
+/**
+ * Bu platformun reklam kimlikleri.
+ *
+ * @param {object} [env] Vite ortam değişkenleri
+ * @param {{geciciDemo?: boolean, platform?: 'ios'|'android'}} [secenek]
+ * @returns {{appId: string, banner: string, interstitial: string,
+ *   rewarded: string, rewardedInterstitial: string, test: boolean,
+ *   demo: boolean, platform: string, eksik: string[]}}
+ */
 export function reklamKimlikleri(env = import.meta.env, secenek = {}) {
   const gecici = secenek.geciciDemo ?? GECICI_DEMO_BIRIM;
   const platform = secenek.platform === 'android' ? 'android' : 'ios';
-  if (gecici && platform === 'ios') {
-    return {
-      appId: IOS_TEST_ADMOB.app,
-      banner: IOS_TEST_ADMOB.banner,
-      interstitial: IOS_TEST_ADMOB.interstitial,
-      rewarded: IOS_TEST_ADMOB.rewarded,
-      rewardedInterstitial: IOS_TEST_ADMOB.rewardedInterstitial,
-      test: true,
-      demo: true,
-    };
-  }
+  const demo = DEMO[platform];
+
   if (gecici) {
     return {
-      appId: TEST_ADMOB_APP,
-      banner: TEST_ADMOB_BANNER,
-      interstitial: TEST_ADMOB_INTERSTITIAL,
-      rewarded: TEST_ADMOB_REWARD,
-      rewardedInterstitial: 'ca-app-pub-3940256099942544/5354046379',
+      appId: demo.app,
+      banner: demo.banner,
+      interstitial: demo.interstitial,
+      rewarded: demo.rewarded,
+      rewardedInterstitial: demo.rewardedInterstitial,
       test: true,
       demo: true,
+      platform,
+      eksik: [],
     };
   }
-  const appId = String(env?.VITE_ADMOB_APP_ID || '').trim() || TEST_ADMOB_APP;
-  const rewarded = String(env?.VITE_ADMOB_REWARDED_ID || '').trim() || TEST_ADMOB_REWARD;
-  const banner = String(env?.VITE_ADMOB_BANNER_ID || '').trim() || TEST_ADMOB_BANNER;
-  const interstitial = String(env?.VITE_ADMOB_INTERSTITIAL_ID || '').trim() || TEST_ADMOB_INTERSTITIAL;
+
+  const degisken = ADMOB_DEGISKENLERI[platform];
+  const eksik = [];
+  /** Değer yoksa AYNI PLATFORMUN demo birimine düş ve bunu bildir. */
+  const al = (yuva) => {
+    const deger = String(env?.[degisken[yuva]] || '').trim();
+    if (deger) return deger;
+    eksik.push(degisken[yuva]);
+    return demo[yuva];
+  };
+
+  const appId = al('app');
+  const rewarded = al('rewarded');
+  const interstitial = al('interstitial');
+  const banner = al('banner');
+
   return {
     appId,
     banner,
     interstitial,
     rewarded,
-    rewardedInterstitial: interstitial,
-    test: appId === TEST_ADMOB_APP || rewarded === TEST_ADMOB_REWARD,
+    /*
+     * Ayrı bir "ödüllü geçiş" birimi istemiyoruz; o biçim kullanılmıyor
+     * ve geçiş birimini oraya vermek yanlış biçimde istek demek olurdu.
+     */
+    rewardedInterstitial: demo.rewardedInterstitial,
+    test: eksik.length > 0,
     demo: false,
+    platform,
+    eksik,
   };
 }
 
@@ -332,98 +395,6 @@ export async function bannerGoster(kap = globalThis, bag = {}) {
       position: BannerAdPosition?.BOTTOM_CENTER,
     }),
   });
-}
-
-/**
- * Demo modunda banner, geçiş ve ödüllü reklamı yükler, göstermez.
- * Banner eklentide yalnız show ile yüklendiği için istekten sonra kaldırılır.
- * Başarı `console.info`, hata `console.error` (code ve message).
- * @returns {Promise<{banner: boolean, interstitial: boolean, rewarded: boolean}>}
- */
-export async function demoFormlariYukle(kap = globalThis, bag = {}) {
-  const kim = reklamKimlikleri(undefined, { platform: platformAdi(kap) });
-  if (!kim.demo) return { banner: true, interstitial: true, rewarded: true };
-  const ok = await reklamKur(kap, bag);
-  if (!ok) return { banner: false, interstitial: false, rewarded: false };
-  const api = await apiAl(bag);
-  const zamanAsimiMs = bag.zamanAsimiMs ?? 8000;
-  const rewarded = await formYukle({
-    AdMob: api.AdMob,
-    asama: 'ödüllü',
-    adId: kim.rewarded,
-    fail: api.RewardAdPluginEvents?.FailedToLoad,
-    promiseYeter: true,
-    zamanAsimiMs,
-    istek: () => api.AdMob.prepareRewardVideoAd({
-      adId: kim.rewarded,
-      isTesting: false,
-    }),
-  });
-  const interstitial = await formYukle({
-    AdMob: api.AdMob,
-    asama: 'geçiş',
-    adId: kim.interstitial,
-    fail: api.InterstitialAdPluginEvents?.FailedToLoad,
-    promiseYeter: true,
-    zamanAsimiMs,
-    istek: () => api.AdMob.prepareInterstitial({
-      adId: kim.interstitial,
-      isTesting: false,
-    }),
-  });
-  const banner = await formYukle({
-    AdMob: api.AdMob,
-    asama: 'banner',
-    adId: kim.banner,
-    fail: api.BannerAdPluginEvents?.FailedToLoad,
-    yuklendi: api.BannerAdPluginEvents?.Loaded,
-    promiseYeter: false,
-    zamanAsimiMs,
-    istek: () => api.AdMob.showBanner({
-      adId: kim.banner,
-      isTesting: false,
-      adSize: api.BannerAdSize?.ADAPTIVE_BANNER,
-      position: api.BannerAdPosition?.BOTTOM_CENTER,
-    }),
-  });
-  await api.AdMob.removeBanner?.().catch(() => {});
-  return { banner, interstitial, rewarded };
-}
-
-async function formYukle({
-  AdMob, asama, adId, fail, yuklendi, promiseYeter, zamanAsimiMs, istek,
-}) {
-  const tut = [];
-  let sonuc = null;
-  let coz = () => {};
-  const bitti = new Promise((resolve) => {
-    coz = resolve;
-  });
-  const bitir = (ok, hata) => {
-    if (sonuc) return;
-    sonuc = { ok, hata };
-    coz();
-  };
-  const zaman = setTimeout(() => {
-    bitir(false, { code: 'zaman', message: `${asama} yüklemesi zaman aşımına düştü` });
-  }, zamanAsimiMs);
-  try {
-    if (fail) tut.push(await AdMob.addListener(fail, (hata) => bitir(false, hata)));
-    if (yuklendi) tut.push(await AdMob.addListener(yuklendi, () => bitir(true)));
-    try {
-      await istek();
-      if (promiseYeter) bitir(true);
-    } catch (hata) {
-      bitir(false, hata);
-    }
-    await bitti;
-  } finally {
-    clearTimeout(zaman);
-    await dinleyicileriBirak(tut);
-  }
-  if (sonuc.ok) console.info(`[AdMob] ${asama} yüklendi adId=${adId}`);
-  else reklamHatasiYaz(`${asama} adId=${adId}`, sonuc.hata);
-  return sonuc.ok;
 }
 
 /** Testlerde kurulum durumunu sıfırla. */

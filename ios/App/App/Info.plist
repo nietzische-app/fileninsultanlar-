@@ -42,9 +42,14 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 	<!--
-		Geçici test kimliği: Google'ın resmi iOS örnek App ID'si.
-		Demo reklam birimleriyle eşleşir. Yayın öncesi AdMob'daki
-		gerçek iOS uygulama kimliğiyle değiştir.
+		Buradaki değer Google'ın demo iOS App ID'si ve YALNIZ yerel
+		arşivler için duruyor. Yayın yapısında iş akışı
+		(.github/workflows/ios-build.yml) bunu depo değişkeni
+		VITE_ADMOB_IOS_APP_ID ile değiştiriyor; değişken boşsa ya da
+		demo kimlik verilmişse yapı duruyor.
+
+		Elle değiştirmeyin: iki yer birbirinden ayrılırsa hangisinin
+		yayına gittiği belirsizleşir.
 	-->
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-3940256099942544~1458002511</string>

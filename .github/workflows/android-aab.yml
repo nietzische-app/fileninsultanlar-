@@ -137,6 +137,8 @@ jobs:
           VITE_RELE_URL: ${{ vars.VITE_RELE_URL }}
           VITE_ADMOB_APP_ID: ${{ vars.VITE_ADMOB_APP_ID }}
           VITE_ADMOB_REWARDED_ID: ${{ vars.VITE_ADMOB_REWARDED_ID }}
+          VITE_ADMOB_INTERSTITIAL_ID: ${{ vars.VITE_ADMOB_INTERSTITIAL_ID }}
+          VITE_ADMOB_BANNER_ID: ${{ vars.VITE_ADMOB_BANNER_ID }}
         run: npm run paket
 
       # Anahtar secret'lardan geliyor ve DİSKE yalnız bu adımda
@@ -198,6 +200,25 @@ jobs:
           echo "ANDROID_VERSION_CODE=$KOD" >> "$GITHUB_ENV"
           echo "code=$KOD" >> "$GITHUB_OUTPUT"
           echo "### Play sürüm kodu: \`$KOD\`" >> "$GITHUB_STEP_SUMMARY"
+
+      # Manifest yer tutucusu boş kalırsa gradle Google'ın DEMO
+      # uygulama kimliğine düşüyor ve paket sessizce gelirsiz çıkıyor.
+      # Yaşandı: mağazadaki sürüm demo kimlikle yayınlandı.
+      - name: AdMob Android kimliğini doğrula
+        env:
+          ADMOB_APP_ID: ${{ vars.ADMOB_APP_ID }}
+        run: |
+          if [ -z "$ADMOB_APP_ID" ]; then
+            echo "::error::ADMOB_APP_ID deposu değişkeni boş. AdMob > Uygulamalar > Android uygulamasının 'ca-app-pub-…~…' kimliğini girin."
+            exit 1
+          fi
+          case "$ADMOB_APP_ID" in
+            ca-app-pub-3940256099942544*)
+              echo "::error::Verilen kimlik Google'ın DEMO kimliği. Gerçek Android uygulama kimliğini girin."
+              exit 1
+              ;;
+          esac
+          echo "AdMob Android kimliği verildi."
 
       - name: Bundle üret
         working-directory: android

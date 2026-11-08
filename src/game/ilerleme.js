@@ -88,6 +88,18 @@ export const KAZANC = {
   reklamCarpan: 2,
   /** Günlük ödüllü reklam tavanı — farm olmasın. */
   reklamGunlukTavan: 8,
+  /**
+   * Kaç maçta bir geçiş reklamı.
+   *
+   * Her maçta göstermek en çok geliri verirdi ve oyunu bırakma sebebi
+   * olurdu: bir maç 2-3 dakika, araya her seferinde tam ekran reklam
+   * koymak oranı bozuyor. Üçte bir, ücretsiz arcade oyunlarında
+   * alışıldık aralık.
+   *
+   * İLK MAÇTA GÖSTERİLMEZ: sayaç üçe ulaşınca tetikleniyor, yani
+   * oyuncu oyunu reklamla tanımıyor.
+   */
+  gecisHerMac: 3,
 };
 
 /**
@@ -666,6 +678,30 @@ export function reklamHakki(durum, now = Date.now()) {
     gun,
     sayi: sayiAdet,
     kalan: Math.max(0, KAZANC.reklamGunlukTavan - sayiAdet),
+  };
+}
+
+/**
+ * Geçiş reklamı sırası geldi mi — ve sayacı ilerletir.
+ *
+ * Sayaç kalıcı: oturum değişkeninde tutulsaydı iki maç oynayıp
+ * uygulamayı kapatan oyuncu geçiş reklamını hiç görmezdi.
+ *
+ * KARAR VE YAZMA TEK YERDE: çağıran "göster" cevabını alıp sayacı
+ * ayrıca ilerletmek zorunda kalsaydı, unutulan bir çağrı sayacı
+ * dondurur ve reklam ya hiç ya da her maç çıkardı.
+ *
+ * @param {{gecisSayac?: number}|null} durum
+ * @param {{her?: number}} [secenek]
+ * @returns {{goster: boolean, durum: object}}
+ */
+export function gecisIsle(durum, secenek = {}) {
+  const her = Math.max(1, sayi(secenek.her ?? KAZANC.gecisHerMac));
+  const temiz = durum && typeof durum === 'object' ? durum : { puan: 0, acilanlar: [] };
+  const sonraki = sayi(temiz.gecisSayac) + 1;
+  return {
+    goster: sonraki % her === 0,
+    durum: { ...temiz, gecisSayac: sonraki },
   };
 }
 
